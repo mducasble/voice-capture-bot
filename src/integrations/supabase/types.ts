@@ -32,7 +32,9 @@ export type Database = {
           format: string | null
           id: string
           metadata: Json | null
+          quality_status: string | null
           sample_rate: number | null
+          snr_db: number | null
           status: Database["public"]["Enums"]["recording_status"] | null
           updated_at: string
         }
@@ -53,7 +55,9 @@ export type Database = {
           format?: string | null
           id?: string
           metadata?: Json | null
+          quality_status?: string | null
           sample_rate?: number | null
+          snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           updated_at?: string
         }
@@ -74,7 +78,9 @@ export type Database = {
           format?: string | null
           id?: string
           metadata?: Json | null
+          quality_status?: string | null
           sample_rate?: number | null
+          snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           updated_at?: string
         }
