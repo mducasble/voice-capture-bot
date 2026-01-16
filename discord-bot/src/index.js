@@ -13,7 +13,27 @@ import { pipeline } from 'stream/promises';
 import { Writable } from 'stream';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
+
+const maskSecret = (value) => {
+  if (!value) return '(missing)';
+  if (value.length <= 8) return '********';
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+};
+
+console.log('🔧 Env loaded:', {
+  cwd: process.cwd(),
+  envPath,
+  hasLovableApiUrl: !!process.env.LOVABLE_API_URL,
+  botApiKey: maskSecret(process.env.BOT_API_KEY)
+});
 
 // Configuration
 const CONFIG = {
@@ -359,6 +379,13 @@ async function stopRecording(interaction) {
         member_count: voiceChannel.members.size
       }
     }));
+
+    if (!process.env.LOVABLE_API_URL) {
+      throw new Error('LOVABLE_API_URL is not set. Check your .env and restart the bot.');
+    }
+    if (!process.env.BOT_API_KEY) {
+      throw new Error('BOT_API_KEY is not set (or .env not loaded). Check your .env and restart the bot.');
+    }
 
     const response = await fetch(`${process.env.LOVABLE_API_URL}/upload-recording`, {
       method: 'POST',
