@@ -147,7 +147,7 @@ const Index = () => {
       <footer className="border-t border-border/50 py-6 mt-12">
         <div className="container text-center text-sm text-muted-foreground">
           <p>
-            Audio captured at 44.1kHz • 16-bit • Dual Channel • WAV Format
+            Audio captured at 48kHz • 16-bit • Dual Channel • WAV Format
           </p>
         </div>
       </footer>

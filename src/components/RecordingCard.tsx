@@ -2,24 +2,8 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash } from "lucide-react";
-
-interface Recording {
-  id: string;
-  discord_guild_name: string | null;
-  discord_channel_name: string | null;
-  discord_username: string | null;
-  filename: string;
-  file_url: string | null;
-  file_size_bytes: number | null;
-  duration_seconds: number | null;
-  sample_rate: number;
-  bit_depth: number;
-  channels: number;
-  format: string;
-  status: string;
-  created_at: string;
-}
+import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, Volume2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import type { Recording } from "@/hooks/useRecordings";
 
 interface RecordingCardProps {
   recording: Recording;
@@ -97,12 +81,28 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   {recording.discord_guild_name || "Unknown Server"} • by {recording.discord_username || "Unknown"}
                 </p>
               </div>
-              <Badge 
-                variant={recording.status === "completed" ? "default" : "secondary"}
-                className={recording.status === "completed" ? "bg-accent text-accent-foreground" : ""}
-              >
-                {recording.status}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {/* Quality Badge */}
+                {recording.quality_status && (
+                  <Badge 
+                    variant={recording.quality_status === "passed" ? "default" : "destructive"}
+                    className={`flex items-center gap-1 ${recording.quality_status === "passed" ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+                  >
+                    {recording.quality_status === "passed" ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3" />
+                    )}
+                    {recording.snr_db !== null ? `SNR ${recording.snr_db}dB` : recording.quality_status}
+                  </Badge>
+                )}
+                <Badge 
+                  variant={recording.status === "completed" ? "default" : "secondary"}
+                  className={recording.status === "completed" ? "bg-accent text-accent-foreground" : ""}
+                >
+                  {recording.status}
+                </Badge>
+              </div>
             </div>
 
             {/* Stats */}
