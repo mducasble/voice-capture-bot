@@ -348,6 +348,9 @@ async function startRecording(interaction) {
 
       // Try to create opus decoder
       let decoder = null;
+      let decoderErrors = 0;
+      let streamEnded = false;
+      
       try {
         decoder = new opus.Decoder({
           rate: 48000,
@@ -356,11 +359,18 @@ async function startRecording(interaction) {
         });
         console.log(`✅ Opus decoder created for user ${userId}`);
         
+        // Handle decoder errors gracefully - don't crash, just log and continue
         decoder.on('error', (err) => {
-          console.error(`❌ Decoder error for user ${userId}:`, err.message);
+          decoderErrors++;
+          // Only log every 10th error to avoid spam
+          if (decoderErrors <= 3 || decoderErrors % 10 === 0) {
+            console.warn(`⚠️ Decoder error #${decoderErrors} for user ${userId}: ${err.message}`);
+          }
+          // Don't propagate error - decoder will continue working for valid packets
         });
 
         decoder.on('data', (chunk) => {
+          if (streamEnded) return; // Ignore data after stream ended
           chunkCount++;
           if (chunkCount % 50 === 1) {
             console.log(`📊 User ${userId}: received ${chunkCount} decoded chunks (${chunk.length} bytes each)`);
@@ -368,7 +378,19 @@ async function startRecording(interaction) {
           mixer.addChunk(userId, chunk);
         });
 
-        audioStream.pipe(decoder);
+        // Use manual piping to handle errors better
+        audioStream.on('data', (opusPacket) => {
+          if (streamEnded) return;
+          try {
+            decoder.write(opusPacket);
+          } catch (err) {
+            decoderErrors++;
+            if (decoderErrors <= 3) {
+              console.warn(`⚠️ Decoder write error for user ${userId}: ${err.message}`);
+            }
+            // Continue processing - don't crash on corrupt packets
+          }
+        });
         
       } catch (err) {
         console.error(`❌ Failed to create decoder: ${err.message}`);
@@ -379,6 +401,7 @@ async function startRecording(interaction) {
       // Fallback: capture raw audio if decoder failed
       if (!decoder) {
         audioStream.on('data', (chunk) => {
+          if (streamEnded) return;
           chunkCount++;
           if (chunkCount % 50 === 1) {
             console.log(`📊 User ${userId}: received ${chunkCount} raw chunks (${chunk.length} bytes each)`);
@@ -388,11 +411,21 @@ async function startRecording(interaction) {
       }
 
       audioStream.on('error', (err) => {
+        // Ignore "stream.push() after EOF" errors - they're harmless
+        if (err.message?.includes('after EOF')) {
+          console.log(`ℹ️ Stream EOF for user ${userId} (normal)`);
+          return;
+        }
         console.error(`❌ Audio stream error for user ${userId}:`, err.message);
       });
 
       audioStream.on('end', () => {
-        console.log(`🔇 User ${userId} stopped speaking - total chunks: ${chunkCount}`);
+        streamEnded = true;
+        if (decoderErrors > 0) {
+          console.log(`🔇 User ${userId} stopped speaking - total chunks: ${chunkCount}, decoder errors: ${decoderErrors}`);
+        } else {
+          console.log(`🔇 User ${userId} stopped speaking - total chunks: ${chunkCount}`);
+        }
         mixer.removeStream(userId);
       });
     });
