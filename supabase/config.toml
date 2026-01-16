@@ -1,1 +1,13 @@
 project_id = "qfxustvmwdyjduzpeafk"
+
+[functions.upload-recording]
+verify_jwt = false
+
+[functions.get-recordings]
+verify_jwt = false
+
+[functions.get-topics]
+verify_jwt = false
+
+[functions.get-languages]
+verify_jwt = false

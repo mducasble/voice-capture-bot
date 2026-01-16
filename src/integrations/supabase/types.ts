@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          start_date: string | null
+          target_recordings: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          start_date?: string | null
+          target_recordings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_date?: string | null
+          target_recordings?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      languages: {
+        Row: {
+          code: string
+          created_at: string
+          emoji: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_native: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_native: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_native?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recording_topics: {
         Row: {
           created_at: string
@@ -53,6 +125,7 @@ export type Database = {
       voice_recordings: {
         Row: {
           bit_depth: number | null
+          campaign_id: string | null
           channels: number | null
           created_at: string
           discord_channel_id: string
@@ -78,6 +151,7 @@ export type Database = {
         }
         Insert: {
           bit_depth?: number | null
+          campaign_id?: string | null
           channels?: number | null
           created_at?: string
           discord_channel_id: string
@@ -103,6 +177,7 @@ export type Database = {
         }
         Update: {
           bit_depth?: number | null
+          campaign_id?: string | null
           channels?: number | null
           created_at?: string
           discord_channel_id?: string
@@ -127,6 +202,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "voice_recordings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "voice_recordings_topic_id_fkey"
             columns: ["topic_id"]
