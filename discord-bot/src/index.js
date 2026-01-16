@@ -1,4 +1,17 @@
-import { Client, GatewayIntentBits, PermissionFlagsBits, SlashCommandBuilder, REST, Routes, ChannelType } from 'discord.js';
+import { 
+  Client, 
+  GatewayIntentBits, 
+  PermissionFlagsBits, 
+  SlashCommandBuilder, 
+  REST, 
+  Routes, 
+  ChannelType,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder
+} from 'discord.js';
 import { 
   joinVoiceChannel, 
   createAudioPlayer, 
@@ -64,8 +77,48 @@ const client = new Client({
 // Active recordings map
 const activeRecordings = new Map();
 
-// Temporary channels map: channelId -> { creatorId, createdAt, guildId }
+// Temporary channels map: channelId -> { creatorId, createdAt, guildId, topicId, topicName, language }
 const temporaryChannels = new Map();
+
+// Pending session selections: odiscord userId -> { step, language, topicId, topicName, guildId, channelId }
+const pendingSessions = new Map();
+
+// Cached topics from API
+let cachedTopics = [];
+let topicsCacheTime = 0;
+const TOPICS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Fetch topics from API
+async function fetchTopics() {
+  const now = Date.now();
+  if (cachedTopics.length > 0 && (now - topicsCacheTime) < TOPICS_CACHE_TTL) {
+    return cachedTopics;
+  }
+
+  try {
+    const response = await fetch(`${process.env.LOVABLE_API_URL}/get-topics`, {
+      method: 'GET',
+      headers: {
+        'x-bot-api-key': process.env.BOT_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch topics:', response.status);
+      return cachedTopics;
+    }
+
+    const data = await response.json();
+    cachedTopics = data.topics || [];
+    topicsCacheTime = now;
+    console.log(`📋 Fetched ${cachedTopics.length} topics from API`);
+    return cachedTopics;
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    return cachedTopics;
+  }
+}
 
 // WAV Header creation for 44.1kHz, 16-bit, stereo
 function createWavHeader(dataLength) {
@@ -451,9 +504,182 @@ async function stopRecording(interaction) {
   }
 }
 
+// Create welcome message with Start button
+async function setupWelcome(interaction) {
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
+    await interaction.reply({ 
+      content: '❌ You need "Manage Channels" permission to use this command.',
+      ephemeral: true 
+    });
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🎙️ Voice Recording Studio')
+    .setDescription(
+      'Welcome! Click the button below to start a new recording session.\n\n' +
+      '**How it works:**\n' +
+      '1. Click "Start Session"\n' +
+      '2. Select your preferred topic\n' +
+      '3. A private voice channel will be created for you\n' +
+      '4. Invite participants and start talking!\n' +
+      '5. Recording starts automatically when 2+ people join'
+    )
+    .setFooter({ text: 'Powered by Voice Recorder Bot' });
+
+  const button = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('start_session')
+        .setLabel('🎬 Start Session')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+  await interaction.reply({
+    embeds: [embed],
+    components: [button]
+  });
+}
+
+// Handle start session button click
+async function handleStartSession(interaction) {
+  const topics = await fetchTopics();
+  
+  if (topics.length === 0) {
+    await interaction.reply({ 
+      content: '❌ No topics available. Please contact an administrator.',
+      ephemeral: true 
+    });
+    return;
+  }
+
+  // Create topic selection menu
+  const topicOptions = topics.slice(0, 25).map(topic => ({
+    label: `${topic.emoji} ${topic.name_en}`,
+    description: topic.description?.substring(0, 100) || '',
+    value: topic.id
+  }));
+
+  const topicMenu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('select_topic')
+        .setPlaceholder('Select a topic for your session...')
+        .addOptions(topicOptions)
+    );
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('📋 Select Topic')
+    .setDescription('Choose a topic that best describes your recording session:');
+
+  await interaction.reply({
+    embeds: [embed],
+    components: [topicMenu],
+    ephemeral: true
+  });
+}
+
+// Handle topic selection
+async function handleTopicSelection(interaction) {
+  const topicId = interaction.values[0];
+  const topics = await fetchTopics();
+  const selectedTopic = topics.find(t => t.id === topicId);
+
+  if (!selectedTopic) {
+    await interaction.update({ 
+      content: '❌ Topic not found. Please try again.',
+      embeds: [],
+      components: []
+    });
+    return;
+  }
+
+  const guild = interaction.guild;
+  const member = interaction.member;
+
+  if (!guild) {
+    await interaction.update({ 
+      content: '❌ This can only be used in a server.',
+      embeds: [],
+      components: []
+    });
+    return;
+  }
+
+  // Check bot permissions
+  const botMember = guild.members.me;
+  if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    await interaction.update({ 
+      content: '❌ Bot is missing "Manage Channels" permission.',
+      embeds: [],
+      components: []
+    });
+    return;
+  }
+
+  await interaction.update({
+    content: '⏳ Creating your recording room...',
+    embeds: [],
+    components: []
+  });
+
+  try {
+    // Create the voice channel
+    const channelName = `${CONFIG.TEMP_CHANNEL_PREFIX} ${selectedTopic.emoji} ${member.user.username}`;
+    
+    const voiceChannel = await guild.channels.create({
+      name: channelName,
+      type: ChannelType.GuildVoice,
+      reason: `Recording session: ${selectedTopic.name_en} by ${member.user.tag}`,
+      userLimit: 10
+    });
+
+    // Track the temporary channel with topic info
+    temporaryChannels.set(voiceChannel.id, {
+      creatorId: member.user.id,
+      createdAt: Date.now(),
+      guildId: guild.id,
+      topicId: selectedTopic.id,
+      topicName: selectedTopic.name_en,
+      language: 'en'
+    });
+
+    console.log(`🎙️ Created session room: ${voiceChannel.name} | Topic: ${selectedTopic.name_en}`);
+
+    await interaction.editReply({
+      content: `✅ **Session Ready!**\n\n` +
+               `🎙️ **Room:** ${voiceChannel.name}\n` +
+               `📋 **Topic:** ${selectedTopic.emoji} ${selectedTopic.name_en}\n` +
+               `🌐 **Language:** English\n\n` +
+               `Join the voice channel to start!\n` +
+               `Recording will begin automatically when 2+ people join.`
+    });
+
+    // Try to move user to the channel if they're already in voice
+    if (member.voice.channel) {
+      try {
+        await member.voice.setChannel(voiceChannel);
+      } catch (moveError) {
+        console.warn('Could not move user:', moveError.message);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error creating session room:', error);
+    await interaction.editReply({
+      content: '❌ Failed to create room: ' + error.message
+    });
+  }
+}
+
 // Register slash commands
 async function registerCommands() {
   const commands = [
+    new SlashCommandBuilder()
+      .setName('setup-welcome')
+      .setDescription('Set up the welcome message with Start button (Admin only)'),
     new SlashCommandBuilder()
       .setName('criar-sala')
       .setDescription('Create a temporary voice channel for recording')
@@ -628,9 +854,29 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 // Handle interactions
 client.on('interactionCreate', async (interaction) => {
+  // Handle button clicks
+  if (interaction.isButton()) {
+    if (interaction.customId === 'start_session') {
+      await handleStartSession(interaction);
+    }
+    return;
+  }
+
+  // Handle select menu
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === 'select_topic') {
+      await handleTopicSelection(interaction);
+    }
+    return;
+  }
+
+  // Handle slash commands
   if (!interaction.isChatInputCommand()) return;
 
   switch (interaction.commandName) {
+    case 'setup-welcome':
+      await setupWelcome(interaction);
+      break;
     case 'criar-sala':
       await createTemporaryChannel(interaction);
       break;

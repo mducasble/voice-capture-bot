@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      recording_topics: {
+        Row: {
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_en: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_en: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       voice_recordings: {
         Row: {
           bit_depth: number | null
@@ -31,11 +67,13 @@ export type Database = {
           filename: string
           format: string | null
           id: string
+          language: string | null
           metadata: Json | null
           quality_status: string | null
           sample_rate: number | null
           snr_db: number | null
           status: Database["public"]["Enums"]["recording_status"] | null
+          topic_id: string | null
           updated_at: string
         }
         Insert: {
@@ -54,11 +92,13 @@ export type Database = {
           filename: string
           format?: string | null
           id?: string
+          language?: string | null
           metadata?: Json | null
           quality_status?: string | null
           sample_rate?: number | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
+          topic_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -77,14 +117,24 @@ export type Database = {
           filename?: string
           format?: string | null
           id?: string
+          language?: string | null
           metadata?: Json | null
           quality_status?: string | null
           sample_rate?: number | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
+          topic_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "voice_recordings_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "recording_topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
