@@ -266,7 +266,7 @@ serve(async (req) => {
         snr_db: snrDb,
         quality_status: qualityStatus,
         topic_id: metadata.topic_id || null,
-        language: metadata.language || 'en',
+        language: metadata.language || null,  // null = auto-detect by AI
         campaign_id: metadata.campaign_id || null,
         metadata: metadata.extra || {},
         transcription_status: 'pending'
@@ -301,7 +301,7 @@ serve(async (req) => {
       body: JSON.stringify({
         recording_id: recordData.id,
         audio_url: publicUrl,
-        language: metadata.language || 'en'
+        language: metadata.language || null  // null = auto-detect
       })
     }).then(res => {
       console.log(`Transcription triggered for ${recordData.id}, status: ${res.status}`);

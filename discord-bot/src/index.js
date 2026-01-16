@@ -583,7 +583,7 @@ async function stopRecording(interaction) {
         discord_username: interaction.user.username,
         duration_seconds: duration,
         topic_id: channelData.topicId || null,
-        language: channelData.languageCode || 'en',
+        language: channelData.languageCode || null,  // null = auto-detect
         campaign_id: null,
         extra: {
           recorded_by: interaction.user.tag,
