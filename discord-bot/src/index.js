@@ -38,9 +38,9 @@ console.log('🔧 Env loaded:', {
   botApiKey: maskSecret(process.env.BOT_API_KEY)
 });
 
-// Configuration
+// Configuration - Discord voice uses 48kHz
 const CONFIG = {
-  SAMPLE_RATE: 44100,
+  SAMPLE_RATE: 48000,
   BIT_DEPTH: 16,
   CHANNELS: 2,
   RECORDINGS_DIR: './recordings'
