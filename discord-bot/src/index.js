@@ -368,10 +368,18 @@ async function stopRecording(interaction) {
       body: formData
     });
 
-    const result = await response.json();
-
     // Clean up local file
     unlinkSync(filepath);
+
+    // Handle response - check for non-JSON responses
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response:', responseText.substring(0, 500));
+      throw new Error(`Server returned invalid response (status ${response.status}): ${responseText.substring(0, 200)}`);
+    }
 
     if (response.ok) {
       await interaction.editReply({
