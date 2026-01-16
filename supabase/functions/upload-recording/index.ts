@@ -188,38 +188,45 @@ serve(async (req) => {
       fileSize: audioFile.size
     });
 
-    // Read audio file for SNR analysis
-    const audioArrayBuffer = await audioFile.arrayBuffer();
-    
-    // Calculate SNR
+    // Calculate SNR only for files under 20MB to avoid memory issues
+    const MAX_SIZE_FOR_SNR = 20 * 1024 * 1024; // 20MB
     let snrDb: number | null = null;
     let qualityStatus = 'pending';
+    let audioArrayBuffer: ArrayBuffer | null = null;
     
-    try {
-      const parsedWav = parseWavFile(audioArrayBuffer);
-      if (parsedWav) {
-        snrDb = calculateSNR(parsedWav.samples, parsedWav.sampleRate);
-        qualityStatus = snrDb >= 20 ? 'passed' : 'failed';
-        console.log(`Audio quality analysis: SNR = ${snrDb} dB, Status = ${qualityStatus}`);
-      } else {
-        console.warn('Could not parse WAV file for SNR analysis');
+    if (audioFile.size <= MAX_SIZE_FOR_SNR) {
+      try {
+        audioArrayBuffer = await audioFile.arrayBuffer();
+        const parsedWav = parseWavFile(audioArrayBuffer);
+        if (parsedWav) {
+          snrDb = calculateSNR(parsedWav.samples, parsedWav.sampleRate);
+          qualityStatus = snrDb >= 20 ? 'passed' : 'failed';
+          console.log(`Audio quality analysis: SNR = ${snrDb} dB, Status = ${qualityStatus}`);
+        } else {
+          console.warn('Could not parse WAV file for SNR analysis');
+          qualityStatus = 'error';
+        }
+      } catch (snrError) {
+        console.error('SNR calculation error:', snrError);
         qualityStatus = 'error';
       }
-    } catch (snrError) {
-      console.error('SNR calculation error:', snrError);
-      qualityStatus = 'error';
+    } else {
+      console.log(`File size ${audioFile.size} bytes exceeds ${MAX_SIZE_FOR_SNR} bytes, skipping SNR analysis`);
+      qualityStatus = 'skipped';
     }
 
     // Generate unique filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const uniqueFilename = `${metadata.discord_guild_id}/${metadata.discord_user_id}/${timestamp}_${metadata.filename || 'recording.wav'}`;
 
-    // Upload to storage (convert ArrayBuffer back to Blob)
-    const audioBlob = new Blob([audioArrayBuffer], { type: 'audio/wav' });
+    // Upload to storage - use original file or convert ArrayBuffer back to Blob
+    const uploadBlob = audioArrayBuffer 
+      ? new Blob([audioArrayBuffer], { type: 'audio/wav' })
+      : audioFile;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('voice-recordings')
-      .upload(uniqueFilename, audioBlob, {
+      .upload(uniqueFilename, uploadBlob, {
         contentType: 'audio/wav',
         upsert: false
       });
