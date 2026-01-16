@@ -2,9 +2,21 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2 } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useDeleteRecording } from "@/hooks/useDeleteRecording";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface RecordingCardProps {
   recording: Recording;
@@ -14,6 +26,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const deleteRecording = useDeleteRecording();
+
+  const handleDelete = () => {
+    deleteRecording.mutate(recording.id);
+  };
 
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
@@ -187,19 +204,54 @@ export function RecordingCard({ recording }: RecordingCardProps) {
               <span className="text-xs text-muted-foreground">
                 {formatDate(recording.created_at)}
               </span>
-              {recording.file_url && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <a href={recording.file_url} download>
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
-                  </a>
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      disabled={deleteRecording.isPending}
+                    >
+                      {deleteRecording.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Deletar gravação?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. A gravação e todos os arquivos associados serão permanentemente deletados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Deletar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                {recording.file_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <a href={recording.file_url} download>
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
