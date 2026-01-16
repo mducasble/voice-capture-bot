@@ -6,19 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Convert audio file to base64
-async function audioToBase64(audioUrl: string): Promise<string> {
-  const response = await fetch(audioUrl);
-  const arrayBuffer = await response.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-  
-  // Convert to base64
-  let binary = '';
-  for (let i = 0; i < uint8Array.length; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
-  }
-  return btoa(binary);
-}
+// No longer need audioToBase64 - using URL directly
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -58,16 +46,13 @@ serve(async (req) => {
 
     console.log(`Starting transcription for recording ${recording_id}`);
 
-    // Get audio as base64
-    const audioBase64 = await audioToBase64(audio_url);
-    console.log(`Audio converted to base64, size: ${audioBase64.length} chars`);
-
     // Determine language instruction
     const languageInstruction = language && language !== 'en' 
       ? `The audio is in ${language}. Transcribe it in the original language.`
       : 'Transcribe the audio in the language being spoken.';
 
-    // Call Lovable AI Gateway with Gemini for transcription
+    // Call Lovable AI Gateway with Gemini for transcription using URL reference
+    // This avoids memory issues with large files
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -97,10 +82,9 @@ Instructions:
                 text: 'Please transcribe this audio recording accurately:'
               },
               {
-                type: 'input_audio',
-                input_audio: {
-                  data: audioBase64,
-                  format: 'wav'
+                type: 'audio_url',
+                audio_url: {
+                  url: audio_url
                 }
               }
             ]
