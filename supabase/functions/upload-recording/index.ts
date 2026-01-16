@@ -237,7 +237,7 @@ serve(async (req) => {
       .from('voice-recordings')
       .getPublicUrl(uniqueFilename);
 
-    // Insert record into database with SNR data
+    // Insert record into database with SNR data, topic, language, and campaign
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')
       .insert({
@@ -258,6 +258,9 @@ serve(async (req) => {
         status: 'completed',
         snr_db: snrDb,
         quality_status: qualityStatus,
+        topic_id: metadata.topic_id || null,
+        language: metadata.language || 'en',
+        campaign_id: metadata.campaign_id || null,
         metadata: metadata.extra || {}
       })
       .select()

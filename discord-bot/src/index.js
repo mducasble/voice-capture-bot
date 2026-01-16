@@ -83,15 +83,17 @@ const temporaryChannels = new Map();
 // Pending session selections: odiscord userId -> { step, language, topicId, topicName, guildId, channelId }
 const pendingSessions = new Map();
 
-// Cached topics from API
+// Cached topics and languages from API
 let cachedTopics = [];
 let topicsCacheTime = 0;
-const TOPICS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let cachedLanguages = [];
+let languagesCacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Fetch topics from API
 async function fetchTopics() {
   const now = Date.now();
-  if (cachedTopics.length > 0 && (now - topicsCacheTime) < TOPICS_CACHE_TTL) {
+  if (cachedTopics.length > 0 && (now - topicsCacheTime) < CACHE_TTL) {
     return cachedTopics;
   }
 
@@ -110,13 +112,45 @@ async function fetchTopics() {
     }
 
     const data = await response.json();
-    cachedTopics = data.topics || [];
+    cachedTopics = data.topics || data || [];
     topicsCacheTime = now;
     console.log(`📋 Fetched ${cachedTopics.length} topics from API`);
     return cachedTopics;
   } catch (error) {
     console.error('Error fetching topics:', error);
     return cachedTopics;
+  }
+}
+
+// Fetch languages from API
+async function fetchLanguages() {
+  const now = Date.now();
+  if (cachedLanguages.length > 0 && (now - languagesCacheTime) < CACHE_TTL) {
+    return cachedLanguages;
+  }
+
+  try {
+    const response = await fetch(`${process.env.LOVABLE_API_URL}/get-languages`, {
+      method: 'GET',
+      headers: {
+        'x-bot-api-key': process.env.BOT_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch languages:', response.status);
+      return cachedLanguages;
+    }
+
+    const data = await response.json();
+    cachedLanguages = data || [];
+    languagesCacheTime = now;
+    console.log(`🌐 Fetched ${cachedLanguages.length} languages from API`);
+    return cachedLanguages;
+  } catch (error) {
+    console.error('Error fetching languages:', error);
+    return cachedLanguages;
   }
 }
 
@@ -437,6 +471,9 @@ async function stopRecording(interaction) {
     // Upload to Lovable Cloud
     await interaction.editReply({ content: '⏳ Uploading recording to cloud...' });
 
+    // Get channel topic/language info if available
+    const channelData = temporaryChannels.get(voiceChannel.id) || {};
+    
     const formData = new FormData();
     formData.append('audio', readFileSync(filepath), {
       filename: filename,
@@ -451,9 +488,14 @@ async function stopRecording(interaction) {
       discord_username: interaction.user.username,
       filename: filename,
       duration_seconds: duration,
+      topic_id: channelData.topicId || null,
+      language: channelData.languageCode || 'en',
+      campaign_id: null, // Can be set later via admin
       extra: {
         recorded_by: interaction.user.tag,
-        member_count: voiceChannel.members.size
+        member_count: voiceChannel.members.size,
+        topic_name: channelData.topicName || null,
+        language_name: channelData.languageName || null
       }
     }));
 
@@ -542,15 +584,78 @@ async function setupWelcome(interaction) {
   });
 }
 
-// Handle start session button click
+// Handle start session button click - Step 1: Select Language
 async function handleStartSession(interaction) {
+  const languages = await fetchLanguages();
+  
+  if (languages.length === 0) {
+    await interaction.reply({ 
+      content: '❌ No languages available. Please contact an administrator.',
+      ephemeral: true 
+    });
+    return;
+  }
+
+  // Create language selection menu
+  const languageOptions = languages.slice(0, 25).map(lang => ({
+    label: `${lang.emoji || '🌐'} ${lang.name_native}`.substring(0, 100),
+    description: lang.name.substring(0, 100),
+    value: lang.id
+  }));
+
+  const languageMenu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('select_language')
+        .setPlaceholder('Select your language...')
+        .addOptions(languageOptions)
+    );
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🌐 Select Language')
+    .setDescription('Choose the language for your recording session:');
+
+  await interaction.reply({
+    embeds: [embed],
+    components: [languageMenu],
+    ephemeral: true
+  });
+}
+
+// Handle language selection - Step 2: Select Topic
+async function handleLanguageSelection(interaction) {
+  const languageId = interaction.values[0];
+  const languages = await fetchLanguages();
+  const selectedLanguage = languages.find(l => l.id === languageId);
+
+  if (!selectedLanguage) {
+    await interaction.update({ 
+      content: '❌ Language not found. Please try again.',
+      embeds: [],
+      components: []
+    });
+    return;
+  }
+
+  // Store language selection in pending sessions
+  pendingSessions.set(interaction.user.id, {
+    step: 'topic',
+    languageId: selectedLanguage.id,
+    languageCode: selectedLanguage.code,
+    languageName: selectedLanguage.name_native,
+    languageEmoji: selectedLanguage.emoji
+  });
+
   const topics = await fetchTopics();
   
   if (topics.length === 0) {
-    await interaction.reply({ 
+    await interaction.update({ 
       content: '❌ No topics available. Please contact an administrator.',
-      ephemeral: true 
+      embeds: [],
+      components: []
     });
+    pendingSessions.delete(interaction.user.id);
     return;
   }
 
@@ -560,7 +665,6 @@ async function handleStartSession(interaction) {
       label: `${topic.emoji || '📝'} ${topic.name_en}`.substring(0, 100),
       value: topic.id
     };
-    // Only add description if it exists and is not empty
     if (topic.description && topic.description.trim().length > 0) {
       option.description = topic.description.substring(0, 100);
     }
@@ -578,16 +682,15 @@ async function handleStartSession(interaction) {
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle('📋 Select Topic')
-    .setDescription('Choose a topic that best describes your recording session:');
+    .setDescription(`**Language:** ${selectedLanguage.emoji} ${selectedLanguage.name_native}\n\nNow choose a topic for your recording session:`);
 
-  await interaction.reply({
+  await interaction.update({
     embeds: [embed],
-    components: [topicMenu],
-    ephemeral: true
+    components: [topicMenu]
   });
 }
 
-// Handle topic selection
+// Handle topic selection - Step 3: Create Room
 async function handleTopicSelection(interaction) {
   const topicId = interaction.values[0];
   const topics = await fetchTopics();
@@ -602,6 +705,13 @@ async function handleTopicSelection(interaction) {
     return;
   }
 
+  // Get pending session data (language selection)
+  const session = pendingSessions.get(interaction.user.id) || {
+    languageCode: 'en',
+    languageName: 'English',
+    languageEmoji: '🇺🇸'
+  };
+
   const guild = interaction.guild;
   const member = interaction.member;
 
@@ -611,6 +721,7 @@ async function handleTopicSelection(interaction) {
       embeds: [],
       components: []
     });
+    pendingSessions.delete(interaction.user.id);
     return;
   }
 
@@ -622,6 +733,7 @@ async function handleTopicSelection(interaction) {
       embeds: [],
       components: []
     });
+    pendingSessions.delete(interaction.user.id);
     return;
   }
 
@@ -633,32 +745,38 @@ async function handleTopicSelection(interaction) {
 
   try {
     // Create the voice channel
-    const channelName = `${CONFIG.TEMP_CHANNEL_PREFIX} ${selectedTopic.emoji} ${member.user.username}`;
+    const channelName = `${CONFIG.TEMP_CHANNEL_PREFIX} ${selectedTopic.emoji || '📝'} ${member.user.username}`;
     
     const voiceChannel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildVoice,
-      reason: `Recording session: ${selectedTopic.name_en} by ${member.user.tag}`,
+      reason: `Recording session: ${selectedTopic.name_en} (${session.languageCode}) by ${member.user.tag}`,
       userLimit: 10
     });
 
-    // Track the temporary channel with topic info
+    // Track the temporary channel with topic and language info
     temporaryChannels.set(voiceChannel.id, {
       creatorId: member.user.id,
       createdAt: Date.now(),
       guildId: guild.id,
       topicId: selectedTopic.id,
       topicName: selectedTopic.name_en,
-      language: 'en'
+      topicEmoji: selectedTopic.emoji,
+      languageCode: session.languageCode,
+      languageName: session.languageName,
+      languageEmoji: session.languageEmoji
     });
 
-    console.log(`🎙️ Created session room: ${voiceChannel.name} | Topic: ${selectedTopic.name_en}`);
+    // Clean up pending session
+    pendingSessions.delete(interaction.user.id);
+
+    console.log(`🎙️ Created session room: ${voiceChannel.name} | Topic: ${selectedTopic.name_en} | Language: ${session.languageCode}`);
 
     await interaction.editReply({
       content: `✅ **Session Ready!**\n\n` +
                `🎙️ **Room:** ${voiceChannel.name}\n` +
-               `📋 **Topic:** ${selectedTopic.emoji} ${selectedTopic.name_en}\n` +
-               `🌐 **Language:** English\n\n` +
+               `📋 **Topic:** ${selectedTopic.emoji || '📝'} ${selectedTopic.name_en}\n` +
+               `🌐 **Language:** ${session.languageEmoji} ${session.languageName}\n\n` +
                `Join the voice channel to start!\n` +
                `Recording will begin automatically when 2+ people join.`
     });
@@ -674,6 +792,7 @@ async function handleTopicSelection(interaction) {
 
   } catch (error) {
     console.error('Error creating session room:', error);
+    pendingSessions.delete(interaction.user.id);
     await interaction.editReply({
       content: '❌ Failed to create room: ' + error.message
     });
@@ -870,7 +989,9 @@ client.on('interactionCreate', async (interaction) => {
 
   // Handle select menu
   if (interaction.isStringSelectMenu()) {
-    if (interaction.customId === 'select_topic') {
+    if (interaction.customId === 'select_language') {
+      await handleLanguageSelection(interaction);
+    } else if (interaction.customId === 'select_topic') {
       await handleTopicSelection(interaction);
     }
     return;
