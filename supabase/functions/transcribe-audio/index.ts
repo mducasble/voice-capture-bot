@@ -123,14 +123,21 @@ Instructions:
 - If there are multiple speakers, try to indicate speaker changes with [Speaker 1], [Speaker 2], etc.
 - If parts are unclear, mark them as [inaudible]
 - Do not add commentary or interpretation, only transcribe the spoken words
-- Return ONLY the transcription text, nothing else`
+
+IMPORTANT: You MUST respond in JSON format with the following structure:
+{
+  "detected_language": "ISO 639-1 code (e.g., 'pt' for Portuguese, 'en' for English, 'es' for Spanish)",
+  "transcription": "The full transcription text here"
+}
+
+Return ONLY valid JSON, nothing else.`
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Please transcribe this audio recording accurately:'
+                text: 'Please transcribe this audio recording accurately and detect the language:'
               },
               {
                 type: 'input_audio',
@@ -186,17 +193,48 @@ Instructions:
     }
 
     const aiData = await aiResponse.json();
-    const transcription = aiData.choices?.[0]?.message?.content?.trim() || '';
+    const rawContent = aiData.choices?.[0]?.message?.content?.trim() || '';
 
-    console.log(`Transcription completed for ${recording_id}, length: ${transcription.length} chars`);
+    // Parse JSON response from AI
+    let transcription = '';
+    let detectedLanguage: string | null = null;
+
+    try {
+      // Try to parse as JSON
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        transcription = parsed.transcription || '';
+        detectedLanguage = parsed.detected_language || null;
+        console.log(`Detected language: ${detectedLanguage}`);
+      } else {
+        // Fallback: use raw content as transcription
+        transcription = rawContent;
+        console.log('Could not parse JSON, using raw content as transcription');
+      }
+    } catch (parseError) {
+      // Fallback: use raw content as transcription
+      transcription = rawContent;
+      console.log('JSON parse error, using raw content as transcription:', parseError);
+    }
+
+    console.log(`Transcription completed for ${recording_id}, length: ${transcription.length} chars, language: ${detectedLanguage || 'unknown'}`);
+
+    // Build update object
+    const updateData: Record<string, unknown> = {
+      transcription: transcription,
+      transcription_status: 'completed'
+    };
+
+    // Only update language if it was detected and not already set
+    if (detectedLanguage && !language) {
+      updateData.language = detectedLanguage.toLowerCase();
+    }
 
     // Update the recording with transcription
     const { error: updateError } = await supabase
       .from('voice_recordings')
-      .update({
-        transcription: transcription,
-        transcription_status: 'completed'
-      })
+      .update(updateData)
       .eq('id', recording_id);
 
     if (updateError) {
@@ -212,6 +250,7 @@ Instructions:
         success: true,
         recording_id,
         transcription,
+        detected_language: detectedLanguage,
         status: 'completed'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
