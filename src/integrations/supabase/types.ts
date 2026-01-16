@@ -147,6 +147,8 @@ export type Database = {
           snr_db: number | null
           status: Database["public"]["Enums"]["recording_status"] | null
           topic_id: string | null
+          transcription: string | null
+          transcription_status: string | null
           updated_at: string
         }
         Insert: {
@@ -173,6 +175,8 @@ export type Database = {
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
+          transcription?: string | null
+          transcription_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -199,6 +203,8 @@ export type Database = {
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
+          transcription?: string | null
+          transcription_status?: string | null
           updated_at?: string
         }
         Relationships: [

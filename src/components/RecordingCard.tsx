@@ -2,8 +2,9 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, Volume2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface RecordingCardProps {
   recording: Recording;
@@ -11,6 +12,7 @@ interface RecordingCardProps {
 
 export function RecordingCard({ recording }: RecordingCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const togglePlay = () => {
@@ -38,6 +40,36 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const getTranscriptionStatusBadge = () => {
+    if (!recording.transcription_status) return null;
+    
+    switch (recording.transcription_status) {
+      case 'completed':
+        return (
+          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            Transcribed
+          </Badge>
+        );
+      case 'processing':
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Transcribing...
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Transcription Failed
+          </Badge>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -81,7 +113,16 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   {recording.discord_guild_name || "Unknown Server"} • by {recording.discord_username || "Unknown"}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {/* Language Badge */}
+                {recording.language && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    {recording.language.toUpperCase()}
+                  </Badge>
+                )}
+                {/* Transcription Status Badge */}
+                {getTranscriptionStatusBadge()}
                 {/* Quality Badge */}
                 {recording.quality_status && (
                   <Badge 
@@ -120,6 +161,26 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {recording.sample_rate / 1000}kHz • {recording.bit_depth}-bit • {recording.channels === 2 ? "Stereo" : "Mono"}
               </span>
             </div>
+
+            {/* Transcription Section */}
+            {recording.transcription && (
+              <Collapsible open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      View Transcription
+                    </span>
+                    {isTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="bg-muted/50 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
+                    <p className="whitespace-pre-wrap">{recording.transcription}</p>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">

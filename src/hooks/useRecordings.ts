@@ -20,6 +20,9 @@ interface Recording {
   status: string;
   snr_db: number | null;
   quality_status: string | null;
+  transcription: string | null;
+  transcription_status: string | null;
+  language: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
