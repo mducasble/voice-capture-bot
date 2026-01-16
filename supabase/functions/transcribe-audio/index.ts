@@ -54,7 +54,7 @@ serve(async (req) => {
       : 'Automatically detect the language being spoken and transcribe in that language.';
 
     // Download audio and send it as base64 (OpenAI-compatible `input_audio`)
-    const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25MB
+    const MAX_AUDIO_BYTES = 50 * 1024 * 1024; // 50MB
 
     console.log(`Downloading audio for transcription: ${audio_url}`);
     const audioResp = await fetch(audio_url);
