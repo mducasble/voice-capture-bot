@@ -47,9 +47,9 @@ serve(async (req) => {
     console.log(`Starting transcription for recording ${recording_id}`);
 
     // Determine language instruction
-    const languageInstruction = language && language !== 'en' 
-      ? `The audio is in ${language}. Transcribe it in the original language.`
-      : 'Transcribe the audio in the language being spoken.';
+    const languageInstruction = language 
+      ? `The audio is in ${language}. Transcribe it in that language.`
+      : 'Automatically detect the language being spoken and transcribe in that language.';
 
     // Call Lovable AI Gateway with Gemini for transcription using URL reference
     // This avoids memory issues with large files
