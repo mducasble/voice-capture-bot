@@ -104,10 +104,10 @@ serve(async (req) => {
 
     console.log('Recording registered successfully:', { id: recordData.id });
 
-    // Trigger transcription asynchronously
-    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+    // Trigger audio processing (compression + SNR + transcription) asynchronously
+    const processUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-audio`;
     
-    fetch(transcribeUrl, {
+    fetch(processUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -115,13 +115,12 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         recording_id: recordData.id,
-        audio_url: file_url,
-        language: language || 'en'
+        audio_url: file_url
       })
     }).then(res => {
-      console.log(`Transcription triggered for ${recordData.id}, status: ${res.status}`);
+      console.log(`Audio processing triggered for ${recordData.id}, status: ${res.status}`);
     }).catch(err => {
-      console.error(`Failed to trigger transcription for ${recordData.id}:`, err);
+      console.error(`Failed to trigger audio processing for ${recordData.id}:`, err);
     });
 
     return new Response(
