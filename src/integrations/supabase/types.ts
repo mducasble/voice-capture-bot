@@ -142,6 +142,7 @@ export type Database = {
           id: string
           language: string | null
           metadata: Json | null
+          mp3_file_url: string | null
           quality_status: string | null
           sample_rate: number | null
           snr_db: number | null
@@ -170,6 +171,7 @@ export type Database = {
           id?: string
           language?: string | null
           metadata?: Json | null
+          mp3_file_url?: string | null
           quality_status?: string | null
           sample_rate?: number | null
           snr_db?: number | null
@@ -198,6 +200,7 @@ export type Database = {
           id?: string
           language?: string | null
           metadata?: Json | null
+          mp3_file_url?: string | null
           quality_status?: string | null
           sample_rate?: number | null
           snr_db?: number | null

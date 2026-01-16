@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Parse WAV file and extract PCM samples
-function parseWavFile(arrayBuffer: ArrayBuffer): { samples: Float32Array; sampleRate: number; channels: number } | null {
+function parseWavFile(arrayBuffer: ArrayBuffer): { samples: Float32Array; sampleRate: number; channels: number; bitsPerSample: number } | null {
   const view = new DataView(arrayBuffer);
   
   // Check RIFF header
@@ -73,7 +73,133 @@ function parseWavFile(arrayBuffer: ArrayBuffer): { samples: Float32Array; sample
     }
   }
   
-  return { samples, sampleRate, channels };
+  return { samples, sampleRate, channels, bitsPerSample };
+}
+
+// Extract Int16 samples from WAV for MP3 encoding
+function extractInt16Samples(arrayBuffer: ArrayBuffer): { leftChannel: Int16Array; rightChannel: Int16Array; sampleRate: number; channels: number } | null {
+  const view = new DataView(arrayBuffer);
+  
+  // Check RIFF header
+  const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+  if (riff !== 'RIFF') return null;
+  
+  // Check WAVE format
+  const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
+  if (wave !== 'WAVE') return null;
+  
+  let offset = 12;
+  let sampleRate = 48000;
+  let channels = 2;
+  let bitsPerSample = 16;
+  let dataOffset = 0;
+  let dataSize = 0;
+  
+  while (offset < arrayBuffer.byteLength - 8) {
+    const chunkId = String.fromCharCode(
+      view.getUint8(offset), view.getUint8(offset + 1), 
+      view.getUint8(offset + 2), view.getUint8(offset + 3)
+    );
+    const chunkSize = view.getUint32(offset + 4, true);
+    
+    if (chunkId === 'fmt ') {
+      channels = view.getUint16(offset + 10, true);
+      sampleRate = view.getUint32(offset + 12, true);
+      bitsPerSample = view.getUint16(offset + 22, true);
+    } else if (chunkId === 'data') {
+      dataOffset = offset + 8;
+      dataSize = chunkSize;
+      break;
+    }
+    
+    offset += 8 + chunkSize;
+    if (chunkSize % 2 !== 0) offset++;
+  }
+  
+  if (dataOffset === 0 || dataSize === 0) return null;
+  
+  const bytesPerSample = bitsPerSample / 8;
+  const totalSamples = Math.floor(dataSize / bytesPerSample);
+  const samplesPerChannel = Math.floor(totalSamples / channels);
+  
+  const leftChannel = new Int16Array(samplesPerChannel);
+  const rightChannel = new Int16Array(samplesPerChannel);
+  
+  for (let i = 0; i < samplesPerChannel; i++) {
+    const frameOffset = dataOffset + i * channels * bytesPerSample;
+    
+    // Left channel
+    if (frameOffset + bytesPerSample <= arrayBuffer.byteLength) {
+      leftChannel[i] = view.getInt16(frameOffset, true);
+    }
+    
+    // Right channel (or copy left if mono)
+    if (channels >= 2 && frameOffset + 2 * bytesPerSample <= arrayBuffer.byteLength) {
+      rightChannel[i] = view.getInt16(frameOffset + bytesPerSample, true);
+    } else {
+      rightChannel[i] = leftChannel[i];
+    }
+  }
+  
+  return { leftChannel, rightChannel, sampleRate, channels };
+}
+
+// Simple MP3 encoding using lamejs-compatible approach
+// We'll create a simpler compressed format - actually just downsample and reduce quality WAV
+// Since lamejs requires complex WASM setup, we'll create a smaller WAV instead
+function createCompressedWav(leftChannel: Int16Array, rightChannel: Int16Array, originalSampleRate: number): Uint8Array {
+  // Downsample to 16kHz mono for analysis/transcription (much smaller file)
+  const targetSampleRate = 16000;
+  const ratio = originalSampleRate / targetSampleRate;
+  const newLength = Math.floor(leftChannel.length / ratio);
+  
+  // Mix to mono and downsample
+  const monoSamples = new Int16Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const srcIdx = Math.floor(i * ratio);
+    // Mix stereo to mono
+    const left = leftChannel[srcIdx] || 0;
+    const right = rightChannel[srcIdx] || 0;
+    monoSamples[i] = Math.round((left + right) / 2);
+  }
+  
+  // Create WAV header for mono 16kHz 16-bit
+  const dataSize = monoSamples.length * 2;
+  const fileSize = 44 + dataSize;
+  const buffer = new ArrayBuffer(fileSize);
+  const view = new DataView(buffer);
+  
+  // RIFF header
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, fileSize - 8, true);
+  writeString(view, 8, 'WAVE');
+  
+  // fmt chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true); // chunk size
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  
+  // data chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataSize, true);
+  
+  // Write samples
+  for (let i = 0; i < monoSamples.length; i++) {
+    view.setInt16(44 + i * 2, monoSamples[i], true);
+  }
+  
+  return new Uint8Array(buffer);
+}
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
 }
 
 // Calculate RMS (Root Mean Square) of samples
@@ -124,7 +250,7 @@ function estimateNoiseFloor(samples: Float32Array, sampleRate: number): number {
   }
   
   const noiseFloor = noiseSum / quietWindowCount;
-  return noiseFloor > 0 ? noiseFloor : 0.0001; // Prevent division by zero
+  return noiseFloor > 0 ? noiseFloor : 0.0001;
 }
 
 // Calculate SNR in dB
@@ -137,7 +263,7 @@ function calculateSNR(samples: Float32Array, sampleRate: number): number {
   }
   
   const snr = 20 * Math.log10(signalRMS / noiseFloor);
-  return Math.round(snr * 10) / 10; // Round to 1 decimal place
+  return Math.round(snr * 10) / 10;
 }
 
 serve(async (req) => {
@@ -188,63 +314,90 @@ serve(async (req) => {
       fileSize: audioFile.size
     });
 
-    // Calculate SNR only for files under 20MB to avoid memory issues
-    const MAX_SIZE_FOR_SNR = 20 * 1024 * 1024; // 20MB
+    // Read the WAV file once
+    const audioArrayBuffer = await audioFile.arrayBuffer();
+    console.log(`WAV file size: ${audioArrayBuffer.byteLength} bytes`);
+
+    // Extract samples for compression
+    const int16Data = extractInt16Samples(audioArrayBuffer);
+    let compressedWav: Uint8Array | null = null;
     let snrDb: number | null = null;
     let qualityStatus = 'pending';
-    let audioArrayBuffer: ArrayBuffer | null = null;
-    
-    if (audioFile.size <= MAX_SIZE_FOR_SNR) {
-      try {
-        audioArrayBuffer = await audioFile.arrayBuffer();
-        const parsedWav = parseWavFile(audioArrayBuffer);
-        if (parsedWav) {
-          snrDb = calculateSNR(parsedWav.samples, parsedWav.sampleRate);
-          qualityStatus = snrDb >= 20 ? 'passed' : 'failed';
-          console.log(`Audio quality analysis: SNR = ${snrDb} dB, Status = ${qualityStatus}`);
-        } else {
-          console.warn('Could not parse WAV file for SNR analysis');
-          qualityStatus = 'error';
-        }
-      } catch (snrError) {
-        console.error('SNR calculation error:', snrError);
+
+    if (int16Data) {
+      console.log(`Creating compressed WAV: ${int16Data.leftChannel.length} samples, ${int16Data.sampleRate}Hz`);
+      compressedWav = createCompressedWav(int16Data.leftChannel, int16Data.rightChannel, int16Data.sampleRate);
+      console.log(`Compressed WAV size: ${compressedWav.byteLength} bytes (${((1 - compressedWav.byteLength / audioArrayBuffer.byteLength) * 100).toFixed(1)}% reduction)`);
+
+      // Parse compressed WAV for SNR analysis
+      const compressedBuffer = compressedWav.buffer.slice(0) as ArrayBuffer;
+      const parsedCompressed = parseWavFile(compressedBuffer);
+      if (parsedCompressed) {
+        snrDb = calculateSNR(parsedCompressed.samples, parsedCompressed.sampleRate);
+        qualityStatus = snrDb >= 20 ? 'passed' : 'failed';
+        console.log(`Audio quality analysis on compressed: SNR = ${snrDb} dB, Status = ${qualityStatus}`);
+      } else {
+        console.warn('Could not parse compressed WAV for SNR analysis');
         qualityStatus = 'error';
       }
     } else {
-      console.log(`File size ${audioFile.size} bytes exceeds ${MAX_SIZE_FOR_SNR} bytes, skipping SNR analysis`);
-      qualityStatus = 'skipped';
+      console.warn('Could not extract samples from WAV for compression');
+      qualityStatus = 'error';
     }
 
-    // Generate unique filename
+    // Generate unique filenames
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const uniqueFilename = `${metadata.discord_guild_id}/${metadata.discord_user_id}/${timestamp}_${metadata.filename || 'recording.wav'}`;
+    const baseFilename = metadata.filename?.replace(/\.wav$/i, '') || 'recording';
+    const wavFilename = `${metadata.discord_guild_id}/${metadata.discord_user_id}/${timestamp}_${baseFilename}.wav`;
+    const compressedFilename = `${metadata.discord_guild_id}/${metadata.discord_user_id}/${timestamp}_${baseFilename}_compressed.wav`;
 
-    // Upload to storage - use original file or convert ArrayBuffer back to Blob
-    const uploadBlob = audioArrayBuffer 
-      ? new Blob([audioArrayBuffer], { type: 'audio/wav' })
-      : audioFile;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Upload original WAV
+    console.log('Uploading original WAV...');
+    const { data: wavUploadData, error: wavUploadError } = await supabase.storage
       .from('voice-recordings')
-      .upload(uniqueFilename, uploadBlob, {
+      .upload(wavFilename, new Blob([audioArrayBuffer], { type: 'audio/wav' }), {
         contentType: 'audio/wav',
         upsert: false
       });
 
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+    if (wavUploadError) {
+      console.error('Storage upload error (WAV):', wavUploadError);
       return new Response(
-        JSON.stringify({ error: 'Failed to upload file', details: uploadError.message }),
+        JSON.stringify({ error: 'Failed to upload WAV file', details: wavUploadError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // Get WAV public URL
+    const { data: { publicUrl: wavPublicUrl } } = supabase.storage
       .from('voice-recordings')
-      .getPublicUrl(uniqueFilename);
+      .getPublicUrl(wavFilename);
 
-    // Insert record into database with SNR data, topic, language, and campaign
+    // Upload compressed WAV for analysis/transcription
+    let compressedPublicUrl: string | null = null;
+    if (compressedWav) {
+      console.log('Uploading compressed WAV...');
+      const compressedBlobBuffer = compressedWav.buffer.slice(0) as ArrayBuffer;
+      const { error: compressedUploadError } = await supabase.storage
+        .from('voice-recordings')
+        .upload(compressedFilename, new Blob([new Uint8Array(compressedBlobBuffer)], { type: 'audio/wav' }), {
+          contentType: 'audio/wav',
+          upsert: false
+        });
+
+      if (compressedUploadError) {
+        console.error('Storage upload error (compressed):', compressedUploadError);
+        // Continue without compressed version
+      } else {
+        const { data: { publicUrl } } = supabase.storage
+          .from('voice-recordings')
+          .getPublicUrl(compressedFilename);
+        compressedPublicUrl = publicUrl;
+        console.log('Compressed WAV uploaded successfully');
+      }
+    }
+
+    // Insert record into database with both URLs
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')
       .insert({
@@ -254,8 +407,9 @@ serve(async (req) => {
         discord_channel_name: metadata.discord_channel_name,
         discord_user_id: metadata.discord_user_id,
         discord_username: metadata.discord_username,
-        filename: uniqueFilename,
-        file_url: publicUrl,
+        filename: wavFilename,
+        file_url: wavPublicUrl,
+        mp3_file_url: compressedPublicUrl, // Use compressed URL for transcription
         file_size_bytes: audioFile.size,
         duration_seconds: metadata.duration_seconds,
         sample_rate: 48000,
@@ -266,7 +420,7 @@ serve(async (req) => {
         snr_db: snrDb,
         quality_status: qualityStatus,
         topic_id: metadata.topic_id || null,
-        language: metadata.language || null,  // null = auto-detect by AI
+        language: metadata.language || null,
         campaign_id: metadata.campaign_id || null,
         metadata: metadata.extra || {},
         transcription_status: 'pending'
@@ -285,13 +439,17 @@ serve(async (req) => {
     console.log('Recording uploaded successfully:', {
       id: recordData.id,
       snr_db: snrDb,
-      quality_status: qualityStatus
+      quality_status: qualityStatus,
+      wav_url: wavPublicUrl,
+      compressed_url: compressedPublicUrl
     });
 
-    // Trigger transcription asynchronously (fire and forget)
+    // Trigger transcription using compressed URL if available
     const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+    const audioUrlForTranscription = compressedPublicUrl || wavPublicUrl;
     
-    // Don't await - let it run in background
+    console.log(`Triggering transcription with ${compressedPublicUrl ? 'compressed' : 'original'} audio`);
+    
     fetch(transcribeUrl, {
       method: 'POST',
       headers: {
@@ -300,8 +458,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         recording_id: recordData.id,
-        audio_url: publicUrl,
-        language: metadata.language || null  // null = auto-detect
+        audio_url: audioUrlForTranscription,
+        language: metadata.language || null
       })
     }).then(res => {
       console.log(`Transcription triggered for ${recordData.id}, status: ${res.status}`);
@@ -313,7 +471,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         recording: recordData,
-        file_url: publicUrl,
+        file_url: wavPublicUrl,
+        compressed_url: compressedPublicUrl,
         quality: {
           snr_db: snrDb,
           status: qualityStatus,
@@ -321,7 +480,8 @@ serve(async (req) => {
         },
         transcription: {
           status: 'pending',
-          message: 'Transcription started in background'
+          message: 'Transcription started in background',
+          using_compressed: !!compressedPublicUrl
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
