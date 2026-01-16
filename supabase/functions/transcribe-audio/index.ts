@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,8 +53,57 @@ serve(async (req) => {
       ? `The audio is in ${language}. Transcribe it in that language.`
       : 'Automatically detect the language being spoken and transcribe in that language.';
 
-    // Call Lovable AI Gateway with Gemini for transcription using URL reference
-    // This avoids memory issues with large files
+    // Download audio and send it as base64 (OpenAI-compatible `input_audio`)
+    const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25MB
+
+    console.log(`Downloading audio for transcription: ${audio_url}`);
+    const audioResp = await fetch(audio_url);
+    if (!audioResp.ok) {
+      console.error('Failed to download audio:', audioResp.status, await audioResp.text());
+      await supabase
+        .from('voice_recordings')
+        .update({ transcription_status: 'failed' })
+        .eq('id', recording_id);
+
+      return new Response(
+        JSON.stringify({ error: 'Failed to download audio for transcription' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const contentLength = Number(audioResp.headers.get('content-length') ?? '0');
+    if (contentLength && contentLength > MAX_AUDIO_BYTES) {
+      console.error(`Audio too large for transcription: ${contentLength} bytes`);
+      await supabase
+        .from('voice_recordings')
+        .update({ transcription_status: 'failed' })
+        .eq('id', recording_id);
+
+      return new Response(
+        JSON.stringify({ error: 'Audio file too large for transcription (max 25MB). Please record a shorter clip.' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const audioArrayBuffer = await audioResp.arrayBuffer();
+    if (audioArrayBuffer.byteLength > MAX_AUDIO_BYTES) {
+      console.error(`Audio too large for transcription: ${audioArrayBuffer.byteLength} bytes`);
+      await supabase
+        .from('voice_recordings')
+        .update({ transcription_status: 'failed' })
+        .eq('id', recording_id);
+
+      return new Response(
+        JSON.stringify({ error: 'Audio file too large for transcription (max 25MB). Please record a shorter clip.' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const base64Audio = encode(audioArrayBuffer);
+    console.log(`Audio downloaded: ${audioArrayBuffer.byteLength} bytes. Starting AI transcription...`);
+
+
+    // Call Lovable AI Gateway for transcription
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -82,9 +133,10 @@ Instructions:
                 text: 'Please transcribe this audio recording accurately:'
               },
               {
-                type: 'audio_url',
-                audio_url: {
-                  url: audio_url
+                type: 'input_audio',
+                input_audio: {
+                  data: base64Audio,
+                  format: 'wav'
                 }
               }
             ]
