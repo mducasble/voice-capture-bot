@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, PermissionFlagsBits, SlashCommandBuilder, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, PermissionFlagsBits, SlashCommandBuilder, REST, Routes, ChannelType } from 'discord.js';
 import { 
   joinVoiceChannel, 
   createAudioPlayer, 
@@ -43,7 +43,9 @@ const CONFIG = {
   SAMPLE_RATE: 48000,
   BIT_DEPTH: 16,
   CHANNELS: 2,
-  RECORDINGS_DIR: './recordings'
+  RECORDINGS_DIR: './recordings',
+  TEMP_CHANNEL_PREFIX: '🎙️',
+  TEMP_CHANNEL_TIMEOUT_MS: 5 * 60 * 1000 // 5 minutes idle timeout
 };
 
 // Create recordings directory
@@ -61,6 +63,9 @@ const client = new Client({
 
 // Active recordings map
 const activeRecordings = new Map();
+
+// Temporary channels map: channelId -> { creatorId, createdAt, guildId }
+const temporaryChannels = new Map();
 
 // WAV Header creation for 44.1kHz, 16-bit, stereo
 function createWavHeader(dataLength) {
@@ -450,6 +455,13 @@ async function stopRecording(interaction) {
 async function registerCommands() {
   const commands = [
     new SlashCommandBuilder()
+      .setName('criar-sala')
+      .setDescription('Create a temporary voice channel for recording')
+      .addStringOption(option =>
+        option.setName('nome')
+          .setDescription('Name for the voice channel')
+          .setRequired(false)),
+    new SlashCommandBuilder()
       .setName('record')
       .setDescription('Start recording the current voice channel'),
     new SlashCommandBuilder()
@@ -474,11 +486,139 @@ async function registerCommands() {
   }
 }
 
+// Create temporary voice channel
+async function createTemporaryChannel(interaction) {
+  const guild = interaction.guild;
+  const member = interaction.member;
+  
+  if (!guild) {
+    await interaction.reply({ content: '❌ This command can only be used in a server!', ephemeral: true });
+    return;
+  }
+
+  const channelName = interaction.options.getString('nome') || `${member.user.username}'s Room`;
+  const fullChannelName = `${CONFIG.TEMP_CHANNEL_PREFIX} ${channelName}`;
+
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    // Find a category to create the channel in (optional - uses same category as text channel if possible)
+    const parentCategory = interaction.channel?.parent;
+
+    const voiceChannel = await guild.channels.create({
+      name: fullChannelName,
+      type: ChannelType.GuildVoice,
+      parent: parentCategory?.id,
+      reason: `Temporary recording channel created by ${member.user.tag}`,
+      userLimit: 10
+    });
+
+    // Track the temporary channel
+    temporaryChannels.set(voiceChannel.id, {
+      creatorId: member.user.id,
+      createdAt: Date.now(),
+      guildId: guild.id
+    });
+
+    console.log(`🎙️ Created temporary channel: ${voiceChannel.name} (${voiceChannel.id})`);
+
+    await interaction.editReply({
+      content: `✅ **Sala criada!**\n\n` +
+               `🎙️ **Canal:** ${voiceChannel.name}\n` +
+               `👤 **Criador:** ${member.user.tag}\n\n` +
+               `Entre na sala e convide outros participantes.\n` +
+               `A sala será deletada automaticamente quando esvaziar.`
+    });
+
+    // Move user to the channel if they're in a voice channel
+    if (member.voice.channel) {
+      try {
+        await member.voice.setChannel(voiceChannel);
+      } catch (moveError) {
+        console.warn('Could not move user to new channel:', moveError.message);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error creating temporary channel:', error);
+    await interaction.editReply({ content: '❌ Failed to create voice channel: ' + error.message });
+  }
+}
+
+// Delete temporary channel
+async function deleteTemporaryChannel(channelId) {
+  const channelData = temporaryChannels.get(channelId);
+  if (!channelData) return;
+
+  try {
+    const guild = client.guilds.cache.get(channelData.guildId);
+    if (!guild) return;
+
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) {
+      temporaryChannels.delete(channelId);
+      return;
+    }
+
+    // Stop any active recording first
+    if (activeRecordings.has(channelId)) {
+      const recording = activeRecordings.get(channelId);
+      recording.connection.destroy();
+      activeRecordings.delete(channelId);
+      console.log(`⏹️ Stopped recording in temporary channel: ${channel.name}`);
+    }
+
+    await channel.delete('Temporary recording channel - empty');
+    temporaryChannels.delete(channelId);
+    console.log(`🗑️ Deleted temporary channel: ${channel.name} (${channelId})`);
+
+  } catch (error) {
+    console.error('Error deleting temporary channel:', error);
+    temporaryChannels.delete(channelId);
+  }
+}
+
+// Handle voice state updates (for auto-delete when empty)
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  // Check if someone left a voice channel
+  if (oldState.channelId && oldState.channelId !== newState.channelId) {
+    const leftChannelId = oldState.channelId;
+    
+    // Is this a temporary channel?
+    if (temporaryChannels.has(leftChannelId)) {
+      const channel = oldState.guild.channels.cache.get(leftChannelId);
+      
+      if (channel) {
+        // Count members (excluding bots)
+        const humanMembers = channel.members.filter(m => !m.user.bot).size;
+        
+        console.log(`👤 User left temporary channel ${channel.name}, ${humanMembers} humans remaining`);
+        
+        if (humanMembers === 0) {
+          // Give a small delay before deleting (in case someone rejoins quickly)
+          setTimeout(async () => {
+            const currentChannel = oldState.guild.channels.cache.get(leftChannelId);
+            if (currentChannel) {
+              const currentHumans = currentChannel.members.filter(m => !m.user.bot).size;
+              if (currentHumans === 0) {
+                await deleteTemporaryChannel(leftChannelId);
+              }
+            }
+          }, 3000); // 3 second grace period
+        }
+      }
+    }
+  }
+});
+
 // Handle interactions
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   switch (interaction.commandName) {
+    case 'criar-sala':
+      await createTemporaryChannel(interaction);
+      break;
     case 'record':
       await startRecording(interaction);
       break;
@@ -507,6 +647,7 @@ client.on('interactionCreate', async (interaction) => {
 client.once('ready', async () => {
   console.log(`✅ Bot logged in as ${client.user.tag}`);
   console.log(`📊 Audio config: ${CONFIG.SAMPLE_RATE}Hz, ${CONFIG.BIT_DEPTH}-bit, ${CONFIG.CHANNELS} channels`);
+  console.log(`🎙️ Temp channel prefix: "${CONFIG.TEMP_CHANNEL_PREFIX}"`);
   await registerCommands();
 });
 
