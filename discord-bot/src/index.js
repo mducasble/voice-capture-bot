@@ -52,6 +52,33 @@ console.log('🔧 Env loaded:', {
   botApiKey: maskSecret(process.env.BOT_API_KEY)
 });
 
+const normalizeLovableApiUrl = (value) => {
+  if (!value) {
+    throw new Error('LOVABLE_API_URL não definido no .env.');
+  }
+
+  // Basic validation
+  try {
+    new URL(value);
+  } catch {
+    throw new Error(`LOVABLE_API_URL inválido: "${value}"`);
+  }
+
+  const withoutTrailingSlash = value.replace(/\/+$/, '');
+
+  // The bot must point to the backend functions base URL.
+  // If this is misconfigured to the web app URL, the server will return HTML and JSON parsing will fail.
+  if (!withoutTrailingSlash.endsWith('/functions/v1')) {
+    throw new Error(
+      'LOVABLE_API_URL parece estar apontando para o site (HTML) e não para a API do backend. Ela precisa terminar com "/functions/v1" (veja discord-bot/README.md).'
+    );
+  }
+
+  return withoutTrailingSlash;
+};
+
+const API_BASE_URL = normalizeLovableApiUrl(process.env.LOVABLE_API_URL);
+
 // Configuration - Discord voice uses 48kHz
 const CONFIG = {
   SAMPLE_RATE: 48000,
@@ -99,7 +126,7 @@ async function fetchTopics() {
   }
 
   try {
-    const response = await fetch(`${process.env.LOVABLE_API_URL}/get-topics`, {
+    const response = await fetch(`${API_BASE_URL}/get-topics`, {
       method: 'GET',
       headers: {
         'x-bot-api-key': process.env.BOT_API_KEY,
@@ -131,7 +158,7 @@ async function fetchLanguages() {
   }
 
   try {
-    const response = await fetch(`${process.env.LOVABLE_API_URL}/get-languages`, {
+    const response = await fetch(`${API_BASE_URL}/get-languages`, {
       method: 'GET',
       headers: {
         'x-bot-api-key': process.env.BOT_API_KEY,
@@ -513,13 +540,13 @@ async function stopRecording(interaction) {
     const storagePath = `${guild.id}/${interaction.user.id}/${timestamp}_${filename}`;
     
     // Validate config
-    if (!process.env.LOVABLE_API_URL || !process.env.BOT_API_KEY) {
-      throw new Error('LOVABLE_API_URL or BOT_API_KEY not set. Check your .env');
+    if (!process.env.BOT_API_KEY) {
+      throw new Error('BOT_API_KEY não definido no .env.');
     }
 
     // Request signed upload URL from backend
     console.log(`Requesting signed URL for: ${storagePath}`);
-    const urlResponse = await fetch(`${process.env.LOVABLE_API_URL}/get-upload-url`, {
+    const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -537,7 +564,18 @@ async function stopRecording(interaction) {
       throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
     }
 
-    const { signed_url, token, public_url: publicUrl } = await urlResponse.json();
+    const urlResponseText = await urlResponse.text();
+    let signedPayload;
+    try {
+      signedPayload = JSON.parse(urlResponseText);
+    } catch {
+      console.error('Signed URL response is not JSON:', urlResponseText.substring(0, 300));
+      throw new Error(
+        'Resposta inválida ao pedir upload URL (verifique LOVABLE_API_URL; deve terminar com /functions/v1).'
+      );
+    }
+
+    const { signed_url, token, public_url: publicUrl } = signedPayload;
     
     // Upload file using signed URL
     await interaction.editReply({ content: `⏳ Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB...` });
@@ -565,7 +603,7 @@ async function stopRecording(interaction) {
     // Register recording metadata via Edge Function
     await interaction.editReply({ content: '⏳ Registering recording...' });
 
-    const response = await fetch(`${process.env.LOVABLE_API_URL}/register-recording`, {
+    const response = await fetch(`${API_BASE_URL}/register-recording`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
