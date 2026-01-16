@@ -261,7 +261,8 @@ serve(async (req) => {
         topic_id: metadata.topic_id || null,
         language: metadata.language || 'en',
         campaign_id: metadata.campaign_id || null,
-        metadata: metadata.extra || {}
+        metadata: metadata.extra || {},
+        transcription_status: 'pending'
       })
       .select()
       .single();
@@ -280,6 +281,27 @@ serve(async (req) => {
       quality_status: qualityStatus
     });
 
+    // Trigger transcription asynchronously (fire and forget)
+    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+    
+    // Don't await - let it run in background
+    fetch(transcribeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({
+        recording_id: recordData.id,
+        audio_url: publicUrl,
+        language: metadata.language || 'en'
+      })
+    }).then(res => {
+      console.log(`Transcription triggered for ${recordData.id}, status: ${res.status}`);
+    }).catch(err => {
+      console.error(`Failed to trigger transcription for ${recordData.id}:`, err);
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -289,6 +311,10 @@ serve(async (req) => {
           snr_db: snrDb,
           status: qualityStatus,
           passed: qualityStatus === 'passed'
+        },
+        transcription: {
+          status: 'pending',
+          message: 'Transcription started in background'
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

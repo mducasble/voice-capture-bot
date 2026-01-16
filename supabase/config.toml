@@ -1,5 +1,8 @@
 project_id = "qfxustvmwdyjduzpeafk"
 
+[functions.transcribe-audio]
+verify_jwt = false
+
 [functions.upload-recording]
 verify_jwt = false
 
