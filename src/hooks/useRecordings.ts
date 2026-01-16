@@ -18,10 +18,14 @@ interface Recording {
   channels: number;
   format: string;
   status: string;
+  snr_db: number | null;
+  quality_status: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
+
+export type { Recording };
 
 export function useRecordings(guildId?: string, userId?: string) {
   return useQuery({
