@@ -555,11 +555,17 @@ async function handleStartSession(interaction) {
   }
 
   // Create topic selection menu
-  const topicOptions = topics.slice(0, 25).map(topic => ({
-    label: `${topic.emoji} ${topic.name_en}`,
-    description: topic.description?.substring(0, 100) || '',
-    value: topic.id
-  }));
+  const topicOptions = topics.slice(0, 25).map(topic => {
+    const option = {
+      label: `${topic.emoji || '📝'} ${topic.name_en}`.substring(0, 100),
+      value: topic.id
+    };
+    // Only add description if it exists and is not empty
+    if (topic.description && topic.description.trim().length > 0) {
+      option.description = topic.description.substring(0, 100);
+    }
+    return option;
+  });
 
   const topicMenu = new ActionRowBuilder()
     .addComponents(
