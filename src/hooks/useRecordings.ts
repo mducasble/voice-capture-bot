@@ -11,6 +11,7 @@ interface Recording {
   discord_username: string | null;
   filename: string;
   file_url: string | null;
+  mp3_file_url: string | null;
   file_size_bytes: number | null;
   duration_seconds: number | null;
   sample_rate: number;
