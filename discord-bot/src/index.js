@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../.env');
-dotenv.config({ path: envPath });
+const dotenvResult = dotenv.config({ path: envPath });
 
 const maskSecret = (value) => {
   if (!value) return '(missing)';
@@ -31,7 +31,10 @@ const maskSecret = (value) => {
 console.log('🔧 Env loaded:', {
   cwd: process.cwd(),
   envPath,
+  dotenvError: dotenvResult?.error?.message || null,
+  parsedKeys: dotenvResult?.parsed ? Object.keys(dotenvResult.parsed) : [],
   hasLovableApiUrl: !!process.env.LOVABLE_API_URL,
+  hasBotApiKey: !!process.env.BOT_API_KEY,
   botApiKey: maskSecret(process.env.BOT_API_KEY)
 });
 
