@@ -29,7 +29,7 @@ import FormData from 'form-data';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createClient } from '@supabase/supabase-js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,16 +49,8 @@ console.log('🔧 Env loaded:', {
   parsedKeys: dotenvResult?.parsed ? Object.keys(dotenvResult.parsed) : [],
   hasLovableApiUrl: !!process.env.LOVABLE_API_URL,
   hasBotApiKey: !!process.env.BOT_API_KEY,
-  hasSupabaseUrl: !!process.env.SUPABASE_URL,
-  hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   botApiKey: maskSecret(process.env.BOT_API_KEY)
 });
-
-// Initialize Supabase client for direct storage uploads
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
 
 // Configuration - Discord voice uses 48kHz
 const CONFIG = {
@@ -477,8 +469,8 @@ async function stopRecording(interaction) {
 
     await new Promise((resolve) => writeStream.on('finish', resolve));
 
-    // Upload directly to Supabase Storage (bypasses Edge Function for large files)
-    await interaction.editReply({ content: '⏳ Uploading recording to cloud...' });
+    // Upload using signed URL (no service_role key needed on bot)
+    await interaction.editReply({ content: '⏳ Getting upload URL...' });
 
     // Get channel topic/language info if available
     const channelData = temporaryChannels.get(voiceChannel.id) || {};
@@ -487,32 +479,50 @@ async function stopRecording(interaction) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const storagePath = `${guild.id}/${interaction.user.id}/${timestamp}_${filename}`;
     
-    // Validate Supabase config
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set. Check your .env');
-    }
+    // Validate config
     if (!process.env.LOVABLE_API_URL || !process.env.BOT_API_KEY) {
       throw new Error('LOVABLE_API_URL or BOT_API_KEY not set. Check your .env');
     }
 
-    // Upload file directly to Storage
-    console.log(`Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB to storage...`);
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('voice-recordings')
-      .upload(storagePath, wavBuffer, {
-        contentType: 'audio/wav',
-        upsert: false
-      });
+    // Request signed upload URL from backend
+    console.log(`Requesting signed URL for: ${storagePath}`);
+    const urlResponse = await fetch(`${process.env.LOVABLE_API_URL}/get-upload-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-bot-api-key': process.env.BOT_API_KEY
+      },
+      body: JSON.stringify({
+        filename: storagePath,
+        content_type: 'audio/wav'
+      })
+    });
 
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    if (!urlResponse.ok) {
+      const errorText = await urlResponse.text();
+      console.error('Failed to get upload URL:', errorText);
+      throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('voice-recordings')
-      .getPublicUrl(storagePath);
+    const { signed_url, token, public_url: publicUrl } = await urlResponse.json();
+    
+    // Upload file using signed URL
+    await interaction.editReply({ content: `⏳ Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB...` });
+    console.log(`Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB to storage...`);
+    
+    const uploadResponse = await fetch(signed_url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'audio/wav'
+      },
+      body: wavBuffer
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Storage upload error:', errorText);
+      throw new Error(`Storage upload failed: ${uploadResponse.status}`);
+    }
 
     console.log(`File uploaded to: ${publicUrl}`);
 
