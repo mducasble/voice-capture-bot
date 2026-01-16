@@ -33,7 +33,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessages
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers
   ]
 });
 
@@ -141,6 +142,8 @@ async function startRecording(interaction) {
   await interaction.deferReply();
 
   try {
+    console.log(`🔗 Joining voice channel: ${voiceChannel.name} (${voiceChannel.id})`);
+    
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
       guildId: voiceChannel.guild.id,
@@ -149,7 +152,25 @@ async function startRecording(interaction) {
       selfMute: true
     });
 
-    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+    // Add connection state listeners for debugging
+    connection.on(VoiceConnectionStatus.Connecting, () => {
+      console.log('📡 Voice connection: Connecting...');
+    });
+    
+    connection.on(VoiceConnectionStatus.Ready, () => {
+      console.log('✅ Voice connection: Ready!');
+    });
+    
+    connection.on(VoiceConnectionStatus.Disconnected, () => {
+      console.log('⚠️ Voice connection: Disconnected');
+    });
+    
+    connection.on('error', (error) => {
+      console.error('❌ Voice connection error:', error.message);
+    });
+
+    // Wait for connection with longer timeout
+    await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
 
     const mixer = new AudioMixer();
     const receiver = connection.receiver;
