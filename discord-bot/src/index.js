@@ -434,7 +434,7 @@ async function stopRecording(interaction) {
                  `⏱️ **Duration:** ${duration.toFixed(1)} seconds\n` +
                  `📊 **Size:** ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB\n` +
                  `🔗 **URL:** ${result.file_url}\n\n` +
-                 `Audio recorded at 44.1kHz, 16-bit, stereo WAV`
+                 `Audio recorded at ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV`
       });
     } else {
       throw new Error(result.error || 'Upload failed');
