@@ -55,8 +55,7 @@ if (!existsSync(CONFIG.RECORDINGS_DIR)) {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessages
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -92,35 +91,52 @@ function createWavHeader(dataLength) {
 }
 
 // Audio mixer for combining multiple user streams
+// NOTE: we must NOT delete a user's chunks when they stop speaking,
+// otherwise /stop will often say "No audio was captured".
 class AudioMixer {
   constructor() {
+    // userId -> { stream: AudioReceiveStream | null, chunks: Array<{timestamp:number, data:Buffer}> }
     this.streams = new Map();
-    this.buffer = [];
     this.startTime = Date.now();
   }
 
+  hasActiveStream(userId) {
+    const entry = this.streams.get(userId);
+    return !!entry?.stream;
+  }
+
   addStream(userId, stream) {
+    const existing = this.streams.get(userId);
+    if (existing) {
+      existing.stream = stream;
+      return;
+    }
+
     this.streams.set(userId, { stream, chunks: [] });
   }
 
   removeStream(userId) {
-    this.streams.delete(userId);
+    // Keep chunks for final mix; only mark stream as inactive.
+    const existing = this.streams.get(userId);
+    if (existing) existing.stream = null;
   }
 
   addChunk(userId, chunk) {
-    if (this.streams.has(userId)) {
-      this.streams.get(userId).chunks.push({
-        timestamp: Date.now() - this.startTime,
-        data: chunk
-      });
+    if (!this.streams.has(userId)) {
+      this.streams.set(userId, { stream: null, chunks: [] });
     }
+
+    this.streams.get(userId).chunks.push({
+      timestamp: Date.now() - this.startTime,
+      data: chunk
+    });
   }
 
   getMixedAudio() {
     // Collect all chunks and mix them
     const allChunks = [];
-    
-    for (const [userId, { chunks }] of this.streams) {
+
+    for (const [, { chunks }] of this.streams) {
       for (const chunk of chunks) {
         allChunks.push(chunk);
       }
@@ -222,8 +238,8 @@ async function startRecording(interaction) {
 
     // Track when users start speaking
     receiver.speaking.on('start', (userId) => {
-      // Skip if already tracking this user
-      if (mixer.streams.has(userId)) return;
+      // Skip if we're already subscribed to this user's audio
+      if (mixer.hasActiveStream(userId)) return;
       
       console.log(`🎤 User ${userId} started speaking - subscribing to audio...`);
       
