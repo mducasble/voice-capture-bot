@@ -156,6 +156,9 @@ async function startRecording(interaction) {
 
     // Track when users start speaking
     receiver.speaking.on('start', (userId) => {
+      // Skip if already tracking this user
+      if (mixer.streams.has(userId)) return;
+      
       console.log(`User ${userId} started speaking`);
       
       const audioStream = receiver.subscribe(userId, {
@@ -165,20 +168,38 @@ async function startRecording(interaction) {
         }
       });
 
-      const decoder = new opus.Decoder({
-        rate: CONFIG.SAMPLE_RATE,
-        channels: CONFIG.CHANNELS,
-        frameSize: 960
-      });
-
       mixer.addStream(userId, audioStream);
 
-      audioStream.pipe(decoder).on('data', (chunk) => {
-        mixer.addChunk(userId, chunk);
-      });
+      try {
+        const decoder = new opus.Decoder({
+          rate: 48000, // Discord uses 48kHz for Opus
+          channels: 2,
+          frameSize: 960
+        });
+
+        decoder.on('error', (err) => {
+          console.error(`Decoder error for user ${userId}:`, err.message);
+        });
+
+        audioStream.on('error', (err) => {
+          console.error(`Audio stream error for user ${userId}:`, err.message);
+        });
+
+        audioStream.pipe(decoder).on('data', (chunk) => {
+          mixer.addChunk(userId, chunk);
+        });
+
+      } catch (err) {
+        console.error(`Failed to create decoder for user ${userId}:`, err.message);
+        // Store raw opus data as fallback
+        audioStream.on('data', (chunk) => {
+          mixer.addChunk(userId, chunk);
+        });
+      }
 
       audioStream.on('end', () => {
         console.log(`User ${userId} stopped speaking`);
+        mixer.removeStream(userId);
       });
     });
 
