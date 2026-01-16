@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, PermissionFlagsBits, SlashCommandBuilder, REST, Routes } from 'discord.js';
 import { 
   joinVoiceChannel, 
   createAudioPlayer, 
@@ -133,6 +133,25 @@ async function startRecording(interaction) {
     return;
   }
 
+  // Fast-fail with a clear error if the bot cannot connect (most common cause of ABORT_ERR)
+  const me = interaction.guild?.members?.me;
+  const permissions = me ? voiceChannel.permissionsFor(me) : null;
+  if (permissions) {
+    const missing = [];
+    if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push('View Channel');
+    if (!permissions.has(PermissionFlagsBits.Connect)) missing.push('Connect');
+
+    if (missing.length > 0) {
+      await interaction.reply({
+        content: `❌ I can't join **${voiceChannel.name}**. Missing permissions: ${missing.join(', ')}.\n\nFix: allow the bot to View Channel + Connect for that voice channel.`,
+        ephemeral: true
+      });
+      return;
+    }
+  } else {
+    console.warn('⚠️ Could not resolve bot member permissions (guild.members.me missing). Continuing...');
+  }
+
   if (activeRecordings.has(voiceChannel.id)) {
     await interaction.reply({ content: '⚠️ Already recording in this channel!', ephemeral: true });
     return;
@@ -152,6 +171,10 @@ async function startRecording(interaction) {
     });
 
     // Add connection state listeners for debugging
+    connection.on('stateChange', (oldState, newState) => {
+      console.log(`🔁 Voice connection state: ${oldState.status} -> ${newState.status}`);
+    });
+
     connection.on(VoiceConnectionStatus.Connecting, () => {
       console.log('📡 Voice connection: Connecting...');
     });
@@ -262,7 +285,13 @@ async function startRecording(interaction) {
 
   } catch (error) {
     console.error('Error starting recording:', error);
-    await interaction.editReply({ content: '❌ Failed to start recording: ' + error.message });
+
+    const isAbort = error?.code === 'ABORT_ERR' || error?.name === 'AbortError';
+    const hint = isAbort
+      ? '\n\nCommon causes: bot lacks Connect permission for the voice channel, or UDP voice traffic is blocked by a firewall/VPN/router. '
+      : '';
+
+    await interaction.editReply({ content: '❌ Failed to start recording: ' + error.message + hint });
   }
 }
 
