@@ -159,46 +159,65 @@ async function startRecording(interaction) {
       // Skip if already tracking this user
       if (mixer.streams.has(userId)) return;
       
-      console.log(`User ${userId} started speaking`);
+      console.log(`🎤 User ${userId} started speaking - subscribing to audio...`);
       
       const audioStream = receiver.subscribe(userId, {
         end: {
           behavior: EndBehaviorType.AfterSilence,
-          duration: 1000
+          duration: 2000
         }
       });
 
       mixer.addStream(userId, audioStream);
+      let chunkCount = 0;
 
+      // Try to create opus decoder
+      let decoder = null;
       try {
-        const decoder = new opus.Decoder({
-          rate: 48000, // Discord uses 48kHz for Opus
+        decoder = new opus.Decoder({
+          rate: 48000,
           channels: 2,
           frameSize: 960
         });
-
+        console.log(`✅ Opus decoder created for user ${userId}`);
+        
         decoder.on('error', (err) => {
-          console.error(`Decoder error for user ${userId}:`, err.message);
+          console.error(`❌ Decoder error for user ${userId}:`, err.message);
         });
 
-        audioStream.on('error', (err) => {
-          console.error(`Audio stream error for user ${userId}:`, err.message);
-        });
-
-        audioStream.pipe(decoder).on('data', (chunk) => {
+        decoder.on('data', (chunk) => {
+          chunkCount++;
+          if (chunkCount % 50 === 1) {
+            console.log(`📊 User ${userId}: received ${chunkCount} decoded chunks (${chunk.length} bytes each)`);
+          }
           mixer.addChunk(userId, chunk);
         });
 
+        audioStream.pipe(decoder);
+        
       } catch (err) {
-        console.error(`Failed to create decoder for user ${userId}:`, err.message);
-        // Store raw opus data as fallback
+        console.error(`❌ Failed to create decoder: ${err.message}`);
+        console.log(`⚠️ Falling back to raw audio capture for user ${userId}`);
+        decoder = null;
+      }
+
+      // Fallback: capture raw audio if decoder failed
+      if (!decoder) {
         audioStream.on('data', (chunk) => {
+          chunkCount++;
+          if (chunkCount % 50 === 1) {
+            console.log(`📊 User ${userId}: received ${chunkCount} raw chunks (${chunk.length} bytes each)`);
+          }
           mixer.addChunk(userId, chunk);
         });
       }
 
+      audioStream.on('error', (err) => {
+        console.error(`❌ Audio stream error for user ${userId}:`, err.message);
+      });
+
       audioStream.on('end', () => {
-        console.log(`User ${userId} stopped speaking`);
+        console.log(`🔇 User ${userId} stopped speaking - total chunks: ${chunkCount}`);
         mixer.removeStream(userId);
       });
     });
