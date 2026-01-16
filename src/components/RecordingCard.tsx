@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2 } from "lucide-react";
+import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2 } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
@@ -244,10 +244,25 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     size="sm"
                     asChild
                     className="text-muted-foreground hover:text-foreground"
+                    title="Download WAV (original)"
                   >
                     <a href={recording.file_url} download>
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
+                      <FileAudio className="h-4 w-4 mr-1" />
+                      WAV
+                    </a>
+                  </Button>
+                )}
+                {recording.mp3_file_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Download comprimido (16kHz mono)"
+                  >
+                    <a href={recording.mp3_file_url} download>
+                      <FileVolume2 className="h-4 w-4 mr-1" />
+                      Comprimido
                     </a>
                   </Button>
                 )}
