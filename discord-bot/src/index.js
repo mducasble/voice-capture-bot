@@ -496,6 +496,21 @@ async function createTemporaryChannel(interaction) {
     return;
   }
 
+  // Check bot permissions
+  const botMember = guild.members.me;
+  if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    await interaction.reply({ 
+      content: '❌ **Missing Permission!**\n\n' +
+               'I need the **"Manage Channels"** permission to create voice channels.\n\n' +
+               '**How to fix:**\n' +
+               '1. Go to Server Settings → Roles\n' +
+               '2. Find my role and enable "Manage Channels"\n' +
+               '3. Try again!',
+      ephemeral: true 
+    });
+    return;
+  }
+
   const channelName = interaction.options.getString('nome') || `${member.user.username}'s Room`;
   const fullChannelName = `${CONFIG.TEMP_CHANNEL_PREFIX} ${channelName}`;
 
