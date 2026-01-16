@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.get-languages]
 verify_jwt = false
+
+[functions.process-audio]
+verify_jwt = false
