@@ -29,6 +29,7 @@ import FormData from 'form-data';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,8 +49,16 @@ console.log('🔧 Env loaded:', {
   parsedKeys: dotenvResult?.parsed ? Object.keys(dotenvResult.parsed) : [],
   hasLovableApiUrl: !!process.env.LOVABLE_API_URL,
   hasBotApiKey: !!process.env.BOT_API_KEY,
+  hasSupabaseUrl: !!process.env.SUPABASE_URL,
+  hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   botApiKey: maskSecret(process.env.BOT_API_KEY)
 });
+
+// Initialize Supabase client for direct storage uploads
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 // Configuration - Discord voice uses 48kHz
 const CONFIG = {
@@ -468,56 +477,81 @@ async function stopRecording(interaction) {
 
     await new Promise((resolve) => writeStream.on('finish', resolve));
 
-    // Upload to Lovable Cloud
+    // Upload directly to Supabase Storage (bypasses Edge Function for large files)
     await interaction.editReply({ content: '⏳ Uploading recording to cloud...' });
 
     // Get channel topic/language info if available
     const channelData = temporaryChannels.get(voiceChannel.id) || {};
     
-    const formData = new FormData();
-    formData.append('audio', readFileSync(filepath), {
-      filename: filename,
-      contentType: 'audio/wav'
-    });
-    formData.append('metadata', JSON.stringify({
-      discord_guild_id: guild.id,
-      discord_guild_name: guild.name,
-      discord_channel_id: voiceChannel.id,
-      discord_channel_name: voiceChannel.name,
-      discord_user_id: interaction.user.id,
-      discord_username: interaction.user.username,
-      filename: filename,
-      duration_seconds: duration,
-      topic_id: channelData.topicId || null,
-      language: channelData.languageCode || 'en',
-      campaign_id: null, // Can be set later via admin
-      extra: {
-        recorded_by: interaction.user.tag,
-        member_count: voiceChannel.members.size,
-        topic_name: channelData.topicName || null,
-        language_name: channelData.languageName || null
-      }
-    }));
-
-    if (!process.env.LOVABLE_API_URL) {
-      throw new Error('LOVABLE_API_URL is not set. Check your .env and restart the bot.');
+    // Generate unique storage path
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const storagePath = `${guild.id}/${interaction.user.id}/${timestamp}_${filename}`;
+    
+    // Validate Supabase config
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set. Check your .env');
     }
-    if (!process.env.BOT_API_KEY) {
-      throw new Error('BOT_API_KEY is not set (or .env not loaded). Check your .env and restart the bot.');
+    if (!process.env.LOVABLE_API_URL || !process.env.BOT_API_KEY) {
+      throw new Error('LOVABLE_API_URL or BOT_API_KEY not set. Check your .env');
     }
 
-    const response = await fetch(`${process.env.LOVABLE_API_URL}/upload-recording`, {
-      method: 'POST',
-      headers: {
-        'x-bot-api-key': process.env.BOT_API_KEY
-      },
-      body: formData
-    });
+    // Upload file directly to Storage
+    console.log(`Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB to storage...`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('voice-recordings')
+      .upload(storagePath, wavBuffer, {
+        contentType: 'audio/wav',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('voice-recordings')
+      .getPublicUrl(storagePath);
+
+    console.log(`File uploaded to: ${publicUrl}`);
 
     // Clean up local file
     unlinkSync(filepath);
 
-    // Handle response - check for non-JSON responses
+    // Register recording metadata via Edge Function
+    await interaction.editReply({ content: '⏳ Registering recording...' });
+
+    const response = await fetch(`${process.env.LOVABLE_API_URL}/register-recording`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-bot-api-key': process.env.BOT_API_KEY
+      },
+      body: JSON.stringify({
+        filename: storagePath,
+        file_url: publicUrl,
+        file_size_bytes: wavBuffer.length,
+        discord_guild_id: guild.id,
+        discord_guild_name: guild.name,
+        discord_channel_id: voiceChannel.id,
+        discord_channel_name: voiceChannel.name,
+        discord_user_id: interaction.user.id,
+        discord_username: interaction.user.username,
+        duration_seconds: duration,
+        topic_id: channelData.topicId || null,
+        language: channelData.languageCode || 'en',
+        campaign_id: null,
+        extra: {
+          recorded_by: interaction.user.tag,
+          member_count: voiceChannel.members.size,
+          topic_name: channelData.topicName || null,
+          language_name: channelData.languageName || null
+        }
+      })
+    });
+
+    // Handle response
     const responseText = await response.text();
     let result;
     try {
@@ -533,11 +567,11 @@ async function stopRecording(interaction) {
                  `📁 **File:** ${filename}\n` +
                  `⏱️ **Duration:** ${duration.toFixed(1)} seconds\n` +
                  `📊 **Size:** ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB\n` +
-                 `🔗 **URL:** ${result.file_url}\n\n` +
+                 `🔗 **URL:** ${publicUrl}\n\n` +
                  `Audio recorded at ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV`
       });
     } else {
-      throw new Error(result.error || 'Upload failed');
+      throw new Error(result.error || 'Registration failed');
     }
 
   } catch (error) {

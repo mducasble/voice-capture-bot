@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.upload-recording]
 verify_jwt = false
 
+[functions.register-recording]
+verify_jwt = false
+
 [functions.get-recordings]
 verify_jwt = false
 
