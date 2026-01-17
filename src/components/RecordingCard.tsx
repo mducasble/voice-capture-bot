@@ -2,12 +2,12 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
 import { useReprocessRecording } from "@/hooks/useReprocessRecording";
-import { useElevenLabsTranscription } from "@/hooks/useElevenLabsTranscription";
+import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface RecordingCardProps {
   recording: Recording;
@@ -27,6 +33,7 @@ interface RecordingCardProps {
 export function RecordingCard({ recording }: RecordingCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [isElevenLabsTranscriptOpen, setIsElevenLabsTranscriptOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
@@ -40,8 +47,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
     reprocessRecording.mutate(recording.id);
   };
 
-  const handleElevenLabsTranscribe = () => {
-    elevenLabsTranscription.mutate(recording.id);
+  const handleElevenLabsTranscribe = (mode: ElevenLabsMode) => {
+    elevenLabsTranscription.mutate({ recordingId: recording.id, mode });
   };
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
@@ -190,14 +197,14 @@ export function RecordingCard({ recording }: RecordingCardProps) {
               </span>
             </div>
 
-            {/* Transcription Section */}
+            {/* Transcription Section - Gemini */}
             {recording.transcription && (
               <Collapsible open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
                     <span className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
-                      View Transcription
+                      Transcrição (Gemini)
                     </span>
                     {isTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
@@ -210,27 +217,63 @@ export function RecordingCard({ recording }: RecordingCardProps) {
               </Collapsible>
             )}
 
+            {/* Transcription Section - ElevenLabs */}
+            {(recording.transcription_elevenlabs || recording.transcription_elevenlabs_status === 'processing') && (
+              <Collapsible open={isElevenLabsTranscriptOpen} onOpenChange={setIsElevenLabsTranscriptOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-purple-400 hover:text-purple-300">
+                    <span className="flex items-center gap-2">
+                      <AudioLines className="h-4 w-4" />
+                      Transcrição (ElevenLabs)
+                      {recording.transcription_elevenlabs_status === 'processing' && (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      )}
+                    </span>
+                    {isElevenLabsTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
+                    <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs || 'Processando...'}</p>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
               <span className="text-xs text-muted-foreground">
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
-                {/* ElevenLabs Transcription button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleElevenLabsTranscribe}
-                  disabled={elevenLabsTranscription.isPending}
-                  className="text-purple-500 hover:text-purple-500 hover:bg-purple-500/10"
-                  title="Transcrever com ElevenLabs"
-                >
-                  {elevenLabsTranscription.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <AudioLines className="h-4 w-4" />
-                  )}
-                </Button>
+                {/* ElevenLabs Transcription dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing'}
+                      className="text-purple-500 hover:text-purple-500 hover:bg-purple-500/10"
+                      title="Transcrever com ElevenLabs"
+                    >
+                      {elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <AudioLines className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleElevenLabsTranscribe('chunks')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Processar chunks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleElevenLabsTranscribe('full')}>
+                      <File className="h-4 w-4 mr-2" />
+                      Enviar WAV completo
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 {/* Reprocess button - always available */}
                 <Button
                   variant="ghost"

@@ -149,6 +149,8 @@ export type Database = {
           status: Database["public"]["Enums"]["recording_status"] | null
           topic_id: string | null
           transcription: string | null
+          transcription_elevenlabs: string | null
+          transcription_elevenlabs_status: string | null
           transcription_status: string | null
           updated_at: string
         }
@@ -178,6 +180,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
           transcription?: string | null
+          transcription_elevenlabs?: string | null
+          transcription_elevenlabs_status?: string | null
           transcription_status?: string | null
           updated_at?: string
         }
@@ -207,6 +211,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
           transcription?: string | null
+          transcription_elevenlabs?: string | null
+          transcription_elevenlabs_status?: string | null
           transcription_status?: string | null
           updated_at?: string
         }
