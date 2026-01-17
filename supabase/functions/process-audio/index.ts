@@ -424,11 +424,12 @@ async function finalizeProcessing(
   
   console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB`);
 
-  // Update recording with first chunk URL and SNR
+  // Update recording with SNR + quality
+  // IMPORTANT: do NOT overwrite mp3_file_url here. That field is reserved for the pre-generated compressed file
+  // created at upload time; setting it to the first chunk breaks "full file" transcription.
   const { error: updateError } = await supabase
     .from('voice_recordings')
     .update({
-      mp3_file_url: state.uploadedChunks[0]?.url || null,
       snr_db: snrDb,
       quality_status: qualityStatus,
       status: 'completed'

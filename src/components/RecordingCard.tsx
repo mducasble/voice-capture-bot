@@ -221,7 +221,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             {(recording.transcription_elevenlabs || recording.transcription_elevenlabs_status === 'processing') && (
               <Collapsible open={isElevenLabsTranscriptOpen} onOpenChange={setIsElevenLabsTranscriptOpen}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-purple-400 hover:text-purple-300">
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-accent hover:text-accent">
                     <span className="flex items-center gap-2">
                       <AudioLines className="h-4 w-4" />
                       Transcrição (ElevenLabs)
@@ -233,7 +233,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
-                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
+                  <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
                     <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs || 'Processando...'}</p>
                   </div>
                 </CollapsibleContent>
@@ -252,8 +252,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing'}
-                      className="text-purple-500 hover:text-purple-500 hover:bg-purple-500/10"
+                      disabled={elevenLabsTranscription.isPending}
+                      className="text-accent hover:text-accent hover:bg-accent/10"
                       title="Transcrever com ElevenLabs"
                     >
                       {elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing' ? (
