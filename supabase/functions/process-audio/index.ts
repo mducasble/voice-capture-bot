@@ -424,13 +424,9 @@ async function finalizeProcessing(
     throw updateError;
   }
 
-  // Start transcription in background
-  const task = transcribeAllChunks(supabase, state.recording_id, state.uploadedChunks);
-  // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
-  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-    // @ts-ignore
-    EdgeRuntime.waitUntil(task);
-  }
+  // Start transcription synchronously to ensure it completes
+  // We don't use waitUntil because it can be terminated on shutdown
+  await transcribeAllChunks(supabase, state.recording_id, state.uploadedChunks);
 
   return new Response(
     JSON.stringify({
@@ -461,29 +457,43 @@ async function transcribeAllChunks(
     for (const chunk of uploadedChunks) {
       console.log(`Transcribing chunk ${chunk.index}...`);
 
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: {
-          recording_id: `${recording_id}_chunk_${chunk.index}`,
-          audio_url: chunk.url,
-          language: detectedLanguage,
-        },
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: {
+            recording_id: `${recording_id}_chunk_${chunk.index}`,
+            audio_url: chunk.url,
+            language: detectedLanguage,
+          },
+        });
 
-      if (error) {
-        console.error(`Chunk ${chunk.index} transcription failed:`, error);
+        if (error) {
+          console.error(`Chunk ${chunk.index} transcription failed:`, error);
+          continue;
+        }
+
+        const chunkData = (data || {}) as { transcription?: string; detected_language?: string };
+
+        if (chunkData.transcription) {
+          transcriptions.push(chunkData.transcription);
+        }
+        if (!detectedLanguage && chunkData.detected_language) {
+          detectedLanguage = chunkData.detected_language;
+        }
+
+        console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
+
+        // Save intermediate progress every 5 chunks
+        if (chunk.index % 5 === 4 && transcriptions.length > 0) {
+          const partialTranscription = transcriptions.join('\n\n');
+          await supabase.from('voice_recordings')
+            .update({ transcription: partialTranscription })
+            .eq('id', recording_id);
+          console.log(`Saved intermediate transcription at chunk ${chunk.index}`);
+        }
+      } catch (chunkError) {
+        console.error(`Chunk ${chunk.index} error:`, chunkError);
         continue;
       }
-
-      const chunkData = (data || {}) as { transcription?: string; detected_language?: string };
-
-      if (chunkData.transcription) {
-        transcriptions.push(chunkData.transcription);
-      }
-      if (!detectedLanguage && chunkData.detected_language) {
-        detectedLanguage = chunkData.detected_language;
-      }
-
-      console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
     }
 
     // Combine transcriptions
@@ -501,9 +511,10 @@ async function transcribeAllChunks(
       .update(updateData)
       .eq('id', recording_id);
 
-    console.log(`Full transcription saved: ${fullTranscription.length} chars from ${transcriptions.length} chunks`);
-  } catch (err) {
-    console.error('Transcription error:', err);
+    console.log(`Transcription complete: ${fullTranscription.length} chars, language: ${detectedLanguage}`);
+
+  } catch (error) {
+    console.error('Transcription failed:', error);
     await supabase.from('voice_recordings')
       .update({ transcription_status: 'failed' })
       .eq('id', recording_id);
