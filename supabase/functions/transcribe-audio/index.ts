@@ -58,7 +58,8 @@ serve(async (req) => {
     const audioBytes = new Uint8Array(audioBuffer.byteLength > MAX_AUDIO_BYTES ? audioBuffer.slice(0, MAX_AUDIO_BYTES) : audioBuffer);
     console.log(`Audio: ${audioBytes.length} bytes`);
 
-    const base64Audio = encode(audioBytes);
+    // std/encoding/base64 encode() expects ArrayBuffer | string
+    const base64Audio = encode(audioBytes.buffer);
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
