@@ -8,8 +8,9 @@ const corsHeaders = {
 
 // Configuration
 const TARGET_SAMPLE_RATE = 16000;
-// 2 minutes per chunk keeps WAV under ~4MB at 16kHz mono 16-bit
-const CHUNK_DURATION_SECONDS = 120;
+// Use small chunks so we never need to persist partial samples across invocations.
+// 30s at 16kHz mono 16-bit ~= 960KB (well under the 4MB transcription cap).
+const CHUNK_DURATION_SECONDS = 30;
 const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
 const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
 
@@ -256,17 +257,22 @@ serve(async (req) => {
     while (frameOffset + bytesPerFrame <= audioData.length) {
       // Check if we're running out of time
       if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
-        console.log(`Time limit approaching, saving state after ${state.chunkIndex} chunks`);
-        
-        // Save partial chunk samples for next iteration
+        console.log(`Time limit approaching at chunk ${state.chunkIndex}. Uploading partial audio and continuing...`);
+
+        // Upload partial samples so we don't lose progress between invocations
+        if (chunkSamples.length > 0) {
+          await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+          chunkSamples = [];
+        }
+
         state.bytesProcessed += frameOffset;
-        
+
         // Schedule continuation
         await scheduleContinuation(supabase, state);
-        
+
         return new Response(
-          JSON.stringify({ 
-            status: 'processing', 
+          JSON.stringify({
+            status: 'processing',
             chunks_completed: state.uploadedChunks.length,
             message: 'Continuing in next invocation'
           }),
@@ -283,7 +289,7 @@ serve(async (req) => {
           sample += view.getInt16(frameOffset + ch * 2, true);
         }
         const monoSample = Math.round(sample / header.channels);
-        
+
         chunkSamples.push(monoSample);
         state.outputSampleIdx++;
 
@@ -306,31 +312,32 @@ serve(async (req) => {
     // Update bytes processed
     state.bytesProcessed += frameOffset;
 
+    // Upload any partial chunk at the end of this invocation (avoids losing samples)
+    if (chunkSamples.length > 0) {
+      await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+      chunkSamples = [];
+    }
+
     // Check if we've processed all data
     const isComplete = state.bytesProcessed >= header.dataSize;
-    
+
     if (isComplete) {
-      // Upload final chunk if any samples remain
-      if (chunkSamples.length > 0) {
-        await uploadChunk(supabase, state, new Int16Array(chunkSamples));
-      }
-      
       return await finalizeProcessing(supabase, state);
-    } else {
-      // Need to continue processing
-      await scheduleContinuation(supabase, state);
-      
-      return new Response(
-        JSON.stringify({ 
-          status: 'processing', 
-          chunks_completed: state.uploadedChunks.length,
-          bytes_processed: state.bytesProcessed,
-          total_bytes: header.dataSize,
-          progress: Math.round(state.bytesProcessed / header.dataSize * 100)
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
+
+    // Need to continue processing
+    await scheduleContinuation(supabase, state);
+
+    return new Response(
+      JSON.stringify({
+        status: 'processing',
+        chunks_completed: state.uploadedChunks.length,
+        bytes_processed: state.bytesProcessed,
+        total_bytes: header.dataSize,
+        progress: Math.round(state.bytesProcessed / header.dataSize * 100)
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error processing audio:', error);
@@ -444,7 +451,6 @@ async function transcribeAllChunks(
   uploadedChunks: { url: string; index: number }[]
 ) {
   try {
-    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
     const transcriptions: string[] = [];
     let detectedLanguage: string | null = null;
 
@@ -454,32 +460,30 @@ async function transcribeAllChunks(
 
     for (const chunk of uploadedChunks) {
       console.log(`Transcribing chunk ${chunk.index}...`);
-      
-      const chunkRes = await fetch(transcribeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-        },
-        body: JSON.stringify({
+
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: {
           recording_id: `${recording_id}_chunk_${chunk.index}`,
           audio_url: chunk.url,
-          language: detectedLanguage
-        })
+          language: detectedLanguage,
+        },
       });
 
-      if (chunkRes.ok) {
-        const chunkData: { transcription?: string; detected_language?: string } = await chunkRes.json();
-        if (chunkData.transcription) {
-          transcriptions.push(chunkData.transcription);
-        }
-        if (!detectedLanguage && chunkData.detected_language) {
-          detectedLanguage = chunkData.detected_language;
-        }
-        console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
-      } else {
-        console.error(`Chunk ${chunk.index} transcription failed:`, await chunkRes.text());
+      if (error) {
+        console.error(`Chunk ${chunk.index} transcription failed:`, error);
+        continue;
       }
+
+      const chunkData = (data || {}) as { transcription?: string; detected_language?: string };
+
+      if (chunkData.transcription) {
+        transcriptions.push(chunkData.transcription);
+      }
+      if (!detectedLanguage && chunkData.detected_language) {
+        detectedLanguage = chunkData.detected_language;
+      }
+
+      console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
     }
 
     // Combine transcriptions
