@@ -26,7 +26,7 @@ export function useReprocessRecording() {
           transcription_status: "pending",
           quality_status: null,
           snr_db: null,
-          mp3_file_url: null,
+          // Keep mp3_file_url (compressed version) so we can run "full file" transcription reliably.
         })
         .eq("id", recordingId);
 

@@ -2,266 +2,325 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Max file size for ElevenLabs (25MB for scribe_v2)
-const MAX_FILE_SIZE = 25 * 1024 * 1024;
+// ElevenLabs Scribe v2 limits (practical): keep uploads small to avoid edge runtime memory limits.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
+const CHUNKS_PER_INVOCATION = 3;
+
+type Mode = "chunks" | "full";
+
+type ChunkState = {
+  recording_id: string;
+  mode: "chunks";
+  chunkNames: string[];
+  nextIndex: number;
+};
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { recording_id, mode = 'chunks' } = await req.json();
-    // mode: 'chunks' = process all chunks, 'full' = send full WAV file
+    const body = await req.json();
+    const recording_id: string | undefined = body?.recording_id;
+    const mode: Mode = body?.mode === "full" ? "full" : "chunks";
+    const state: ChunkState | undefined = body?.state;
 
     if (!recording_id) {
-      return new Response(
-        JSON.stringify({ error: 'Missing recording_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: "Missing recording_id" }, 400);
     }
 
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     if (!ELEVENLABS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'ElevenLabs API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: "ElevenLabs API key not configured" }, 500);
     }
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get recording details
     const { data: recording, error: fetchError } = await supabase
-      .from('voice_recordings')
-      .select('*')
-      .eq('id', recording_id)
+      .from("voice_recordings")
+      .select("id, file_url, mp3_file_url, language")
+      .eq("id", recording_id)
       .single();
 
     if (fetchError || !recording) {
-      return new Response(
-        JSON.stringify({ error: 'Recording not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: "Recording not found" }, 404);
     }
 
-    // Update status to processing
-    await supabase.from('voice_recordings').update({ 
-      transcription_elevenlabs_status: 'processing' 
-    }).eq('id', recording_id);
+    if (mode === "full") {
+      await supabase
+        .from("voice_recordings")
+        .update({ transcription_elevenlabs_status: "processing" })
+        .eq("id", recording_id);
 
-    console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: ${mode}`);
+      console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: full`);
 
-    let fullTranscription = '';
-
-    if (mode === 'full') {
-      // Mode: Send full file - prefer MP3 (much smaller than WAV)
+      // Prefer the pre-generated compressed file if available; fallback to original.
       const audioUrl = recording.mp3_file_url || recording.file_url;
-      if (!audioUrl) {
-        throw new Error('No audio file available');
+      if (!audioUrl) throw new Error("No audio file available");
+
+      // Safety: never attempt to upload huge files.
+      const blob = await safeFetchBlob(audioUrl, MAX_UPLOAD_BYTES);
+
+      const isMp3 = audioUrl.toLowerCase().includes(".mp3");
+      const filename = isMp3 ? "audio.mp3" : "audio.wav";
+      const mimeType = isMp3 ? "audio/mpeg" : "audio/wav";
+
+      const transcription = await transcribeWithElevenLabs({
+        audioBlob: blob,
+        filename,
+        mimeType,
+        apiKey: ELEVENLABS_API_KEY,
+        language: recording.language ?? undefined,
+      });
+
+      await supabase
+        .from("voice_recordings")
+        .update({
+          transcription_elevenlabs: transcription,
+          transcription_elevenlabs_status: transcription ? "completed" : "failed",
+        })
+        .eq("id", recording_id);
+
+      return json({ success: true, recording_id, mode, transcription_length: transcription.length });
+    }
+
+    // mode === 'chunks'
+    const chunkState = state ?? (await buildInitialChunkState(supabase, recording_id));
+
+    // Mark processing (idempotent)
+    await supabase
+      .from("voice_recordings")
+      .update({ transcription_elevenlabs_status: "processing" })
+      .eq("id", recording_id);
+
+    console.log(
+      `Starting ElevenLabs transcription for ${recording_id}, mode: chunks, nextIndex=${chunkState.nextIndex}, total=${chunkState.chunkNames.length}`
+    );
+
+    const start = chunkState.nextIndex;
+    const end = Math.min(start + CHUNKS_PER_INVOCATION, chunkState.chunkNames.length);
+
+    // Load existing partial transcription from DB to keep state small.
+    const { data: currentRow } = await supabase
+      .from("voice_recordings")
+      .select("transcription_elevenlabs")
+      .eq("id", recording_id)
+      .single();
+
+    const parts: string[] = [];
+    const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
+    if (existing.trim()) parts.push(existing.trim());
+
+    for (let i = start; i < end; i++) {
+      const name = chunkState.chunkNames[i];
+      const chunkUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/voice-recordings/chunks/${name}`;
+
+      console.log(`Transcribing chunk ${i + 1}/${chunkState.chunkNames.length}: ${name}`);
+
+      try {
+        const blob = await safeFetchBlob(chunkUrl, MAX_UPLOAD_BYTES);
+        const t = await transcribeWithElevenLabs({
+          audioBlob: blob,
+          filename: "chunk.wav",
+          mimeType: "audio/wav",
+          apiKey: ELEVENLABS_API_KEY,
+          language: recording.language ?? undefined,
+        });
+        if (t?.trim()) parts.push(t.trim());
+      } catch (e) {
+        console.error(`Chunk failed: ${name}`, e);
+        parts.push(`[chunk ${i}] (falhou)`);
       }
+    }
 
-      // Check file size with HEAD request first
-      console.log(`Checking file size: ${audioUrl}`);
-      const headResp = await fetch(audioUrl, { method: 'HEAD' });
-      const contentLength = parseInt(headResp.headers.get('content-length') || '0');
-      console.log(`File size: ${(contentLength / 1024 / 1024).toFixed(2)}MB`);
+    const merged = parts.join("\n\n");
+    await supabase
+      .from("voice_recordings")
+      .update({ transcription_elevenlabs: merged })
+      .eq("id", recording_id);
 
-      if (contentLength > MAX_FILE_SIZE) {
-        throw new Error(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB). Max is 25MB. Try 'chunks' mode instead.`);
-      }
+    if (end >= chunkState.chunkNames.length) {
+      await supabase
+        .from("voice_recordings")
+        .update({
+          transcription_elevenlabs_status: merged.trim() ? "completed" : "failed",
+        })
+        .eq("id", recording_id);
 
-      // Limit memory usage - max 50MB for edge function
-      const MAX_MEMORY_SIZE = 50 * 1024 * 1024;
-      if (contentLength > MAX_MEMORY_SIZE) {
-        throw new Error(`File too large for memory (${(contentLength / 1024 / 1024).toFixed(1)}MB). Use 'chunks' mode instead.`);
-      }
+      console.log(`ElevenLabs chunks completed for ${recording_id}`);
+      return json({ success: true, recording_id, mode: "chunks", done: true });
+    }
 
-      console.log(`Downloading: ${audioUrl}`);
-      const audioResp = await fetch(audioUrl);
-      if (!audioResp.ok) {
-        throw new Error('Failed to download audio');
-      }
+    const nextState: ChunkState = { ...chunkState, nextIndex: end };
 
-      const audioBlob = await audioResp.blob();
-      console.log(`Downloaded: ${audioBlob.size} bytes`);
+    // Schedule continuation reliably
+    const invokePromise = supabase.functions.invoke("transcribe-elevenlabs", {
+      body: { recording_id, mode: "chunks", state: nextState },
+    });
 
-      const isMP3 = audioUrl.includes('.mp3');
-      fullTranscription = await transcribeWithElevenLabs(
-        audioBlob, 
-        isMP3 ? 'audio.mp3' : 'audio.wav', 
-        isMP3 ? 'audio/mpeg' : 'audio/wav', 
-        ELEVENLABS_API_KEY, 
-        recording.language
+    // @ts-ignore EdgeRuntime available
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        invokePromise
+          .then(({ error }: { error?: unknown }) => {
+            if (error) console.error("Failed to schedule continuation:", error);
+          })
+          .catch((err: unknown) => console.error("Failed to schedule continuation:", err))
       );
     } else {
-      // Mode: Process all chunks
-      const { data: files, error: listError } = await supabase.storage
-        .from('voice-recordings')
-        .list('chunks', {
-          search: recording_id
-        });
-
-      if (listError) {
-        throw new Error(`Failed to list chunks: ${listError.message}`);
-      }
-
-      // Filter and sort chunks by index
-      const chunkFiles = (files || [])
-        .filter(f => f.name.includes(recording_id) && f.name.includes('_chunk'))
-        .sort((a, b) => {
-          const indexA = parseInt(a.name.match(/chunk(\d+)/)?.[1] || '0');
-          const indexB = parseInt(b.name.match(/chunk(\d+)/)?.[1] || '0');
-          return indexA - indexB;
-        });
-
-      console.log(`Found ${chunkFiles.length} chunks to transcribe`);
-
-      if (chunkFiles.length === 0) {
-        // Fallback to MP3 or WAV file
-        const audioUrl = recording.mp3_file_url || recording.file_url;
-        if (!audioUrl) {
-          throw new Error('No audio available');
-        }
-
-        console.log(`No chunks found, using: ${audioUrl}`);
-        const audioResp = await fetch(audioUrl);
-        const audioBlob = await audioResp.blob();
-        const isMP3 = audioUrl.includes('.mp3');
-        fullTranscription = await transcribeWithElevenLabs(
-          audioBlob, 
-          isMP3 ? 'audio.mp3' : 'audio.wav', 
-          isMP3 ? 'audio/mpeg' : 'audio/wav', 
-          ELEVENLABS_API_KEY, 
-          recording.language
-        );
-      } else {
-        // Process each chunk
-        const transcriptions: string[] = [];
-        
-        for (let i = 0; i < chunkFiles.length; i++) {
-          const chunk = chunkFiles[i];
-          const chunkUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/voice-recordings/chunks/${chunk.name}`;
-          
-          console.log(`Processing chunk ${i + 1}/${chunkFiles.length}: ${chunk.name}`);
-          
-          try {
-            const audioResp = await fetch(chunkUrl);
-            if (!audioResp.ok) {
-              console.error(`Failed to download chunk ${chunk.name}`);
-              continue;
-            }
-
-            const audioBlob = await audioResp.blob();
-            const chunkTranscription = await transcribeWithElevenLabs(
-              audioBlob, 
-              'chunk.wav', 
-              'audio/wav', 
-              ELEVENLABS_API_KEY, 
-              recording.language
-            );
-
-            if (chunkTranscription) {
-              transcriptions.push(chunkTranscription);
-            }
-
-            // Save progress every 5 chunks
-            if ((i + 1) % 5 === 0 || i === chunkFiles.length - 1) {
-              const progressText = transcriptions.join(' ');
-              await supabase.from('voice_recordings').update({
-                transcription_elevenlabs: progressText
-              }).eq('id', recording_id);
-              console.log(`Saved progress: ${transcriptions.length} chunks transcribed`);
-            }
-          } catch (chunkError) {
-            console.error(`Error transcribing chunk ${chunk.name}:`, chunkError);
-          }
-        }
-
-        fullTranscription = transcriptions.join(' ');
-      }
+      const { error } = await invokePromise;
+      if (error) console.error("Failed to schedule continuation:", error);
     }
 
-    console.log(`Transcription complete: ${fullTranscription.length} chars`);
-
-    // Update database with final transcription
-    await supabase.from('voice_recordings').update({ 
-      transcription_elevenlabs: fullTranscription,
-      transcription_elevenlabs_status: 'completed'
-    }).eq('id', recording_id);
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      recording_id, 
-      transcription: fullTranscription,
-      mode
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
+    return json({ success: true, recording_id, mode: "chunks", done: false, nextIndex: end });
   } catch (error) {
-    console.error('Error:', error);
-    
-    // Try to update status to failed
+    console.error("Error:", error);
+
+    // Best effort status update
     try {
-      const { recording_id } = await req.clone().json();
+      const cloned = req.clone();
+      const { recording_id } = await cloned.json();
       if (recording_id) {
         const supabase = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
-        await supabase.from('voice_recordings').update({
-          transcription_elevenlabs_status: 'failed'
-        }).eq('id', recording_id);
+        await supabase
+          .from("voice_recordings")
+          .update({ transcription_elevenlabs_status: "failed" })
+          .eq("id", recording_id);
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
-    return new Response(
-      JSON.stringify({ error: 'Transcription failed', details: String(error) }), 
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({ error: "Transcription failed", details: String(error) }, 500);
   }
 });
 
-async function transcribeWithElevenLabs(
-  audioBlob: Blob, 
-  filename: string, 
-  mimeType: string, 
-  apiKey: string,
-  language?: string
-): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', new Blob([audioBlob], { type: mimeType }), filename);
-  formData.append('model_id', 'scribe_v2');
-  
-  // Map language codes if provided
-  if (language) {
-    const langMap: Record<string, string> = {
-      'pt': 'por', 'en': 'eng', 'es': 'spa', 'fr': 'fra',
-      'de': 'deu', 'it': 'ita', 'ja': 'jpn', 'ko': 'kor',
-      'zh': 'zho', 'ru': 'rus',
-    };
-    const langCode = langMap[language.toLowerCase()] || language;
-    formData.append('language_code', langCode);
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function buildInitialChunkState(supabase: any, recording_id: string): Promise<ChunkState> {
+  const { data: files, error } = await supabase.storage
+    .from("voice-recordings")
+    .list("chunks", { search: recording_id });
+
+  if (error) throw new Error(`Failed to list chunks: ${error.message}`);
+
+  const chunkNames = (files || [])
+    .map((f: { name: string }) => f.name)
+    .filter((name: string) => name.includes(recording_id) && name.includes("_chunk"))
+    .sort((a: string, b: string) => {
+      const ia = parseInt(a.match(/chunk(\d+)/)?.[1] || "0");
+      const ib = parseInt(b.match(/chunk(\d+)/)?.[1] || "0");
+      return ia - ib;
+    });
+
+  if (chunkNames.length === 0) {
+    throw new Error("No chunks found for this recording. Use mode=full (only works for small files).");
   }
 
-  const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-    method: 'POST',
-    headers: { 'xi-api-key': apiKey },
+  return { recording_id, mode: "chunks", chunkNames, nextIndex: 0 };
+}
+
+async function safeFetchBlob(url: string, maxBytes: number): Promise<Blob> {
+  // Try HEAD first
+  try {
+    const head = await fetch(url, { method: "HEAD" });
+    if (head.ok) {
+      const len = parseInt(head.headers.get("content-length") || "0");
+      if (len && len > maxBytes) {
+        throw new Error(`File too large (${(len / 1024 / 1024).toFixed(1)}MB). Use chunks mode.`);
+      }
+    }
+  } catch {
+    // ignore and fallback to streaming GET below
+  }
+
+  const resp = await fetch(url);
+  if (!resp.ok || !resp.body) throw new Error(`Failed to download audio: ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const chunks: ArrayBuffer[] = [];
+  let received = 0;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value) {
+      received += value.length;
+      if (received > maxBytes) {
+        try {
+          await reader.cancel();
+        } catch {
+          // ignore
+        }
+        throw new Error(`File too large (>${(maxBytes / 1024 / 1024).toFixed(0)}MB). Use chunks mode.`);
+      }
+      // Use a copied ArrayBuffer to avoid SharedArrayBuffer typing issues in edge runtime
+      chunks.push(value.slice().buffer);
+    }
+  }
+
+  return new Blob(chunks);
+}
+
+async function transcribeWithElevenLabs(params: {
+  audioBlob: Blob;
+  filename: string;
+  mimeType: string;
+  apiKey: string;
+  language?: string;
+}): Promise<string> {
+  const { audioBlob, filename, mimeType, apiKey, language } = params;
+
+  const formData = new FormData();
+  formData.append("file", new Blob([audioBlob], { type: mimeType }), filename);
+  formData.append("model_id", "scribe_v2");
+
+  if (language) {
+    const langMap: Record<string, string> = {
+      pt: "por",
+      en: "eng",
+      es: "spa",
+      fr: "fra",
+      de: "deu",
+      it: "ita",
+      ja: "jpn",
+      ko: "kor",
+      zh: "zho",
+      ru: "rus",
+    };
+    const langCode = langMap[language.toLowerCase()] || language;
+    formData.append("language_code", langCode);
+  }
+
+  const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    method: "POST",
+    headers: { "xi-api-key": apiKey },
     body: formData,
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error('ElevenLabs API error:', response.status, errText);
+    console.error("ElevenLabs API error:", response.status, errText);
     throw new Error(`ElevenLabs API error: ${response.status}`);
   }
 
   const result = await response.json();
-  return result.text || '';
+  return result.text || "";
 }
