@@ -391,11 +391,27 @@ async function scheduleContinuation(
 ) {
   console.log(`Scheduling continuation for chunk ${state.chunkIndex}`);
 
-  // Fire and forget (avoid awaiting)
-  supabase.functions
-    .invoke("process-audio", { body: { state } })
-    .catch((err: unknown) => console.error('Failed to schedule continuation:', err));
+  const invokePromise = supabase.functions.invoke("process-audio", { body: { state } });
+
+  // Ensure the continuation request actually gets sent even if this invocation returns quickly.
+  // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      invokePromise
+        .then(({ error }: { error?: unknown }) => {
+          if (error) console.error("Failed to schedule continuation:", error);
+        })
+        .catch((err: unknown) => console.error("Failed to schedule continuation:", err))
+    );
+    return;
+  }
+
+  // Fallback: await so the request is not dropped.
+  const { error } = await invokePromise;
+  if (error) console.error("Failed to schedule continuation:", error);
 }
+
 
 // deno-lint-ignore no-explicit-any
 async function finalizeProcessing(
