@@ -8,7 +8,8 @@ const corsHeaders = {
 
 // Configuration
 const TARGET_SAMPLE_RATE = 16000;
-const CHUNK_DURATION_SECONDS = 300; // 5 minutes per chunk
+// 2 minutes per chunk keeps WAV under ~4MB at 16kHz mono 16-bit
+const CHUNK_DURATION_SECONDS = 120;
 const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
 const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
 
@@ -378,22 +379,15 @@ async function uploadChunk(
 
 // deno-lint-ignore no-explicit-any
 async function scheduleContinuation(
-  _supabase: any,
+  supabase: any,
   state: ProcessingState
 ) {
-  const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-audio`;
-  
   console.log(`Scheduling continuation for chunk ${state.chunkIndex}`);
-  
-  // Fire and forget - don't await
-  fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-    },
-    body: JSON.stringify({ state })
-  }).catch(err => console.error('Failed to schedule continuation:', err));
+
+  // Fire and forget (avoid awaiting)
+  supabase.functions
+    .invoke("process-audio", { body: { state } })
+    .catch((err: unknown) => console.error('Failed to schedule continuation:', err));
 }
 
 // deno-lint-ignore no-explicit-any
@@ -424,7 +418,12 @@ async function finalizeProcessing(
   }
 
   // Start transcription in background
-  transcribeAllChunks(supabase, state.recording_id, state.uploadedChunks);
+  const task = transcribeAllChunks(supabase, state.recording_id, state.uploadedChunks);
+  // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(task);
+  }
 
   return new Response(
     JSON.stringify({
