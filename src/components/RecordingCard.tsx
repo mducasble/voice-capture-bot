@@ -2,10 +2,11 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Download, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2 } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
+import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,11 +28,15 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
+  const reprocessRecording = useReprocessRecording();
 
   const handleDelete = () => {
     deleteRecording.mutate(recording.id);
   };
 
+  const handleReprocess = () => {
+    reprocessRecording.mutate(recording.id);
+  };
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
     
@@ -205,6 +210,24 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
+                {/* Reprocess button - show for failed or stuck recordings */}
+                {(recording.status === 'failed' || recording.status === 'processing' || 
+                  recording.transcription_status === 'failed' || !recording.snr_db) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReprocess}
+                    disabled={reprocessRecording.isPending}
+                    className="text-primary hover:text-primary hover:bg-primary/10"
+                    title="Reprocessar áudio"
+                  >
+                    {reprocessRecording.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
