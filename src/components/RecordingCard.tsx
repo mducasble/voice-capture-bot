@@ -210,24 +210,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
-                {/* Reprocess button - show for failed or stuck recordings */}
-                {(recording.status === 'failed' || recording.status === 'processing' || 
-                  recording.transcription_status === 'failed' || !recording.snr_db) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleReprocess}
-                    disabled={reprocessRecording.isPending}
-                    className="text-primary hover:text-primary hover:bg-primary/10"
-                    title="Reprocessar áudio"
-                  >
-                    {reprocessRecording.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
+                {/* Reprocess button - always available */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReprocess}
+                  disabled={reprocessRecording.isPending || recording.status === 'processing'}
+                  className="text-primary hover:text-primary hover:bg-primary/10"
+                  title="Reprocessar áudio"
+                >
+                  {reprocessRecording.isPending || recording.status === 'processing' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
