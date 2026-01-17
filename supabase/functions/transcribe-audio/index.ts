@@ -7,8 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Limit to 5MB to stay within edge function memory constraints
-const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+// Limit to 4MB for MP3 chunks (much smaller than WAV)
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,24 +33,32 @@ serve(async (req) => {
       );
     }
 
+    // Check if this is a chunk transcription (don't update main recording)
+    const isChunk = recording_id.includes('_chunk_');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    await supabase.from('voice_recordings').update({ transcription_status: 'processing' }).eq('id', recording_id);
+    // Only update status for main recordings
+    if (!isChunk) {
+      await supabase.from('voice_recordings').update({ transcription_status: 'processing' }).eq('id', recording_id);
+    }
 
-    console.log(`Starting transcription for ${recording_id}`);
+    console.log(`Starting transcription for ${recording_id}${isChunk ? ' (chunk)' : ''}`);
 
     const languageInstruction = language 
       ? `The audio is in ${language}. Transcribe it in that language.`
       : 'Automatically detect the language and transcribe in that language.';
 
     // Download audio with size limit
-    console.log(`Downloading audio (max 5MB): ${audio_url}`);
+    console.log(`Downloading audio (max 4MB): ${audio_url}`);
     const audioResp = await fetch(audio_url);
     if (!audioResp.ok) {
-      await supabase.from('voice_recordings').update({ transcription_status: 'failed' }).eq('id', recording_id);
+      if (!isChunk) {
+        await supabase.from('voice_recordings').update({ transcription_status: 'failed' }).eq('id', recording_id);
+      }
       return new Response(JSON.stringify({ error: 'Failed to download audio' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -58,7 +66,10 @@ serve(async (req) => {
     const audioBytes = new Uint8Array(audioBuffer.byteLength > MAX_AUDIO_BYTES ? audioBuffer.slice(0, MAX_AUDIO_BYTES) : audioBuffer);
     console.log(`Audio: ${audioBytes.length} bytes`);
 
-    // std/encoding/base64 encode() expects ArrayBuffer | string
+    // Detect format from URL
+    const isMP3 = audio_url.toLowerCase().includes('.mp3');
+    const audioFormat = isMP3 ? 'mp3' : 'wav';
+
     const base64Audio = encode(audioBytes.buffer);
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -68,7 +79,7 @@ serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: `You are an audio transcription assistant. ${languageInstruction}\n\nRespond ONLY with JSON: {"detected_language": "ISO code", "transcription": "text"}` },
-          { role: 'user', content: [{ type: 'text', text: 'Transcribe this audio:' }, { type: 'input_audio', input_audio: { data: base64Audio, format: 'wav' } }] }
+          { role: 'user', content: [{ type: 'text', text: 'Transcribe this audio:' }, { type: 'input_audio', input_audio: { data: base64Audio, format: audioFormat } }] }
         ]
       }),
     });
@@ -76,7 +87,9 @@ serve(async (req) => {
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error('AI error:', aiResponse.status, errText);
-      await supabase.from('voice_recordings').update({ transcription_status: 'failed' }).eq('id', recording_id);
+      if (!isChunk) {
+        await supabase.from('voice_recordings').update({ transcription_status: 'failed' }).eq('id', recording_id);
+      }
       return new Response(JSON.stringify({ error: 'Transcription failed', details: errText }), { status: aiResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -94,14 +107,21 @@ serve(async (req) => {
       }
     } catch { /* use raw */ }
 
-    console.log(`Transcription done: ${transcription.length} chars`);
+    console.log(`Transcription done: ${transcription.length} chars, language: ${detectedLanguage}`);
 
-    const updateData: Record<string, unknown> = { transcription, transcription_status: 'completed' };
-    if (detectedLanguage && !language) updateData.language = detectedLanguage.toLowerCase();
+    // Only update DB for main recordings (not chunks)
+    if (!isChunk) {
+      const updateData: Record<string, unknown> = { transcription, transcription_status: 'completed' };
+      if (detectedLanguage && !language) updateData.language = detectedLanguage.toLowerCase();
+      await supabase.from('voice_recordings').update(updateData).eq('id', recording_id);
+    }
 
-    await supabase.from('voice_recordings').update(updateData).eq('id', recording_id);
-
-    return new Response(JSON.stringify({ success: true, recording_id, transcription, detected_language: detectedLanguage }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ 
+      success: true, 
+      recording_id, 
+      transcription, 
+      detected_language: detectedLanguage 
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('Error:', error);

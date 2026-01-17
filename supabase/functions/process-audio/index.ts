@@ -1,26 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+// @ts-ignore - lamejs works in Deno via esm.sh
+import lamejs from "https://esm.sh/lamejs@1.2.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Parse WAV header to get audio info (without loading all samples)
+// Configuration
+const TARGET_SAMPLE_RATE = 16000;
+const CHUNK_DURATION_SECONDS = 300; // 5 minutes per chunk
+const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
+const MP3_BITRATE = 64; // kbps - good for speech
+
+// Parse WAV header to get audio info
 function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
   if (headerBytes.length < 44) return null;
   
-  const view = new DataView(headerBytes.buffer);
+  const view = new DataView(headerBytes.buffer, headerBytes.byteOffset, headerBytes.byteLength);
   
-  // Check RIFF header
   const riff = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
   if (riff !== 'RIFF') return null;
   
-  // Check WAVE format
   const wave = String.fromCharCode(headerBytes[8], headerBytes[9], headerBytes[10], headerBytes[11]);
   if (wave !== 'WAVE') return null;
   
-  // Find fmt chunk
   let offset = 12;
   let sampleRate = 48000;
   let channels = 2;
@@ -50,148 +55,24 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
   }
   
   if (dataOffset === 0) return null;
-  
   return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
 }
 
-// Create compressed WAV header
-function createWavHeader(dataSize: number, sampleRate: number = 16000): Uint8Array {
-  const buffer = new ArrayBuffer(44);
-  const view = new DataView(buffer);
-  
-  // RIFF header
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(view, 8, 'WAVE');
-  
-  // fmt chunk
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // chunk size
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // byte rate
-  view.setUint16(32, 2, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-  
-  // data chunk
-  writeString(view, 36, 'data');
-  view.setUint32(40, dataSize, true);
-  
-  return new Uint8Array(buffer);
-}
-
-function writeString(view: DataView, offset: number, str: string) {
-  for (let i = 0; i < str.length; i++) {
-    view.setUint8(offset + i, str.charCodeAt(i));
-  }
-}
-
-// Downsample audio in streaming fashion (chunk by chunk)
-async function* downsampleStream(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  header: { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number },
-  targetSampleRate: number = 16000
-): AsyncGenerator<Uint8Array> {
-  const ratio = header.sampleRate / targetSampleRate;
-  const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
-  
-  let bytesToSkip = header.dataOffset;
-  let srcSampleIndex = 0;
-  let buffer = new Uint8Array(0);
-  let outputSamples: number[] = [];
-  const outputChunkSize = 32000; // Output ~32KB chunks
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    // Skip header bytes
-    let chunkStart = 0;
-    if (bytesToSkip > 0) {
-      if (value.length <= bytesToSkip) {
-        bytesToSkip -= value.length;
-        continue;
-      }
-      chunkStart = bytesToSkip;
-      bytesToSkip = 0;
-    }
-    
-    // Combine with previous incomplete frame
-    const newBuffer = new Uint8Array(buffer.length + value.length - chunkStart);
-    newBuffer.set(buffer);
-    newBuffer.set(value.subarray(chunkStart), buffer.length);
-    buffer = newBuffer;
-    
-    // Process complete frames
-    const view = new DataView(buffer.buffer, buffer.byteOffset);
-    let frameOffset = 0;
-    
-    while (frameOffset + bytesPerFrame <= buffer.length) {
-      // Calculate which output sample this maps to
-      const outputSampleIndex = Math.floor(srcSampleIndex / ratio);
-      
-      if (outputSampleIndex >= outputSamples.length) {
-        // Mix to mono
-        let sample = 0;
-        for (let ch = 0; ch < header.channels; ch++) {
-          sample += view.getInt16(frameOffset + ch * 2, true);
-        }
-        outputSamples.push(Math.round(sample / header.channels));
-        
-        // Yield chunk when large enough
-        if (outputSamples.length >= outputChunkSize / 2) {
-          const outputBuffer = new ArrayBuffer(outputSamples.length * 2);
-          const outputView = new DataView(outputBuffer);
-          for (let i = 0; i < outputSamples.length; i++) {
-            outputView.setInt16(i * 2, outputSamples[i], true);
-          }
-          yield new Uint8Array(outputBuffer);
-          outputSamples = [];
-        }
-      }
-      
-      srcSampleIndex++;
-      frameOffset += bytesPerFrame;
-    }
-    
-    // Keep incomplete frame for next iteration
-    if (frameOffset < buffer.length) {
-      buffer = buffer.slice(frameOffset);
-    } else {
-      buffer = new Uint8Array(0);
-    }
-  }
-  
-  // Yield remaining samples
-  if (outputSamples.length > 0) {
-    const outputBuffer = new ArrayBuffer(outputSamples.length * 2);
-    const outputView = new DataView(outputBuffer);
-    for (let i = 0; i < outputSamples.length; i++) {
-      outputView.setInt16(i * 2, outputSamples[i], true);
-    }
-    yield new Uint8Array(outputBuffer);
-  }
-}
-
-// Calculate SNR from a sample of audio
-function calculateSNRFromSample(samples: Int16Array): number {
+// Calculate SNR from audio samples
+function calculateSNR(samples: Int16Array): number {
   if (samples.length === 0) return 0;
   
-  // Convert to float
   const floatSamples = new Float32Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
     floatSamples[i] = samples[i] / 32768.0;
   }
   
-  // Calculate signal RMS
   let sum = 0;
   for (let i = 0; i < floatSamples.length; i++) {
     sum += floatSamples[i] * floatSamples[i];
   }
   const signalRMS = Math.sqrt(sum / floatSamples.length);
   
-  // Estimate noise floor using bottom 10%
   const sorted = Array.from(floatSamples).map(Math.abs).sort((a, b) => a - b);
   const bottomCount = Math.max(1, Math.floor(sorted.length * 0.1));
   let noiseSum = 0;
@@ -200,8 +81,38 @@ function calculateSNRFromSample(samples: Int16Array): number {
   }
   const noiseFloor = Math.sqrt(noiseSum / bottomCount) || 0.0001;
   
-  const snr = 20 * Math.log10(signalRMS / noiseFloor);
-  return Math.round(snr * 10) / 10;
+  return Math.round(20 * Math.log10(signalRMS / noiseFloor) * 10) / 10;
+}
+
+// Encode PCM samples to MP3
+function encodeToMp3(samples: Int16Array, sampleRate: number): Uint8Array {
+  const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, MP3_BITRATE);
+  const mp3Data: Uint8Array[] = [];
+  
+  const blockSize = 1152;
+  for (let i = 0; i < samples.length; i += blockSize) {
+    const chunk = samples.subarray(i, Math.min(i + blockSize, samples.length));
+    const mp3buf = mp3encoder.encodeBuffer(chunk);
+    if (mp3buf.length > 0) {
+      mp3Data.push(new Uint8Array(mp3buf));
+    }
+  }
+  
+  const end = mp3encoder.flush();
+  if (end.length > 0) {
+    mp3Data.push(new Uint8Array(end));
+  }
+  
+  // Combine all MP3 data
+  const totalLength = mp3Data.reduce((sum, arr) => sum + arr.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of mp3Data) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  return result;
 }
 
 serve(async (req) => {
@@ -226,13 +137,15 @@ serve(async (req) => {
 
     console.log(`Processing audio for recording ${recording_id}`);
 
+    // Update status to processing
+    await supabase.from('voice_recordings').update({ status: 'processing' }).eq('id', recording_id);
+
     // Fetch audio with streaming
     const audioResponse = await fetch(audio_url);
     if (!audioResponse.ok || !audioResponse.body) {
       throw new Error(`Failed to fetch audio: ${audioResponse.status}`);
     }
 
-    // Read header first
     const reader = audioResponse.body.getReader();
     const headerChunk = await reader.read();
     if (!headerChunk.value) {
@@ -244,50 +157,70 @@ serve(async (req) => {
       throw new Error('Invalid WAV file');
     }
 
-    console.log(`Audio info: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit`);
+    console.log(`Audio: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit`);
 
-    // Collect samples for SNR calculation (first ~5 seconds)
-    const snrSampleTarget = header.sampleRate * 5; // 5 seconds
-    const snrSamples: number[] = [];
-    let snrDb: number | null = null;
-
-    // Create compressed audio stream
-    const targetSampleRate = 16000;
-    const compressedChunks: Uint8Array[] = [];
-    let totalCompressedBytes = 0;
-    const maxCompressedSize = 5 * 1024 * 1024; // 5MB limit (~2.5 min at 16kHz mono) for transcription memory limits
+    // Process audio: stream, downsample, chunk, encode to MP3
+    const ratio = header.sampleRate / TARGET_SAMPLE_RATE;
+    const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
     
-    // Restore the first chunk to the stream
-    const firstChunk = headerChunk.value;
-    const combinedReader = {
-      read: async () => {
-        if (firstChunk) {
-          const chunk = firstChunk;
-          (combinedReader as { firstRead: boolean }).firstRead = true;
-          return { done: false, value: chunk };
-        }
-        return reader.read();
-      },
-      firstRead: false
-    };
-
-    // Process audio in streaming fashion
-    let srcIdx = 0;
-    const ratio = header.sampleRate / targetSampleRate;
     let bytesToSkip = header.dataOffset;
     let partialFrame = new Uint8Array(0);
-    const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
+    let srcIdx = 0;
     let outputSampleIdx = 0;
-    const outputBuffer: number[] = [];
+    
+    // Current chunk samples
+    let chunkSamples: number[] = [];
+    let chunkIndex = 0;
+    const uploadedChunks: { url: string; index: number }[] = [];
+    
+    // SNR calculation from first 5 seconds
+    const snrSamples: number[] = [];
+    const snrSampleTarget = TARGET_SAMPLE_RATE * 5;
+    
+    let currentValue = headerChunk.value;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // Read first chunk
-    let currentValue = firstChunk;
-    let isFirst = true;
+    // Helper to finalize and upload a chunk
+    const finalizeChunk = async () => {
+      if (chunkSamples.length === 0) return;
+      
+      console.log(`Encoding chunk ${chunkIndex} with ${chunkSamples.length} samples`);
+      
+      const samples = new Int16Array(chunkSamples);
+      const mp3Data = encodeToMp3(samples, TARGET_SAMPLE_RATE);
+      
+      console.log(`Chunk ${chunkIndex}: ${samples.length} samples -> ${(mp3Data.length / 1024).toFixed(1)} KB MP3`);
+      
+      const chunkPath = `chunks/${recording_id}_${timestamp}_chunk${String(chunkIndex).padStart(3, '0')}.mp3`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('voice-recordings')
+        .upload(chunkPath, mp3Data, {
+          contentType: 'audio/mpeg',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        console.error(`Failed to upload chunk ${chunkIndex}:`, uploadError);
+        throw uploadError;
+      }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('voice-recordings')
+        .getPublicUrl(chunkPath);
+      
+      uploadedChunks.push({ url: publicUrl, index: chunkIndex });
+      console.log(`Uploaded chunk ${chunkIndex}: ${publicUrl}`);
+      
+      chunkSamples = [];
+      chunkIndex++;
+    };
 
+    // Stream and process audio
     while (true) {
       let chunkStart = 0;
       
-      // Skip header bytes
+      // Skip WAV header bytes
       if (bytesToSkip > 0) {
         if (currentValue.length <= bytesToSkip) {
           bytesToSkip -= currentValue.length;
@@ -300,7 +233,7 @@ serve(async (req) => {
         bytesToSkip = 0;
       }
 
-      // Combine with partial frame from previous chunk
+      // Combine with partial frame from previous iteration
       let dataToProcess: Uint8Array;
       if (partialFrame.length > 0) {
         dataToProcess = new Uint8Array(partialFrame.length + currentValue.length - chunkStart);
@@ -311,44 +244,31 @@ serve(async (req) => {
       }
 
       // Process complete frames
-      const view = new DataView(dataToProcess.buffer, dataToProcess.byteOffset);
+      const view = new DataView(dataToProcess.buffer, dataToProcess.byteOffset, dataToProcess.byteLength);
       let frameOffset = 0;
 
       while (frameOffset + bytesPerFrame <= dataToProcess.length) {
-        // Calculate output sample position
         const targetOutputIdx = Math.floor(srcIdx / ratio);
 
         if (targetOutputIdx > outputSampleIdx) {
-          // Mix to mono
+          // Mix channels to mono
           let sample = 0;
           for (let ch = 0; ch < header.channels; ch++) {
             sample += view.getInt16(frameOffset + ch * 2, true);
           }
           const monoSample = Math.round(sample / header.channels);
-          outputBuffer.push(monoSample);
+          
+          chunkSamples.push(monoSample);
           outputSampleIdx++;
 
-          // Collect samples for SNR (first 5 seconds)
+          // Collect SNR samples
           if (snrSamples.length < snrSampleTarget) {
             snrSamples.push(monoSample);
           }
 
-          // Write output in 64KB chunks
-          if (outputBuffer.length >= 32000) {
-            const chunkData = new ArrayBuffer(outputBuffer.length * 2);
-            const chunkView = new DataView(chunkData);
-            for (let i = 0; i < outputBuffer.length; i++) {
-              chunkView.setInt16(i * 2, outputBuffer[i], true);
-            }
-            const chunk = new Uint8Array(chunkData);
-            compressedChunks.push(chunk);
-            totalCompressedBytes += chunk.length;
-            outputBuffer.length = 0;
-
-            if (totalCompressedBytes > maxCompressedSize) {
-              console.warn('Compressed audio exceeds size limit, truncating');
-              break;
-            }
+          // Check if chunk is complete
+          if (chunkSamples.length >= SAMPLES_PER_CHUNK) {
+            await finalizeChunk();
           }
         }
 
@@ -356,76 +276,32 @@ serve(async (req) => {
         frameOffset += bytesPerFrame;
       }
 
-      if (totalCompressedBytes > maxCompressedSize) break;
-
-      // Save partial frame
+      // Save partial frame for next iteration
       partialFrame = new Uint8Array(dataToProcess.subarray(frameOffset));
 
-      // Read next chunk
+      // Read next chunk from stream
       const nextRead = await reader.read();
       if (nextRead.done) break;
       currentValue = nextRead.value!;
     }
 
-    // Flush remaining samples
-    if (outputBuffer.length > 0 && totalCompressedBytes < maxCompressedSize) {
-      const chunkData = new ArrayBuffer(outputBuffer.length * 2);
-      const chunkView = new DataView(chunkData);
-      for (let i = 0; i < outputBuffer.length; i++) {
-        chunkView.setInt16(i * 2, outputBuffer[i], true);
-      }
-      compressedChunks.push(new Uint8Array(chunkData));
-      totalCompressedBytes += outputBuffer.length * 2;
-    }
+    // Finalize last chunk
+    await finalizeChunk();
 
     // Calculate SNR
-    if (snrSamples.length > 0) {
-      snrDb = calculateSNRFromSample(new Int16Array(snrSamples));
-      console.log(`SNR calculated: ${snrDb} dB (from ${snrSamples.length} samples)`);
-    }
-
-    // Combine compressed chunks with header
-    const wavHeader = createWavHeader(totalCompressedBytes, targetSampleRate);
-    const finalSize = wavHeader.length + totalCompressedBytes;
-    const compressedAudio = new Uint8Array(finalSize);
-    compressedAudio.set(wavHeader);
-    let offset = wavHeader.length;
-    for (const chunk of compressedChunks) {
-      compressedAudio.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    console.log(`Compressed audio: ${(finalSize / 1024 / 1024).toFixed(2)} MB`);
-
-    // Upload compressed audio
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const compressedPath = `compressed/${recording_id}_${timestamp}.wav`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('voice-recordings')
-      .upload(compressedPath, compressedAudio, {
-        contentType: 'audio/wav',
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error('Failed to upload compressed audio:', uploadError);
-      throw uploadError;
-    }
-
-    const { data: { publicUrl: compressedUrl } } = supabase.storage
-      .from('voice-recordings')
-      .getPublicUrl(compressedPath);
-
-    // Update recording with compressed URL and SNR
+    const snrDb = snrSamples.length > 0 ? calculateSNR(new Int16Array(snrSamples)) : null;
     const qualityStatus = snrDb !== null ? (snrDb >= 20 ? 'passed' : 'failed') : 'error';
     
+    console.log(`Processing complete: ${uploadedChunks.length} chunks, SNR=${snrDb}dB`);
+
+    // Update recording with first chunk URL and SNR
     const { error: updateError } = await supabase
       .from('voice_recordings')
       .update({
-        mp3_file_url: compressedUrl,
+        mp3_file_url: uploadedChunks[0]?.url || null,
         snr_db: snrDb,
-        quality_status: qualityStatus
+        quality_status: qualityStatus,
+        status: 'completed'
       })
       .eq('id', recording_id);
 
@@ -434,51 +310,84 @@ serve(async (req) => {
       throw updateError;
     }
 
-    console.log(`Audio processed: SNR=${snrDb}dB, compressed=${(finalSize/1024/1024).toFixed(2)}MB`);
-
-    // Trigger transcription with compressed URL using waitUntil for background processing
-    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
-    
-    const triggerTranscription = async () => {
+    // Background: Transcribe all chunks and combine
+    const transcribeChunks = async () => {
       try {
-        const res = await fetch(transcribeUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          },
-          body: JSON.stringify({
-            recording_id,
-            audio_url: compressedUrl,
-            language: null // Auto-detect
-          })
-        });
-        console.log(`Transcription triggered, status: ${res.status}`);
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error(`Transcription error response: ${errText.substring(0, 500)}`);
+        const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+        const transcriptions: string[] = [];
+        let detectedLanguage: string | null = null;
+
+        await supabase.from('voice_recordings')
+          .update({ transcription_status: 'processing' })
+          .eq('id', recording_id);
+
+        for (const chunk of uploadedChunks) {
+          console.log(`Transcribing chunk ${chunk.index}...`);
+          
+          const chunkRes: Response = await fetch(transcribeUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
+            body: JSON.stringify({
+              recording_id: `${recording_id}_chunk_${chunk.index}`, // Fake ID to prevent DB update
+              audio_url: chunk.url,
+              language: detectedLanguage // Use detected language for subsequent chunks
+            })
+          });
+
+          if (chunkRes.ok) {
+            const chunkData: { transcription?: string; detected_language?: string } = await chunkRes.json();
+            if (chunkData.transcription) {
+              transcriptions.push(chunkData.transcription);
+            }
+            if (!detectedLanguage && chunkData.detected_language) {
+              detectedLanguage = chunkData.detected_language;
+            }
+            console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
+          } else {
+            console.error(`Chunk ${chunk.index} transcription failed:`, await chunkRes.text());
+          }
         }
+
+        // Combine transcriptions
+        const fullTranscription = transcriptions.join('\n\n');
+        
+        const updateData: Record<string, unknown> = {
+          transcription: fullTranscription,
+          transcription_status: fullTranscription ? 'completed' : 'failed'
+        };
+        if (detectedLanguage) {
+          updateData.language = detectedLanguage.toLowerCase();
+        }
+
+        await supabase.from('voice_recordings')
+          .update(updateData)
+          .eq('id', recording_id);
+
+        console.log(`Full transcription saved: ${fullTranscription.length} chars from ${transcriptions.length} chunks`);
       } catch (err) {
-        console.error('Failed to trigger transcription:', err);
+        console.error('Transcription error:', err);
+        await supabase.from('voice_recordings')
+          .update({ transcription_status: 'failed' })
+          .eq('id', recording_id);
       }
     };
 
-    // Use EdgeRuntime.waitUntil to ensure the transcription call completes
-    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(triggerTranscription());
+      EdgeRuntime.waitUntil(transcribeChunks());
     } else {
-      // Fallback: await the call directly (blocks response but ensures it runs)
-      await triggerTranscription();
+      await transcribeChunks();
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         recording_id,
-        compressed_url: compressedUrl,
-        compressed_size: finalSize,
+        chunks: uploadedChunks.length,
         snr_db: snrDb,
         quality_status: qualityStatus
       }),
