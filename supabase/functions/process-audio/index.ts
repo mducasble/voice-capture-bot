@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-// @ts-ignore - lamejs works in Deno via esm.sh
-import lamejs from "https://esm.sh/lamejs@1.2.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,35 +82,46 @@ function calculateSNR(samples: Int16Array): number {
   return Math.round(20 * Math.log10(signalRMS / noiseFloor) * 10) / 10;
 }
 
-// Encode PCM samples to MP3
-function encodeToMp3(samples: Int16Array, sampleRate: number): Uint8Array {
-  const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, MP3_BITRATE);
-  const mp3Data: Uint8Array[] = [];
+// Simple PCM to MP3 - skip MP3 encoding, just upload WAV chunks (simpler and more reliable)
+// The transcription API handles both formats
+async function createWavChunk(samples: Int16Array, sampleRate: number): Promise<Uint8Array> {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = samples.length * bytesPerSample;
+  const headerSize = 44;
   
-  const blockSize = 1152;
-  for (let i = 0; i < samples.length; i += blockSize) {
-    const chunk = samples.subarray(i, Math.min(i + blockSize, samples.length));
-    const mp3buf = mp3encoder.encodeBuffer(chunk);
-    if (mp3buf.length > 0) {
-      mp3Data.push(new Uint8Array(mp3buf));
-    }
+  const buffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  
+  // RIFF header
+  bytes.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
+  view.setUint32(4, 36 + dataSize, true);
+  bytes.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+  
+  // fmt subchunk
+  bytes.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+  view.setUint32(16, 16, true); // Subchunk1Size
+  view.setUint16(20, 1, true); // AudioFormat (PCM)
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  
+  // data subchunk
+  bytes.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+  view.setUint32(40, dataSize, true);
+  
+  // Write samples
+  for (let i = 0; i < samples.length; i++) {
+    view.setInt16(headerSize + i * 2, samples[i], true);
   }
   
-  const end = mp3encoder.flush();
-  if (end.length > 0) {
-    mp3Data.push(new Uint8Array(end));
-  }
-  
-  // Combine all MP3 data
-  const totalLength = mp3Data.reduce((sum, arr) => sum + arr.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of mp3Data) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  
-  return result;
+  return bytes;
 }
 
 serve(async (req) => {
@@ -187,16 +196,16 @@ serve(async (req) => {
       console.log(`Encoding chunk ${chunkIndex} with ${chunkSamples.length} samples`);
       
       const samples = new Int16Array(chunkSamples);
-      const mp3Data = encodeToMp3(samples, TARGET_SAMPLE_RATE);
+      const wavData = await createWavChunk(samples, TARGET_SAMPLE_RATE);
       
-      console.log(`Chunk ${chunkIndex}: ${samples.length} samples -> ${(mp3Data.length / 1024).toFixed(1)} KB MP3`);
+      console.log(`Chunk ${chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV`);
       
-      const chunkPath = `chunks/${recording_id}_${timestamp}_chunk${String(chunkIndex).padStart(3, '0')}.mp3`;
+      const chunkPath = `chunks/${recording_id}_${timestamp}_chunk${String(chunkIndex).padStart(3, '0')}.wav`;
       
       const { error: uploadError } = await supabase.storage
         .from('voice-recordings')
-        .upload(chunkPath, mp3Data, {
-          contentType: 'audio/mpeg',
+        .upload(chunkPath, wavData, {
+          contentType: 'audio/wav',
           upsert: true
         });
       
