@@ -221,7 +221,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleElevenLabsTranscribe}
-                  disabled={elevenLabsTranscription.isPending || recording.transcription_status === 'processing'}
+                  disabled={elevenLabsTranscription.isPending}
                   className="text-purple-500 hover:text-purple-500 hover:bg-purple-500/10"
                   title="Transcrever com ElevenLabs"
                 >
