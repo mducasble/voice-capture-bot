@@ -255,7 +255,7 @@ serve(async (req) => {
     const targetSampleRate = 16000;
     const compressedChunks: Uint8Array[] = [];
     let totalCompressedBytes = 0;
-    const maxCompressedSize = 45 * 1024 * 1024; // 45MB limit
+    const maxCompressedSize = 24 * 1024 * 1024; // 24MB limit (Gemini accepts up to ~25MB)
     
     // Restore the first chunk to the stream
     const firstChunk = headerChunk.value;
@@ -436,25 +436,42 @@ serve(async (req) => {
 
     console.log(`Audio processed: SNR=${snrDb}dB, compressed=${(finalSize/1024/1024).toFixed(2)}MB`);
 
-    // Trigger transcription with compressed URL
+    // Trigger transcription with compressed URL using waitUntil for background processing
     const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
     
-    fetch(transcribeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      },
-      body: JSON.stringify({
-        recording_id,
-        audio_url: compressedUrl,
-        language: null // Auto-detect
-      })
-    }).then(res => {
-      console.log(`Transcription triggered, status: ${res.status}`);
-    }).catch(err => {
-      console.error('Failed to trigger transcription:', err);
-    });
+    const triggerTranscription = async () => {
+      try {
+        const res = await fetch(transcribeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            recording_id,
+            audio_url: compressedUrl,
+            language: null // Auto-detect
+          })
+        });
+        console.log(`Transcription triggered, status: ${res.status}`);
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error(`Transcription error response: ${errText.substring(0, 500)}`);
+        }
+      } catch (err) {
+        console.error('Failed to trigger transcription:', err);
+      }
+    };
+
+    // Use EdgeRuntime.waitUntil to ensure the transcription call completes
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(triggerTranscription());
+    } else {
+      // Fallback: await the call directly (blocks response but ensures it runs)
+      await triggerTranscription();
+    }
 
     return new Response(
       JSON.stringify({
