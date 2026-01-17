@@ -102,12 +102,15 @@ serve(async (req) => {
 
     let chunkState: ChunkState | null = currentRow?.elevenlabs_chunk_state as ChunkState | null;
 
-    // Check for lock - if another invocation is processing, abort
+    // Check for lock - if another invocation is processing, skip gracefully (2xx so invoke() doesn't throw)
     if (chunkState?.lockedAt) {
       const lockAge = Date.now() - new Date(chunkState.lockedAt).getTime();
       if (lockAge < LOCK_TIMEOUT_MS) {
         console.log(`Recording ${recording_id} is locked (age: ${Math.round(lockAge / 1000)}s). Skipping.`);
-        return json({ success: false, error: "Already processing", lockedFor: Math.round(lockAge / 1000) }, 409);
+        return json(
+          { success: true, skipped: true, reason: "Already processing", lockedFor: Math.round(lockAge / 1000) },
+          200
+        );
       }
       console.log(`Lock expired for ${recording_id} (age: ${Math.round(lockAge / 1000)}s). Resuming.`);
     }
@@ -180,11 +183,12 @@ serve(async (req) => {
       return json({ success: true, recording_id, mode: "chunks", done: true });
     }
 
-    // Update state with new progress (keep lock active with fresh timestamp)
+    // Update state with new progress and RELEASE lock (continuation will re-acquire).
+    // Keeping the lock here causes the self-scheduled continuation to immediately hit "locked" and stall.
     const nextState: ChunkState = {
       chunkNames: chunkState.chunkNames,
       nextIndex: end,
-      lockedAt: new Date().toISOString(), // Refresh lock
+      lockedAt: "", // release
     };
 
     await supabase
