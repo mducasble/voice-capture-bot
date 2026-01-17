@@ -9,14 +9,14 @@ const corsHeaders = {
 // ElevenLabs Scribe v2 limits (practical): keep uploads small to avoid edge runtime memory limits.
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
 const CHUNKS_PER_INVOCATION = 3;
+const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes - if locked longer, allow retry
 
 type Mode = "chunks" | "full";
 
 type ChunkState = {
-  recording_id: string;
-  mode: "chunks";
   chunkNames: string[];
   nextIndex: number;
+  lockedAt: string; // ISO timestamp
 };
 
 serve(async (req) => {
@@ -93,12 +93,40 @@ serve(async (req) => {
     }
 
     // mode === 'chunks'
-    const chunkState = state ?? (await buildInitialChunkState(supabase, recording_id));
+    // Load current state from database (idempotent)
+    const { data: currentRow } = await supabase
+      .from("voice_recordings")
+      .select("transcription_elevenlabs, elevenlabs_chunk_state")
+      .eq("id", recording_id)
+      .single();
 
-    // Mark processing (idempotent)
+    let chunkState: ChunkState | null = currentRow?.elevenlabs_chunk_state as ChunkState | null;
+
+    // Check for lock - if another invocation is processing, abort
+    if (chunkState?.lockedAt) {
+      const lockAge = Date.now() - new Date(chunkState.lockedAt).getTime();
+      if (lockAge < LOCK_TIMEOUT_MS) {
+        console.log(`Recording ${recording_id} is locked (age: ${Math.round(lockAge / 1000)}s). Skipping.`);
+        return json({ success: false, error: "Already processing", lockedFor: Math.round(lockAge / 1000) }, 409);
+      }
+      console.log(`Lock expired for ${recording_id} (age: ${Math.round(lockAge / 1000)}s). Resuming.`);
+    }
+
+    // Build initial state if not present
+    if (!chunkState || !chunkState.chunkNames?.length) {
+      chunkState = await buildInitialChunkState(supabase, recording_id);
+    }
+
+    // Acquire lock and update state in DB
+    const now = new Date().toISOString();
+    chunkState = { ...chunkState, lockedAt: now };
+
     await supabase
       .from("voice_recordings")
-      .update({ transcription_elevenlabs_status: "processing" })
+      .update({
+        transcription_elevenlabs_status: "processing",
+        elevenlabs_chunk_state: chunkState,
+      })
       .eq("id", recording_id);
 
     console.log(
@@ -107,13 +135,6 @@ serve(async (req) => {
 
     const start = chunkState.nextIndex;
     const end = Math.min(start + CHUNKS_PER_INVOCATION, chunkState.chunkNames.length);
-
-    // Load existing partial transcription from DB to keep state small.
-    const { data: currentRow } = await supabase
-      .from("voice_recordings")
-      .select("transcription_elevenlabs")
-      .eq("id", recording_id)
-      .single();
 
     const newParts: string[] = [];
     const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
@@ -143,16 +164,15 @@ serve(async (req) => {
     // Join new parts with space (continuous text), then append to existing
     const newText = newParts.join(" ");
     const merged = existing.trim() ? `${existing.trim()} ${newText}` : newText;
-    await supabase
-      .from("voice_recordings")
-      .update({ transcription_elevenlabs: merged })
-      .eq("id", recording_id);
 
     if (end >= chunkState.chunkNames.length) {
+      // Completed - clear state and release lock
       await supabase
         .from("voice_recordings")
         .update({
+          transcription_elevenlabs: merged,
           transcription_elevenlabs_status: merged.trim() ? "completed" : "failed",
+          elevenlabs_chunk_state: null, // Clear state on completion
         })
         .eq("id", recording_id);
 
@@ -160,11 +180,24 @@ serve(async (req) => {
       return json({ success: true, recording_id, mode: "chunks", done: true });
     }
 
-    const nextState: ChunkState = { ...chunkState, nextIndex: end };
+    // Update state with new progress (keep lock active with fresh timestamp)
+    const nextState: ChunkState = {
+      chunkNames: chunkState.chunkNames,
+      nextIndex: end,
+      lockedAt: new Date().toISOString(), // Refresh lock
+    };
+
+    await supabase
+      .from("voice_recordings")
+      .update({
+        transcription_elevenlabs: merged,
+        elevenlabs_chunk_state: nextState,
+      })
+      .eq("id", recording_id);
 
     // Schedule continuation reliably
     const invokePromise = supabase.functions.invoke("transcribe-elevenlabs", {
-      body: { recording_id, mode: "chunks", state: nextState },
+      body: { recording_id, mode: "chunks" },
     });
 
     // @ts-ignore EdgeRuntime available
@@ -235,7 +268,7 @@ async function buildInitialChunkState(supabase: any, recording_id: string): Prom
     throw new Error("No chunks found for this recording. Use mode=full (only works for small files).");
   }
 
-  return { recording_id, mode: "chunks", chunkNames, nextIndex: 0 };
+  return { chunkNames, nextIndex: 0, lockedAt: "" };
 }
 
 async function safeFetchBlob(url: string, maxBytes: number): Promise<Blob> {

@@ -135,6 +135,7 @@ export type Database = {
           discord_user_id: string
           discord_username: string | null
           duration_seconds: number | null
+          elevenlabs_chunk_state: Json | null
           file_size_bytes: number | null
           file_url: string | null
           filename: string
@@ -166,6 +167,7 @@ export type Database = {
           discord_user_id: string
           discord_username?: string | null
           duration_seconds?: number | null
+          elevenlabs_chunk_state?: Json | null
           file_size_bytes?: number | null
           file_url?: string | null
           filename: string
@@ -197,6 +199,7 @@ export type Database = {
           discord_user_id?: string
           discord_username?: string | null
           duration_seconds?: number | null
+          elevenlabs_chunk_state?: Json | null
           file_size_bytes?: number | null
           file_url?: string | null
           filename?: string
