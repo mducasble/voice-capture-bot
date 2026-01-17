@@ -115,9 +115,8 @@ serve(async (req) => {
       .eq("id", recording_id)
       .single();
 
-    const parts: string[] = [];
+    const newParts: string[] = [];
     const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
-    if (existing.trim()) parts.push(existing.trim());
 
     for (let i = start; i < end; i++) {
       const name = chunkState.chunkNames[i];
@@ -134,14 +133,16 @@ serve(async (req) => {
           apiKey: ELEVENLABS_API_KEY,
           language: recording.language ?? undefined,
         });
-        if (t?.trim()) parts.push(t.trim());
+        if (t?.trim()) newParts.push(t.trim());
       } catch (e) {
         console.error(`Chunk failed: ${name}`, e);
-        parts.push(`[chunk ${i}] (falhou)`);
+        newParts.push(`[chunk ${i}] (falhou)`);
       }
     }
 
-    const merged = parts.join("\n\n");
+    // Join new parts with space (continuous text), then append to existing
+    const newText = newParts.join(" ");
+    const merged = existing.trim() ? `${existing.trim()} ${newText}` : newText;
     await supabase
       .from("voice_recordings")
       .update({ transcription_elevenlabs: merged })
