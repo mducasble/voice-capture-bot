@@ -2,11 +2,12 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
 import { useReprocessRecording } from "@/hooks/useReprocessRecording";
+import { useElevenLabsTranscription } from "@/hooks/useElevenLabsTranscription";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
+  const elevenLabsTranscription = useElevenLabsTranscription();
 
   const handleDelete = () => {
     deleteRecording.mutate(recording.id);
@@ -36,6 +38,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const handleReprocess = () => {
     reprocessRecording.mutate(recording.id);
+  };
+
+  const handleElevenLabsTranscribe = () => {
+    elevenLabsTranscription.mutate(recording.id);
   };
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
@@ -210,6 +216,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
+                {/* ElevenLabs Transcription button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleElevenLabsTranscribe}
+                  disabled={elevenLabsTranscription.isPending || recording.transcription_status === 'processing'}
+                  className="text-purple-500 hover:text-purple-500 hover:bg-purple-500/10"
+                  title="Transcrever com ElevenLabs"
+                >
+                  {elevenLabsTranscription.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <AudioLines className="h-4 w-4" />
+                  )}
+                </Button>
                 {/* Reprocess button - always available */}
                 <Button
                   variant="ghost"
@@ -217,7 +238,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   onClick={handleReprocess}
                   disabled={reprocessRecording.isPending || recording.status === 'processing'}
                   className="text-primary hover:text-primary hover:bg-primary/10"
-                  title="Reprocessar áudio"
+                  title="Reprocessar áudio (Gemini)"
                 >
                   {reprocessRecording.isPending || recording.status === 'processing' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
