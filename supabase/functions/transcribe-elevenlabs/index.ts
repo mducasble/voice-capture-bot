@@ -62,26 +62,45 @@ serve(async (req) => {
     let fullTranscription = '';
 
     if (mode === 'full') {
-      // Mode: Send full WAV file
-      const audioUrl = recording.file_url;
+      // Mode: Send full file - prefer MP3 (much smaller than WAV)
+      const audioUrl = recording.mp3_file_url || recording.file_url;
       if (!audioUrl) {
-        throw new Error('No WAV file available');
+        throw new Error('No audio file available');
       }
 
-      console.log(`Downloading full WAV: ${audioUrl}`);
+      // Check file size with HEAD request first
+      console.log(`Checking file size: ${audioUrl}`);
+      const headResp = await fetch(audioUrl, { method: 'HEAD' });
+      const contentLength = parseInt(headResp.headers.get('content-length') || '0');
+      console.log(`File size: ${(contentLength / 1024 / 1024).toFixed(2)}MB`);
+
+      if (contentLength > MAX_FILE_SIZE) {
+        throw new Error(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB). Max is 25MB. Try 'chunks' mode instead.`);
+      }
+
+      // Limit memory usage - max 50MB for edge function
+      const MAX_MEMORY_SIZE = 50 * 1024 * 1024;
+      if (contentLength > MAX_MEMORY_SIZE) {
+        throw new Error(`File too large for memory (${(contentLength / 1024 / 1024).toFixed(1)}MB). Use 'chunks' mode instead.`);
+      }
+
+      console.log(`Downloading: ${audioUrl}`);
       const audioResp = await fetch(audioUrl);
       if (!audioResp.ok) {
         throw new Error('Failed to download audio');
       }
 
       const audioBlob = await audioResp.blob();
-      console.log(`Full WAV size: ${audioBlob.size} bytes`);
+      console.log(`Downloaded: ${audioBlob.size} bytes`);
 
-      if (audioBlob.size > MAX_FILE_SIZE) {
-        throw new Error(`File too large (${(audioBlob.size / 1024 / 1024).toFixed(1)}MB). Max is 25MB.`);
-      }
-
-      fullTranscription = await transcribeWithElevenLabs(audioBlob, 'audio.wav', 'audio/wav', ELEVENLABS_API_KEY, recording.language);
+      const isMP3 = audioUrl.includes('.mp3');
+      fullTranscription = await transcribeWithElevenLabs(
+        audioBlob, 
+        isMP3 ? 'audio.mp3' : 'audio.wav', 
+        isMP3 ? 'audio/mpeg' : 'audio/wav', 
+        ELEVENLABS_API_KEY, 
+        recording.language
+      );
     } else {
       // Mode: Process all chunks
       const { data: files, error: listError } = await supabase.storage
