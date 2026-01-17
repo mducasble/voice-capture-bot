@@ -10,7 +10,7 @@ const corsHeaders = {
 const TARGET_SAMPLE_RATE = 16000;
 const CHUNK_DURATION_SECONDS = 300; // 5 minutes per chunk
 const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
-const MP3_BITRATE = 64; // kbps - good for speech
+const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
 
 // Parse WAV header to get audio info
 function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
@@ -82,9 +82,8 @@ function calculateSNR(samples: Int16Array): number {
   return Math.round(20 * Math.log10(signalRMS / noiseFloor) * 10) / 10;
 }
 
-// Simple PCM to MP3 - skip MP3 encoding, just upload WAV chunks (simpler and more reliable)
-// The transcription API handles both formats
-async function createWavChunk(samples: Int16Array, sampleRate: number): Promise<Uint8Array> {
+// Create WAV chunk from samples
+function createWavChunk(samples: Int16Array, sampleRate: number): Uint8Array {
   const numChannels = 1;
   const bitsPerSample = 16;
   const bytesPerSample = bitsPerSample / 8;
@@ -104,8 +103,8 @@ async function createWavChunk(samples: Int16Array, sampleRate: number): Promise<
   
   // fmt subchunk
   bytes.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
-  view.setUint32(16, 16, true); // Subchunk1Size
-  view.setUint16(20, 1, true); // AudioFormat (PCM)
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
@@ -124,6 +123,26 @@ async function createWavChunk(samples: Int16Array, sampleRate: number): Promise<
   return bytes;
 }
 
+interface ProcessingState {
+  recording_id: string;
+  audio_url: string;
+  timestamp: string;
+  header: {
+    sampleRate: number;
+    channels: number;
+    bitsPerSample: number;
+    dataOffset: number;
+    dataSize: number;
+  };
+  bytesProcessed: number;
+  srcIdx: number;
+  outputSampleIdx: number;
+  chunkIndex: number;
+  uploadedChunks: { url: string; index: number }[];
+  snrDb: number | null;
+  snrSamples: number[];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -135,273 +154,182 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { recording_id, audio_url } = await req.json();
+    const body = await req.json();
+    
+    // Check if this is a continuation or new processing
+    let state: ProcessingState;
+    const startTime = Date.now();
+    
+    if (body.state) {
+      // Continuation from previous invocation
+      state = body.state;
+      console.log(`Resuming processing for ${state.recording_id} at chunk ${state.chunkIndex}`);
+    } else {
+      // New processing request
+      const { recording_id, audio_url } = body;
 
-    if (!recording_id || !audio_url) {
-      return new Response(
-        JSON.stringify({ error: 'Missing recording_id or audio_url' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (!recording_id || !audio_url) {
+        return new Response(
+          JSON.stringify({ error: 'Missing recording_id or audio_url' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Starting new processing for recording ${recording_id}`);
+
+      // Update status to processing
+      await supabase.from('voice_recordings').update({ status: 'processing' }).eq('id', recording_id);
+
+      // Fetch just the header first
+      const headerResponse = await fetch(audio_url, {
+        headers: { 'Range': 'bytes=0-1023' }
+      });
+      
+      if (!headerResponse.ok) {
+        throw new Error(`Failed to fetch audio header: ${headerResponse.status}`);
+      }
+
+      const headerBytes = new Uint8Array(await headerResponse.arrayBuffer());
+      const header = parseWavHeader(headerBytes);
+      
+      if (!header) {
+        throw new Error('Invalid WAV file');
+      }
+
+      console.log(`Audio: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit, data at ${header.dataOffset}, size ${header.dataSize}`);
+
+      state = {
+        recording_id,
+        audio_url,
+        timestamp: new Date().toISOString().replace(/[:.]/g, '-'),
+        header,
+        bytesProcessed: 0,
+        srcIdx: 0,
+        outputSampleIdx: 0,
+        chunkIndex: 0,
+        uploadedChunks: [],
+        snrDb: null,
+        snrSamples: []
+      };
     }
 
-    console.log(`Processing audio for recording ${recording_id}`);
-
-    // Update status to processing
-    await supabase.from('voice_recordings').update({ status: 'processing' }).eq('id', recording_id);
-
-    // Fetch audio with streaming
-    const audioResponse = await fetch(audio_url);
-    if (!audioResponse.ok || !audioResponse.body) {
-      throw new Error(`Failed to fetch audio: ${audioResponse.status}`);
-    }
-
-    const reader = audioResponse.body.getReader();
-    const headerChunk = await reader.read();
-    if (!headerChunk.value) {
-      throw new Error('Empty audio file');
-    }
-
-    const header = parseWavHeader(headerChunk.value);
-    if (!header) {
-      throw new Error('Invalid WAV file');
-    }
-
-    console.log(`Audio: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit`);
-
-    // Process audio: stream, downsample, chunk, encode to MP3
+    const { header } = state;
     const ratio = header.sampleRate / TARGET_SAMPLE_RATE;
     const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
+    const snrSampleTarget = TARGET_SAMPLE_RATE * 5; // 5 seconds for SNR
+
+    // Calculate how much data to fetch this iteration
+    // Fetch ~30 seconds of source audio at a time
+    const bytesPerSecondSource = header.sampleRate * bytesPerFrame;
+    const bytesToFetch = bytesPerSecondSource * 30;
     
-    let bytesToSkip = header.dataOffset;
-    let partialFrame = new Uint8Array(0);
-    let srcIdx = 0;
-    let outputSampleIdx = 0;
-    
-    // Current chunk samples
-    let chunkSamples: number[] = [];
-    let chunkIndex = 0;
-    const uploadedChunks: { url: string; index: number }[] = [];
-    
-    // SNR calculation from first 5 seconds
-    const snrSamples: number[] = [];
-    const snrSampleTarget = TARGET_SAMPLE_RATE * 5;
-    
-    let currentValue = headerChunk.value;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-    // Helper to finalize and upload a chunk
-    const finalizeChunk = async () => {
-      if (chunkSamples.length === 0) return;
-      
-      console.log(`Encoding chunk ${chunkIndex} with ${chunkSamples.length} samples`);
-      
-      const samples = new Int16Array(chunkSamples);
-      const wavData = await createWavChunk(samples, TARGET_SAMPLE_RATE);
-      
-      console.log(`Chunk ${chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV`);
-      
-      const chunkPath = `chunks/${recording_id}_${timestamp}_chunk${String(chunkIndex).padStart(3, '0')}.wav`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('voice-recordings')
-        .upload(chunkPath, wavData, {
-          contentType: 'audio/wav',
-          upsert: true
-        });
-      
-      if (uploadError) {
-        console.error(`Failed to upload chunk ${chunkIndex}:`, uploadError);
-        throw uploadError;
-      }
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('voice-recordings')
-        .getPublicUrl(chunkPath);
-      
-      uploadedChunks.push({ url: publicUrl, index: chunkIndex });
-      console.log(`Uploaded chunk ${chunkIndex}: ${publicUrl}`);
-      
-      chunkSamples = [];
-      chunkIndex++;
-    };
-
-    // Stream and process audio
-    while (true) {
-      let chunkStart = 0;
-      
-      // Skip WAV header bytes
-      if (bytesToSkip > 0) {
-        if (currentValue.length <= bytesToSkip) {
-          bytesToSkip -= currentValue.length;
-          const nextRead = await reader.read();
-          if (nextRead.done) break;
-          currentValue = nextRead.value!;
-          continue;
-        }
-        chunkStart = bytesToSkip;
-        bytesToSkip = 0;
-      }
-
-      // Combine with partial frame from previous iteration
-      let dataToProcess: Uint8Array;
-      if (partialFrame.length > 0) {
-        dataToProcess = new Uint8Array(partialFrame.length + currentValue.length - chunkStart);
-        dataToProcess.set(partialFrame);
-        dataToProcess.set(currentValue.subarray(chunkStart), partialFrame.length);
-      } else {
-        dataToProcess = currentValue.subarray(chunkStart);
-      }
-
-      // Process complete frames
-      const view = new DataView(dataToProcess.buffer, dataToProcess.byteOffset, dataToProcess.byteLength);
-      let frameOffset = 0;
-
-      while (frameOffset + bytesPerFrame <= dataToProcess.length) {
-        const targetOutputIdx = Math.floor(srcIdx / ratio);
-
-        if (targetOutputIdx > outputSampleIdx) {
-          // Mix channels to mono
-          let sample = 0;
-          for (let ch = 0; ch < header.channels; ch++) {
-            sample += view.getInt16(frameOffset + ch * 2, true);
-          }
-          const monoSample = Math.round(sample / header.channels);
-          
-          chunkSamples.push(monoSample);
-          outputSampleIdx++;
-
-          // Collect SNR samples
-          if (snrSamples.length < snrSampleTarget) {
-            snrSamples.push(monoSample);
-          }
-
-          // Check if chunk is complete
-          if (chunkSamples.length >= SAMPLES_PER_CHUNK) {
-            await finalizeChunk();
-          }
-        }
-
-        srcIdx++;
-        frameOffset += bytesPerFrame;
-      }
-
-      // Save partial frame for next iteration
-      partialFrame = new Uint8Array(dataToProcess.subarray(frameOffset));
-
-      // Read next chunk from stream
-      const nextRead = await reader.read();
-      if (nextRead.done) break;
-      currentValue = nextRead.value!;
-    }
-
-    // Finalize last chunk
-    await finalizeChunk();
-
-    // Calculate SNR
-    const snrDb = snrSamples.length > 0 ? calculateSNR(new Int16Array(snrSamples)) : null;
-    const qualityStatus = snrDb !== null ? (snrDb >= 20 ? 'passed' : 'failed') : 'error';
-    
-    console.log(`Processing complete: ${uploadedChunks.length} chunks, SNR=${snrDb}dB`);
-
-    // Update recording with first chunk URL and SNR
-    const { error: updateError } = await supabase
-      .from('voice_recordings')
-      .update({
-        mp3_file_url: uploadedChunks[0]?.url || null,
-        snr_db: snrDb,
-        quality_status: qualityStatus,
-        status: 'completed'
-      })
-      .eq('id', recording_id);
-
-    if (updateError) {
-      console.error('Failed to update recording:', updateError);
-      throw updateError;
-    }
-
-    // Background: Transcribe all chunks and combine
-    const transcribeChunks = async () => {
-      try {
-        const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
-        const transcriptions: string[] = [];
-        let detectedLanguage: string | null = null;
-
-        await supabase.from('voice_recordings')
-          .update({ transcription_status: 'processing' })
-          .eq('id', recording_id);
-
-        for (const chunk of uploadedChunks) {
-          console.log(`Transcribing chunk ${chunk.index}...`);
-          
-          const chunkRes: Response = await fetch(transcribeUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            },
-            body: JSON.stringify({
-              recording_id: `${recording_id}_chunk_${chunk.index}`, // Fake ID to prevent DB update
-              audio_url: chunk.url,
-              language: detectedLanguage // Use detected language for subsequent chunks
-            })
-          });
-
-          if (chunkRes.ok) {
-            const chunkData: { transcription?: string; detected_language?: string } = await chunkRes.json();
-            if (chunkData.transcription) {
-              transcriptions.push(chunkData.transcription);
-            }
-            if (!detectedLanguage && chunkData.detected_language) {
-              detectedLanguage = chunkData.detected_language;
-            }
-            console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
-          } else {
-            console.error(`Chunk ${chunk.index} transcription failed:`, await chunkRes.text());
-          }
-        }
-
-        // Combine transcriptions
-        const fullTranscription = transcriptions.join('\n\n');
-        
-        const updateData: Record<string, unknown> = {
-          transcription: fullTranscription,
-          transcription_status: fullTranscription ? 'completed' : 'failed'
-        };
-        if (detectedLanguage) {
-          updateData.language = detectedLanguage.toLowerCase();
-        }
-
-        await supabase.from('voice_recordings')
-          .update(updateData)
-          .eq('id', recording_id);
-
-        console.log(`Full transcription saved: ${fullTranscription.length} chars from ${transcriptions.length} chunks`);
-      } catch (err) {
-        console.error('Transcription error:', err);
-        await supabase.from('voice_recordings')
-          .update({ transcription_status: 'failed' })
-          .eq('id', recording_id);
-      }
-    };
-
-    // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(transcribeChunks());
-    } else {
-      await transcribeChunks();
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        recording_id,
-        chunks: uploadedChunks.length,
-        snr_db: snrDb,
-        quality_status: qualityStatus
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const rangeStart = header.dataOffset + state.bytesProcessed;
+    const rangeEnd = Math.min(
+      rangeStart + bytesToFetch - 1,
+      header.dataOffset + header.dataSize - 1
     );
+
+    if (rangeStart > header.dataOffset + header.dataSize) {
+      // All data processed, finalize
+      return await finalizeProcessing(supabase, state);
+    }
+
+    console.log(`Fetching bytes ${rangeStart}-${rangeEnd}`);
+    
+    const audioResponse = await fetch(state.audio_url, {
+      headers: { 'Range': `bytes=${rangeStart}-${rangeEnd}` }
+    });
+
+    if (!audioResponse.ok && audioResponse.status !== 206) {
+      throw new Error(`Failed to fetch audio chunk: ${audioResponse.status}`);
+    }
+
+    const audioData = new Uint8Array(await audioResponse.arrayBuffer());
+    console.log(`Fetched ${audioData.length} bytes`);
+
+    // Process audio data
+    const view = new DataView(audioData.buffer, audioData.byteOffset, audioData.byteLength);
+    let frameOffset = 0;
+    let chunkSamples: number[] = [];
+
+    while (frameOffset + bytesPerFrame <= audioData.length) {
+      // Check if we're running out of time
+      if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
+        console.log(`Time limit approaching, saving state after ${state.chunkIndex} chunks`);
+        
+        // Save partial chunk samples for next iteration
+        state.bytesProcessed += frameOffset;
+        
+        // Schedule continuation
+        await scheduleContinuation(supabase, state);
+        
+        return new Response(
+          JSON.stringify({ 
+            status: 'processing', 
+            chunks_completed: state.uploadedChunks.length,
+            message: 'Continuing in next invocation'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const targetOutputIdx = Math.floor(state.srcIdx / ratio);
+
+      if (targetOutputIdx > state.outputSampleIdx) {
+        // Mix channels to mono
+        let sample = 0;
+        for (let ch = 0; ch < header.channels; ch++) {
+          sample += view.getInt16(frameOffset + ch * 2, true);
+        }
+        const monoSample = Math.round(sample / header.channels);
+        
+        chunkSamples.push(monoSample);
+        state.outputSampleIdx++;
+
+        // Collect SNR samples
+        if (state.snrSamples.length < snrSampleTarget) {
+          state.snrSamples.push(monoSample);
+        }
+
+        // Check if chunk is complete
+        if (chunkSamples.length >= SAMPLES_PER_CHUNK) {
+          await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+          chunkSamples = [];
+        }
+      }
+
+      state.srcIdx++;
+      frameOffset += bytesPerFrame;
+    }
+
+    // Update bytes processed
+    state.bytesProcessed += frameOffset;
+
+    // Check if we've processed all data
+    const isComplete = state.bytesProcessed >= header.dataSize;
+    
+    if (isComplete) {
+      // Upload final chunk if any samples remain
+      if (chunkSamples.length > 0) {
+        await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+      }
+      
+      return await finalizeProcessing(supabase, state);
+    } else {
+      // Need to continue processing
+      await scheduleContinuation(supabase, state);
+      
+      return new Response(
+        JSON.stringify({ 
+          status: 'processing', 
+          chunks_completed: state.uploadedChunks.length,
+          bytes_processed: state.bytesProcessed,
+          total_bytes: header.dataSize,
+          progress: Math.round(state.bytesProcessed / header.dataSize * 100)
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('Error processing audio:', error);
@@ -412,3 +340,169 @@ serve(async (req) => {
     );
   }
 });
+
+// deno-lint-ignore no-explicit-any
+async function uploadChunk(
+  supabase: any,
+  state: ProcessingState,
+  samples: Int16Array
+) {
+  console.log(`Encoding chunk ${state.chunkIndex} with ${samples.length} samples`);
+  
+  const wavData = createWavChunk(samples, TARGET_SAMPLE_RATE);
+  console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV`);
+  
+  const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.wav`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('voice-recordings')
+    .upload(chunkPath, wavData, {
+      contentType: 'audio/wav',
+      upsert: true
+    });
+  
+  if (uploadError) {
+    console.error(`Failed to upload chunk ${state.chunkIndex}:`, uploadError);
+    throw uploadError;
+  }
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('voice-recordings')
+    .getPublicUrl(chunkPath);
+  
+  state.uploadedChunks.push({ url: publicUrl, index: state.chunkIndex });
+  console.log(`Uploaded chunk ${state.chunkIndex}: ${publicUrl}`);
+  
+  state.chunkIndex++;
+}
+
+// deno-lint-ignore no-explicit-any
+async function scheduleContinuation(
+  _supabase: any,
+  state: ProcessingState
+) {
+  const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-audio`;
+  
+  console.log(`Scheduling continuation for chunk ${state.chunkIndex}`);
+  
+  // Fire and forget - don't await
+  fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({ state })
+  }).catch(err => console.error('Failed to schedule continuation:', err));
+}
+
+// deno-lint-ignore no-explicit-any
+async function finalizeProcessing(
+  supabase: any,
+  state: ProcessingState
+) {
+  // Calculate SNR
+  const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples)) : null;
+  const qualityStatus = snrDb !== null ? (snrDb >= 20 ? 'passed' : 'failed') : 'error';
+  
+  console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB`);
+
+  // Update recording with first chunk URL and SNR
+  const { error: updateError } = await supabase
+    .from('voice_recordings')
+    .update({
+      mp3_file_url: state.uploadedChunks[0]?.url || null,
+      snr_db: snrDb,
+      quality_status: qualityStatus,
+      status: 'completed'
+    })
+    .eq('id', state.recording_id);
+
+  if (updateError) {
+    console.error('Failed to update recording:', updateError);
+    throw updateError;
+  }
+
+  // Start transcription in background
+  transcribeAllChunks(supabase, state.recording_id, state.uploadedChunks);
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      recording_id: state.recording_id,
+      chunks: state.uploadedChunks.length,
+      snr_db: snrDb,
+      quality_status: qualityStatus
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// deno-lint-ignore no-explicit-any
+async function transcribeAllChunks(
+  supabase: any,
+  recording_id: string,
+  uploadedChunks: { url: string; index: number }[]
+) {
+  try {
+    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+    const transcriptions: string[] = [];
+    let detectedLanguage: string | null = null;
+
+    await supabase.from('voice_recordings')
+      .update({ transcription_status: 'processing' })
+      .eq('id', recording_id);
+
+    for (const chunk of uploadedChunks) {
+      console.log(`Transcribing chunk ${chunk.index}...`);
+      
+      const chunkRes = await fetch(transcribeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          recording_id: `${recording_id}_chunk_${chunk.index}`,
+          audio_url: chunk.url,
+          language: detectedLanguage
+        })
+      });
+
+      if (chunkRes.ok) {
+        const chunkData: { transcription?: string; detected_language?: string } = await chunkRes.json();
+        if (chunkData.transcription) {
+          transcriptions.push(chunkData.transcription);
+        }
+        if (!detectedLanguage && chunkData.detected_language) {
+          detectedLanguage = chunkData.detected_language;
+        }
+        console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
+      } else {
+        console.error(`Chunk ${chunk.index} transcription failed:`, await chunkRes.text());
+      }
+    }
+
+    // Combine transcriptions
+    const fullTranscription = transcriptions.join('\n\n');
+    
+    const updateData: Record<string, unknown> = {
+      transcription: fullTranscription,
+      transcription_status: fullTranscription ? 'completed' : 'failed'
+    };
+    if (detectedLanguage) {
+      updateData.language = detectedLanguage.toLowerCase();
+    }
+
+    await supabase.from('voice_recordings')
+      .update(updateData)
+      .eq('id', recording_id);
+
+    console.log(`Full transcription saved: ${fullTranscription.length} chars from ${transcriptions.length} chunks`);
+  } catch (err) {
+    console.error('Transcription error:', err);
+    await supabase.from('voice_recordings')
+      .update({ transcription_status: 'failed' })
+      .eq('id', recording_id);
+  }
+}
