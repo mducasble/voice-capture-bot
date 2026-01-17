@@ -56,7 +56,14 @@ export function useRecordings(guildId?: string, userId?: string) {
 
       return data as Recording[];
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: (query) => {
+      // Refetch every 5 seconds if any recording is processing
+      const data = query.state.data;
+      const hasProcessing = data?.some(
+        (r: Recording) => r.status === "processing" || r.transcription_status === "processing"
+      );
+      return hasProcessing ? 5000 : 30000;
+    },
   });
 }
 
