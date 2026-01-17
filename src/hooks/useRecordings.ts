@@ -23,6 +23,8 @@ interface Recording {
   quality_status: string | null;
   transcription: string | null;
   transcription_status: string | null;
+  transcription_elevenlabs: string | null;
+  transcription_elevenlabs_status: string | null;
   language: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -60,7 +62,7 @@ export function useRecordings(guildId?: string, userId?: string) {
       // Refetch every 5 seconds if any recording is processing
       const data = query.state.data;
       const hasProcessing = data?.some(
-        (r: Recording) => r.status === "processing" || r.transcription_status === "processing"
+        (r: Recording) => r.status === "processing" || r.transcription_status === "processing" || r.transcription_elevenlabs_status === "processing"
       );
       return hasProcessing ? 5000 : 30000;
     },
