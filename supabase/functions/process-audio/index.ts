@@ -255,7 +255,7 @@ serve(async (req) => {
     const targetSampleRate = 16000;
     const compressedChunks: Uint8Array[] = [];
     let totalCompressedBytes = 0;
-    const maxCompressedSize = 24 * 1024 * 1024; // 24MB limit (Gemini accepts up to ~25MB)
+    const maxCompressedSize = 5 * 1024 * 1024; // 5MB limit (~2.5 min at 16kHz mono) for transcription memory limits
     
     // Restore the first chunk to the stream
     const firstChunk = headerChunk.value;
