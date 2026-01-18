@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createMp3Encoder } from "https://esm.sh/wasm-media-encoders@0.7.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,10 +10,11 @@ const corsHeaders = {
 // Configuration
 const TARGET_SAMPLE_RATE = 16000;
 // Use small chunks so we never need to persist partial samples across invocations.
-// 30s at 16kHz mono 16-bit ~= 960KB (well under the 4MB transcription cap).
+// 30s at 16kHz mono = 480,000 samples. As MP3 at 64kbps ~= 240KB (vs 960KB WAV)
 const CHUNK_DURATION_SECONDS = 30;
 const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
 const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
+const MP3_BITRATE = 64; // 64kbps is sufficient for speech
 
 // Parse WAV header to get audio info
 function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
@@ -84,45 +86,32 @@ function calculateSNR(samples: Int16Array): number {
   return Math.round(20 * Math.log10(signalRMS / noiseFloor) * 10) / 10;
 }
 
-// Create WAV chunk from samples
-function createWavChunk(samples: Int16Array, sampleRate: number): Uint8Array {
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const bytesPerSample = bitsPerSample / 8;
-  const blockAlign = numChannels * bytesPerSample;
-  const byteRate = sampleRate * blockAlign;
-  const dataSize = samples.length * bytesPerSample;
-  const headerSize = 44;
+// Encode samples to MP3 using WASM encoder
+async function encodeToMp3(samples: Int16Array, sampleRate: number): Promise<Uint8Array> {
+  const encoder = await createMp3Encoder();
   
-  const buffer = new ArrayBuffer(headerSize + dataSize);
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
+  encoder.configure({
+    sampleRate: sampleRate,
+    channels: 1,
+    bitrate: MP3_BITRATE,
+  });
   
-  // RIFF header
-  bytes.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
-  view.setUint32(4, 36 + dataSize, true);
-  bytes.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
-  
-  // fmt subchunk
-  bytes.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  
-  // data subchunk
-  bytes.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
-  view.setUint32(40, dataSize, true);
-  
-  // Write samples
+  // Convert Int16Array to Float32Array (-1.0 to 1.0)
+  const floatSamples = new Float32Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
-    view.setInt16(headerSize + i * 2, samples[i], true);
+    floatSamples[i] = samples[i] / 32768.0;
   }
   
-  return bytes;
+  // Encode - pass as array of channels (mono = single channel)
+  const mp3Data = encoder.encode([floatSamples]);
+  const finalFrames = encoder.finalize();
+  
+  // Combine encoded data with final frames
+  const fullMp3 = new Uint8Array(mp3Data.length + finalFrames.length);
+  fullMp3.set(mp3Data);
+  fullMp3.set(finalFrames, mp3Data.length);
+  
+  return fullMp3;
 }
 
 interface ProcessingState {
@@ -355,33 +344,105 @@ async function uploadChunk(
   state: ProcessingState,
   samples: Int16Array
 ) {
-  console.log(`Encoding chunk ${state.chunkIndex} with ${samples.length} samples`);
+  console.log(`Encoding chunk ${state.chunkIndex} with ${samples.length} samples to MP3`);
   
-  const wavData = createWavChunk(samples, TARGET_SAMPLE_RATE);
-  console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV`);
-  
-  const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.wav`;
-  
-  const { error: uploadError } = await supabase.storage
-    .from('voice-recordings')
-    .upload(chunkPath, wavData, {
-      contentType: 'audio/wav',
-      upsert: true
-    });
-  
-  if (uploadError) {
-    console.error(`Failed to upload chunk ${state.chunkIndex}:`, uploadError);
-    throw uploadError;
+  try {
+    // Encode to MP3
+    const mp3Data = await encodeToMp3(samples, TARGET_SAMPLE_RATE);
+    console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(mp3Data.length / 1024).toFixed(1)} KB MP3`);
+    
+    const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.mp3`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('voice-recordings')
+      .upload(chunkPath, mp3Data, {
+        contentType: 'audio/mpeg',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error(`Failed to upload MP3 chunk ${state.chunkIndex}:`, uploadError);
+      throw uploadError;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('voice-recordings')
+      .getPublicUrl(chunkPath);
+    
+    state.uploadedChunks.push({ url: publicUrl, index: state.chunkIndex });
+    console.log(`Uploaded MP3 chunk ${state.chunkIndex}: ${publicUrl}`);
+    
+  } catch (encodeError) {
+    // Fallback to WAV if MP3 encoding fails
+    console.warn(`MP3 encoding failed for chunk ${state.chunkIndex}, falling back to WAV:`, encodeError);
+    
+    const wavData = createWavChunk(samples, TARGET_SAMPLE_RATE);
+    console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV (fallback)`);
+    
+    const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.wav`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('voice-recordings')
+      .upload(chunkPath, wavData, {
+        contentType: 'audio/wav',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error(`Failed to upload WAV chunk ${state.chunkIndex}:`, uploadError);
+      throw uploadError;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('voice-recordings')
+      .getPublicUrl(chunkPath);
+    
+    state.uploadedChunks.push({ url: publicUrl, index: state.chunkIndex });
+    console.log(`Uploaded WAV chunk ${state.chunkIndex} (fallback): ${publicUrl}`);
   }
   
-  const { data: { publicUrl } } = supabase.storage
-    .from('voice-recordings')
-    .getPublicUrl(chunkPath);
-  
-  state.uploadedChunks.push({ url: publicUrl, index: state.chunkIndex });
-  console.log(`Uploaded chunk ${state.chunkIndex}: ${publicUrl}`);
-  
   state.chunkIndex++;
+}
+
+// Create WAV chunk from samples (fallback if MP3 fails)
+function createWavChunk(samples: Int16Array, sampleRate: number): Uint8Array {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = samples.length * bytesPerSample;
+  const headerSize = 44;
+  
+  const buffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  
+  // RIFF header
+  bytes.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
+  view.setUint32(4, 36 + dataSize, true);
+  bytes.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+  
+  // fmt subchunk
+  bytes.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  
+  // data subchunk
+  bytes.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+  view.setUint32(40, dataSize, true);
+  
+  // Write samples
+  for (let i = 0; i < samples.length; i++) {
+    view.setInt16(headerSize + i * 2, samples[i], true);
+  }
+  
+  return bytes;
 }
 
 // deno-lint-ignore no-explicit-any
