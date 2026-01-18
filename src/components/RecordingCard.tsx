@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
@@ -226,13 +227,37 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       <AudioLines className="h-4 w-4" />
                       Transcrição (ElevenLabs)
                       {recording.transcription_elevenlabs_status === 'processing' && (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {recording.elevenlabs_chunk_state && recording.elevenlabs_chunk_state.chunkNames?.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              ({recording.elevenlabs_chunk_state.nextIndex}/{recording.elevenlabs_chunk_state.chunkNames.length})
+                            </span>
+                          )}
+                        </>
                       )}
                     </span>
                     {isElevenLabsTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
+                <CollapsibleContent className="mt-2 space-y-2">
+                  {/* Progress bar while processing chunks */}
+                  {recording.transcription_elevenlabs_status === 'processing' && 
+                   recording.elevenlabs_chunk_state && 
+                   recording.elevenlabs_chunk_state.chunkNames?.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Processando chunks...</span>
+                        <span>
+                          {recording.elevenlabs_chunk_state.nextIndex} / {recording.elevenlabs_chunk_state.chunkNames.length}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={(recording.elevenlabs_chunk_state.nextIndex / recording.elevenlabs_chunk_state.chunkNames.length) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  )}
                   <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
                     <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs || 'Processando...'}</p>
                   </div>

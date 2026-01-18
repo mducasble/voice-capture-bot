@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface ElevenLabsChunkState {
+  chunkNames: string[];
+  nextIndex: number;
+  lockedAt: string;
+}
+
 interface Recording {
   id: string;
   discord_guild_id: string;
@@ -25,6 +31,7 @@ interface Recording {
   transcription_status: string | null;
   transcription_elevenlabs: string | null;
   transcription_elevenlabs_status: string | null;
+  elevenlabs_chunk_state: ElevenLabsChunkState | null;
   language: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -39,7 +46,7 @@ export function useRecordings(guildId?: string, userId?: string) {
     queryFn: async (): Promise<Recording[]> => {
       let query = supabase
         .from("voice_recordings")
-        .select("*")
+        .select("*, elevenlabs_chunk_state")
         .order("created_at", { ascending: false });
 
       if (guildId) {
@@ -56,7 +63,11 @@ export function useRecordings(guildId?: string, userId?: string) {
         throw error;
       }
 
-      return data as Recording[];
+      // Cast the data, handling the elevenlabs_chunk_state JSON field
+      return (data || []).map((row: any) => ({
+        ...row,
+        elevenlabs_chunk_state: row.elevenlabs_chunk_state as ElevenLabsChunkState | null,
+      })) as Recording[];
     },
     refetchInterval: (query) => {
       // Refetch every 5 seconds if any recording is processing
