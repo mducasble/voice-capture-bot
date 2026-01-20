@@ -37,13 +37,13 @@ export function AudioUpload({ onUploadComplete }: AudioUploadProps) {
     if (file && isValidAudioFile(file)) {
       setSelectedFile(file);
     } else {
-      toast.error("Por favor, selecione um arquivo de áudio válido (WAV, MP3, M4A, OGG)");
+      toast.error("Por favor, selecione um arquivo de áudio válido (WAV, MP3, M4A, OGG, MKV)");
     }
   };
 
   const isValidAudioFile = (file: File) => {
-    const validTypes = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/m4a", "audio/ogg", "audio/x-wav"];
-    return validTypes.includes(file.type) || file.name.match(/\.(wav|mp3|m4a|ogg)$/i);
+    const validTypes = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/m4a", "audio/ogg", "audio/x-wav", "video/x-matroska", "audio/x-matroska"];
+    return validTypes.includes(file.type) || file.name.match(/\.(wav|mp3|m4a|ogg|mkv)$/i);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +51,7 @@ export function AudioUpload({ onUploadComplete }: AudioUploadProps) {
     if (file && isValidAudioFile(file)) {
       setSelectedFile(file);
     } else if (file) {
-      toast.error("Por favor, selecione um arquivo de áudio válido (WAV, MP3, M4A, OGG)");
+      toast.error("Por favor, selecione um arquivo de áudio válido (WAV, MP3, M4A, OGG, MKV)");
     }
   };
 
@@ -166,12 +166,12 @@ export function AudioUpload({ onUploadComplete }: AudioUploadProps) {
             <p className="text-sm text-muted-foreground text-center max-w-md">
               Arraste um arquivo ou clique para selecionar.
               <br />
-              Formatos suportados: WAV, MP3, M4A, OGG
+              Formatos suportados: WAV, MP3, M4A, OGG, MKV
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept="audio/*,.wav,.mp3,.m4a,.ogg"
+              accept="audio/*,video/x-matroska,.wav,.mp3,.m4a,.ogg,.mkv"
               onChange={handleFileSelect}
               className="hidden"
             />
