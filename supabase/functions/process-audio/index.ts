@@ -14,7 +14,7 @@ const TARGET_SAMPLE_RATE = 16000;
 const CHUNK_DURATION_SECONDS = 30;
 const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
 const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
-const MP3_BITRATE = 64; // 64kbps is sufficient for speech
+const MP3_BITRATE = 128; // 128kbps for good speech quality
 
 // Parse WAV header to get audio info
 function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
