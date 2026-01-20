@@ -199,20 +199,61 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             </div>
 
             {/* Transcription Section - Gemini */}
-            {recording.transcription && (
+            {(recording.transcription || recording.transcription_status === 'processing') && (
               <Collapsible open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
                     <span className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Transcrição (Gemini)
+                      {recording.transcription_status === 'processing' && (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {recording.gemini_chunk_state && recording.gemini_chunk_state.chunkUrls?.length > 0 ? (
+                            <span className="text-xs text-muted-foreground">
+                              ({Math.round((recording.gemini_chunk_state.nextIndex / recording.gemini_chunk_state.chunkUrls.length) * 100)}%)
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">(iniciando...)</span>
+                          )}
+                        </>
+                      )}
                     </span>
                     {isTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
+                <CollapsibleContent className="mt-2 space-y-2">
+                  {/* Progress bar while processing */}
+                  {recording.transcription_status === 'processing' && (
+                    <div className="space-y-1">
+                      {recording.gemini_chunk_state && recording.gemini_chunk_state.chunkUrls?.length > 0 ? (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Processando chunks...</span>
+                            <span>
+                              {recording.gemini_chunk_state.nextIndex} / {recording.gemini_chunk_state.chunkUrls.length} ({Math.round((recording.gemini_chunk_state.nextIndex / recording.gemini_chunk_state.chunkUrls.length) * 100)}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={(recording.gemini_chunk_state.nextIndex / recording.gemini_chunk_state.chunkUrls.length) * 100} 
+                            className="h-2"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Preparando transcrição...</span>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          </div>
+                          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                            <div className="h-full bg-primary/50 animate-pulse" style={{ width: '100%' }} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <div className="bg-muted/50 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
-                    <p className="whitespace-pre-wrap">{recording.transcription}</p>
+                    <p className="whitespace-pre-wrap">{recording.transcription || 'Processando...'}</p>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -229,10 +270,12 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       {recording.transcription_elevenlabs_status === 'processing' && (
                         <>
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          {recording.elevenlabs_chunk_state && recording.elevenlabs_chunk_state.chunkNames?.length > 0 && (
+                          {recording.elevenlabs_chunk_state && recording.elevenlabs_chunk_state.chunkNames?.length > 0 ? (
                             <span className="text-xs text-muted-foreground">
-                              ({recording.elevenlabs_chunk_state.nextIndex}/{recording.elevenlabs_chunk_state.chunkNames.length})
+                              ({Math.round((recording.elevenlabs_chunk_state.nextIndex / recording.elevenlabs_chunk_state.chunkNames.length) * 100)}%)
                             </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">(arquivo completo)</span>
                           )}
                         </>
                       )}
@@ -241,21 +284,33 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 space-y-2">
-                  {/* Progress bar while processing chunks */}
-                  {recording.transcription_elevenlabs_status === 'processing' && 
-                   recording.elevenlabs_chunk_state && 
-                   recording.elevenlabs_chunk_state.chunkNames?.length > 0 && (
+                  {/* Progress bar while processing */}
+                  {recording.transcription_elevenlabs_status === 'processing' && (
                     <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Processando chunks...</span>
-                        <span>
-                          {recording.elevenlabs_chunk_state.nextIndex} / {recording.elevenlabs_chunk_state.chunkNames.length}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={(recording.elevenlabs_chunk_state.nextIndex / recording.elevenlabs_chunk_state.chunkNames.length) * 100} 
-                        className="h-2"
-                      />
+                      {recording.elevenlabs_chunk_state && recording.elevenlabs_chunk_state.chunkNames?.length > 0 ? (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Processando chunks...</span>
+                            <span>
+                              {recording.elevenlabs_chunk_state.nextIndex} / {recording.elevenlabs_chunk_state.chunkNames.length} ({Math.round((recording.elevenlabs_chunk_state.nextIndex / recording.elevenlabs_chunk_state.chunkNames.length) * 100)}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={(recording.elevenlabs_chunk_state.nextIndex / recording.elevenlabs_chunk_state.chunkNames.length) * 100} 
+                            className="h-2"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Transcrevendo arquivo completo...</span>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          </div>
+                          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                            <div className="h-full bg-accent/50 animate-pulse" style={{ width: '100%' }} />
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                   <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
