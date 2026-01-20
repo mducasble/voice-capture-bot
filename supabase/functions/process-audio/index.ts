@@ -511,8 +511,35 @@ async function finalizeProcessing(
     throw updateError;
   }
 
-  // Start transcription with chunk-based processing
+  // Start Gemini transcription with chunk-based processing
   await transcribeChunksWithRetry(supabase, state.recording_id);
+
+  // Also trigger ElevenLabs transcription now that chunks exist
+  const elevenLabsPromise = supabase.functions.invoke("transcribe-elevenlabs", {
+    body: {
+      recording_id: state.recording_id,
+      mode: "chunks",
+    },
+  });
+
+  // @ts-ignore - EdgeRuntime available
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      elevenLabsPromise
+        .then(({ error }: { error?: unknown }) => {
+          if (error) console.error("ElevenLabs trigger failed:", error);
+          else console.log(`ElevenLabs transcription started for ${state.recording_id}`);
+        })
+        .catch((err: unknown) => console.error("ElevenLabs trigger error:", err))
+    );
+  } else {
+    elevenLabsPromise
+      .then(({ error }: { error?: unknown }) => {
+        if (error) console.error("ElevenLabs trigger failed:", error);
+      })
+      .catch((err: unknown) => console.error("ElevenLabs trigger error:", err));
+  }
 
   return new Response(
     JSON.stringify({

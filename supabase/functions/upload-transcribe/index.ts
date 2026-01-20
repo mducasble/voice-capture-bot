@@ -65,22 +65,13 @@ serve(async (req) => {
 
     console.log(`Created recording ${recording.id} from upload: ${original_filename}`);
 
-    // Start both transcriptions in parallel (fire and forget)
     const recordingId = recording.id;
 
-    // Trigger process-audio for Gemini (handles chunking and transcription)
+    // Start processing (will trigger both Gemini and ElevenLabs after chunks are created)
     const processPromise = supabase.functions.invoke("process-audio", {
       body: {
         recording_id: recordingId,
         audio_url: file_url,
-      },
-    });
-
-    // Trigger ElevenLabs transcription (chunks mode)
-    const elevenLabsPromise = supabase.functions.invoke("transcribe-elevenlabs", {
-      body: {
-        recording_id: recordingId,
-        mode: "chunks",
       },
     });
 
@@ -89,22 +80,19 @@ serve(async (req) => {
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
       // @ts-ignore
       EdgeRuntime.waitUntil(
-        Promise.all([processPromise, elevenLabsPromise])
-          .then(([processResult, elevenResult]) => {
-            if (processResult.error) console.error("Process-audio error:", processResult.error);
-            if (elevenResult.error) console.error("ElevenLabs error:", elevenResult.error);
-            console.log(`Transcription triggers completed for ${recordingId}`);
+        processPromise
+          .then(({ error }: { error?: unknown }) => {
+            if (error) console.error("Process-audio error:", error);
+            else console.log(`Processing started for ${recordingId}`);
           })
-          .catch((err) => console.error("Transcription trigger error:", err))
+          .catch((err: unknown) => console.error("Process-audio trigger error:", err))
       );
     } else {
-      // Fallback: just trigger and don't wait
       processPromise
-        .then(({ error }) => error && console.error("Process-audio error:", error))
-        .catch((err) => console.error("Process-audio trigger failed:", err));
-      elevenLabsPromise
-        .then(({ error }) => error && console.error("ElevenLabs error:", error))
-        .catch((err) => console.error("ElevenLabs trigger failed:", err));
+        .then(({ error }: { error?: unknown }) => {
+          if (error) console.error("Process-audio error:", error);
+        })
+        .catch((err: unknown) => console.error("Process-audio trigger failed:", err));
     }
 
     return new Response(
