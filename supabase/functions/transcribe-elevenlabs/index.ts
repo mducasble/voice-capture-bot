@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const { data: recording, error: fetchError } = await supabase
       .from("voice_recordings")
-      .select("id, file_url, mp3_file_url, language")
+      .select("id, file_url, mp3_file_url, language, file_size_bytes, format")
       .eq("id", recording_id)
       .single();
 
@@ -85,10 +85,106 @@ serve(async (req) => {
     if (!chunkState || !chunkState.chunkNames?.length) {
       try {
         chunkState = await buildInitialChunkState(supabase, recording_id);
-      } catch (e) {
-        // No chunks found - fallback to full mode for non-chunked files (e.g., MKV, MP3 uploads)
-        console.log(`No chunks found for ${recording_id}, falling back to full mode`);
-        return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
+      } catch (_e) {
+        // No chunks found.
+        // If this is a WAV, we can kick off processing to generate chunks.
+        // If it's a large non-WAV file, we can't safely upload full-mode (>25MB) in this runtime.
+
+        const audioUrl = recording.mp3_file_url || recording.file_url;
+        const format = (recording as unknown as { format: string | null }).format;
+        const fileSizeBytes = (recording as unknown as { file_size_bytes: number | null }).file_size_bytes;
+
+        const isWav =
+          (format?.toLowerCase?.() === "wav") ||
+          (audioUrl ? audioUrl.toLowerCase().includes(".wav") : false);
+
+        if (audioUrl && isWav) {
+          console.log(`No chunks found for ${recording_id}. Starting process-audio to generate chunks...`);
+
+          // Mark as processing and kick off chunk generation.
+          await supabase
+            .from("voice_recordings")
+            .update({ transcription_elevenlabs_status: "processing" })
+            .eq("id", recording_id);
+
+          const { error: processError } = await supabase.functions.invoke("process-audio", {
+            body: { recording_id, audio_url: audioUrl },
+          });
+
+          if (processError) {
+            console.error("Failed to start process-audio:", processError);
+            await supabase
+              .from("voice_recordings")
+              .update({ transcription_elevenlabs_status: "failed" })
+              .eq("id", recording_id);
+
+            return json(
+              {
+                success: false,
+                recording_id,
+                error: "no_chunks",
+                message: "Não foram encontrados chunks e não foi possível iniciar o processamento do áudio.",
+              },
+              200
+            );
+          }
+
+          return json(
+            {
+              success: true,
+              recording_id,
+              mode: "chunks",
+              scheduled_processing: true,
+              scheduled_function: "process-audio",
+            },
+            200
+          );
+        }
+
+        // If we know it's big, don't even try full mode.
+        if (fileSizeBytes && fileSizeBytes > MAX_UPLOAD_BYTES) {
+          await supabase
+            .from("voice_recordings")
+            .update({ transcription_elevenlabs_status: "failed" })
+            .eq("id", recording_id);
+
+          return json(
+            {
+              success: false,
+              recording_id,
+              error: "file_too_large",
+              message:
+                "Arquivo >25MB e sem chunks. Para transcrever, faça upload em WAV (para gerar chunks) ou envie um arquivo menor.",
+            },
+            200
+          );
+        }
+
+        // Fallback to full mode only for small, non-chunked files.
+        try {
+          console.log(`No chunks found for ${recording_id}, falling back to full mode`);
+          return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
+        } catch (err) {
+          const msg = String(err);
+          console.error("Full mode fallback failed:", msg);
+
+          await supabase
+            .from("voice_recordings")
+            .update({ transcription_elevenlabs_status: "failed" })
+            .eq("id", recording_id);
+
+          return json(
+            {
+              success: false,
+              recording_id,
+              error: msg.includes("File too large") ? "file_too_large" : "no_chunks",
+              message: msg.includes("File too large")
+                ? "Arquivo >25MB e sem chunks. Para transcrever, faça upload em WAV (para gerar chunks) ou envie um arquivo menor."
+                : "Não foram encontrados chunks para este áudio.",
+            },
+            200
+          );
+        }
       }
     }
 

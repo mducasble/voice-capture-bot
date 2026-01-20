@@ -26,8 +26,16 @@ export function useElevenLabsTranscription() {
       const modeLabel = variables.mode === 'full' ? 'WAV completo' : 'chunks';
       toast.loading(`Transcrevendo com ElevenLabs (${modeLabel})...`, { id: 'elevenlabs-transcription' });
     },
-    onSuccess: () => {
-      toast.success('Transcrição ElevenLabs concluída!', { id: 'elevenlabs-transcription' });
+    onSuccess: (data: any) => {
+      if (data?.success && data?.scheduled_processing) {
+        toast.message('Processamento iniciado — a transcrição vai começar em seguida.', { id: 'elevenlabs-transcription' });
+      } else if (data?.success && !data?.skipped) {
+        toast.success('Transcrição ElevenLabs concluída!', { id: 'elevenlabs-transcription' });
+      } else if (data?.skipped) {
+        toast.message('Transcrição já está em processamento.', { id: 'elevenlabs-transcription' });
+      } else {
+        toast.error(data?.message || 'Erro na transcrição ElevenLabs', { id: 'elevenlabs-transcription' });
+      }
       queryClient.invalidateQueries({ queryKey: ['recordings'] });
     },
     onError: (error) => {
