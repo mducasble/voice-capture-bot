@@ -577,16 +577,21 @@ async function stopRecording(interaction) {
 
     const { signed_url, token, public_url: publicUrl } = signedPayload;
     
-    // Upload file using signed URL
-    await interaction.editReply({ content: `⏳ Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB...` });
-    console.log(`Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB to storage...`);
+    // Upload file using signed URL with streaming (to avoid ENOBUFS on large files)
+    const fileSizeMB = (wavBuffer.length / 1024 / 1024).toFixed(2);
+    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB (streaming)...` });
+    console.log(`Uploading ${fileSizeMB} MB to storage using stream...`);
+    
+    // Use file stream instead of buffer to avoid memory/buffer issues
+    const fileStream = require('fs').createReadStream(filepath);
     
     const uploadResponse = await fetch(signed_url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'audio/wav'
+        'Content-Type': 'audio/wav',
+        'Content-Length': wavBuffer.length.toString()
       },
-      body: wavBuffer
+      body: fileStream
     });
 
     if (!uploadResponse.ok) {
