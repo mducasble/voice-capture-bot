@@ -97,6 +97,11 @@ export function useRecordingStats(recordings: Recording[] | undefined) {
       totalDuration: "0:00",
       totalSize: "0 MB",
       uniqueServers: 0,
+      storageStats: {
+        totalBytes: 0,
+        compressedBytes: 0,
+        recordingCount: 0,
+      },
     };
   }
 
@@ -109,6 +114,14 @@ export function useRecordingStats(recordings: Recording[] | undefined) {
     (sum, r) => sum + (r.file_size_bytes || 0),
     0
   );
+
+  // Estimate compressed size (typically 10-15x smaller for 16kHz mono vs 48kHz stereo)
+  // Based on actual compression in upload-recording: 48kHz stereo -> 16kHz mono
+  const compressionRatio = 6; // Conservative estimate
+  const compressedBytes = recordings.reduce((sum, r) => {
+    const originalSize = r.file_size_bytes || 0;
+    return sum + Math.round(originalSize / compressionRatio);
+  }, 0);
 
   const uniqueServers = new Set(recordings.map((r) => r.discord_guild_id)).size;
 
@@ -127,5 +140,10 @@ export function useRecordingStats(recordings: Recording[] | undefined) {
     totalDuration: formattedDuration,
     totalSize: formattedSize,
     uniqueServers,
+    storageStats: {
+      totalBytes,
+      compressedBytes,
+      recordingCount: recordings.length,
+    },
   };
 }

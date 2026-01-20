@@ -2,6 +2,7 @@ import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { StatsCard } from "@/components/StatsCard";
+import { StorageStatsCard } from "@/components/StorageStatsCard";
 import { AudioSpecBadge } from "@/components/AudioSpecBadge";
 import { useRecordings, useRecordingStats } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,6 +86,11 @@ const Index = () => {
             subtitle="Connected guilds"
             icon={Server}
           />
+        </section>
+
+        {/* Storage Details */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <StorageStatsCard stats={stats.storageStats} />
         </section>
 
         {/* Recordings List */}
