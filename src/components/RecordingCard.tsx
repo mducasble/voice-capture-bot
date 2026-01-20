@@ -271,34 +271,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
-                {/* ElevenLabs Transcription dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={elevenLabsTranscription.isPending}
-                      className="text-accent hover:text-accent hover:bg-accent/10"
-                      title="Transcrever com ElevenLabs"
-                    >
-                      {elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing' ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <AudioLines className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleElevenLabsTranscribe('chunks')}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Processar chunks
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleElevenLabsTranscribe('full')}>
-                      <File className="h-4 w-4 mr-2" />
-                      Enviar WAV completo
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* ElevenLabs Transcription button - always uses chunks mode for reliability */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleElevenLabsTranscribe('chunks')}
+                  disabled={elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing'}
+                  className="text-accent hover:text-accent hover:bg-accent/10"
+                  title="Transcrever com ElevenLabs"
+                >
+                  {elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <AudioLines className="h-4 w-4" />
+                  )}
+                </Button>
                 {/* Reprocess button - always available */}
                 <Button
                   variant="ghost"
