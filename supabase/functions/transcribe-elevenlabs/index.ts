@@ -55,44 +55,10 @@ serve(async (req) => {
     }
 
     if (mode === "full") {
-      await supabase
-        .from("voice_recordings")
-        .update({ transcription_elevenlabs_status: "processing" })
-        .eq("id", recording_id);
-
-      console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: full`);
-
-      // Prefer the pre-generated compressed file if available; fallback to original.
-      const audioUrl = recording.mp3_file_url || recording.file_url;
-      if (!audioUrl) throw new Error("No audio file available");
-
-      // Safety: never attempt to upload huge files.
-      const blob = await safeFetchBlob(audioUrl, MAX_UPLOAD_BYTES);
-
-      const isMp3 = audioUrl.toLowerCase().includes(".mp3");
-      const filename = isMp3 ? "audio.mp3" : "audio.wav";
-      const mimeType = isMp3 ? "audio/mpeg" : "audio/wav";
-
-      const transcription = await transcribeWithElevenLabs({
-        audioBlob: blob,
-        filename,
-        mimeType,
-        apiKey: ELEVENLABS_API_KEY,
-        language: recording.language ?? undefined,
-      });
-
-      await supabase
-        .from("voice_recordings")
-        .update({
-          transcription_elevenlabs: transcription,
-          transcription_elevenlabs_status: transcription ? "completed" : "failed",
-        })
-        .eq("id", recording_id);
-
-      return json({ success: true, recording_id, mode, transcription_length: transcription.length });
+      return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
     }
 
-    // mode === 'chunks'
+    // mode === 'chunks' - first check if chunks exist, fallback to full mode if not
     // Load current state from database (idempotent)
     const { data: currentRow } = await supabase
       .from("voice_recordings")
@@ -117,7 +83,13 @@ serve(async (req) => {
 
     // Build initial state if not present
     if (!chunkState || !chunkState.chunkNames?.length) {
-      chunkState = await buildInitialChunkState(supabase, recording_id);
+      try {
+        chunkState = await buildInitialChunkState(supabase, recording_id);
+      } catch (e) {
+        // No chunks found - fallback to full mode for non-chunked files (e.g., MKV, MP3 uploads)
+        console.log(`No chunks found for ${recording_id}, falling back to full mode`);
+        return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
+      }
     }
 
     // Acquire lock and update state in DB
@@ -250,6 +222,66 @@ function json(payload: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// deno-lint-ignore no-explicit-any
+async function processFullMode(
+  supabase: any,
+  recording: { id: string; file_url: string | null; mp3_file_url: string | null; language: string | null },
+  apiKey: string
+): Promise<Response> {
+  const recording_id = recording.id;
+  
+  await supabase
+    .from("voice_recordings")
+    .update({ transcription_elevenlabs_status: "processing" })
+    .eq("id", recording_id);
+
+  console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: full`);
+
+  // Prefer the pre-generated compressed file if available; fallback to original.
+  const audioUrl = recording.mp3_file_url || recording.file_url;
+  if (!audioUrl) throw new Error("No audio file available");
+
+  // Safety: never attempt to upload huge files.
+  const blob = await safeFetchBlob(audioUrl, MAX_UPLOAD_BYTES);
+
+  // Detect format from URL
+  const urlLower = audioUrl.toLowerCase();
+  let filename = "audio.wav";
+  let mimeType = "audio/wav";
+  
+  if (urlLower.includes(".mp3")) {
+    filename = "audio.mp3";
+    mimeType = "audio/mpeg";
+  } else if (urlLower.includes(".mkv")) {
+    filename = "audio.mkv";
+    mimeType = "video/x-matroska";
+  } else if (urlLower.includes(".m4a")) {
+    filename = "audio.m4a";
+    mimeType = "audio/mp4";
+  } else if (urlLower.includes(".ogg")) {
+    filename = "audio.ogg";
+    mimeType = "audio/ogg";
+  }
+
+  const transcription = await transcribeWithElevenLabs({
+    audioBlob: blob,
+    filename,
+    mimeType,
+    apiKey,
+    language: recording.language ?? undefined,
+  });
+
+  await supabase
+    .from("voice_recordings")
+    .update({
+      transcription_elevenlabs: transcription,
+      transcription_elevenlabs_status: transcription ? "completed" : "failed",
+    })
+    .eq("id", recording_id);
+
+  return json({ success: true, recording_id, mode: "full", transcription_length: transcription.length });
 }
 
 async function buildInitialChunkState(supabase: any, recording_id: string): Promise<ChunkState> {
