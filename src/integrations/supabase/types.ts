@@ -140,6 +140,7 @@ export type Database = {
           file_url: string | null
           filename: string
           format: string | null
+          gemini_chunk_state: Json | null
           id: string
           language: string | null
           metadata: Json | null
@@ -172,6 +173,7 @@ export type Database = {
           file_url?: string | null
           filename: string
           format?: string | null
+          gemini_chunk_state?: Json | null
           id?: string
           language?: string | null
           metadata?: Json | null
@@ -204,6 +206,7 @@ export type Database = {
           file_url?: string | null
           filename?: string
           format?: string | null
+          gemini_chunk_state?: Json | null
           id?: string
           language?: string | null
           metadata?: Json | null

@@ -7,6 +7,14 @@ interface ElevenLabsChunkState {
   lockedAt: string;
 }
 
+interface GeminiChunkState {
+  chunkUrls: { url: string; index: number }[];
+  nextIndex: number;
+  transcriptions: string[];
+  detectedLanguage: string | null;
+  lockedAt: string | null;
+}
+
 interface Recording {
   id: string;
   discord_guild_id: string;
@@ -32,13 +40,14 @@ interface Recording {
   transcription_elevenlabs: string | null;
   transcription_elevenlabs_status: string | null;
   elevenlabs_chunk_state: ElevenLabsChunkState | null;
+  gemini_chunk_state: GeminiChunkState | null;
   language: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
 
-export type { Recording };
+export type { Recording, GeminiChunkState, ElevenLabsChunkState };
 
 export function useRecordings(guildId?: string, userId?: string) {
   return useQuery({
@@ -46,7 +55,7 @@ export function useRecordings(guildId?: string, userId?: string) {
     queryFn: async (): Promise<Recording[]> => {
       let query = supabase
         .from("voice_recordings")
-        .select("*, elevenlabs_chunk_state")
+        .select("*, elevenlabs_chunk_state, gemini_chunk_state")
         .order("created_at", { ascending: false });
 
       if (guildId) {
@@ -63,10 +72,11 @@ export function useRecordings(guildId?: string, userId?: string) {
         throw error;
       }
 
-      // Cast the data, handling the elevenlabs_chunk_state JSON field
+      // Cast the data, handling the chunk state JSON fields
       return (data || []).map((row: any) => ({
         ...row,
         elevenlabs_chunk_state: row.elevenlabs_chunk_state as ElevenLabsChunkState | null,
+        gemini_chunk_state: row.gemini_chunk_state as GeminiChunkState | null,
       })) as Recording[];
     },
     refetchInterval: (query) => {
