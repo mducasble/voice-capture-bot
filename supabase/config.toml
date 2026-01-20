@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.transcribe-gemini-continue]
 verify_jwt = false
+
+[functions.upload-transcribe]
+verify_jwt = false
