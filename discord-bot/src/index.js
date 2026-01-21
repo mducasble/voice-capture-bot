@@ -290,7 +290,7 @@ class AudioMixer {
     // Create buffer initialized to silence
     const audioBuffer = Buffer.alloc(maxEnd);
 
-    // Copy this user's chunks at correct positions
+    // Copy this user's chunks at correct positions (with mixing for overlapping chunks)
     for (const chunk of entry.chunks) {
       const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
       const alignedOffset = byteOffset - (byteOffset % 4);
@@ -299,8 +299,16 @@ class AudioMixer {
         const pos = alignedOffset + i;
         if (pos + 1 >= audioBuffer.length) break;
         
-        const sample = chunk.data.readInt16LE(i);
-        audioBuffer.writeInt16LE(sample, pos);
+        // Read existing and incoming as signed 16-bit, then mix
+        const existing = audioBuffer.readInt16LE(pos);
+        const incoming = chunk.data.readInt16LE(i);
+        
+        // Mix by adding (with clipping protection)
+        let mixed = existing + incoming;
+        if (mixed > 32767) mixed = 32767;
+        else if (mixed < -32768) mixed = -32768;
+        
+        audioBuffer.writeInt16LE(mixed, pos);
       }
     }
 
