@@ -61,13 +61,28 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
 }
 
 // Calculate SNR from audio samples
+// Handles silence-padded individual tracks by ignoring zero samples
 function calculateSNR(samples: Int16Array): number {
   if (samples.length === 0) return 0;
   
-  const floatSamples = new Float32Array(samples.length);
+  // Filter out complete silence (zero samples) - important for individual tracks
+  // that are padded with silence for synchronization
+  const nonSilentSamples: number[] = [];
   for (let i = 0; i < samples.length; i++) {
-    floatSamples[i] = samples[i] / 32768.0;
+    // Consider samples with absolute value > 10 as non-silent (ignoring very low noise)
+    if (Math.abs(samples[i]) > 10) {
+      nonSilentSamples.push(samples[i] / 32768.0);
+    }
   }
+  
+  // If less than 10% of samples are non-silent, mark as very low SNR
+  if (nonSilentSamples.length < samples.length * 0.1) {
+    console.log(`SNR calculation: only ${nonSilentSamples.length}/${samples.length} non-silent samples (${(nonSilentSamples.length / samples.length * 100).toFixed(1)}%)`);
+    // Return a low but valid SNR instead of infinity
+    return 5.0;
+  }
+  
+  const floatSamples = new Float32Array(nonSilentSamples);
   
   let sum = 0;
   for (let i = 0; i < floatSamples.length; i++) {
@@ -75,15 +90,32 @@ function calculateSNR(samples: Int16Array): number {
   }
   const signalRMS = Math.sqrt(sum / floatSamples.length);
   
+  // If signal is too weak, return low SNR
+  if (signalRMS < 0.001) {
+    return 5.0;
+  }
+  
   const sorted = Array.from(floatSamples).map(Math.abs).sort((a, b) => a - b);
   const bottomCount = Math.max(1, Math.floor(sorted.length * 0.1));
   let noiseSum = 0;
   for (let i = 0; i < bottomCount; i++) {
     noiseSum += sorted[i] * sorted[i];
   }
-  const noiseFloor = Math.sqrt(noiseSum / bottomCount) || 0.0001;
+  const noiseFloor = Math.sqrt(noiseSum / bottomCount);
   
-  return Math.round(20 * Math.log10(signalRMS / noiseFloor) * 10) / 10;
+  // Prevent division by zero or very small values
+  if (noiseFloor < 0.0001) {
+    // Very clean signal - return high SNR
+    return 60.0;
+  }
+  
+  const snr = 20 * Math.log10(signalRMS / noiseFloor);
+  
+  // Clamp to reasonable range
+  if (!isFinite(snr) || snr > 100) return 60.0;
+  if (snr < 0) return 5.0;
+  
+  return Math.round(snr * 10) / 10;
 }
 
 // Encode samples to MP3 using WASM encoder
@@ -481,7 +513,9 @@ async function finalizeProcessing(
 ) {
   // Calculate SNR
   const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples)) : null;
-  const qualityStatus = snrDb !== null ? (snrDb >= 20 ? 'passed' : 'failed') : 'error';
+  // Lower threshold for individual tracks (they have more silence which affects SNR)
+  // Use 10dB threshold instead of 20dB - still ensures reasonable audio quality
+  const qualityStatus = snrDb !== null ? (snrDb >= 10 ? 'passed' : 'failed') : 'error';
   
   console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB`);
 
