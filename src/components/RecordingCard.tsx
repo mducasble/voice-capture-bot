@@ -341,16 +341,16 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <AudioLines className="h-4 w-4" />
                   )}
                 </Button>
-                {/* Reprocess button - always available */}
+                {/* Reprocess button - always available, only disabled during local mutation */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleReprocess}
-                  disabled={reprocessRecording.isPending || recording.status === 'processing'}
+                  disabled={reprocessRecording.isPending}
                   className="text-primary hover:text-primary hover:bg-primary/10"
                   title="Reprocessar áudio (Gemini)"
                 >
-                  {reprocessRecording.isPending || recording.status === 'processing' ? (
+                  {reprocessRecording.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <RotateCcw className="h-4 w-4" />
