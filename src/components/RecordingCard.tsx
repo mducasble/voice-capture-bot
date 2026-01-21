@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -150,6 +150,24 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
+                {/* Recording Type Badge */}
+                {recording.recording_type && (
+                  <Badge 
+                    variant="outline" 
+                    className={`flex items-center gap-1 ${
+                      recording.recording_type === 'individual' 
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' 
+                        : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                    }`}
+                  >
+                    {recording.recording_type === 'individual' ? (
+                      <User className="h-3 w-3" />
+                    ) : (
+                      <Users className="h-3 w-3" />
+                    )}
+                    {recording.recording_type === 'individual' ? 'Individual' : 'Mixed'}
+                  </Badge>
+                )}
                 {/* Language Badge */}
                 {recording.language && (
                   <Badge variant="outline" className="flex items-center gap-1">

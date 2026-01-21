@@ -46,6 +46,8 @@ serve(async (req) => {
       topic_id,
       language,
       campaign_id,
+      session_id,
+      recording_type,
       extra
     } = body;
 
@@ -88,6 +90,8 @@ serve(async (req) => {
         topic_id: topic_id || null,
         language: language || 'en',
         campaign_id: campaign_id || null,
+        session_id: session_id || null,
+        recording_type: recording_type || 'mixed',
         metadata: extra || {},
         transcription_status: 'pending'
       })

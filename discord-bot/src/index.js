@@ -216,7 +216,7 @@ function createWavHeader(dataLength) {
 // otherwise /stop will often say "No audio was captured".
 class AudioMixer {
   constructor() {
-    // userId -> { stream: AudioReceiveStream | null, chunks: Array<{timestamp:number, data:Buffer}> }
+    // userId -> { stream: AudioReceiveStream | null, chunks: Array<{timestamp:number, data:Buffer}>, username: string }
     this.streams = new Map();
     this.startTime = Date.now();
     // Bytes per millisecond for 48kHz, 16-bit, stereo = 48000 * 2 * 2 / 1000 = 192
@@ -228,14 +228,15 @@ class AudioMixer {
     return !!entry?.stream;
   }
 
-  addStream(userId, stream) {
+  addStream(userId, stream, username = null) {
     const existing = this.streams.get(userId);
     if (existing) {
       existing.stream = stream;
+      if (username) existing.username = username;
       return;
     }
 
-    this.streams.set(userId, { stream, chunks: [] });
+    this.streams.set(userId, { stream, chunks: [], username: username || userId });
   }
 
   removeStream(userId) {
@@ -246,13 +247,65 @@ class AudioMixer {
 
   addChunk(userId, chunk) {
     if (!this.streams.has(userId)) {
-      this.streams.set(userId, { stream: null, chunks: [] });
+      this.streams.set(userId, { stream: null, chunks: [], username: userId });
     }
 
     this.streams.get(userId).chunks.push({
       timestamp: Date.now() - this.startTime,
       data: chunk
     });
+  }
+
+  // Get list of users who have audio
+  getUsers() {
+    const users = [];
+    for (const [userId, { chunks, username }] of this.streams) {
+      if (chunks.length > 0) {
+        users.push({ userId, username, chunkCount: chunks.length });
+      }
+    }
+    return users;
+  }
+
+  // Get individual audio for a specific user (silence-padded to full duration)
+  getIndividualAudio(userId) {
+    const entry = this.streams.get(userId);
+    if (!entry || entry.chunks.length === 0) {
+      return Buffer.alloc(0);
+    }
+
+    // Find total duration from all users (so all files have same length)
+    let maxEnd = 0;
+    for (const [, { chunks }] of this.streams) {
+      for (const chunk of chunks) {
+        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+        const alignedOffset = byteOffset - (byteOffset % 4);
+        const end = alignedOffset + chunk.data.length;
+        if (end > maxEnd) maxEnd = end;
+      }
+    }
+
+    if (maxEnd === 0) return Buffer.alloc(0);
+
+    // Create buffer initialized to silence
+    const audioBuffer = Buffer.alloc(maxEnd);
+
+    // Copy this user's chunks at correct positions
+    for (const chunk of entry.chunks) {
+      const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+      const alignedOffset = byteOffset - (byteOffset % 4);
+      
+      for (let i = 0; i < chunk.data.length; i += 2) {
+        const pos = alignedOffset + i;
+        if (pos + 1 >= audioBuffer.length) break;
+        
+        const sample = chunk.data.readInt16LE(i);
+        audioBuffer.writeInt16LE(sample, pos);
+      }
+    }
+
+    console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
+    return audioBuffer;
   }
 
   getMixedAudio() {
@@ -395,11 +448,20 @@ async function startRecording(interaction) {
     const receiver = connection.receiver;
 
     // Track when users start speaking
-    receiver.speaking.on('start', (userId) => {
+    receiver.speaking.on('start', async (userId) => {
       // Skip if we're already subscribed to this user's audio
       if (mixer.hasActiveStream(userId)) return;
       
-      console.log(`🎤 User ${userId} started speaking - subscribing to audio...`);
+      // Try to get username from guild
+      let username = userId;
+      try {
+        const member = await voiceChannel.guild.members.fetch(userId);
+        username = member.user.username;
+      } catch (e) {
+        console.warn(`Could not fetch username for ${userId}`);
+      }
+      
+      console.log(`🎤 User ${username} (${userId}) started speaking - subscribing to audio...`);
       
       const audioStream = receiver.subscribe(userId, {
         end: {
@@ -408,7 +470,7 @@ async function startRecording(interaction) {
         }
       });
 
-      mixer.addStream(userId, audioStream);
+      mixer.addStream(userId, audioStream, username);
       let chunkCount = 0;
 
       // Try to create opus decoder
@@ -525,6 +587,110 @@ async function startRecording(interaction) {
   }
 }
 
+// Helper: upload a single audio file and register it
+async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, interaction, channelData, duration, sessionId, recordingType, speakerUserId, speakerUsername }) {
+  // Create WAV file
+  const wavHeader = createWavHeader(audioBuffer.length);
+  const wavBuffer = Buffer.concat([wavHeader, audioBuffer]);
+  
+  const filepath = `${CONFIG.RECORDINGS_DIR}/${filename}`;
+  
+  // Save locally
+  const writeStream = createWriteStream(filepath);
+  writeStream.write(wavBuffer);
+  writeStream.end();
+  await new Promise((resolve) => writeStream.on('finish', resolve));
+  
+  // Generate storage path
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const storagePath = `${guild.id}/${speakerUserId || interaction.user.id}/${timestamp}_${filename}`;
+  
+  // Get signed URL
+  const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-bot-api-key': process.env.BOT_API_KEY
+    },
+    body: JSON.stringify({
+      filename: storagePath,
+      content_type: 'audio/wav'
+    })
+  });
+
+  if (!urlResponse.ok) {
+    const errorText = await urlResponse.text();
+    throw new Error(`Failed to get upload URL: ${urlResponse.status} - ${errorText.substring(0, 200)}`);
+  }
+
+  const signedPayload = await urlResponse.json();
+  const { signed_url, public_url: publicUrl, upload_headers, storage } = signedPayload;
+  
+  // Upload file
+  const fileStats = statSync(filepath);
+  const fileStream = createReadStream(filepath);
+  
+  const uploadHeaders = {
+    'Content-Type': 'audio/wav',
+    'Content-Length': fileStats.size.toString(),
+    ...(upload_headers || {})
+  };
+  
+  const uploadResponse = await fetch(signed_url, {
+    method: 'PUT',
+    headers: uploadHeaders,
+    body: fileStream
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    throw new Error(`Storage upload failed: ${uploadResponse.status}`);
+  }
+
+  console.log(`✅ Uploaded ${recordingType} file for ${speakerUsername || 'mixed'}: ${publicUrl}`);
+
+  // Register recording
+  const response = await fetch(`${API_BASE_URL}/register-recording`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-bot-api-key': process.env.BOT_API_KEY
+    },
+    body: JSON.stringify({
+      filename: storagePath,
+      file_url: publicUrl,
+      file_size_bytes: fileStats.size,
+      discord_guild_id: guild.id,
+      discord_guild_name: guild.name,
+      discord_channel_id: voiceChannel.id,
+      discord_channel_name: voiceChannel.name,
+      discord_user_id: speakerUserId || interaction.user.id,
+      discord_username: speakerUsername || interaction.user.username,
+      duration_seconds: duration,
+      topic_id: channelData.topicId || null,
+      language: channelData.languageCode || null,
+      campaign_id: null,
+      session_id: sessionId,
+      recording_type: recordingType,
+      extra: {
+        recorded_by: interaction.user.tag,
+        member_count: voiceChannel.members.size,
+        topic_name: channelData.topicName || null,
+        language_name: channelData.languageName || null,
+        recording_type: recordingType,
+        speaker_username: speakerUsername
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || 'Registration failed');
+  }
+
+  return { publicUrl, fileSize: fileStats.size, filepath };
+}
+
 // Stop recording and upload
 async function stopRecording(interaction) {
   const voiceChannel = interaction.member.voice.channel;
@@ -544,169 +710,128 @@ async function stopRecording(interaction) {
     connection.destroy();
     activeRecordings.delete(voiceChannel.id);
 
-    // Get mixed audio
-    const audioData = mixer.getMixedAudio();
     const duration = mixer.getDuration();
-
-    if (audioData.length === 0) {
+    const users = mixer.getUsers();
+    
+    if (users.length === 0) {
       await interaction.editReply({ content: '⚠️ No audio was captured. Make sure users were speaking!' });
       return;
     }
 
-    // Create WAV file
-    const wavHeader = createWavHeader(audioData.length);
-    const wavBuffer = Buffer.concat([wavHeader, audioData]);
-    
-    const filename = `recording_${Date.now()}.wav`;
-    const filepath = `${CONFIG.RECORDINGS_DIR}/${filename}`;
-    
-    // Save locally first
-    const writeStream = createWriteStream(filepath);
-    writeStream.write(wavBuffer);
-    writeStream.end();
-
-    await new Promise((resolve) => writeStream.on('finish', resolve));
-
-    // Upload using signed URL (no service_role key needed on bot)
-    await interaction.editReply({ content: '⏳ Getting upload URL...' });
-
-    // Get channel topic/language info if available
-    const channelData = temporaryChannels.get(voiceChannel.id) || {};
-    
-    // Generate unique storage path
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const storagePath = `${guild.id}/${interaction.user.id}/${timestamp}_${filename}`;
-    
     // Validate config
     if (!process.env.BOT_API_KEY) {
       throw new Error('BOT_API_KEY não definido no .env.');
     }
 
-    // Use Supabase Storage (local backup is already saved above)
-    console.log(`Requesting signed URL for: ${storagePath}`);
+    // Get channel topic/language info if available
+    const channelData = temporaryChannels.get(voiceChannel.id) || {};
     
-    const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-bot-api-key': process.env.BOT_API_KEY
-      },
-      body: JSON.stringify({
-        filename: storagePath,
-        content_type: 'audio/wav'
-      })
+    // Generate a session ID to group all recordings
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    await interaction.editReply({ 
+      content: `⏳ Processing ${users.length} individual track(s) + 1 mixed track...` 
     });
 
-    if (!urlResponse.ok) {
-      const errorText = await urlResponse.text();
-      console.error('Failed to get upload URL:', errorText);
-      throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
-    }
+    const uploadResults = [];
+    let totalSize = 0;
 
-    const urlResponseText = await urlResponse.text();
-    let signedPayload;
-    try {
-      signedPayload = JSON.parse(urlResponseText);
-    } catch {
-      console.error('Signed URL response is not JSON:', urlResponseText.substring(0, 300));
-      throw new Error(
-        'Resposta inválida ao pedir upload URL (verifique LOVABLE_API_URL; deve terminar com /functions/v1).'
-      );
-    }
-
-    const { signed_url, public_url: publicUrl, upload_headers, storage } = signedPayload;
-    
-    // Get file size for progress and streaming upload
-    const fileStats = statSync(filepath);
-    const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
-    
-    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB to ${storage || 'storage'}...` });
-    console.log(`Uploading ${fileSizeMB} MB to ${storage || 'storage'} using stream (avoids ENOBUFS)...`);
-    
-    // Use streaming upload to prevent ENOBUFS error on large files
-    const fileStream = createReadStream(filepath);
-    
-    // Build headers - use upload_headers from S3 signing if available
-    const uploadHeaders = {
-      'Content-Type': 'audio/wav',
-      'Content-Length': fileStats.size.toString(),
-      ...(upload_headers || {})
-    };
-    
-    const uploadResponse = await fetch(signed_url, {
-      method: 'PUT',
-      headers: uploadHeaders,
-      body: fileStream
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      const preview = (errorText || '').toString().replace(/\s+/g, ' ').trim().substring(0, 300);
-      console.error('Storage upload error:', {
-        status: uploadResponse.status,
-        statusText: uploadResponse.statusText,
-        bodyPreview: preview
+    // Upload individual tracks
+    for (let i = 0; i < users.length; i++) {
+      const { userId, username } = users[i];
+      const audioData = mixer.getIndividualAudio(userId);
+      
+      if (audioData.length === 0) continue;
+      
+      await interaction.editReply({ 
+        content: `⏳ Uploading individual track ${i + 1}/${users.length}: ${username}...` 
       });
-      throw new Error(`Storage upload failed: ${uploadResponse.status} ${preview ? `- ${preview}` : ''}`);
+      
+      const filename = `individual_${username}_${Date.now()}.wav`;
+      
+      try {
+        const result = await uploadAndRegister({
+          audioBuffer: audioData,
+          filename,
+          guild,
+          voiceChannel,
+          interaction,
+          channelData,
+          duration,
+          sessionId,
+          recordingType: 'individual',
+          speakerUserId: userId,
+          speakerUsername: username
+        });
+        
+        uploadResults.push({ type: 'individual', username, ...result });
+        totalSize += result.fileSize;
+      } catch (err) {
+        console.error(`Failed to upload individual track for ${username}:`, err);
+        uploadResults.push({ type: 'individual', username, error: err.message });
+      }
     }
 
-    console.log(`File uploaded to ${storage || 'storage'}: ${publicUrl}`);
-    console.log(`📁 Local backup preserved at: ${filepath}`);
-
-    // Register recording metadata via Edge Function
-    await interaction.editReply({ content: '⏳ Registering recording...' });
-
-    const response = await fetch(`${API_BASE_URL}/register-recording`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-bot-api-key': process.env.BOT_API_KEY
-      },
-      body: JSON.stringify({
-        filename: storagePath,
-        file_url: publicUrl,
-        file_size_bytes: fileStats.size,
-        discord_guild_id: guild.id,
-        discord_guild_name: guild.name,
-        discord_channel_id: voiceChannel.id,
-        discord_channel_name: voiceChannel.name,
-        discord_user_id: interaction.user.id,
-        discord_username: interaction.user.username,
-        duration_seconds: duration,
-        topic_id: channelData.topicId || null,
-        language: channelData.languageCode || null,  // null = auto-detect
-        campaign_id: null,
-        extra: {
-          recorded_by: interaction.user.tag,
-          member_count: voiceChannel.members.size,
-          topic_name: channelData.topicName || null,
-          language_name: channelData.languageName || null
-        }
-      })
-    });
-
-    // Handle response
-    const responseText = await response.text();
-    let result;
+    // Upload mixed track
+    await interaction.editReply({ content: `⏳ Uploading mixed track...` });
+    
+    const mixedAudioData = mixer.getMixedAudio();
+    const mixedFilename = `mixed_${Date.now()}.wav`;
+    
     try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse response:', responseText.substring(0, 500));
-      throw new Error(`Server returned invalid response (status ${response.status}): ${responseText.substring(0, 200)}`);
+      const mixedResult = await uploadAndRegister({
+        audioBuffer: mixedAudioData,
+        filename: mixedFilename,
+        guild,
+        voiceChannel,
+        interaction,
+        channelData,
+        duration,
+        sessionId,
+        recordingType: 'mixed',
+        speakerUserId: null,
+        speakerUsername: null
+      });
+      
+      uploadResults.push({ type: 'mixed', ...mixedResult });
+      totalSize += mixedResult.fileSize;
+    } catch (err) {
+      console.error('Failed to upload mixed track:', err);
+      uploadResults.push({ type: 'mixed', error: err.message });
     }
 
-    if (response.ok) {
-      await interaction.editReply({
-        content: `✅ **Recording saved!**\n\n` +
-                 `📁 **File:** ${filename}\n` +
-                 `⏱️ **Duration:** ${duration.toFixed(1)} seconds\n` +
-                 `📊 **Size:** ${fileSizeMB} MB\n` +
-                 `🔗 **URL:** ${publicUrl}\n\n` +
-                 `Audio recorded at ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV`
-      });
-    } else {
-      throw new Error(result.error || 'Registration failed');
+    // Build summary
+    const successCount = uploadResults.filter(r => !r.error).length;
+    const failCount = uploadResults.filter(r => r.error).length;
+    const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+    
+    const individualTracks = uploadResults.filter(r => r.type === 'individual' && !r.error);
+    const mixedTrack = uploadResults.find(r => r.type === 'mixed' && !r.error);
+    
+    let message = `✅ **Recording session saved!**\n\n`;
+    message += `📊 **Session ID:** \`${sessionId}\`\n`;
+    message += `⏱️ **Duration:** ${duration.toFixed(1)} seconds\n`;
+    message += `📁 **Total Size:** ${totalSizeMB} MB\n\n`;
+    
+    if (individualTracks.length > 0) {
+      message += `🎤 **Individual Tracks (${individualTracks.length}):**\n`;
+      for (const track of individualTracks) {
+        message += `• ${track.username}\n`;
+      }
+      message += `\n`;
     }
+    
+    if (mixedTrack) {
+      message += `🎚️ **Mixed Track:** All ${users.length} participants combined\n\n`;
+    }
+    
+    if (failCount > 0) {
+      message += `⚠️ ${failCount} track(s) failed to upload\n`;
+    }
+    
+    message += `\n_Audio: ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV_`;
+
+    await interaction.editReply({ content: message });
 
   } catch (error) {
     console.error('Error stopping recording:', error);
