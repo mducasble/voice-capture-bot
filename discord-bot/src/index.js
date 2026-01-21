@@ -42,6 +42,7 @@ const maskSecret = (value) => {
   return `${value.slice(0, 4)}…${value.slice(-4)}`;
 };
 
+// Last sync: 2026-01-21T15:05:00Z - B2 storage integration
 console.log('🔧 Env loaded:', {
   cwd: process.cwd(),
   envPath,
