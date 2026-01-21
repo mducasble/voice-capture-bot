@@ -1,16 +1,60 @@
+import { useMemo } from "react";
 import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
+import { SessionGroup } from "@/components/SessionGroup";
 import { StatsCard } from "@/components/StatsCard";
 import { StorageStatsCard } from "@/components/StorageStatsCard";
 import { AudioSpecBadge } from "@/components/AudioSpecBadge";
 import { AudioUpload } from "@/components/AudioUpload";
-import { useRecordings, useRecordingStats } from "@/hooks/useRecordings";
+import { useRecordings, useRecordingStats, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
   const { data: recordings, isLoading, error } = useRecordings();
   const stats = useRecordingStats(recordings);
+
+  // Group recordings by session_id
+  const groupedSessions = useMemo(() => {
+    if (!recordings) return [];
+    
+    const sessionMap = new Map<string, Recording[]>();
+    const standaloneRecordings: Recording[] = [];
+    
+    recordings.forEach(recording => {
+      if (recording.session_id) {
+        const existing = sessionMap.get(recording.session_id) || [];
+        existing.push(recording);
+        sessionMap.set(recording.session_id, existing);
+      } else {
+        standaloneRecordings.push(recording);
+      }
+    });
+    
+    // Convert to array and sort by most recent recording in each session
+    const sessions = Array.from(sessionMap.entries()).map(([sessionId, recs]) => ({
+      sessionId,
+      recordings: recs.sort((a, b) => {
+        // Mixed first, then by username
+        if (a.recording_type === 'mixed' && b.recording_type !== 'mixed') return -1;
+        if (b.recording_type === 'mixed' && a.recording_type !== 'mixed') return 1;
+        return (a.discord_username || '').localeCompare(b.discord_username || '');
+      }),
+      latestDate: Math.max(...recs.map(r => new Date(r.created_at).getTime()))
+    }));
+    
+    // Add standalone recordings as single-item sessions
+    standaloneRecordings.forEach(rec => {
+      sessions.push({
+        sessionId: rec.id, // Use recording id as session id for standalone
+        recordings: [rec],
+        latestDate: new Date(rec.created_at).getTime()
+      });
+    });
+    
+    // Sort by latest date descending
+    return sessions.sort((a, b) => b.latestDate - a.latestDate);
+  }, [recordings]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,11 +143,11 @@ const Index = () => {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold text-foreground">
-              Recent Recordings
+              Recent Sessions
             </h3>
             {recordings && recordings.length > 0 && (
               <span className="text-sm text-muted-foreground">
-                {recordings.length} recording{recordings.length !== 1 ? "s" : ""}
+                {groupedSessions.length} session{groupedSessions.length !== 1 ? "s" : ""} • {recordings.length} track{recordings.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
@@ -141,10 +185,14 @@ const Index = () => {
             </div>
           )}
 
-          {!isLoading && recordings && recordings.length > 0 && (
+          {!isLoading && groupedSessions.length > 0 && (
             <div className="space-y-4">
-              {recordings.map((recording) => (
-                <RecordingCard key={recording.id} recording={recording} />
+              {groupedSessions.map((session) => (
+                <SessionGroup 
+                  key={session.sessionId} 
+                  sessionId={session.recordings.length > 1 ? session.sessionId : null}
+                  recordings={session.recordings} 
+                />
               ))}
             </div>
           )}
