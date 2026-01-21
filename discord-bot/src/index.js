@@ -644,9 +644,7 @@ async function stopRecording(interaction) {
     }
 
     console.log(`File uploaded to ${storageType}: ${publicUrl}`);
-
-    // Clean up local file
-    unlinkSync(filepath);
+    console.log(`📁 Local copy preserved at: ${filepath}`);
 
     // Register recording metadata via Edge Function
     await interaction.editReply({ content: '⏳ Registering recording...' });
