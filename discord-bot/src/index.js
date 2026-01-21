@@ -267,52 +267,24 @@ class AudioMixer {
     return users;
   }
 
-  // Get individual audio for a specific user (silence-padded to full duration)
+  // Get individual audio for a specific user (concatenated chunks - no silence padding)
   getIndividualAudio(userId) {
     const entry = this.streams.get(userId);
     if (!entry || entry.chunks.length === 0) {
       return Buffer.alloc(0);
     }
 
-    // Find total duration from all users (so all files have same length)
-    let maxEnd = 0;
-    for (const [, { chunks }] of this.streams) {
-      for (const chunk of chunks) {
-        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
-        const alignedOffset = byteOffset - (byteOffset % 4);
-        const end = alignedOffset + chunk.data.length;
-        if (end > maxEnd) maxEnd = end;
-      }
-    }
-
-    if (maxEnd === 0) return Buffer.alloc(0);
-
-    // Create buffer initialized to silence
-    const audioBuffer = Buffer.alloc(maxEnd);
-
-    // Copy this user's chunks at correct positions (with mixing for overlapping chunks)
+    // Simply concatenate all chunks for this user (no silence between speech segments)
+    const totalSize = entry.chunks.reduce((sum, chunk) => sum + chunk.data.length, 0);
+    const audioBuffer = Buffer.alloc(totalSize);
+    
+    let offset = 0;
     for (const chunk of entry.chunks) {
-      const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
-      const alignedOffset = byteOffset - (byteOffset % 4);
-      
-      for (let i = 0; i < chunk.data.length; i += 2) {
-        const pos = alignedOffset + i;
-        if (pos + 1 >= audioBuffer.length) break;
-        
-        // Read existing and incoming as signed 16-bit, then mix
-        const existing = audioBuffer.readInt16LE(pos);
-        const incoming = chunk.data.readInt16LE(i);
-        
-        // Mix by adding (with clipping protection)
-        let mixed = existing + incoming;
-        if (mixed > 32767) mixed = 32767;
-        else if (mixed < -32768) mixed = -32768;
-        
-        audioBuffer.writeInt16LE(mixed, pos);
-      }
+      chunk.data.copy(audioBuffer, offset);
+      offset += chunk.data.length;
     }
 
-    console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
     return audioBuffer;
   }
 
