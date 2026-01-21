@@ -759,53 +759,35 @@ async function uploadWithProgress({ filepath, signedUrl, uploadHeaders, onProgre
   const fileStats = statSync(filepath);
   const totalBytes = fileStats.size;
   let uploadedBytes = 0;
-  
-  // For small files (<5MB), use simple fetch with stream
-  if (totalBytes < 5 * 1024 * 1024) {
-    const fileStream = createReadStream(filepath);
-    const response = await fetch(signedUrl, {
-      method: 'PUT',
-      headers: {
-        ...uploadHeaders,
-        'Content-Length': totalBytes.toString()
-      },
-      body: fileStream
-    });
-    onProgress(100);
-    return response;
-  }
-  
-  // For large files, read and upload with progress updates
-  return new Promise((resolve, reject) => {
-    const fileStream = createReadStream(filepath, { highWaterMark: 256 * 1024 }); // 256KB chunks
-    const chunks = [];
-    
-    fileStream.on('data', (chunk) => {
-      chunks.push(chunk);
-      uploadedBytes += chunk.length;
-      const percent = Math.round((uploadedBytes / totalBytes) * 100);
-      onProgress(percent);
-    });
-    
-    fileStream.on('end', async () => {
-      try {
-        const fullBuffer = Buffer.concat(chunks);
-        const response = await fetch(signedUrl, {
-          method: 'PUT',
-          headers: {
-            ...uploadHeaders,
-            'Content-Length': totalBytes.toString()
-          },
-          body: fullBuffer
-        });
-        resolve(response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-    
-    fileStream.on('error', reject);
+
+  // Important: keep it streaming to avoid buffering the whole file in RAM.
+  // We'll count bytes as the stream flows to the HTTP request.
+  const fileStream = createReadStream(filepath, { highWaterMark: 256 * 1024 }); // 256KB chunks
+  const passThrough = new PassThrough();
+
+  fileStream.on('data', (chunk) => {
+    uploadedBytes += chunk.length;
+    const percent = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
+    onProgress(percent);
   });
+
+  fileStream.on('error', (err) => {
+    passThrough.destroy(err);
+  });
+
+  fileStream.pipe(passThrough);
+
+  const response = await fetch(signedUrl, {
+    method: 'PUT',
+    headers: {
+      ...uploadHeaders,
+      'Content-Length': totalBytes.toString()
+    },
+    body: passThrough
+  });
+
+  onProgress(100);
+  return response;
 }
 
 // Helper: upload a single audio file and register it
@@ -866,6 +848,7 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
   };
   
   let lastLoggedPercent = 0;
+  const uploadStart = Date.now();
   const uploadResponse = await uploadWithProgress({
     filepath,
     signedUrl: signed_url,
@@ -885,7 +868,8 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
     throw new Error(`Storage upload failed: ${uploadResponse.status}`);
   }
 
-  console.log(`✅ Uploaded ${recordingType} file for ${speakerUsername || 'mixed'}: ${publicUrl}`);
+  const uploadSeconds = ((Date.now() - uploadStart) / 1000).toFixed(1);
+  console.log(`✅ Uploaded ${recordingType} file for ${speakerUsername || 'mixed'} in ${uploadSeconds}s: ${publicUrl}`);
   if (onProgress) onProgress('registering', 100);
 
   // Register recording
@@ -952,6 +936,15 @@ async function stopRecording(interaction) {
 
     const duration = mixer.getDuration();
     const users = mixer.getUsers();
+
+    // Diagnostics: compare how many members were in the voice channel vs how many tracks we actually captured.
+    // getUsers() only returns users with at least 1 audio chunk.
+    const nonBotMembers = [...voiceChannel.members.values()].filter((m) => !m.user.bot);
+    const capturedUserIds = new Set(users.map((u) => u.userId));
+    const missingMembers = nonBotMembers.filter((m) => !capturedUserIds.has(m.id));
+    if (missingMembers.length > 0) {
+      console.warn('⚠️ No audio chunks captured for:', missingMembers.map((m) => `${m.user.username} (${m.id})`));
+    }
     
     if (users.length === 0) {
       await interaction.editReply({ content: '⚠️ No audio was captured. Make sure users were speaking!' });
@@ -1158,6 +1151,11 @@ async function stopRecording(interaction) {
     
     if (failCount > 0) {
       message += `⚠️ ${failCount} track(s) failed to upload\n`;
+    }
+
+    if (missingMembers.length > 0) {
+      message += `\n⚠️ **No audio captured for:** ${missingMembers.map((m) => m.user.username).join(', ')}\n`;
+      message += `_Tip: the bot only starts capturing a user after Discord emits a speaking event (they must speak after recording starts)._\n`;
     }
     
     message += `\n_Audio: ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV_`;
