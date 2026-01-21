@@ -21,9 +21,9 @@ import {
   EndBehaviorType
 } from '@discordjs/voice';
 import { opus } from 'prism-media';
-import { createWriteStream, mkdirSync, existsSync, unlinkSync, readFileSync } from 'fs';
+import { createWriteStream, createReadStream, mkdirSync, existsSync, unlinkSync, readFileSync, statSync } from 'fs';
 import { pipeline } from 'stream/promises';
-import { Writable } from 'stream';
+import { Writable, PassThrough } from 'stream';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import dotenv from 'dotenv';
@@ -577,16 +577,23 @@ async function stopRecording(interaction) {
 
     const { signed_url, token, public_url: publicUrl } = signedPayload;
     
-    // Upload file using signed URL
-    await interaction.editReply({ content: `⏳ Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB...` });
-    console.log(`Uploading ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB to storage...`);
+    // Get file size for progress and streaming upload
+    const fileStats = statSync(filepath);
+    const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
+    
+    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB using streaming...` });
+    console.log(`Uploading ${fileSizeMB} MB to storage using stream (avoids ENOBUFS)...`);
+    
+    // Use streaming upload to prevent ENOBUFS error on large files
+    const fileStream = createReadStream(filepath);
     
     const uploadResponse = await fetch(signed_url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'audio/wav'
+        'Content-Type': 'audio/wav',
+        'Content-Length': fileStats.size.toString()
       },
-      body: wavBuffer
+      body: fileStream
     });
 
     if (!uploadResponse.ok) {
@@ -612,7 +619,7 @@ async function stopRecording(interaction) {
       body: JSON.stringify({
         filename: storagePath,
         file_url: publicUrl,
-        file_size_bytes: wavBuffer.length,
+        file_size_bytes: fileStats.size,
         discord_guild_id: guild.id,
         discord_guild_name: guild.name,
         discord_channel_id: voiceChannel.id,
@@ -647,7 +654,7 @@ async function stopRecording(interaction) {
         content: `✅ **Recording saved!**\n\n` +
                  `📁 **File:** ${filename}\n` +
                  `⏱️ **Duration:** ${duration.toFixed(1)} seconds\n` +
-                 `📊 **Size:** ${(wavBuffer.length / 1024 / 1024).toFixed(2)} MB\n` +
+                 `📊 **Size:** ${fileSizeMB} MB\n` +
                  `🔗 **URL:** ${publicUrl}\n\n` +
                  `Audio recorded at ${CONFIG.SAMPLE_RATE / 1000}kHz, ${CONFIG.BIT_DEPTH}-bit, stereo WAV`
       });
