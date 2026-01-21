@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { AlertTriangle, Activity, Volume2 } from "lucide-react";
+import { AlertTriangle, Activity, Volume2, Play, Pause } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 interface ClippingRegion {
   start: number; // percentage 0-100
@@ -14,6 +15,7 @@ interface WaveformData {
   clippingRegions: ClippingRegion[];
   peakLevel: number; // 0-1
   clippingPercentage: number;
+  duration: number; // seconds
 }
 
 interface WaveformVisualizerProps {
@@ -22,19 +24,30 @@ interface WaveformVisualizerProps {
   className?: string;
 }
 
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: WaveformVisualizerProps) {
   const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const animationRef = useRef<number | null>(null);
 
   const analyzeAudio = useCallback(async (url: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Try to fetch the audio file
       const response = await fetch(url, { 
         mode: 'cors',
         credentials: 'omit'
@@ -46,10 +59,10 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
       
       const arrayBuffer = await response.arrayBuffer();
       
-      // Create offline context for analysis
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       const channelData = audioBuffer.getChannelData(0);
+      const duration = audioBuffer.duration;
       
       await audioContext.close();
       
@@ -116,17 +129,53 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
         peaks,
         clippingRegions,
         peakLevel: maxPeak,
-        clippingPercentage
+        clippingPercentage,
+        duration
       });
     } catch (err) {
       console.error("Audio analysis unavailable (CORS):", err);
-      // Set null data - we'll show SNR-only view
       setWaveformData(null);
-      // Don't set error - just silently fall back to SNR display
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // Initialize audio element
+  useEffect(() => {
+    if (audioUrl && waveformData) {
+      const audio = new Audio(audioUrl);
+      audio.preload = 'metadata';
+      
+      audio.addEventListener('timeupdate', () => {
+        setCurrentTime(audio.currentTime);
+        if (waveformData.duration > 0) {
+          setPlaybackProgress((audio.currentTime / waveformData.duration) * 100);
+        }
+      });
+      
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setPlaybackProgress(0);
+        setCurrentTime(0);
+      });
+      
+      audio.addEventListener('pause', () => {
+        setIsPlaying(false);
+      });
+      
+      audio.addEventListener('play', () => {
+        setIsPlaying(true);
+      });
+      
+      audioRef.current = audio;
+      
+      return () => {
+        audio.pause();
+        audio.src = '';
+        audioRef.current = null;
+      };
+    }
+  }, [audioUrl, waveformData]);
 
   // Analyze audio when URL changes
   useEffect(() => {
@@ -146,7 +195,6 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size based on container
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
     canvas.width = rect.width * dpr;
@@ -159,7 +207,6 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
     const height = rect.height;
     const { peaks, clippingRegions } = waveformData;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
     // Draw clipping region highlights
@@ -168,41 +215,51 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
       const endX = (region.end / 100) * width;
       
       ctx.fillStyle = region.severity === 'critical' 
-        ? 'rgba(239, 68, 68, 0.2)'  // red
-        : 'rgba(234, 179, 8, 0.15)'; // yellow
+        ? 'rgba(239, 68, 68, 0.2)'
+        : 'rgba(234, 179, 8, 0.15)';
       ctx.fillRect(startX, 0, endX - startX, height);
     }
 
     // Draw waveform bars
     const barWidth = width / peaks.length;
     const midY = height / 2;
+    const playedBarIndex = Math.floor((playbackProgress / 100) * peaks.length);
 
     for (let i = 0; i < peaks.length; i++) {
       const peak = peaks[i];
       const barHeight = peak * (height * 0.9);
       const x = i * barWidth;
+      const isPlayed = i <= playedBarIndex;
 
-      // Determine bar color based on peak level
       let color: string;
       if (peak >= 0.98) {
-        color = 'rgb(239, 68, 68)'; // red - critical clipping
+        color = isPlayed ? 'rgb(239, 68, 68)' : 'rgba(239, 68, 68, 0.5)';
       } else if (peak >= 0.9) {
-        color = 'rgb(234, 179, 8)'; // yellow - warning
+        color = isPlayed ? 'rgb(234, 179, 8)' : 'rgba(234, 179, 8, 0.5)';
       } else if (peak >= 0.7) {
-        color = 'rgb(34, 197, 94)'; // green - good level
+        color = isPlayed ? 'rgb(34, 197, 94)' : 'rgba(34, 197, 94, 0.5)';
       } else {
-        color = 'hsl(var(--primary))'; // primary color - normal
+        color = isPlayed ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.4)';
       }
 
       ctx.fillStyle = color;
-      
-      // Draw mirrored bar (top and bottom)
       ctx.fillRect(
         x + 0.5,
         midY - barHeight / 2,
         Math.max(barWidth - 1, 1),
         barHeight
       );
+    }
+
+    // Draw playhead
+    if (playbackProgress > 0 || isPlaying) {
+      const playheadX = (playbackProgress / 100) * width;
+      ctx.strokeStyle = 'hsl(var(--primary))';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(playheadX, 0);
+      ctx.lineTo(playheadX, height);
+      ctx.stroke();
     }
 
     // Draw center line
@@ -225,7 +282,32 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
     ctx.stroke();
     ctx.setLineDash([]);
 
+  }, [waveformData, playbackProgress, isPlaying]);
+
+  // Handle canvas click for seeking
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || !audioRef.current || !waveformData) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const seekTime = percentage * waveformData.duration;
+    
+    audioRef.current.currentTime = seekTime;
+    setCurrentTime(seekTime);
+    setPlaybackProgress(percentage * 100);
   }, [waveformData]);
+
+  // Toggle playback
+  const togglePlayback = useCallback(() => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  }, [isPlaying]);
 
   if (!audioUrl) {
     return null;
@@ -323,15 +405,37 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
         )}
       </div>
 
-      {/* Waveform canvas */}
-      <div 
-        ref={containerRef}
-        className="relative h-16 w-full bg-muted/30 rounded-lg overflow-hidden"
-      >
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0"
-        />
+      {/* Playback controls and waveform */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={togglePlayback}
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
+        
+        <div 
+          ref={containerRef}
+          className="relative h-16 flex-1 bg-muted/30 rounded-lg overflow-hidden cursor-pointer hover:bg-muted/40 transition-colors"
+          onClick={handleCanvasClick}
+        >
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0"
+          />
+        </div>
+      </div>
+
+      {/* Time display */}
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>{formatTime(currentTime)}</span>
+        <span>{formatTime(waveformData.duration)}</span>
       </div>
 
       {/* Legend */}
