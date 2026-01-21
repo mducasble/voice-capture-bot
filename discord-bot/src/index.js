@@ -376,27 +376,39 @@ class AudioMixer {
 
 // Start recording a voice channel
 async function startRecording(interaction) {
+  // This command must run inside a guild (server). Some interaction contexts (DMs, etc.) have no guild.
+  const guild = interaction.guild ?? (interaction.guildId ? await client.guilds.fetch(interaction.guildId).catch(() => null) : null);
+  if (!guild) {
+    await interaction.reply({ content: '❌ This command can only be used inside a server voice channel.', flags: 64 });
+    return;
+  }
+
   // Ensure member is available (may need to be fetched in some cases)
   let member = interaction.member;
   if (!member || !member.voice) {
     try {
-      member = await interaction.guild.members.fetch(interaction.user.id);
+      member = await guild.members.fetch(interaction.user.id);
     } catch (err) {
       console.error('Failed to fetch member:', err);
-      await interaction.reply({ content: '❌ Could not resolve your voice state. Try again.', ephemeral: true });
+      await interaction.reply({ content: '❌ Could not resolve your voice state. Try again.', flags: 64 });
       return;
     }
   }
   
-  const voiceChannel = member?.voice?.channel;
+  // Voice channel can be missing from member.voice in some interaction shapes; fall back to cached voice state.
+  let voiceChannel = member?.voice?.channel ?? null;
+  if (!voiceChannel) {
+    const cachedState = guild.voiceStates?.cache?.get(interaction.user.id);
+    voiceChannel = cachedState?.channel ?? null;
+  }
   
   if (!voiceChannel) {
-    await interaction.reply({ content: '❌ You must be in a voice channel!', ephemeral: true });
+    await interaction.reply({ content: '❌ You must be in a voice channel!', flags: 64 });
     return;
   }
 
   // Fast-fail with a clear error if the bot cannot connect (most common cause of ABORT_ERR)
-  const me = interaction.guild?.members?.me;
+  const me = guild?.members?.me;
   const permissions = me ? voiceChannel.permissionsFor(me) : null;
   if (permissions) {
     const missing = [];
@@ -406,7 +418,7 @@ async function startRecording(interaction) {
     if (missing.length > 0) {
       await interaction.reply({
         content: `❌ I can't join **${voiceChannel.name}**. Missing permissions: ${missing.join(', ')}.\n\nFix: allow the bot to View Channel + Connect for that voice channel.`,
-        ephemeral: true
+        flags: 64
       });
       return;
     }
@@ -415,7 +427,7 @@ async function startRecording(interaction) {
   }
 
   if (activeRecordings.has(voiceChannel.id)) {
-    await interaction.reply({ content: '⚠️ Already recording in this channel!', ephemeral: true });
+    await interaction.reply({ content: '⚠️ Already recording in this channel!', flags: 64 });
     return;
   }
 
