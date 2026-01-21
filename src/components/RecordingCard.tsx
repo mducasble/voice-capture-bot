@@ -11,6 +11,7 @@ import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
+import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -378,7 +379,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             )}
 
             {/* Speaker-Identified Transcription Section (for mixed recordings with session) */}
-            {recording.recording_type === 'mixed' && speakerTranscription && (
+            {recording.recording_type === 'mixed' && recording.transcription_elevenlabs && (
               <Collapsible open={isSpeakerTranscriptOpen} onOpenChange={setIsSpeakerTranscriptOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-purple-400 hover:text-purple-400">
@@ -394,20 +395,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     {isSpeakerTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2 space-y-2">
-                  {speakers && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {speakers.map((s, i) => (
-                        <Badge key={i} variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
-                          <User className="h-3 w-3 mr-1" />
-                          {s.username}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm text-foreground/90 max-h-64 overflow-y-auto">
-                    <p className="whitespace-pre-wrap">{speakerTranscription}</p>
-                  </div>
+                <CollapsibleContent className="mt-2">
+                  <SpeakerTranscript 
+                    transcription={recording.transcription_elevenlabs} 
+                    speakers={speakers}
+                  />
                 </CollapsibleContent>
               </Collapsible>
             )}
