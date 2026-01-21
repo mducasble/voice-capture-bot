@@ -378,6 +378,7 @@ class AudioMixer {
 async function startRecording(interaction) {
   // This command must run inside a guild (server). Some interaction contexts (DMs, etc.) have no guild.
   let guild = interaction.guild;
+  let guildFetchError = null;
   
   // If guild is not cached on the interaction, try to fetch it
   if (!guild && interaction.guildId) {
@@ -385,6 +386,7 @@ async function startRecording(interaction) {
       guild = await client.guilds.fetch(interaction.guildId);
     } catch (err) {
       console.error('Failed to fetch guild:', err);
+      guildFetchError = err;
     }
   }
   
@@ -394,6 +396,17 @@ async function startRecording(interaction) {
       guildId: interaction.guildId,
       inGuild: interaction.inGuild?.() ?? 'N/A'
     });
+
+    // Discord "user-installed apps" can be used in servers without adding the bot to the server.
+    // In that case, the interaction may have guildId, but the bot cannot access the guild, and fetch throws 10004.
+    if (guildFetchError?.code === 10004) {
+      await interaction.reply({
+        content: '❌ This app is not installed as a bot in this server. Please invite/add the bot to the server (server install), then try again in the voice channel.',
+        flags: 64
+      });
+      return;
+    }
+
     await interaction.reply({ content: '❌ This command can only be used inside a server voice channel.', flags: 64 });
     return;
   }
