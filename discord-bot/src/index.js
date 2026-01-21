@@ -962,13 +962,6 @@ async function stopRecording(interaction) {
     // Generate a proper UUID session ID to group all recordings (database expects UUID type)
     const sessionId = crypto.randomUUID();
     
-    await interaction.editReply({ 
-      content: `⏳ Processing ${users.length} individual track(s) + 1 mixed track...` 
-    });
-
-    const uploadResults = [];
-    let totalSize = 0;
-
     // Helper to create progress bar
     const createProgressBar = (percent, width = 20) => {
       const filled = Math.round((percent / 100) * width);
@@ -982,9 +975,85 @@ async function stopRecording(interaction) {
       return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
     };
 
+    // ========== PHASE 1: Save all files locally ==========
+    await interaction.editReply({ 
+      content: `💾 **Phase 1/2:** Saving ${users.length + 1} tracks locally...` 
+    });
+
+    const localFiles = [];
+    let totalLocalSize = 0;
+
+    // Save individual tracks locally
+    for (let i = 0; i < users.length; i++) {
+      const { userId, username } = users[i];
+      const audioData = mixer.getIndividualAudio(userId);
+      
+      if (audioData.length === 0) continue;
+      
+      const filename = `individual_${username}_${Date.now()}.wav`;
+      const wavHeader = createWavHeader(audioData.length);
+      const wavBuffer = Buffer.concat([wavHeader, audioData]);
+      const filepath = `${CONFIG.RECORDINGS_DIR}/${filename}`;
+      
+      // Save locally
+      const writeStream = createWriteStream(filepath);
+      writeStream.write(wavBuffer);
+      writeStream.end();
+      await new Promise((resolve) => writeStream.on('finish', resolve));
+      
+      const fileStats = statSync(filepath);
+      totalLocalSize += fileStats.size;
+      
+      localFiles.push({
+        type: 'individual',
+        userId,
+        username,
+        filename,
+        filepath,
+        fileSize: fileStats.size
+      });
+      
+      console.log(`💾 Saved locally: ${filename} (${formatSize(fileStats.size)})`);
+    }
+
+    // Save mixed track locally
+    const mixedAudioData = mixer.getMixedAudio();
+    const mixedFilename = `mixed_${Date.now()}.wav`;
+    const mixedWavHeader = createWavHeader(mixedAudioData.length);
+    const mixedWavBuffer = Buffer.concat([mixedWavHeader, mixedAudioData]);
+    const mixedFilepath = `${CONFIG.RECORDINGS_DIR}/${mixedFilename}`;
+    
+    const mixedWriteStream = createWriteStream(mixedFilepath);
+    mixedWriteStream.write(mixedWavBuffer);
+    mixedWriteStream.end();
+    await new Promise((resolve) => mixedWriteStream.on('finish', resolve));
+    
+    const mixedFileStats = statSync(mixedFilepath);
+    totalLocalSize += mixedFileStats.size;
+    
+    localFiles.push({
+      type: 'mixed',
+      userId: null,
+      username: null,
+      filename: mixedFilename,
+      filepath: mixedFilepath,
+      fileSize: mixedFileStats.size
+    });
+    
+    console.log(`💾 Saved locally: ${mixedFilename} (${formatSize(mixedFileStats.size)})`);
+
+    await interaction.editReply({ 
+      content: `✅ **Phase 1/2 complete!** ${localFiles.length} tracks saved (${formatSize(totalLocalSize)})\n\n` +
+               `📤 **Phase 2/2:** Uploading to cloud...` 
+    });
+
+    // ========== PHASE 2: Upload all files ==========
+    const uploadResults = [];
+    let totalSize = 0;
+
     // Throttle Discord updates to avoid rate limits
     let lastUpdateTime = 0;
-    const updateThrottleMs = 1500; // Update at most every 1.5 seconds
+    const updateThrottleMs = 1500;
     
     const throttledUpdate = async (content) => {
       const now = Date.now();
@@ -998,130 +1067,127 @@ async function stopRecording(interaction) {
       }
     };
 
-    // Upload individual tracks
-    for (let i = 0; i < users.length; i++) {
-      const { userId, username } = users[i];
-      const audioData = mixer.getIndividualAudio(userId);
-      
-      if (audioData.length === 0) continue;
-      
-      const filename = `individual_${username}_${Date.now()}.wav`;
-      const fileSizeMB = ((audioData.length + 44) / 1024 / 1024).toFixed(2);
+    for (let i = 0; i < localFiles.length; i++) {
+      const file = localFiles[i];
+      const trackLabel = file.type === 'mixed' ? 'Mixed' : file.username;
+      const fileSizeMB = (file.fileSize / 1024 / 1024).toFixed(2);
       
       try {
-        const result = await uploadAndRegister({
-          audioBuffer: audioData,
-          filename,
-          guild,
-          voiceChannel,
-          interaction,
-          channelData,
-          duration,
-          sessionId,
-          recordingType: 'individual',
-          speakerUserId: userId,
-          speakerUsername: username,
-          onProgress: async (stage, percent) => {
-            let statusEmoji = '⏳';
-            let statusText = '';
-            
-            switch (stage) {
-              case 'saved':
-                statusEmoji = '💾';
-                statusText = 'Saved locally';
-                break;
-              case 'signing':
-                statusEmoji = '🔑';
-                statusText = 'Getting upload URL...';
-                break;
-              case 'uploading':
-                statusEmoji = '📤';
-                statusText = `Uploading: ${createProgressBar(percent)}`;
-                break;
-              case 'registering':
-                statusEmoji = '📝';
-                statusText = 'Registering...';
-                break;
-              case 'done':
-                statusEmoji = '✅';
-                statusText = 'Complete!';
-                break;
+        // Generate storage path
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const storagePath = `${guild.id}/${file.userId || interaction.user.id}/${timestamp}_${file.filename}`;
+        
+        // Get signed URL
+        await throttledUpdate(
+          `📤 **Uploading ${i + 1}/${localFiles.length}:** ${trackLabel}\n` +
+          `📁 Size: ${fileSizeMB} MB\n` +
+          `🔑 Getting upload URL...`
+        );
+        
+        const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-bot-api-key': process.env.BOT_API_KEY
+          },
+          body: JSON.stringify({
+            filename: storagePath,
+            content_type: 'audio/wav'
+          })
+        });
+
+        if (!urlResponse.ok) {
+          const errorText = await urlResponse.text();
+          throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
+        }
+
+        const { signed_url, public_url: publicUrl, upload_headers } = await urlResponse.json();
+        
+        // Upload with progress
+        const uploadHeaders = {
+          'Content-Type': 'audio/wav',
+          ...(upload_headers || {})
+        };
+        
+        const uploadStart = Date.now();
+        let lastLoggedPercent = 0;
+        
+        const uploadResponse = await uploadWithProgress({
+          filepath: file.filepath,
+          signedUrl: signed_url,
+          uploadHeaders,
+          onProgress: async (percent) => {
+            if (percent - lastLoggedPercent >= 10 || percent === 100) {
+              console.log(`📤 Upload progress: ${percent}% (${file.filename})`);
+              lastLoggedPercent = percent;
             }
-            
             await throttledUpdate(
-              `${statusEmoji} **Track ${i + 1}/${users.length + 1}:** ${username}\n` +
+              `📤 **Uploading ${i + 1}/${localFiles.length}:** ${trackLabel}\n` +
               `📁 Size: ${fileSizeMB} MB\n` +
-              `${statusText}`
+              `${createProgressBar(percent)}`
             );
           }
         });
-        
-        uploadResults.push({ type: 'individual', username, ...result });
-        totalSize += result.fileSize;
-      } catch (err) {
-        console.error(`Failed to upload individual track for ${username}:`, err);
-        uploadResults.push({ type: 'individual', username, error: err.message });
-      }
-    }
 
-    // Upload mixed track
-    const mixedAudioData = mixer.getMixedAudio();
-    const mixedFilename = `mixed_${Date.now()}.wav`;
-    const mixedSizeMB = ((mixedAudioData.length + 44) / 1024 / 1024).toFixed(2);
-    
-    try {
-      const mixedResult = await uploadAndRegister({
-        audioBuffer: mixedAudioData,
-        filename: mixedFilename,
-        guild,
-        voiceChannel,
-        interaction,
-        channelData,
-        duration,
-        sessionId,
-        recordingType: 'mixed',
-        speakerUserId: null,
-        speakerUsername: null,
-        onProgress: async (stage, percent) => {
-          let statusEmoji = '⏳';
-          let statusText = '';
-          
-          switch (stage) {
-            case 'saved':
-              statusEmoji = '💾';
-              statusText = 'Saved locally';
-              break;
-            case 'signing':
-              statusEmoji = '🔑';
-              statusText = 'Getting upload URL...';
-              break;
-            case 'uploading':
-              statusEmoji = '📤';
-              statusText = `Uploading: ${createProgressBar(percent)}`;
-              break;
-            case 'registering':
-              statusEmoji = '📝';
-              statusText = 'Registering...';
-              break;
-            case 'done':
-              statusEmoji = '✅';
-              statusText = 'Complete!';
-              break;
-          }
-          
-          await throttledUpdate(
-            `${statusEmoji} **Track ${users.length + 1}/${users.length + 1}:** Mixed\n` +
-            `📁 Size: ${mixedSizeMB} MB\n` +
-            `${statusText}`
-          );
+        if (!uploadResponse.ok) {
+          throw new Error(`Storage upload failed: ${uploadResponse.status}`);
         }
-      });
-      
-      uploadResults.push({ type: 'mixed', ...mixedResult });
-      totalSize += mixedResult.fileSize;
-    } catch (err) {
-      console.error('Failed to upload mixed track:', err);
-      uploadResults.push({ type: 'mixed', error: err.message });
+
+        const uploadSeconds = ((Date.now() - uploadStart) / 1000).toFixed(1);
+        console.log(`✅ Uploaded ${file.type} for ${trackLabel} in ${uploadSeconds}s`);
+
+        // Register recording
+        await throttledUpdate(
+          `📤 **Uploading ${i + 1}/${localFiles.length}:** ${trackLabel}\n` +
+          `📁 Size: ${fileSizeMB} MB\n` +
+          `📝 Registering...`
+        );
+
+        const response = await fetch(`${API_BASE_URL}/register-recording`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-bot-api-key': process.env.BOT_API_KEY
+          },
+          body: JSON.stringify({
+            filename: storagePath,
+            file_url: publicUrl,
+            file_size_bytes: file.fileSize,
+            discord_guild_id: guild.id,
+            discord_guild_name: guild.name,
+            discord_channel_id: voiceChannel.id,
+            discord_channel_name: voiceChannel.name,
+            discord_user_id: file.userId || interaction.user.id,
+            discord_username: file.username || interaction.user.username,
+            duration_seconds: duration,
+            topic_id: channelData.topicId || null,
+            language: channelData.languageCode || null,
+            campaign_id: null,
+            session_id: sessionId,
+            recording_type: file.type,
+            extra: {
+              recorded_by: interaction.user.tag,
+              member_count: voiceChannel.members.size,
+              topic_name: channelData.topicName || null,
+              language_name: channelData.languageName || null,
+              recording_type: file.type,
+              speaker_username: file.username
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'Registration failed');
+        }
+
+        uploadResults.push({ type: file.type, username: file.username, publicUrl, fileSize: file.fileSize });
+        totalSize += file.fileSize;
+        
+      } catch (err) {
+        console.error(`Failed to upload ${file.type} track for ${file.username || 'mixed'}:`, err);
+        uploadResults.push({ type: file.type, username: file.username, error: err.message });
+      }
     }
 
     // Build summary
