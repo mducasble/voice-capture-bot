@@ -221,6 +221,49 @@ class AudioMixer {
     this.startTime = Date.now();
     // Bytes per millisecond for 48kHz, 16-bit, stereo = 48000 * 2 * 2 / 1000 = 192
     this.bytesPerMs = (CONFIG.SAMPLE_RATE * CONFIG.CHANNELS * (CONFIG.BIT_DEPTH / 8)) / 1000;
+
+    // 4 bytes per frame for 16-bit stereo (used for alignment)
+    this.blockAlign = CONFIG.CHANNELS * (CONFIG.BIT_DEPTH / 8);
+
+    // Small fade to avoid clicks/static at chunk boundaries
+    this.fadeMs = 2;
+    this.fadeSamples = Math.max(0, Math.floor((CONFIG.SAMPLE_RATE * this.fadeMs) / 1000));
+  }
+
+  _applyFadeEdges(input) {
+    // Apply a short linear fade-in/out to reduce clicks when chunks start/end.
+    // Copy to avoid mutating the original buffer.
+    if (!this.fadeSamples || input.length < this.blockAlign * 4) return Buffer.from(input);
+
+    const out = Buffer.from(input);
+    const totalFrames = Math.floor(out.length / this.blockAlign);
+    const fadeFrames = Math.min(this.fadeSamples, Math.floor(totalFrames / 2));
+    if (fadeFrames <= 0) return out;
+
+    // Fade in
+    for (let frame = 0; frame < fadeFrames; frame++) {
+      const gain = frame / fadeFrames;
+      const base = frame * this.blockAlign;
+      for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
+        const pos = base + ch * 2;
+        const s = out.readInt16LE(pos);
+        out.writeInt16LE(Math.round(s * gain), pos);
+      }
+    }
+
+    // Fade out
+    for (let i = 0; i < fadeFrames; i++) {
+      const gain = (fadeFrames - i) / fadeFrames;
+      const frame = totalFrames - fadeFrames + i;
+      const base = frame * this.blockAlign;
+      for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
+        const pos = base + ch * 2;
+        const s = out.readInt16LE(pos);
+        out.writeInt16LE(Math.round(s * gain), pos);
+      }
+    }
+
+    return out;
   }
 
   hasActiveStream(userId) {
@@ -233,10 +276,20 @@ class AudioMixer {
     if (existing) {
       existing.stream = stream;
       if (username) existing.username = username;
+
+      // Start a new speaking segment clock for this user.
+      existing.segmentStartTimestampMs = Date.now() - this.startTime;
+      existing.segmentCursorBytes = 0;
       return;
     }
 
-    this.streams.set(userId, { stream, chunks: [], username: username || userId });
+    this.streams.set(userId, {
+      stream,
+      chunks: [],
+      username: username || userId,
+      segmentStartTimestampMs: Date.now() - this.startTime,
+      segmentCursorBytes: 0
+    });
   }
 
   removeStream(userId) {
@@ -247,13 +300,33 @@ class AudioMixer {
 
   addChunk(userId, chunk) {
     if (!this.streams.has(userId)) {
-      this.streams.set(userId, { stream: null, chunks: [], username: userId });
+      this.streams.set(userId, {
+        stream: null,
+        chunks: [],
+        username: userId,
+        segmentStartTimestampMs: Date.now() - this.startTime,
+        segmentCursorBytes: 0
+      });
     }
 
-    this.streams.get(userId).chunks.push({
-      timestamp: Date.now() - this.startTime,
-      data: chunk
+    const entry = this.streams.get(userId);
+
+    // Ensure we only write whole PCM frames.
+    const alignedLen = chunk.length - (chunk.length % this.blockAlign);
+    if (alignedLen <= 0) return;
+    const alignedChunk = chunk.subarray(0, alignedLen);
+
+    // Use a sample-accurate timestamp (based on bytes received) to avoid jitter-induced crackle.
+    // Date.now() can drift/jitter between events, creating overlaps/gaps when reconstructing audio.
+    const timestamp = entry.segmentStartTimestampMs + (entry.segmentCursorBytes / this.bytesPerMs);
+    const faded = this._applyFadeEdges(alignedChunk);
+
+    entry.chunks.push({
+      timestamp,
+      data: faded
     });
+
+    entry.segmentCursorBytes += faded.length;
   }
 
   // Get list of users who have audio
@@ -573,16 +646,10 @@ async function startRecording(interaction) {
         decoder = null;
       }
 
-      // Fallback: capture raw audio if decoder failed
+      // IMPORTANT: Do NOT write raw Opus packets into a WAV container.
+      // If the decoder is unavailable, we'd rather skip audio than produce static/corrupted WAV.
       if (!decoder) {
-        audioStream.on('data', (chunk) => {
-          if (streamEnded) return;
-          chunkCount++;
-          if (chunkCount % 50 === 1) {
-            console.log(`📊 User ${userId}: received ${chunkCount} raw chunks (${chunk.length} bytes each)`);
-          }
-          mixer.addChunk(userId, chunk);
-        });
+        console.error(`❌ No Opus decoder available for user ${userId}. Skipping audio to avoid corrupted WAV (static).`);
       }
 
       audioStream.on('error', (err) => {
