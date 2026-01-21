@@ -376,7 +376,19 @@ class AudioMixer {
 
 // Start recording a voice channel
 async function startRecording(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
+  // Ensure member is available (may need to be fetched in some cases)
+  let member = interaction.member;
+  if (!member || !member.voice) {
+    try {
+      member = await interaction.guild.members.fetch(interaction.user.id);
+    } catch (err) {
+      console.error('Failed to fetch member:', err);
+      await interaction.reply({ content: '❌ Could not resolve your voice state. Try again.', ephemeral: true });
+      return;
+    }
+  }
+  
+  const voiceChannel = member?.voice?.channel;
   
   if (!voiceChannel) {
     await interaction.reply({ content: '❌ You must be in a voice channel!', ephemeral: true });
