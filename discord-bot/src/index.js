@@ -230,9 +230,9 @@ class AudioMixer {
     this.fadeSamples = Math.max(0, Math.floor((CONFIG.SAMPLE_RATE * this.fadeMs) / 1000));
   }
 
-  _applyFadeEdges(input) {
-    // Apply a short linear fade-in/out to reduce clicks when chunks start/end.
-    // Copy to avoid mutating the original buffer.
+  _applyFadeEdges(input, fadeIn = true, fadeOut = true) {
+    // Apply a short linear fade-in/out to reduce clicks at speech segment boundaries.
+    // This should ONLY be called on final assembled segments, NOT on individual micro-chunks.
     if (!this.fadeSamples || input.length < this.blockAlign * 4) return Buffer.from(input);
 
     const out = Buffer.from(input);
@@ -240,26 +240,30 @@ class AudioMixer {
     const fadeFrames = Math.min(this.fadeSamples, Math.floor(totalFrames / 2));
     if (fadeFrames <= 0) return out;
 
-    // Fade in
-    for (let frame = 0; frame < fadeFrames; frame++) {
-      const gain = frame / fadeFrames;
-      const base = frame * this.blockAlign;
-      for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
-        const pos = base + ch * 2;
-        const s = out.readInt16LE(pos);
-        out.writeInt16LE(Math.round(s * gain), pos);
+    // Fade in (only at start of speech segment)
+    if (fadeIn) {
+      for (let frame = 0; frame < fadeFrames; frame++) {
+        const gain = frame / fadeFrames;
+        const base = frame * this.blockAlign;
+        for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
+          const pos = base + ch * 2;
+          const s = out.readInt16LE(pos);
+          out.writeInt16LE(Math.round(s * gain), pos);
+        }
       }
     }
 
-    // Fade out
-    for (let i = 0; i < fadeFrames; i++) {
-      const gain = (fadeFrames - i) / fadeFrames;
-      const frame = totalFrames - fadeFrames + i;
-      const base = frame * this.blockAlign;
-      for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
-        const pos = base + ch * 2;
-        const s = out.readInt16LE(pos);
-        out.writeInt16LE(Math.round(s * gain), pos);
+    // Fade out (only at end of speech segment)
+    if (fadeOut) {
+      for (let i = 0; i < fadeFrames; i++) {
+        const gain = (fadeFrames - i) / fadeFrames;
+        const frame = totalFrames - fadeFrames + i;
+        const base = frame * this.blockAlign;
+        for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
+          const pos = base + ch * 2;
+          const s = out.readInt16LE(pos);
+          out.writeInt16LE(Math.round(s * gain), pos);
+        }
       }
     }
 
@@ -317,16 +321,16 @@ class AudioMixer {
     const alignedChunk = chunk.subarray(0, alignedLen);
 
     // Use a sample-accurate timestamp (based on bytes received) to avoid jitter-induced crackle.
-    // Date.now() can drift/jitter between events, creating overlaps/gaps when reconstructing audio.
     const timestamp = entry.segmentStartTimestampMs + (entry.segmentCursorBytes / this.bytesPerMs);
-    const faded = this._applyFadeEdges(alignedChunk);
 
+    // DO NOT apply fade here - fading every micro-chunk causes robotic sound.
+    // Fading will be applied later on assembled speech segments.
     entry.chunks.push({
       timestamp,
-      data: faded
+      data: Buffer.from(alignedChunk)
     });
 
-    entry.segmentCursorBytes += faded.length;
+    entry.segmentCursorBytes += alignedChunk.length;
   }
 
   // Get list of users who have audio
@@ -363,14 +367,38 @@ class AudioMixer {
     // Create buffer initialized to silence (zeros)
     const audioBuffer = Buffer.alloc(maxEnd);
 
+    // Sort chunks by timestamp for sequential processing
+    const sortedChunks = [...entry.chunks].sort((a, b) => a.timestamp - b.timestamp);
+
     // Place this user's chunks at their correct timestamp positions
-    // Chunks naturally start when user speaks and end when they stop (silence detected)
-    for (const chunk of entry.chunks) {
+    // Apply fade only at speech segment boundaries (gaps > 50ms indicate new segment)
+    const gapThresholdMs = 50;
+    
+    for (let i = 0; i < sortedChunks.length; i++) {
+      const chunk = sortedChunks[i];
       const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
       const alignedOffset = byteOffset - (byteOffset % 4);
       
-      // Direct copy - no mixing needed for individual tracks since it's just one user
-      chunk.data.copy(audioBuffer, alignedOffset, 0, Math.min(chunk.data.length, audioBuffer.length - alignedOffset));
+      // Detect if this is start/end of a speech segment
+      const prevChunk = sortedChunks[i - 1];
+      const nextChunk = sortedChunks[i + 1];
+      
+      const prevEnd = prevChunk ? (Math.floor(prevChunk.timestamp * this.bytesPerMs) + prevChunk.data.length) / this.bytesPerMs : -Infinity;
+      const gapFromPrev = chunk.timestamp - prevEnd;
+      const isSegmentStart = !prevChunk || gapFromPrev > gapThresholdMs;
+      
+      const thisEnd = chunk.timestamp + (chunk.data.length / this.bytesPerMs);
+      const nextStart = nextChunk ? nextChunk.timestamp : Infinity;
+      const gapToNext = nextStart - thisEnd;
+      const isSegmentEnd = !nextChunk || gapToNext > gapThresholdMs;
+      
+      // Apply fade only at segment boundaries
+      let dataToWrite = chunk.data;
+      if (isSegmentStart || isSegmentEnd) {
+        dataToWrite = this._applyFadeEdges(chunk.data, isSegmentStart, isSegmentEnd);
+      }
+      
+      dataToWrite.copy(audioBuffer, alignedOffset, 0, Math.min(dataToWrite.length, audioBuffer.length - alignedOffset));
     }
 
     console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
@@ -378,62 +406,86 @@ class AudioMixer {
   }
 
   getMixedAudio() {
-    // Collect all chunks with their absolute byte positions
-    const allChunks = [];
+    // Collect all chunks with their absolute byte positions, grouped by user
+    const chunksByUser = new Map();
 
     for (const [userId, { chunks }] of this.streams) {
-      for (const chunk of chunks) {
-        // Convert timestamp (ms) to byte offset
-        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
-        // Align to sample boundary (4 bytes for stereo 16-bit)
-        const alignedOffset = byteOffset - (byteOffset % 4);
-        allChunks.push({
-          offset: alignedOffset,
-          data: chunk.data,
-          userId
-        });
-      }
+      if (chunks.length === 0) continue;
+      
+      // Sort chunks by timestamp for each user
+      const sortedChunks = [...chunks].sort((a, b) => a.timestamp - b.timestamp);
+      chunksByUser.set(userId, sortedChunks);
     }
 
-    if (allChunks.length === 0) {
+    if (chunksByUser.size === 0) {
       return Buffer.alloc(0);
     }
 
     // Find the total duration needed
     let maxEnd = 0;
-    for (const chunk of allChunks) {
-      const end = chunk.offset + chunk.data.length;
-      if (end > maxEnd) maxEnd = end;
+    for (const [, userChunks] of chunksByUser) {
+      for (const chunk of userChunks) {
+        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+        const alignedOffset = byteOffset - (byteOffset % 4);
+        const end = alignedOffset + chunk.data.length;
+        if (end > maxEnd) maxEnd = end;
+      }
     }
 
     // Create output buffer initialized to silence (zeros)
     const mixedBuffer = Buffer.alloc(maxEnd);
 
     // Mix all chunks by adding samples (with clipping protection)
-    for (const chunk of allChunks) {
-      const { offset, data } = chunk;
-      
-      // Process as 16-bit signed samples
-      for (let i = 0; i < data.length; i += 2) {
-        const pos = offset + i;
-        if (pos + 1 >= mixedBuffer.length) break;
+    // Apply fade at speech segment boundaries per user
+    const gapThresholdMs = 50;
+
+    for (const [, userChunks] of chunksByUser) {
+      for (let i = 0; i < userChunks.length; i++) {
+        const chunk = userChunks[i];
+        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+        const alignedOffset = byteOffset - (byteOffset % 4);
         
-        // Read existing sample and new sample as signed 16-bit
-        const existing = mixedBuffer.readInt16LE(pos);
-        const incoming = data.readInt16LE(i);
+        // Detect segment boundaries
+        const prevChunk = userChunks[i - 1];
+        const nextChunk = userChunks[i + 1];
         
-        // Mix by adding (with soft clipping to prevent distortion)
-        let mixed = existing + incoming;
+        const prevEnd = prevChunk ? (Math.floor(prevChunk.timestamp * this.bytesPerMs) + prevChunk.data.length) / this.bytesPerMs : -Infinity;
+        const gapFromPrev = chunk.timestamp - prevEnd;
+        const isSegmentStart = !prevChunk || gapFromPrev > gapThresholdMs;
         
-        // Soft clip to prevent harsh distortion
-        if (mixed > 32767) mixed = 32767;
-        else if (mixed < -32768) mixed = -32768;
+        const thisEnd = chunk.timestamp + (chunk.data.length / this.bytesPerMs);
+        const nextStart = nextChunk ? nextChunk.timestamp : Infinity;
+        const gapToNext = nextStart - thisEnd;
+        const isSegmentEnd = !nextChunk || gapToNext > gapThresholdMs;
         
-        mixedBuffer.writeInt16LE(mixed, pos);
+        // Apply fade only at segment boundaries
+        let dataToMix = chunk.data;
+        if (isSegmentStart || isSegmentEnd) {
+          dataToMix = this._applyFadeEdges(chunk.data, isSegmentStart, isSegmentEnd);
+        }
+        
+        // Process as 16-bit signed samples
+        for (let j = 0; j < dataToMix.length; j += 2) {
+          const pos = alignedOffset + j;
+          if (pos + 1 >= mixedBuffer.length) break;
+          
+          // Read existing sample and new sample as signed 16-bit
+          const existing = mixedBuffer.readInt16LE(pos);
+          const incoming = dataToMix.readInt16LE(j);
+          
+          // Mix by adding (with soft clipping to prevent distortion)
+          let mixed = existing + incoming;
+          
+          // Soft clip to prevent harsh distortion
+          if (mixed > 32767) mixed = 32767;
+          else if (mixed < -32768) mixed = -32768;
+          
+          mixedBuffer.writeInt16LE(mixed, pos);
+        }
       }
     }
 
-    console.log(`🎚️ Mixed audio: ${allChunks.length} chunks from ${this.streams.size} users, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`🎚️ Mixed audio: ${this.streams.size} users, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
 
     return mixedBuffer;
   }
