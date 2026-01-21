@@ -135,13 +135,16 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
                   <User className="h-3 w-3" />
                   <span>Individual Tracks ({individualRecordings.length})</span>
                 </div>
-                <div className="space-y-3 pl-4 border-l-2 border-muted">
+                <div className="space-y-4 pl-4 border-l-2 border-muted">
                   {individualRecordings.map((recording) => (
                     <div key={recording.id} className="relative">
-                      {/* Speaker label */}
-                      <div className="absolute -left-[calc(1rem+1px)] top-4 w-2 h-2 rounded-full bg-purple-500" />
-                      <div className="text-xs text-purple-400 mb-1 font-medium">
-                        {(recording.metadata as any)?.speaker_username || recording.discord_username || 'Unknown'}
+                      {/* Speaker label - styled like Mixed Track */}
+                      <div className="absolute -left-[calc(1rem+1px)] top-3 w-2 h-2 rounded-full bg-purple-500" />
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                        <User className="h-3 w-3 text-purple-400" />
+                        <span className="text-purple-400 font-medium">
+                          {(recording.metadata as any)?.speaker_username || recording.discord_username || 'Unknown'}
+                        </span>
                       </div>
                       <RecordingCard recording={recording} />
                     </div>
