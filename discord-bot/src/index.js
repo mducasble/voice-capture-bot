@@ -639,8 +639,13 @@ async function stopRecording(interaction) {
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
-      console.error('Storage upload error:', errorText);
-      throw new Error(`Storage upload failed: ${uploadResponse.status}`);
+      const preview = (errorText || '').toString().replace(/\s+/g, ' ').trim().substring(0, 300);
+      console.error('Storage upload error:', {
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        bodyPreview: preview
+      });
+      throw new Error(`Storage upload failed: ${uploadResponse.status} ${preview ? `- ${preview}` : ''}`);
     }
 
     console.log(`File uploaded to ${storageType}: ${publicUrl}`);

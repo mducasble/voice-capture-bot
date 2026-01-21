@@ -142,14 +142,31 @@ serve(async (req) => {
       );
     }
 
-    // Extract region from endpoint (e.g., s3.us-west-004.backblazeb2.com -> us-west-004)
-    const host = bucketEndpoint.replace('https://', '').replace('http://', '').replace(/\/$/, '');
-    const regionMatch = host.match(/s3\.([^.]+)\.backblazeb2\.com/);
-    const region = regionMatch ? regionMatch[1] : 'us-west-004';
+     // Normalize endpoint -> host only (users sometimes include protocol and/or bucket path)
+     const endpointUrl = new URL(
+       bucketEndpoint.startsWith('http') ? bucketEndpoint : `https://${bucketEndpoint}`
+     );
+     const host = endpointUrl.host;
+
+     // Extract region from endpoint host (e.g., s3.us-west-004.backblazeb2.com -> us-west-004)
+     const regionMatch = host.match(/s3\.([^.]+)\.backblazeb2\.com/);
+     const region = regionMatch ? regionMatch[1] : 'us-west-004';
+
+     if (endpointUrl.pathname && endpointUrl.pathname !== '/' && endpointUrl.pathname !== '') {
+       console.warn(
+         'B2_BUCKET_ENDPOINT contains a path; ignoring pathname and using only host:',
+         endpointUrl.pathname
+       );
+     }
 
     const path = `/${bucketName}/${filename}`;
     
-    console.log(`Generating signed URL for B2: ${path}`);
+     console.log('Generating signed URL for B2:', {
+       host,
+       region,
+       bucketName,
+       path,
+     });
     
     const { headers, url } = await signRequest(
       'PUT',
