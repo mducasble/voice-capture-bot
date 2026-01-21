@@ -34,16 +34,25 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
     setError(null);
 
     try {
-      const response = await fetch(url);
+      // Try to fetch the audio file
+      const response = await fetch(url, { 
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const arrayBuffer = await response.arrayBuffer();
       
+      // Create offline context for analysis
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
-      // Get channel data (use first channel for visualization)
       const channelData = audioBuffer.getChannelData(0);
       
-      // Calculate number of samples per "bar" in the waveform
+      await audioContext.close();
+      
       const numBars = 200;
       const samplesPerBar = Math.floor(channelData.length / numBars);
       
@@ -53,9 +62,8 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
       let totalClippingSamples = 0;
       let maxPeak = 0;
       
-      // Thresholds for clipping detection
-      const warningThreshold = 0.9;  // 90% of max
-      const criticalThreshold = 0.98; // 98% of max (basically clipping)
+      const warningThreshold = 0.9;
+      const criticalThreshold = 0.98;
       
       for (let i = 0; i < numBars; i++) {
         const start = i * samplesPerBar;
@@ -73,7 +81,6 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
         peaks.push(barMax);
         if (barMax > maxPeak) maxPeak = barMax;
         
-        // Track clipping regions
         const isClipping = barMax >= warningThreshold;
         const percentPos = (i / numBars) * 100;
         
@@ -95,7 +102,6 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
         }
       }
       
-      // Close any open clipping region
       if (currentClipStart !== null) {
         clippingRegions.push({
           start: currentClipStart,
@@ -106,8 +112,6 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
       
       const clippingPercentage = (totalClippingSamples / channelData.length) * 100;
       
-      await audioContext.close();
-      
       setWaveformData({
         peaks,
         clippingRegions,
@@ -115,8 +119,10 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
         clippingPercentage
       });
     } catch (err) {
-      console.error("Failed to analyze audio:", err);
-      setError("Failed to analyze audio");
+      console.error("Audio analysis unavailable (CORS):", err);
+      // Set null data - we'll show SNR-only view
+      setWaveformData(null);
+      // Don't set error - just silently fall back to SNR display
     } finally {
       setIsLoading(false);
     }
@@ -241,6 +247,31 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
     return (
       <div className={`text-xs text-muted-foreground ${className}`}>
         {error}
+      </div>
+    );
+  }
+
+  // Fallback: show SNR-only view when waveform data couldn't be loaded (CORS)
+  if (!waveformData && !isLoading && snrDb !== null) {
+    return (
+      <div className={`space-y-2 ${className}`}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge 
+            variant="outline" 
+            className={`text-xs ${
+              snrDb >= 20 
+                ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                : snrDb >= 10 
+                  ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                  : 'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}
+          >
+            SNR {snrDb}dB {snrDb >= 20 ? '✓ Good quality' : snrDb >= 10 ? '⚠ Fair quality' : '✗ Poor quality'}
+          </Badge>
+        </div>
+        <div className="text-[10px] text-muted-foreground/60">
+          Waveform analysis unavailable (external storage)
+        </div>
       </div>
     );
   }
