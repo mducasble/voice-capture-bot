@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
@@ -70,17 +71,25 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">Discord Audio Capture</p>
             </div>
           </div>
-          <Button variant="outline" asChild>
-            <a
-              href="https://discord.com/developers/applications"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              Discord Portal
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/campaigns" className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Campanhas
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <a
+                href="https://discord.com/developers/applications"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                Discord Portal
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
         </div>
       </header>
 

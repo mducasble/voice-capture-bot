@@ -14,8 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_languages: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          language_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          language_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          language_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_languages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_languages_language_id_fkey"
+            columns: ["language_id"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_regions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          region_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          region_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_regions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_sections: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          prompt_text: string | null
+          sort_order: number | null
+          target_recordings: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          prompt_text?: string | null
+          sort_order?: number | null
+          target_recordings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          prompt_text?: string | null
+          sort_order?: number | null
+          target_recordings?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sections_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
+          audio_bit_depth: number | null
+          audio_channels: number | null
+          audio_format: string | null
+          audio_max_duration_seconds: number | null
+          audio_min_duration_seconds: number | null
+          audio_min_snr_db: number | null
+          audio_sample_rate: number | null
+          client_id: string | null
           created_at: string
           description: string | null
           end_date: string | null
@@ -27,6 +154,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audio_bit_depth?: number | null
+          audio_channels?: number | null
+          audio_format?: string | null
+          audio_max_duration_seconds?: number | null
+          audio_min_duration_seconds?: number | null
+          audio_min_snr_db?: number | null
+          audio_sample_rate?: number | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -38,6 +173,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audio_bit_depth?: number | null
+          audio_channels?: number | null
+          audio_format?: string | null
+          audio_max_duration_seconds?: number | null
+          audio_min_duration_seconds?: number | null
+          audio_min_snr_db?: number | null
+          audio_sample_rate?: number | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -46,6 +189,47 @@ export type Database = {
           name?: string
           start_date?: string | null
           target_recordings?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -122,6 +306,36 @@ export type Database = {
         }
         Relationships: []
       }
+      regions: {
+        Row: {
+          code: string
+          country: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       voice_recordings: {
         Row: {
           bit_depth: number | null
@@ -148,6 +362,7 @@ export type Database = {
           quality_status: string | null
           recording_type: string | null
           sample_rate: number | null
+          section_id: string | null
           session_id: string | null
           snr_db: number | null
           status: Database["public"]["Enums"]["recording_status"] | null
@@ -183,6 +398,7 @@ export type Database = {
           quality_status?: string | null
           recording_type?: string | null
           sample_rate?: number | null
+          section_id?: string | null
           session_id?: string | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
@@ -218,6 +434,7 @@ export type Database = {
           quality_status?: string | null
           recording_type?: string | null
           sample_rate?: number | null
+          section_id?: string | null
           session_id?: string | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
@@ -234,6 +451,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_recordings_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sections"
             referencedColumns: ["id"]
           },
           {
