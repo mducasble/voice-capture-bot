@@ -868,13 +868,13 @@ async function stopRecording(interaction) {
     if (individualTracks.length > 0) {
       message += `🎤 **Individual Tracks (${individualTracks.length}):**\n`;
       for (const track of individualTracks) {
-        message += `• ${track.username}\n`;
+        message += `• **${track.username}:** ${track.publicUrl}\n`;
       }
       message += `\n`;
     }
     
     if (mixedTrack) {
-      message += `🎚️ **Mixed Track:** All ${users.length} participants combined\n\n`;
+      message += `🎚️ **Mixed Track:** ${mixedTrack.publicUrl}\n\n`;
     }
     
     if (failCount > 0) {
