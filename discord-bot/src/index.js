@@ -267,24 +267,40 @@ class AudioMixer {
     return users;
   }
 
-  // Get individual audio for a specific user (concatenated chunks - no silence padding)
+  // Get individual audio for a specific user (silence-padded to maintain sync with mixed track)
   getIndividualAudio(userId) {
     const entry = this.streams.get(userId);
     if (!entry || entry.chunks.length === 0) {
       return Buffer.alloc(0);
     }
 
-    // Simply concatenate all chunks for this user (no silence between speech segments)
-    const totalSize = entry.chunks.reduce((sum, chunk) => sum + chunk.data.length, 0);
-    const audioBuffer = Buffer.alloc(totalSize);
-    
-    let offset = 0;
-    for (const chunk of entry.chunks) {
-      chunk.data.copy(audioBuffer, offset);
-      offset += chunk.data.length;
+    // Find total duration from all users (so all files have same length for sync)
+    let maxEnd = 0;
+    for (const [, { chunks }] of this.streams) {
+      for (const chunk of chunks) {
+        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+        const alignedOffset = byteOffset - (byteOffset % 4);
+        const end = alignedOffset + chunk.data.length;
+        if (end > maxEnd) maxEnd = end;
+      }
     }
 
-    console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+    if (maxEnd === 0) return Buffer.alloc(0);
+
+    // Create buffer initialized to silence (zeros)
+    const audioBuffer = Buffer.alloc(maxEnd);
+
+    // Place this user's chunks at their correct timestamp positions
+    // Chunks naturally start when user speaks and end when they stop (silence detected)
+    for (const chunk of entry.chunks) {
+      const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+      const alignedOffset = byteOffset - (byteOffset % 4);
+      
+      // Direct copy - no mixing needed for individual tracks since it's just one user
+      chunk.data.copy(audioBuffer, alignedOffset, 0, Math.min(chunk.data.length, audioBuffer.length - alignedOffset));
+    }
+
+    console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
     return audioBuffer;
   }
 
