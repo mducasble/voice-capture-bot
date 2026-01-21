@@ -135,11 +135,10 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
                   <User className="h-3 w-3" />
                   <span>Individual Tracks ({individualRecordings.length})</span>
                 </div>
-                <div className="space-y-4 pl-4 border-l-2 border-muted">
+                <div className="space-y-4 pl-4 border-l-2 border-purple-500/30">
                   {individualRecordings.map((recording) => (
                     <div key={recording.id} className="relative">
                       {/* Speaker label - styled like Mixed Track */}
-                      <div className="absolute -left-[calc(1rem+1px)] top-3 w-2 h-2 rounded-full bg-purple-500" />
                       <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                         <User className="h-3 w-3 text-purple-400" />
                         <span className="text-purple-400 font-medium">
