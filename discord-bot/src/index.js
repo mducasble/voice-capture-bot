@@ -754,8 +754,62 @@ async function startRecording(interaction) {
   }
 }
 
+// Helper: upload with progress tracking
+async function uploadWithProgress({ filepath, signedUrl, uploadHeaders, onProgress }) {
+  const fileStats = statSync(filepath);
+  const totalBytes = fileStats.size;
+  let uploadedBytes = 0;
+  
+  // For small files (<5MB), use simple fetch with stream
+  if (totalBytes < 5 * 1024 * 1024) {
+    const fileStream = createReadStream(filepath);
+    const response = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        ...uploadHeaders,
+        'Content-Length': totalBytes.toString()
+      },
+      body: fileStream
+    });
+    onProgress(100);
+    return response;
+  }
+  
+  // For large files, read and upload with progress updates
+  return new Promise((resolve, reject) => {
+    const fileStream = createReadStream(filepath, { highWaterMark: 256 * 1024 }); // 256KB chunks
+    const chunks = [];
+    
+    fileStream.on('data', (chunk) => {
+      chunks.push(chunk);
+      uploadedBytes += chunk.length;
+      const percent = Math.round((uploadedBytes / totalBytes) * 100);
+      onProgress(percent);
+    });
+    
+    fileStream.on('end', async () => {
+      try {
+        const fullBuffer = Buffer.concat(chunks);
+        const response = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: {
+            ...uploadHeaders,
+            'Content-Length': totalBytes.toString()
+          },
+          body: fullBuffer
+        });
+        resolve(response);
+      } catch (err) {
+        reject(err);
+      }
+    });
+    
+    fileStream.on('error', reject);
+  });
+}
+
 // Helper: upload a single audio file and register it
-async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, interaction, channelData, duration, sessionId, recordingType, speakerUserId, speakerUsername }) {
+async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, interaction, channelData, duration, sessionId, recordingType, speakerUserId, speakerUsername, onProgress }) {
   // Create WAV file
   const wavHeader = createWavHeader(audioBuffer.length);
   const wavBuffer = Buffer.concat([wavHeader, audioBuffer]);
@@ -768,11 +822,20 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
   writeStream.end();
   await new Promise((resolve) => writeStream.on('finish', resolve));
   
+  const fileStats = statSync(filepath);
+  const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
+  
+  console.log(`📁 File saved locally: ${filename} (${fileSizeMB} MB)`);
+  if (onProgress) onProgress('saved', 0);
+  
   // Generate storage path
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const storagePath = `${guild.id}/${speakerUserId || interaction.user.id}/${timestamp}_${filename}`;
   
   // Get signed URL
+  console.log(`🔑 Getting signed URL for: ${storagePath}`);
+  if (onProgress) onProgress('signing', 0);
+  
   const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
     method: 'POST',
     headers: {
@@ -793,20 +856,28 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
   const signedPayload = await urlResponse.json();
   const { signed_url, public_url: publicUrl, upload_headers, storage } = signedPayload;
   
-  // Upload file
-  const fileStats = statSync(filepath);
-  const fileStream = createReadStream(filepath);
+  console.log(`☁️ Uploading ${fileSizeMB} MB to ${storage || 'cloud'}...`);
+  if (onProgress) onProgress('uploading', 0);
   
+  // Upload file with progress
   const uploadHeaders = {
     'Content-Type': 'audio/wav',
-    'Content-Length': fileStats.size.toString(),
     ...(upload_headers || {})
   };
   
-  const uploadResponse = await fetch(signed_url, {
-    method: 'PUT',
-    headers: uploadHeaders,
-    body: fileStream
+  let lastLoggedPercent = 0;
+  const uploadResponse = await uploadWithProgress({
+    filepath,
+    signedUrl: signed_url,
+    uploadHeaders,
+    onProgress: (percent) => {
+      // Log every 10%
+      if (percent - lastLoggedPercent >= 10 || percent === 100) {
+        console.log(`📤 Upload progress: ${percent}% (${filename})`);
+        lastLoggedPercent = percent;
+      }
+      if (onProgress) onProgress('uploading', percent);
+    }
   });
 
   if (!uploadResponse.ok) {
@@ -815,6 +886,7 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
   }
 
   console.log(`✅ Uploaded ${recordingType} file for ${speakerUsername || 'mixed'}: ${publicUrl}`);
+  if (onProgress) onProgress('registering', 100);
 
   // Register recording
   const response = await fetch(`${API_BASE_URL}/register-recording`, {
@@ -855,6 +927,7 @@ async function uploadAndRegister({ audioBuffer, filename, guild, voiceChannel, i
     throw new Error(result.error || 'Registration failed');
   }
 
+  if (onProgress) onProgress('done', 100);
   return { publicUrl, fileSize: fileStats.size, filepath };
 }
 
@@ -903,6 +976,35 @@ async function stopRecording(interaction) {
     const uploadResults = [];
     let totalSize = 0;
 
+    // Helper to create progress bar
+    const createProgressBar = (percent, width = 20) => {
+      const filled = Math.round((percent / 100) * width);
+      const empty = width - filled;
+      return `[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${percent}%`;
+    };
+
+    // Helper to format file size
+    const formatSize = (bytes) => {
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    };
+
+    // Throttle Discord updates to avoid rate limits
+    let lastUpdateTime = 0;
+    const updateThrottleMs = 1500; // Update at most every 1.5 seconds
+    
+    const throttledUpdate = async (content) => {
+      const now = Date.now();
+      if (now - lastUpdateTime >= updateThrottleMs) {
+        lastUpdateTime = now;
+        try {
+          await interaction.editReply({ content });
+        } catch (err) {
+          // Ignore rate limit errors
+        }
+      }
+    };
+
     // Upload individual tracks
     for (let i = 0; i < users.length; i++) {
       const { userId, username } = users[i];
@@ -910,11 +1012,8 @@ async function stopRecording(interaction) {
       
       if (audioData.length === 0) continue;
       
-      await interaction.editReply({ 
-        content: `⏳ Uploading individual track ${i + 1}/${users.length}: ${username}...` 
-      });
-      
       const filename = `individual_${username}_${Date.now()}.wav`;
+      const fileSizeMB = ((audioData.length + 44) / 1024 / 1024).toFixed(2);
       
       try {
         const result = await uploadAndRegister({
@@ -928,7 +1027,40 @@ async function stopRecording(interaction) {
           sessionId,
           recordingType: 'individual',
           speakerUserId: userId,
-          speakerUsername: username
+          speakerUsername: username,
+          onProgress: async (stage, percent) => {
+            let statusEmoji = '⏳';
+            let statusText = '';
+            
+            switch (stage) {
+              case 'saved':
+                statusEmoji = '💾';
+                statusText = 'Saved locally';
+                break;
+              case 'signing':
+                statusEmoji = '🔑';
+                statusText = 'Getting upload URL...';
+                break;
+              case 'uploading':
+                statusEmoji = '📤';
+                statusText = `Uploading: ${createProgressBar(percent)}`;
+                break;
+              case 'registering':
+                statusEmoji = '📝';
+                statusText = 'Registering...';
+                break;
+              case 'done':
+                statusEmoji = '✅';
+                statusText = 'Complete!';
+                break;
+            }
+            
+            await throttledUpdate(
+              `${statusEmoji} **Track ${i + 1}/${users.length + 1}:** ${username}\n` +
+              `📁 Size: ${fileSizeMB} MB\n` +
+              `${statusText}`
+            );
+          }
         });
         
         uploadResults.push({ type: 'individual', username, ...result });
@@ -940,10 +1072,9 @@ async function stopRecording(interaction) {
     }
 
     // Upload mixed track
-    await interaction.editReply({ content: `⏳ Uploading mixed track...` });
-    
     const mixedAudioData = mixer.getMixedAudio();
     const mixedFilename = `mixed_${Date.now()}.wav`;
+    const mixedSizeMB = ((mixedAudioData.length + 44) / 1024 / 1024).toFixed(2);
     
     try {
       const mixedResult = await uploadAndRegister({
@@ -957,7 +1088,40 @@ async function stopRecording(interaction) {
         sessionId,
         recordingType: 'mixed',
         speakerUserId: null,
-        speakerUsername: null
+        speakerUsername: null,
+        onProgress: async (stage, percent) => {
+          let statusEmoji = '⏳';
+          let statusText = '';
+          
+          switch (stage) {
+            case 'saved':
+              statusEmoji = '💾';
+              statusText = 'Saved locally';
+              break;
+            case 'signing':
+              statusEmoji = '🔑';
+              statusText = 'Getting upload URL...';
+              break;
+            case 'uploading':
+              statusEmoji = '📤';
+              statusText = `Uploading: ${createProgressBar(percent)}`;
+              break;
+            case 'registering':
+              statusEmoji = '📝';
+              statusText = 'Registering...';
+              break;
+            case 'done':
+              statusEmoji = '✅';
+              statusText = 'Complete!';
+              break;
+          }
+          
+          await throttledUpdate(
+            `${statusEmoji} **Track ${users.length + 1}/${users.length + 1}:** Mixed\n` +
+            `📁 Size: ${mixedSizeMB} MB\n` +
+            `${statusText}`
+          );
+        }
       });
       
       uploadResults.push({ type: 'mixed', ...mixedResult });
