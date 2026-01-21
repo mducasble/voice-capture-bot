@@ -577,24 +577,28 @@ async function stopRecording(interaction) {
       );
     }
 
-    const { signed_url, public_url: publicUrl } = signedPayload;
+    const { signed_url, public_url: publicUrl, upload_headers, storage } = signedPayload;
     
     // Get file size for progress and streaming upload
     const fileStats = statSync(filepath);
     const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
     
-    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB...` });
-    console.log(`Uploading ${fileSizeMB} MB to Supabase Storage using stream (avoids ENOBUFS)...`);
+    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB to ${storage || 'storage'}...` });
+    console.log(`Uploading ${fileSizeMB} MB to ${storage || 'storage'} using stream (avoids ENOBUFS)...`);
     
     // Use streaming upload to prevent ENOBUFS error on large files
     const fileStream = createReadStream(filepath);
     
+    // Build headers - use upload_headers from S3 signing if available
+    const uploadHeaders = {
+      'Content-Type': 'audio/wav',
+      'Content-Length': fileStats.size.toString(),
+      ...(upload_headers || {})
+    };
+    
     const uploadResponse = await fetch(signed_url, {
       method: 'PUT',
-      headers: { 
-        'Content-Type': 'audio/wav', 
-        'Content-Length': fileStats.size.toString() 
-      },
+      headers: uploadHeaders,
       body: fileStream
     });
 
@@ -609,7 +613,7 @@ async function stopRecording(interaction) {
       throw new Error(`Storage upload failed: ${uploadResponse.status} ${preview ? `- ${preview}` : ''}`);
     }
 
-    console.log(`File uploaded to Supabase Storage: ${publicUrl}`);
+    console.log(`File uploaded to ${storage || 'storage'}: ${publicUrl}`);
     console.log(`📁 Local backup preserved at: ${filepath}`);
 
     // Register recording metadata via Edge Function
