@@ -2,13 +2,14 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
 import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
+import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const [isElevenLabsTranscriptOpen, setIsElevenLabsTranscriptOpen] = useState(false);
+  const [isWaveformOpen, setIsWaveformOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
@@ -215,6 +217,27 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {recording.sample_rate / 1000}kHz • {recording.bit_depth}-bit • {recording.channels === 2 ? "Stereo" : "Mono"}
               </span>
             </div>
+
+            {/* Waveform Visualizer Section */}
+            {recording.file_url && recording.status === 'completed' && (
+              <Collapsible open={isWaveformOpen} onOpenChange={setIsWaveformOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                    <span className="flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Audio Quality Analysis
+                    </span>
+                    {isWaveformOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <WaveformVisualizer 
+                    audioUrl={recording.file_url} 
+                    snrDb={recording.snr_db}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {/* Transcription Section - Gemini */}
             {(recording.transcription || recording.transcription_status === 'processing') && (
