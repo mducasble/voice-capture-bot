@@ -377,8 +377,23 @@ class AudioMixer {
 // Start recording a voice channel
 async function startRecording(interaction) {
   // This command must run inside a guild (server). Some interaction contexts (DMs, etc.) have no guild.
-  const guild = interaction.guild ?? (interaction.guildId ? await client.guilds.fetch(interaction.guildId).catch(() => null) : null);
+  let guild = interaction.guild;
+  
+  // If guild is not cached on the interaction, try to fetch it
+  if (!guild && interaction.guildId) {
+    try {
+      guild = await client.guilds.fetch(interaction.guildId);
+    } catch (err) {
+      console.error('Failed to fetch guild:', err);
+    }
+  }
+  
   if (!guild) {
+    console.error('Guild resolution failed:', {
+      hasInteractionGuild: !!interaction.guild,
+      guildId: interaction.guildId,
+      inGuild: interaction.inGuild?.() ?? 'N/A'
+    });
     await interaction.reply({ content: '❌ This command can only be used inside a server voice channel.', flags: 64 });
     return;
   }
