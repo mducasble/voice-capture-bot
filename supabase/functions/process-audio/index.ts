@@ -60,52 +60,191 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
   return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
 }
 
-// Calculate SNR from audio samples
-// Handles silence-padded individual tracks by ignoring zero samples
-function calculateSNR(samples: Int16Array): number {
-  if (samples.length === 0) return 0;
+// Voice Activity Detection (VAD) - finds regions with speech
+// Uses short-term energy analysis with adaptive threshold
+interface SpeechRegion {
+  start: number;
+  end: number;
+  energy: number;
+}
+
+function detectSpeechRegions(samples: Int16Array, sampleRate: number): SpeechRegion[] {
+  if (samples.length === 0) return [];
   
-  // Filter out complete silence (zero samples) - important for individual tracks
-  // that are padded with silence for synchronization
-  const nonSilentSamples: number[] = [];
-  for (let i = 0; i < samples.length; i++) {
-    // Consider samples with absolute value > 10 as non-silent (ignoring very low noise)
-    if (Math.abs(samples[i]) > 10) {
-      nonSilentSamples.push(samples[i] / 32768.0);
+  // Use 20ms windows for energy analysis (common for VAD)
+  const windowSize = Math.floor(sampleRate * 0.02);
+  const hopSize = Math.floor(windowSize / 2); // 50% overlap
+  const numWindows = Math.floor((samples.length - windowSize) / hopSize) + 1;
+  
+  if (numWindows < 3) return [];
+  
+  // Calculate energy for each window
+  const energies: number[] = [];
+  for (let w = 0; w < numWindows; w++) {
+    const start = w * hopSize;
+    let energy = 0;
+    for (let i = 0; i < windowSize && start + i < samples.length; i++) {
+      const sample = samples[start + i] / 32768.0;
+      energy += sample * sample;
+    }
+    energies.push(energy / windowSize);
+  }
+  
+  // Sort energies to find noise floor (bottom 20%)
+  const sortedEnergies = [...energies].sort((a, b) => a - b);
+  const noiseFloorIdx = Math.floor(sortedEnergies.length * 0.2);
+  let noiseFloorEnergy = 0;
+  for (let i = 0; i < noiseFloorIdx; i++) {
+    noiseFloorEnergy += sortedEnergies[i];
+  }
+  noiseFloorEnergy = noiseFloorIdx > 0 ? noiseFloorEnergy / noiseFloorIdx : 0.0001;
+  
+  // Adaptive threshold: 3x the noise floor (typically works well for speech)
+  const threshold = Math.max(noiseFloorEnergy * 3, 0.0001);
+  
+  console.log(`VAD: ${numWindows} windows, noise floor=${noiseFloorEnergy.toExponential(2)}, threshold=${threshold.toExponential(2)}`);
+  
+  // Find contiguous regions above threshold
+  const regions: SpeechRegion[] = [];
+  let inSpeech = false;
+  let regionStart = 0;
+  let regionEnergy = 0;
+  let regionCount = 0;
+  
+  // Minimum speech duration: 100ms (5 windows at 20ms hop)
+  const minSpeechWindows = 5;
+  // Hangover: keep speech active for 200ms after energy drops (10 windows)
+  const hangoverWindows = 10;
+  let hangoverCounter = 0;
+  
+  for (let w = 0; w < numWindows; w++) {
+    const isAboveThreshold = energies[w] > threshold;
+    
+    if (!inSpeech && isAboveThreshold) {
+      // Start of potential speech
+      inSpeech = true;
+      regionStart = w * hopSize;
+      regionEnergy = energies[w];
+      regionCount = 1;
+      hangoverCounter = hangoverWindows;
+    } else if (inSpeech) {
+      if (isAboveThreshold) {
+        regionEnergy += energies[w];
+        regionCount++;
+        hangoverCounter = hangoverWindows; // Reset hangover
+      } else {
+        hangoverCounter--;
+        if (hangoverCounter <= 0) {
+          // End of speech region
+          if (regionCount >= minSpeechWindows) {
+            const regionEnd = Math.min(w * hopSize + windowSize, samples.length);
+            regions.push({
+              start: regionStart,
+              end: regionEnd,
+              energy: regionEnergy / regionCount
+            });
+          }
+          inSpeech = false;
+        }
+      }
     }
   }
   
-  // If less than 10% of samples are non-silent, mark as very low SNR
-  if (nonSilentSamples.length < samples.length * 0.1) {
-    console.log(`SNR calculation: only ${nonSilentSamples.length}/${samples.length} non-silent samples (${(nonSilentSamples.length / samples.length * 100).toFixed(1)}%)`);
-    // Return a low but valid SNR instead of infinity
+  // Handle speech that continues to the end
+  if (inSpeech && regionCount >= minSpeechWindows) {
+    regions.push({
+      start: regionStart,
+      end: samples.length,
+      energy: regionEnergy / regionCount
+    });
+  }
+  
+  console.log(`VAD: Found ${regions.length} speech regions`);
+  return regions;
+}
+
+// Calculate SNR from audio samples using VAD-based speech detection
+// Only analyzes regions where speech is actually present
+function calculateSNR(samples: Int16Array, sampleRate: number = 16000): number {
+  if (samples.length === 0) return 0;
+  
+  // Detect speech regions
+  const speechRegions = detectSpeechRegions(samples, sampleRate);
+  
+  // If no speech detected, return low SNR
+  if (speechRegions.length === 0) {
+    console.log('SNR: No speech regions detected');
     return 5.0;
   }
   
-  const floatSamples = new Float32Array(nonSilentSamples);
-  
-  let sum = 0;
-  for (let i = 0; i < floatSamples.length; i++) {
-    sum += floatSamples[i] * floatSamples[i];
+  // Extract samples from speech regions only
+  const speechSamples: number[] = [];
+  for (const region of speechRegions) {
+    for (let i = region.start; i < region.end; i++) {
+      speechSamples.push(samples[i] / 32768.0);
+    }
   }
-  const signalRMS = Math.sqrt(sum / floatSamples.length);
   
-  // If signal is too weak, return low SNR
+  const speechRatio = speechSamples.length / samples.length;
+  console.log(`SNR: Analyzing ${speechSamples.length} speech samples (${(speechRatio * 100).toFixed(1)}% of total)`);
+  
+  // If very little speech content, return low but valid SNR
+  if (speechSamples.length < sampleRate * 0.5) { // Less than 0.5 seconds of speech
+    console.log('SNR: Insufficient speech content (< 0.5s)');
+    return 8.0;
+  }
+  
+  // Calculate signal RMS from speech samples
+  let signalSum = 0;
+  for (const sample of speechSamples) {
+    signalSum += sample * sample;
+  }
+  const signalRMS = Math.sqrt(signalSum / speechSamples.length);
+  
   if (signalRMS < 0.001) {
     return 5.0;
   }
   
-  const sorted = Array.from(floatSamples).map(Math.abs).sort((a, b) => a - b);
-  const bottomCount = Math.max(1, Math.floor(sorted.length * 0.1));
-  let noiseSum = 0;
-  for (let i = 0; i < bottomCount; i++) {
-    noiseSum += sorted[i] * sorted[i];
+  // Estimate noise floor from non-speech regions (silence padding)
+  const silenceSamples: number[] = [];
+  let lastEnd = 0;
+  for (const region of speechRegions) {
+    // Get samples between speech regions
+    for (let i = lastEnd; i < region.start; i++) {
+      silenceSamples.push(samples[i] / 32768.0);
+    }
+    lastEnd = region.end;
   }
-  const noiseFloor = Math.sqrt(noiseSum / bottomCount);
+  // Add trailing silence
+  for (let i = lastEnd; i < samples.length; i++) {
+    silenceSamples.push(samples[i] / 32768.0);
+  }
   
-  // Prevent division by zero or very small values
+  let noiseFloor: number;
+  
+  if (silenceSamples.length >= sampleRate * 0.2) { // At least 200ms of silence
+    // Calculate noise RMS from silence regions
+    let noiseSum = 0;
+    for (const sample of silenceSamples) {
+      noiseSum += sample * sample;
+    }
+    noiseFloor = Math.sqrt(noiseSum / silenceSamples.length);
+    console.log(`SNR: Using ${silenceSamples.length} silence samples for noise floor`);
+  } else {
+    // Not enough silence - use bottom 10% of speech samples
+    const sortedAbs = speechSamples.map(Math.abs).sort((a, b) => a - b);
+    const bottomCount = Math.max(1, Math.floor(sortedAbs.length * 0.1));
+    let noiseSum = 0;
+    for (let i = 0; i < bottomCount; i++) {
+      noiseSum += sortedAbs[i] * sortedAbs[i];
+    }
+    noiseFloor = Math.sqrt(noiseSum / bottomCount);
+    console.log(`SNR: Using bottom 10% of speech samples for noise floor (no silence available)`);
+  }
+  
+  // Prevent division by zero
   if (noiseFloor < 0.0001) {
-    // Very clean signal - return high SNR
+    // Very clean signal
     return 60.0;
   }
   
@@ -115,6 +254,7 @@ function calculateSNR(samples: Int16Array): number {
   if (!isFinite(snr) || snr > 100) return 60.0;
   if (snr < 0) return 5.0;
   
+  console.log(`SNR: signal=${signalRMS.toExponential(2)}, noise=${noiseFloor.toExponential(2)}, SNR=${snr.toFixed(1)}dB`);
   return Math.round(snr * 10) / 10;
 }
 
@@ -511,8 +651,8 @@ async function finalizeProcessing(
   supabase: any,
   state: ProcessingState
 ) {
-  // Calculate SNR
-  const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples)) : null;
+  // Calculate SNR using VAD-based speech detection
+  const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples), TARGET_SAMPLE_RATE) : null;
   // Lower threshold for individual tracks (they have more silence which affects SNR)
   // Use 10dB threshold instead of 20dB - still ensures reasonable audio quality
   const qualityStatus = snrDb !== null ? (snrDb >= 10 ? 'passed' : 'failed') : 'error';

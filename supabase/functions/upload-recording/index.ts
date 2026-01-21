@@ -202,67 +202,164 @@ function writeString(view: DataView, offset: number, str: string) {
   }
 }
 
-// Calculate RMS (Root Mean Square) of samples
-function calculateRMS(samples: Float32Array): number {
+// Voice Activity Detection (VAD) - finds regions with speech
+interface SpeechRegion {
+  start: number;
+  end: number;
+  energy: number;
+}
+
+function detectSpeechRegions(samples: Float32Array, sampleRate: number): SpeechRegion[] {
+  if (samples.length === 0) return [];
+  
+  const windowSize = Math.floor(sampleRate * 0.02); // 20ms windows
+  const hopSize = Math.floor(windowSize / 2);
+  const numWindows = Math.floor((samples.length - windowSize) / hopSize) + 1;
+  
+  if (numWindows < 3) return [];
+  
+  const energies: number[] = [];
+  for (let w = 0; w < numWindows; w++) {
+    const start = w * hopSize;
+    let energy = 0;
+    for (let i = 0; i < windowSize && start + i < samples.length; i++) {
+      energy += samples[start + i] * samples[start + i];
+    }
+    energies.push(energy / windowSize);
+  }
+  
+  const sortedEnergies = [...energies].sort((a, b) => a - b);
+  const noiseFloorIdx = Math.floor(sortedEnergies.length * 0.2);
+  let noiseFloorEnergy = 0;
+  for (let i = 0; i < noiseFloorIdx; i++) {
+    noiseFloorEnergy += sortedEnergies[i];
+  }
+  noiseFloorEnergy = noiseFloorIdx > 0 ? noiseFloorEnergy / noiseFloorIdx : 0.0001;
+  
+  const threshold = Math.max(noiseFloorEnergy * 3, 0.0001);
+  
+  const regions: SpeechRegion[] = [];
+  let inSpeech = false;
+  let regionStart = 0;
+  let regionEnergy = 0;
+  let regionCount = 0;
+  const minSpeechWindows = 5;
+  const hangoverWindows = 10;
+  let hangoverCounter = 0;
+  
+  for (let w = 0; w < numWindows; w++) {
+    const isAboveThreshold = energies[w] > threshold;
+    
+    if (!inSpeech && isAboveThreshold) {
+      inSpeech = true;
+      regionStart = w * hopSize;
+      regionEnergy = energies[w];
+      regionCount = 1;
+      hangoverCounter = hangoverWindows;
+    } else if (inSpeech) {
+      if (isAboveThreshold) {
+        regionEnergy += energies[w];
+        regionCount++;
+        hangoverCounter = hangoverWindows;
+      } else {
+        hangoverCounter--;
+        if (hangoverCounter <= 0) {
+          if (regionCount >= minSpeechWindows) {
+            regions.push({
+              start: regionStart,
+              end: Math.min(w * hopSize + windowSize, samples.length),
+              energy: regionEnergy / regionCount
+            });
+          }
+          inSpeech = false;
+        }
+      }
+    }
+  }
+  
+  if (inSpeech && regionCount >= minSpeechWindows) {
+    regions.push({
+      start: regionStart,
+      end: samples.length,
+      energy: regionEnergy / regionCount
+    });
+  }
+  
+  return regions;
+}
+
+// Calculate SNR using VAD-based speech detection
+function calculateSNR(samples: Float32Array, sampleRate: number): number {
   if (samples.length === 0) return 0;
   
-  let sum = 0;
-  for (let i = 0; i < samples.length; i++) {
-    sum += samples[i] * samples[i];
-  }
-  return Math.sqrt(sum / samples.length);
-}
-
-// Estimate noise floor using the quietest segments
-function estimateNoiseFloor(samples: Float32Array, sampleRate: number): number {
-  // Use 50ms windows
-  const windowSize = Math.floor(sampleRate * 0.05);
-  const numWindows = Math.floor(samples.length / windowSize);
+  const speechRegions = detectSpeechRegions(samples, sampleRate);
   
-  if (numWindows < 10) {
-    // Too short, use bottom 10% of overall signal
-    const sortedAbs = Array.from(samples).map(Math.abs).sort((a, b) => a - b);
-    const bottomCount = Math.floor(sortedAbs.length * 0.1);
-    if (bottomCount === 0) return 0.0001;
-    
-    let sum = 0;
-    for (let i = 0; i < bottomCount; i++) {
-      sum += sortedAbs[i] * sortedAbs[i];
+  if (speechRegions.length === 0) {
+    console.log('SNR: No speech regions detected');
+    return 5.0;
+  }
+  
+  // Extract speech samples
+  const speechSamples: number[] = [];
+  for (const region of speechRegions) {
+    for (let i = region.start; i < region.end; i++) {
+      speechSamples.push(samples[i]);
     }
-    return Math.sqrt(sum / bottomCount);
   }
   
-  // Calculate RMS for each window
-  const windowRMS: number[] = [];
-  for (let i = 0; i < numWindows; i++) {
-    const start = i * windowSize;
-    const windowSamples = samples.slice(start, start + windowSize);
-    windowRMS.push(calculateRMS(windowSamples));
+  console.log(`SNR: Found ${speechRegions.length} speech regions, ${speechSamples.length} samples (${(speechSamples.length / samples.length * 100).toFixed(1)}%)`);
+  
+  if (speechSamples.length < sampleRate * 0.5) {
+    return 8.0;
   }
   
-  // Sort and take the average of the quietest 10% of windows
-  windowRMS.sort((a, b) => a - b);
-  const quietWindowCount = Math.max(1, Math.floor(numWindows * 0.1));
+  // Calculate signal RMS
+  let signalSum = 0;
+  for (const sample of speechSamples) {
+    signalSum += sample * sample;
+  }
+  const signalRMS = Math.sqrt(signalSum / speechSamples.length);
   
-  let noiseSum = 0;
-  for (let i = 0; i < quietWindowCount; i++) {
-    noiseSum += windowRMS[i];
+  if (signalRMS < 0.001) return 5.0;
+  
+  // Get noise floor from silence regions
+  const silenceSamples: number[] = [];
+  let lastEnd = 0;
+  for (const region of speechRegions) {
+    for (let i = lastEnd; i < region.start; i++) {
+      silenceSamples.push(samples[i]);
+    }
+    lastEnd = region.end;
+  }
+  for (let i = lastEnd; i < samples.length; i++) {
+    silenceSamples.push(samples[i]);
   }
   
-  const noiseFloor = noiseSum / quietWindowCount;
-  return noiseFloor > 0 ? noiseFloor : 0.0001;
-}
-
-// Calculate SNR in dB
-function calculateSNR(samples: Float32Array, sampleRate: number): number {
-  const signalRMS = calculateRMS(samples);
-  const noiseFloor = estimateNoiseFloor(samples, sampleRate);
+  let noiseFloor: number;
   
-  if (noiseFloor === 0 || signalRMS === 0) {
-    return 0;
+  if (silenceSamples.length >= sampleRate * 0.2) {
+    let noiseSum = 0;
+    for (const sample of silenceSamples) {
+      noiseSum += sample * sample;
+    }
+    noiseFloor = Math.sqrt(noiseSum / silenceSamples.length);
+  } else {
+    const sortedAbs = speechSamples.map(Math.abs).sort((a, b) => a - b);
+    const bottomCount = Math.max(1, Math.floor(sortedAbs.length * 0.1));
+    let noiseSum = 0;
+    for (let i = 0; i < bottomCount; i++) {
+      noiseSum += sortedAbs[i] * sortedAbs[i];
+    }
+    noiseFloor = Math.sqrt(noiseSum / bottomCount);
   }
+  
+  if (noiseFloor < 0.0001) return 60.0;
   
   const snr = 20 * Math.log10(signalRMS / noiseFloor);
+  
+  if (!isFinite(snr) || snr > 100) return 60.0;
+  if (snr < 0) return 5.0;
+  
   return Math.round(snr * 10) / 10;
 }
 
