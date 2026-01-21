@@ -2,13 +2,14 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
 import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
+import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import {
   AlertDialog,
@@ -36,11 +37,17 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const [isElevenLabsTranscriptOpen, setIsElevenLabsTranscriptOpen] = useState(false);
+  const [isSpeakerTranscriptOpen, setIsSpeakerTranscriptOpen] = useState(false);
   const [isWaveformOpen, setIsWaveformOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
   const elevenLabsTranscription = useElevenLabsTranscription();
+  const sessionTranscription = useSessionTranscription();
+
+  // Check for speaker transcription in metadata
+  const speakerTranscription = (recording.metadata as { speaker_transcription?: string })?.speaker_transcription;
+  const speakers = (recording.metadata as { speakers?: { username: string }[] })?.speakers;
 
   const handleDelete = () => {
     deleteRecording.mutate(recording.id);
@@ -52,6 +59,15 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const handleElevenLabsTranscribe = (mode: ElevenLabsMode) => {
     elevenLabsTranscription.mutate({ recordingId: recording.id, mode });
+  };
+
+  const handleAggregateSession = () => {
+    if (recording.session_id) {
+      sessionTranscription.mutate({ 
+        sessionId: recording.session_id,
+        mixedRecordingId: recording.id 
+      });
+    }
   };
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
@@ -361,12 +377,64 @@ export function RecordingCard({ recording }: RecordingCardProps) {
               </Collapsible>
             )}
 
+            {/* Speaker-Identified Transcription Section (for mixed recordings with session) */}
+            {recording.recording_type === 'mixed' && speakerTranscription && (
+              <Collapsible open={isSpeakerTranscriptOpen} onOpenChange={setIsSpeakerTranscriptOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-purple-400 hover:text-purple-400">
+                    <span className="flex items-center gap-2">
+                      <UsersRound className="h-4 w-4" />
+                      Transcrição por Speaker
+                      {speakers && (
+                        <span className="text-xs text-muted-foreground">
+                          ({speakers.length} participantes)
+                        </span>
+                      )}
+                    </span>
+                    {isSpeakerTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 space-y-2">
+                  {speakers && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {speakers.map((s, i) => (
+                        <Badge key={i} variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
+                          <User className="h-3 w-3 mr-1" />
+                          {s.username}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm text-foreground/90 max-h-64 overflow-y-auto">
+                    <p className="whitespace-pre-wrap">{speakerTranscription}</p>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
               <span className="text-xs text-muted-foreground">
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
+                {/* Aggregate Session Transcription button - only for mixed recordings with session_id */}
+                {recording.recording_type === 'mixed' && recording.session_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAggregateSession}
+                    disabled={sessionTranscription.isPending}
+                    className="text-purple-400 hover:text-purple-400 hover:bg-purple-500/10"
+                    title="Agregar transcrições por speaker"
+                  >
+                    {sessionTranscription.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UsersRound className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 {/* ElevenLabs Transcription button - always uses chunks mode for reliability */}
                 <Button
                   variant="ghost"
