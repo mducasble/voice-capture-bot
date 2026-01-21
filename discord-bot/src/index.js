@@ -544,55 +544,95 @@ async function stopRecording(interaction) {
       throw new Error('BOT_API_KEY não definido no .env.');
     }
 
-    // Request signed upload URL from backend
+    // Try B2 storage first (for 1TB+ capacity), fallback to Supabase Storage
     console.log(`Requesting signed URL for: ${storagePath}`);
-    const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-bot-api-key': process.env.BOT_API_KEY
-      },
-      body: JSON.stringify({
-        filename: storagePath,
-        content_type: 'audio/wav'
-      })
-    });
-
-    if (!urlResponse.ok) {
-      const errorText = await urlResponse.text();
-      console.error('Failed to get upload URL:', errorText);
-      throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
-    }
-
-    const urlResponseText = await urlResponse.text();
+    
     let signedPayload;
+    let useB2 = false;
+    
+    // Try B2 first
     try {
-      signedPayload = JSON.parse(urlResponseText);
-    } catch {
-      console.error('Signed URL response is not JSON:', urlResponseText.substring(0, 300));
-      throw new Error(
-        'Resposta inválida ao pedir upload URL (verifique LOVABLE_API_URL; deve terminar com /functions/v1).'
-      );
+      const b2Response = await fetch(`${API_BASE_URL}/upload-to-b2`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-api-key': process.env.BOT_API_KEY
+        },
+        body: JSON.stringify({
+          filename: storagePath,
+          content_type: 'audio/wav'
+        })
+      });
+
+      if (b2Response.ok) {
+        const b2Data = await b2Response.json();
+        if (b2Data.storage === 'b2') {
+          signedPayload = {
+            signed_url: b2Data.upload_url,
+            public_url: b2Data.public_url,
+            headers: b2Data.headers
+          };
+          useB2 = true;
+          console.log('Using Backblaze B2 storage');
+        }
+      }
+    } catch (b2Error) {
+      console.log('B2 not available, falling back to Supabase Storage:', b2Error.message);
     }
 
-    const { signed_url, token, public_url: publicUrl } = signedPayload;
+    // Fallback to Supabase Storage
+    if (!signedPayload) {
+      const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-api-key': process.env.BOT_API_KEY
+        },
+        body: JSON.stringify({
+          filename: storagePath,
+          content_type: 'audio/wav'
+        })
+      });
+
+      if (!urlResponse.ok) {
+        const errorText = await urlResponse.text();
+        console.error('Failed to get upload URL:', errorText);
+        throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
+      }
+
+      const urlResponseText = await urlResponse.text();
+      try {
+        signedPayload = JSON.parse(urlResponseText);
+      } catch {
+        console.error('Signed URL response is not JSON:', urlResponseText.substring(0, 300));
+        throw new Error(
+          'Resposta inválida ao pedir upload URL (verifique LOVABLE_API_URL; deve terminar com /functions/v1).'
+        );
+      }
+      console.log('Using Supabase Storage');
+    }
+
+    const { signed_url, public_url: publicUrl, headers: uploadHeaders } = signedPayload;
     
     // Get file size for progress and streaming upload
     const fileStats = statSync(filepath);
     const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
     
-    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB using streaming...` });
-    console.log(`Uploading ${fileSizeMB} MB to storage using stream (avoids ENOBUFS)...`);
+    const storageType = useB2 ? 'B2' : 'Supabase';
+    await interaction.editReply({ content: `⏳ Uploading ${fileSizeMB} MB to ${storageType}...` });
+    console.log(`Uploading ${fileSizeMB} MB to ${storageType} using stream (avoids ENOBUFS)...`);
     
     // Use streaming upload to prevent ENOBUFS error on large files
     const fileStream = createReadStream(filepath);
     
+    // Merge headers for B2 or use defaults for Supabase
+    const finalHeaders = useB2 
+      ? { ...uploadHeaders, 'Content-Length': fileStats.size.toString() }
+      : { 'Content-Type': 'audio/wav', 'Content-Length': fileStats.size.toString() };
+    
     const uploadResponse = await fetch(signed_url, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'audio/wav',
-        'Content-Length': fileStats.size.toString()
-      },
+      headers: finalHeaders,
       body: fileStream
     });
 
@@ -602,7 +642,7 @@ async function stopRecording(interaction) {
       throw new Error(`Storage upload failed: ${uploadResponse.status}`);
     }
 
-    console.log(`File uploaded to: ${publicUrl}`);
+    console.log(`File uploaded to ${storageType}: ${publicUrl}`);
 
     // Clean up local file
     unlinkSync(filepath);
