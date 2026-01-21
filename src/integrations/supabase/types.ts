@@ -146,7 +146,9 @@ export type Database = {
           metadata: Json | null
           mp3_file_url: string | null
           quality_status: string | null
+          recording_type: string | null
           sample_rate: number | null
+          session_id: string | null
           snr_db: number | null
           status: Database["public"]["Enums"]["recording_status"] | null
           topic_id: string | null
@@ -179,7 +181,9 @@ export type Database = {
           metadata?: Json | null
           mp3_file_url?: string | null
           quality_status?: string | null
+          recording_type?: string | null
           sample_rate?: number | null
+          session_id?: string | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
@@ -212,7 +216,9 @@ export type Database = {
           metadata?: Json | null
           mp3_file_url?: string | null
           quality_status?: string | null
+          recording_type?: string | null
           sample_rate?: number | null
+          session_id?: string | null
           snr_db?: number | null
           status?: Database["public"]["Enums"]["recording_status"] | null
           topic_id?: string | null
