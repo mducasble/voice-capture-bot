@@ -211,7 +211,7 @@ function createWavHeader(dataLength) {
   return buffer;
 }
 
-// Audio mixer for combining multiple user streams
+// Audio mixer for combining multiple user streams with proper sample-level mixing
 // NOTE: we must NOT delete a user's chunks when they stop speaking,
 // otherwise /stop will often say "No audio was captured".
 class AudioMixer {
@@ -219,6 +219,8 @@ class AudioMixer {
     // userId -> { stream: AudioReceiveStream | null, chunks: Array<{timestamp:number, data:Buffer}> }
     this.streams = new Map();
     this.startTime = Date.now();
+    // Bytes per millisecond for 48kHz, 16-bit, stereo = 48000 * 2 * 2 / 1000 = 192
+    this.bytesPerMs = (CONFIG.SAMPLE_RATE * CONFIG.CHANNELS * (CONFIG.BIT_DEPTH / 8)) / 1000;
   }
 
   hasActiveStream(userId) {
@@ -254,27 +256,62 @@ class AudioMixer {
   }
 
   getMixedAudio() {
-    // Collect all chunks and mix them
+    // Collect all chunks with their absolute byte positions
     const allChunks = [];
 
-    for (const [, { chunks }] of this.streams) {
+    for (const [userId, { chunks }] of this.streams) {
       for (const chunk of chunks) {
-        allChunks.push(chunk);
+        // Convert timestamp (ms) to byte offset
+        const byteOffset = Math.floor(chunk.timestamp * this.bytesPerMs);
+        // Align to sample boundary (4 bytes for stereo 16-bit)
+        const alignedOffset = byteOffset - (byteOffset % 4);
+        allChunks.push({
+          offset: alignedOffset,
+          data: chunk.data,
+          userId
+        });
       }
     }
 
-    // Sort by timestamp
-    allChunks.sort((a, b) => a.timestamp - b.timestamp);
-
-    // Combine all audio data
-    const totalLength = allChunks.reduce((sum, chunk) => sum + chunk.data.length, 0);
-    const mixedBuffer = Buffer.alloc(totalLength);
-    let offset = 0;
-
-    for (const chunk of allChunks) {
-      chunk.data.copy(mixedBuffer, offset);
-      offset += chunk.data.length;
+    if (allChunks.length === 0) {
+      return Buffer.alloc(0);
     }
+
+    // Find the total duration needed
+    let maxEnd = 0;
+    for (const chunk of allChunks) {
+      const end = chunk.offset + chunk.data.length;
+      if (end > maxEnd) maxEnd = end;
+    }
+
+    // Create output buffer initialized to silence (zeros)
+    const mixedBuffer = Buffer.alloc(maxEnd);
+
+    // Mix all chunks by adding samples (with clipping protection)
+    for (const chunk of allChunks) {
+      const { offset, data } = chunk;
+      
+      // Process as 16-bit signed samples
+      for (let i = 0; i < data.length; i += 2) {
+        const pos = offset + i;
+        if (pos + 1 >= mixedBuffer.length) break;
+        
+        // Read existing sample and new sample as signed 16-bit
+        const existing = mixedBuffer.readInt16LE(pos);
+        const incoming = data.readInt16LE(i);
+        
+        // Mix by adding (with soft clipping to prevent distortion)
+        let mixed = existing + incoming;
+        
+        // Soft clip to prevent harsh distortion
+        if (mixed > 32767) mixed = 32767;
+        else if (mixed < -32768) mixed = -32768;
+        
+        mixedBuffer.writeInt16LE(mixed, pos);
+      }
+    }
+
+    console.log(`🎚️ Mixed audio: ${allChunks.length} chunks from ${this.streams.size} users, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
 
     return mixedBuffer;
   }
