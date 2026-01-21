@@ -688,7 +688,9 @@ async function finalizeProcessing(
   // Start Gemini transcription with chunk-based processing
   await transcribeChunksWithRetry(supabase, state.recording_id);
 
-  // Also trigger ElevenLabs transcription now that chunks exist
+  // DISABLED: Automatic ElevenLabs transcription to save credits during testing
+  // To re-enable, uncomment the following block:
+  /*
   const elevenLabsPromise = supabase.functions.invoke("transcribe-elevenlabs", {
     body: {
       recording_id: state.recording_id,
@@ -714,6 +716,8 @@ async function finalizeProcessing(
       })
       .catch((err: unknown) => console.error("ElevenLabs trigger error:", err));
   }
+  */
+  console.log(`ElevenLabs auto-transcription DISABLED for ${state.recording_id} (can be triggered manually from UI)`);
 
   return new Response(
     JSON.stringify({
