@@ -228,6 +228,34 @@ class AudioMixer {
     // Small fade to avoid clicks/static at chunk boundaries
     this.fadeMs = 2;
     this.fadeSamples = Math.max(0, Math.floor((CONFIG.SAMPLE_RATE * this.fadeMs) / 1000));
+    
+    // Longer fade for the absolute start of the recording to eliminate decoder warmup buzz
+    this.initialFadeMs = 20; // 20ms fade at the very beginning
+    this.initialFadeSamples = Math.max(0, Math.floor((CONFIG.SAMPLE_RATE * this.initialFadeMs) / 1000));
+  }
+
+  // Apply a longer fade-in at the absolute start of the final audio buffer
+  _applyInitialFade(buffer) {
+    if (!this.initialFadeSamples || buffer.length < this.blockAlign * 4) return buffer;
+    
+    const fadeFrames = Math.min(this.initialFadeSamples, Math.floor(buffer.length / this.blockAlign / 4));
+    if (fadeFrames <= 0) return buffer;
+    
+    for (let frame = 0; frame < fadeFrames; frame++) {
+      // Use a smooth curve (ease-in) for more natural fade
+      const t = frame / fadeFrames;
+      const gain = t * t; // Quadratic ease-in
+      const base = frame * this.blockAlign;
+      for (let ch = 0; ch < CONFIG.CHANNELS; ch++) {
+        const pos = base + ch * 2;
+        if (pos + 1 < buffer.length) {
+          const s = buffer.readInt16LE(pos);
+          buffer.writeInt16LE(Math.round(s * gain), pos);
+        }
+      }
+    }
+    
+    return buffer;
   }
 
   _applyFadeEdges(input, fadeIn = true, fadeOut = true) {
@@ -401,6 +429,9 @@ class AudioMixer {
       dataToWrite.copy(audioBuffer, alignedOffset, 0, Math.min(dataToWrite.length, audioBuffer.length - alignedOffset));
     }
 
+    // Apply initial fade to eliminate any decoder warmup buzz at the very start
+    this._applyInitialFade(audioBuffer);
+
     console.log(`🎤 Individual audio for ${entry.username}: ${entry.chunks.length} chunks, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
     return audioBuffer;
   }
@@ -484,6 +515,9 @@ class AudioMixer {
         }
       }
     }
+
+    // Apply initial fade to eliminate any decoder warmup buzz at the very start
+    this._applyInitialFade(mixedBuffer);
 
     console.log(`🎚️ Mixed audio: ${this.streams.size} users, ${(maxEnd / 1024 / 1024).toFixed(2)} MB`);
 
@@ -645,11 +679,15 @@ async function startRecording(interaction) {
 
       mixer.addStream(userId, audioStream, username);
       let chunkCount = 0;
+      let warmupChunks = 0; // Skip first few chunks to avoid decoder startup artifacts
 
       // Try to create opus decoder
       let decoder = null;
       let decoderErrors = 0;
       let streamEnded = false;
+      
+      // Number of initial chunks to discard (decoder warmup - avoids buzz/click at start)
+      const WARMUP_CHUNKS = 3;
       
       try {
         decoder = new opus.Decoder({
@@ -671,6 +709,13 @@ async function startRecording(interaction) {
 
         decoder.on('data', (chunk) => {
           if (streamEnded) return; // Ignore data after stream ended
+          
+          // Skip warmup chunks to avoid decoder startup buzz
+          warmupChunks++;
+          if (warmupChunks <= WARMUP_CHUNKS) {
+            return;
+          }
+          
           chunkCount++;
           if (chunkCount % 50 === 1) {
             console.log(`📊 User ${userId}: received ${chunkCount} decoded chunks (${chunk.length} bytes each)`);
