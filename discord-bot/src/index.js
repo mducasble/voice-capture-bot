@@ -778,8 +778,8 @@ async function stopRecording(interaction) {
     // Get channel topic/language info if available
     const channelData = temporaryChannels.get(voiceChannel.id) || {};
     
-    // Generate a session ID to group all recordings
-    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    // Generate a proper UUID session ID to group all recordings (database expects UUID type)
+    const sessionId = crypto.randomUUID();
     
     await interaction.editReply({ 
       content: `⏳ Processing ${users.length} individual track(s) + 1 mixed track...` 
