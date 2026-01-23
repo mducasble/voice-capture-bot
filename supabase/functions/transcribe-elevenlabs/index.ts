@@ -338,7 +338,7 @@ async function processFullMode(
     .update({ transcription_elevenlabs_status: "processing" })
     .eq("id", recording_id);
 
-  console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: full`);
+  console.log(`Starting ElevenLabs transcription for ${recording_id}, mode: full (with diarization)`);
 
   // Prefer the pre-generated compressed file if available; fallback to original.
   const audioUrl = recording.mp3_file_url || recording.file_url;
@@ -366,7 +366,7 @@ async function processFullMode(
     mimeType = "audio/ogg";
   }
 
-  const transcription = await transcribeWithElevenLabs({
+  const result = await transcribeWithElevenLabsDiarized({
     audioBlob: blob,
     filename,
     mimeType,
@@ -374,15 +374,54 @@ async function processFullMode(
     language: recording.language ?? undefined,
   });
 
+  // Process words into speaker segments if diarization data is available
+  const words = result.words || [];
+  const segments = wordsToSegments(words);
+  const { formatted: formattedSegments, mapping: speakerMapping } = formatSegmentsForExport(segments);
+
+  // Create JSON transcription
+  const jsonTranscription = JSON.stringify(formattedSegments);
+
+  // Create readable transcription
+  const readableTranscription = formattedSegments
+    .map(seg => `[${seg.speaker}]: ${seg.text}`)
+    .join('\n\n');
+
+  // Fetch existing metadata to preserve other fields
+  const { data: existingRec } = await supabase
+    .from("voice_recordings")
+    .select("metadata")
+    .eq("id", recording_id)
+    .single();
+
+  const existingMetadata = (existingRec?.metadata as Record<string, unknown> | null) ?? {};
+
+  const hasSpeakers = formattedSegments.length > 0;
+
   await supabase
     .from("voice_recordings")
     .update({
-      transcription_elevenlabs: transcription,
-      transcription_elevenlabs_status: transcription ? "completed" : "failed",
+      transcription_elevenlabs: hasSpeakers ? jsonTranscription : result.text,
+      transcription_elevenlabs_status: result.text ? "completed" : "failed",
+      metadata: {
+        ...existingMetadata,
+        speaker_segments: hasSpeakers ? formattedSegments : undefined,
+        speaker_mapping: hasSpeakers ? speakerMapping : undefined,
+        readable_transcription: hasSpeakers ? readableTranscription : undefined,
+        transcribed_at: new Date().toISOString(),
+      },
     })
     .eq("id", recording_id);
 
-  return json({ success: true, recording_id, mode: "full", transcription_length: transcription.length });
+  return json({ 
+    success: true, 
+    recording_id, 
+    mode: "full", 
+    diarized: hasSpeakers,
+    speaker_count: Object.keys(speakerMapping).length,
+    segment_count: formattedSegments.length,
+    transcription_length: result.text?.length || 0 
+  });
 }
 
 async function buildInitialChunkState(supabase: any, recording_id: string): Promise<ChunkState> {
@@ -450,6 +489,32 @@ async function safeFetchBlob(url: string, maxBytes: number): Promise<Blob> {
   return new Blob(chunks);
 }
 
+type ElevenLabsWord = {
+  text: string;
+  start: number;
+  end: number;
+  speaker?: string;
+};
+
+type ElevenLabsResponse = {
+  text: string;
+  words?: ElevenLabsWord[];
+};
+
+type SpeakerSegment = {
+  start: number;
+  end: number;
+  speaker: string;
+  text: string;
+};
+
+type FormattedSegment = {
+  start: string;
+  end: string;
+  speaker: string;
+  text: string;
+};
+
 async function transcribeWithElevenLabs(params: {
   audioBlob: Blob;
   filename: string;
@@ -457,11 +522,24 @@ async function transcribeWithElevenLabs(params: {
   apiKey: string;
   language?: string;
 }): Promise<string> {
+  const result = await transcribeWithElevenLabsDiarized(params);
+  return result.text || "";
+}
+
+async function transcribeWithElevenLabsDiarized(params: {
+  audioBlob: Blob;
+  filename: string;
+  mimeType: string;
+  apiKey: string;
+  language?: string;
+}): Promise<ElevenLabsResponse> {
   const { audioBlob, filename, mimeType, apiKey, language } = params;
 
   const formData = new FormData();
   formData.append("file", new Blob([audioBlob], { type: mimeType }), filename);
   formData.append("model_id", "scribe_v2");
+  formData.append("diarize", "true"); // Enable speaker diarization
+  formData.append("tag_audio_events", "true");
 
   if (language) {
     const langMap: Record<string, string> = {
@@ -492,6 +570,84 @@ async function transcribeWithElevenLabs(params: {
     throw new Error(`ElevenLabs API error: ${response.status}`);
   }
 
-  const result = await response.json();
-  return result.text || "";
+  return await response.json();
+}
+
+// Format seconds to "M:SS" or "H:MM:SS" for longer durations
+function formatTimestamp(seconds: number): string {
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+// Convert words with speaker info into segments (group consecutive words from same speaker)
+function wordsToSegments(words: ElevenLabsWord[]): SpeakerSegment[] {
+  if (!words || words.length === 0) return [];
+
+  const segments: SpeakerSegment[] = [];
+  let currentSegment: SpeakerSegment | null = null;
+  const SILENCE_THRESHOLD = 1.5; // seconds - start new segment after silence
+
+  for (const word of words) {
+    const speaker = word.speaker || "speaker_1";
+    
+    // Start new segment if: first word, different speaker, or long silence
+    const shouldStartNew = !currentSegment ||
+      currentSegment.speaker !== speaker ||
+      (word.start - currentSegment.end > SILENCE_THRESHOLD);
+
+    if (shouldStartNew) {
+      if (currentSegment) {
+        segments.push(currentSegment);
+      }
+      currentSegment = {
+        start: word.start,
+        end: word.end,
+        speaker,
+        text: word.text,
+      };
+    } else if (currentSegment) {
+      currentSegment.end = word.end;
+      currentSegment.text += ` ${word.text}`;
+    }
+  }
+
+  if (currentSegment) {
+    segments.push(currentSegment);
+  }
+
+  return segments;
+}
+
+// Format segments for JSON export with speaker labels (speaker A, B, etc.)
+function formatSegmentsForExport(segments: SpeakerSegment[]): { formatted: FormattedSegment[]; mapping: Record<string, string> } {
+  const speakerMap = new Map<string, string>();
+  const letterCode = (n: number) => String.fromCharCode(65 + n); // 65 = 'A'
+
+  const formatted = segments.map(seg => {
+    if (!speakerMap.has(seg.speaker)) {
+      speakerMap.set(seg.speaker, `speaker ${letterCode(speakerMap.size)}`);
+    }
+
+    return {
+      start: formatTimestamp(seg.start),
+      end: formatTimestamp(seg.end),
+      speaker: speakerMap.get(seg.speaker)!,
+      text: seg.text.trim(),
+    };
+  });
+
+  // Create reverse mapping for display
+  const mapping: Record<string, string> = {};
+  speakerMap.forEach((label, original) => {
+    mapping[label] = original;
+  });
+
+  return { formatted, mapping };
 }
