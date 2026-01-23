@@ -112,9 +112,20 @@ export function useSessionTranscription() {
             description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
           });
 
-          // Fallback client-side polling: sometimes the backend continuation may not get scheduled.
-          // In that case, we re-invoke after a short delay to keep progress moving.
-          const retryDelay = 8000; // 8 seconds
+          // Client-side polling as fallback only - backend handles continuation via lock
+          // Use longer delay to avoid creating parallel invocations
+          const retryDelay = 20000; // 20 seconds - enough time for backend to process
+          clearRetryTimeout();
+          retryTimeoutRef.current = setTimeout(() => {
+            mutation.mutate(variables);
+          }, retryDelay);
+        } else if (data.status === 'already_processing') {
+          // Another invocation is already processing - just wait and check later
+          toast.info("Processamento em andamento...", {
+            description: "Aguardando conclusão do processamento atual"
+          });
+          
+          const retryDelay = 15000; // 15 seconds
           clearRetryTimeout();
           retryTimeoutRef.current = setTimeout(() => {
             mutation.mutate(variables);
