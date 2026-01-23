@@ -1,12 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createMp3Encoder } from "https://esm.sh/wasm-media-encoders@0.7.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB for ElevenLabs
+const MAX_WAV_FOR_CONVERSION = 2 * 1024 * 1024 * 1024; // 2GB max WAV to convert
+const TARGET_SAMPLE_RATE = 16000;
+const MP3_BITRATE = 128;
 
 interface SessionState {
   session_id: string;
@@ -21,6 +25,7 @@ interface SpeakerMeta {
   username: string;
   user_id: string;
   has_transcription: boolean;
+  error?: string;
 }
 
 interface IndividualRecording {
@@ -31,6 +36,7 @@ interface IndividualRecording {
   mp3_file_url: string | null;
   language: string | null;
   metadata: Record<string, unknown> | null;
+  file_size_bytes: number | null;
 }
 
 interface ElevenLabsWord {
@@ -101,7 +107,7 @@ serve(async (req) => {
     // Fetch all individual recordings
     const { data: recordings, error: fetchError } = await supabase
       .from('voice_recordings')
-      .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata')
+      .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes')
       .eq('session_id', targetSessionId)
       .eq('recording_type', 'individual')
       .order('discord_user_id');
@@ -138,11 +144,12 @@ serve(async (req) => {
         speakerMeta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: true });
         alreadyProcessed.push(rec.id);
       } else {
-        const audioUrl = rec.mp3_file_url || rec.file_url;
-        if (audioUrl) {
+        // Check if we have any usable audio
+        const hasAudio = rec.mp3_file_url || rec.file_url;
+        if (hasAudio) {
           pendingIds.push(rec.id);
         } else {
-          speakerMeta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false });
+          speakerMeta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_audio' });
         }
       }
     }
@@ -194,7 +201,7 @@ async function processContinuation(
 
   const { data, error } = await supabase
     .from('voice_recordings')
-    .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata')
+    .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes')
     .eq('id', trackId)
     .single();
 
@@ -209,18 +216,48 @@ async function processContinuation(
 
   const rec = data as IndividualRecording;
   const speaker = rec.discord_username || `User_${rec.discord_user_id.slice(-4)}`;
-  const audioUrl = rec.mp3_file_url || rec.file_url;
-
-  if (!audioUrl) {
-    console.log(`No audio URL for ${speaker}, skipping`);
-    state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false });
-    return await scheduleContinuation(supabase, {
-      ...state,
-      pending_track_ids: remainingIds
-    });
-  }
 
   try {
+    console.log(`Processing track for ${speaker}...`);
+    
+    // Get or create MP3 file URL
+    let audioUrl = rec.mp3_file_url;
+    
+    if (!audioUrl && rec.file_url) {
+      // Need to convert WAV to MP3
+      const fileSize = rec.file_size_bytes || 0;
+      console.log(`No MP3 available for ${speaker}, WAV size: ${(fileSize / 1024 / 1024).toFixed(1)}MB`);
+      
+      if (fileSize > MAX_WAV_FOR_CONVERSION) {
+        throw new Error(`File too large to convert: ${(fileSize / 1024 / 1024).toFixed(0)}MB`);
+      }
+      
+      // Convert WAV to MP3 using streaming
+      audioUrl = await convertWavToMp3(supabase, rec.id, rec.file_url, speaker);
+      
+      if (audioUrl) {
+        // Update record with new MP3 URL
+        await supabase
+          .from('voice_recordings')
+          .update({ mp3_file_url: audioUrl })
+          .eq('id', rec.id);
+        console.log(`Saved MP3 URL for ${speaker}`);
+      }
+    }
+    
+    if (!audioUrl) {
+      throw new Error('No audio URL available');
+    }
+
+    // Check MP3 file size
+    const headResp = await fetch(audioUrl, { method: 'HEAD' });
+    const mp3Size = parseInt(headResp.headers.get('content-length') || '0');
+    console.log(`MP3 size for ${speaker}: ${(mp3Size / 1024 / 1024).toFixed(1)}MB`);
+    
+    if (mp3Size > MAX_UPLOAD_BYTES) {
+      throw new Error(`MP3 still too large: ${(mp3Size / 1024 / 1024).toFixed(1)}MB (limit: 25MB)`);
+    }
+
     console.log(`Transcribing track for ${speaker}...`);
     const words = await transcribeWithElevenLabs(audioUrl, apiKey, rec.language);
 
@@ -241,13 +278,14 @@ async function processContinuation(
       state.all_segments.push(...segments);
       state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: true });
     } else {
-      state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false });
+      state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_speech' });
     }
 
     state.processed_track_ids.push(trackId);
   } catch (err) {
-    console.error(`Failed to transcribe ${speaker}:`, err);
-    state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false });
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`Failed to process ${speaker}:`, errorMsg);
+    state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: errorMsg });
   }
 
   // Schedule continuation for remaining tracks
@@ -255,6 +293,186 @@ async function processContinuation(
     ...state,
     pending_track_ids: remainingIds
   });
+}
+
+// Convert WAV to MP3 using streaming to avoid memory issues
+async function convertWavToMp3(
+  supabase: AnySupabaseClient,
+  recordingId: string,
+  wavUrl: string,
+  speaker: string
+): Promise<string | null> {
+  console.log(`Converting WAV to MP3 for ${speaker}...`);
+  
+  // Fetch WAV header first
+  const headerResp = await fetch(wavUrl, { headers: { 'Range': 'bytes=0-1023' } });
+  if (!headerResp.ok) {
+    throw new Error(`Failed to fetch WAV header: ${headerResp.status}`);
+  }
+  
+  const headerBytes = new Uint8Array(await headerResp.arrayBuffer());
+  const wavInfo = parseWavHeader(headerBytes);
+  
+  if (!wavInfo) {
+    throw new Error('Invalid WAV file format');
+  }
+  
+  console.log(`WAV: ${wavInfo.sampleRate}Hz, ${wavInfo.channels}ch, data size: ${(wavInfo.dataSize / 1024 / 1024).toFixed(1)}MB`);
+  
+  // Calculate resampling ratio
+  const ratio = wavInfo.sampleRate / TARGET_SAMPLE_RATE;
+  const bytesPerFrame = wavInfo.channels * (wavInfo.bitsPerSample / 8);
+  
+  // Process in chunks to avoid memory issues (process 30 seconds at a time)
+  const CHUNK_SECONDS = 30;
+  const bytesPerChunk = Math.floor(wavInfo.sampleRate * CHUNK_SECONDS * bytesPerFrame);
+  
+  const encoder = await createMp3Encoder();
+  encoder.configure({
+    sampleRate: TARGET_SAMPLE_RATE,
+    channels: 1,
+    bitrate: MP3_BITRATE,
+  });
+  
+  const mp3Chunks: Uint8Array[] = [];
+  let bytesProcessed = 0;
+  let srcIdx = 0;
+  let outputSampleIdx = 0;
+  
+  while (bytesProcessed < wavInfo.dataSize) {
+    const rangeStart = wavInfo.dataOffset + bytesProcessed;
+    const rangeEnd = Math.min(rangeStart + bytesPerChunk - 1, wavInfo.dataOffset + wavInfo.dataSize - 1);
+    
+    const chunkResp = await fetch(wavUrl, {
+      headers: { 'Range': `bytes=${rangeStart}-${rangeEnd}` }
+    });
+    
+    if (!chunkResp.ok && chunkResp.status !== 206) {
+      throw new Error(`Failed to fetch WAV chunk: ${chunkResp.status}`);
+    }
+    
+    const chunkData = new Uint8Array(await chunkResp.arrayBuffer());
+    const view = new DataView(chunkData.buffer, chunkData.byteOffset, chunkData.byteLength);
+    
+    // Resample and convert to mono
+    const samples: number[] = [];
+    let frameOffset = 0;
+    
+    while (frameOffset + bytesPerFrame <= chunkData.length) {
+      const targetOutputIdx = Math.floor(srcIdx / ratio);
+      
+      if (targetOutputIdx > outputSampleIdx) {
+        // Mix channels to mono
+        let sample = 0;
+        for (let ch = 0; ch < wavInfo.channels; ch++) {
+          sample += view.getInt16(frameOffset + ch * 2, true);
+        }
+        const monoSample = sample / wavInfo.channels / 32768.0; // Normalize to -1 to 1
+        samples.push(monoSample);
+        outputSampleIdx++;
+      }
+      
+      srcIdx++;
+      frameOffset += bytesPerFrame;
+    }
+    
+    bytesProcessed += frameOffset;
+    
+    // Encode samples to MP3
+    if (samples.length > 0) {
+      const floatSamples = new Float32Array(samples);
+      const mp3Data = encoder.encode([floatSamples]);
+      if (mp3Data.length > 0) {
+        mp3Chunks.push(mp3Data);
+      }
+    }
+    
+    console.log(`Converted ${Math.round(bytesProcessed / wavInfo.dataSize * 100)}% for ${speaker}`);
+  }
+  
+  // Finalize MP3
+  const finalFrames = encoder.finalize();
+  if (finalFrames.length > 0) {
+    mp3Chunks.push(finalFrames);
+  }
+  
+  // Combine all MP3 chunks
+  const totalSize = mp3Chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const fullMp3 = new Uint8Array(totalSize);
+  let offset = 0;
+  for (const chunk of mp3Chunks) {
+    fullMp3.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  console.log(`Created MP3: ${(fullMp3.length / 1024 / 1024).toFixed(2)}MB for ${speaker}`);
+  
+  // Upload to storage
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const mp3Path = `mp3/${recordingId}_${timestamp}.mp3`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('voice-recordings')
+    .upload(mp3Path, fullMp3, {
+      contentType: 'audio/mpeg',
+      upsert: true
+    });
+  
+  if (uploadError) {
+    console.error('Failed to upload MP3:', uploadError);
+    throw new Error(`Failed to upload MP3: ${uploadError.message}`);
+  }
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('voice-recordings')
+    .getPublicUrl(mp3Path);
+  
+  console.log(`Uploaded MP3 for ${speaker}: ${publicUrl}`);
+  return publicUrl;
+}
+
+// Parse WAV header
+function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
+  if (headerBytes.length < 44) return null;
+  
+  const view = new DataView(headerBytes.buffer, headerBytes.byteOffset, headerBytes.byteLength);
+  
+  const riff = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
+  if (riff !== 'RIFF') return null;
+  
+  const wave = String.fromCharCode(headerBytes[8], headerBytes[9], headerBytes[10], headerBytes[11]);
+  if (wave !== 'WAVE') return null;
+  
+  let offset = 12;
+  let sampleRate = 48000;
+  let channels = 2;
+  let bitsPerSample = 16;
+  let dataOffset = 0;
+  let dataSize = 0;
+  
+  while (offset < Math.min(headerBytes.length - 8, 1000)) {
+    const chunkId = String.fromCharCode(
+      headerBytes[offset], headerBytes[offset + 1],
+      headerBytes[offset + 2], headerBytes[offset + 3]
+    );
+    const chunkSize = view.getUint32(offset + 4, true);
+    
+    if (chunkId === 'fmt ') {
+      channels = view.getUint16(offset + 10, true);
+      sampleRate = view.getUint32(offset + 12, true);
+      bitsPerSample = view.getUint16(offset + 22, true);
+    } else if (chunkId === 'data') {
+      dataOffset = offset + 8;
+      dataSize = chunkSize;
+      break;
+    }
+    
+    offset += 8 + chunkSize;
+    if (chunkSize % 2 !== 0) offset++;
+  }
+  
+  if (dataOffset === 0) return null;
+  return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
 }
 
 async function scheduleContinuation(
@@ -288,11 +506,20 @@ async function finalizeSession(
 ): Promise<Response> {
   console.log(`Finalizing session ${state.session_id}`);
 
+  // Check for any transcribed content
+  const successfulSpeakers = state.speaker_meta.filter(s => s.has_transcription);
+  const failedSpeakers = state.speaker_meta.filter(s => !s.has_transcription);
+  
+  if (failedSpeakers.length > 0) {
+    console.log(`Failed speakers: ${failedSpeakers.map(s => `${s.username}(${s.error})`).join(', ')}`);
+  }
+
   if (state.all_segments.length === 0) {
+    const errorDetails = failedSpeakers.map(s => `${s.username}: ${s.error}`).join('; ');
     return json({
       success: false,
       error: "no_transcriptions",
-      message: "Nenhuma faixa individual foi transcrita com sucesso."
+      message: `Nenhuma faixa foi transcrita. Erros: ${errorDetails}`
     }, 200);
   }
 
@@ -331,8 +558,9 @@ async function finalizeSession(
     transcription: timelineTranscription,
     segment_count: mergedSegments.length,
     stats: {
-      total_tracks: state.processed_track_ids.length + state.speaker_meta.filter(s => !s.has_transcription).length,
-      transcribed: state.speaker_meta.filter(s => s.has_transcription).length
+      total_tracks: state.speaker_meta.length,
+      transcribed: successfulSpeakers.length,
+      failed: failedSpeakers.length
     }
   });
 }
@@ -415,28 +643,21 @@ async function transcribeWithElevenLabs(
   apiKey: string,
   language: string | null
 ): Promise<ElevenLabsWord[]> {
-  // Stream download with size limit
+  // Download the audio file
   const resp = await fetch(audioUrl);
   if (!resp.ok) throw new Error(`Failed to download audio: ${resp.status}`);
 
-  const contentLength = parseInt(resp.headers.get('content-length') || '0');
-  if (contentLength > MAX_UPLOAD_BYTES) {
-    throw new Error(`File too large: ${(contentLength / 1024 / 1024).toFixed(1)}MB`);
-  }
-
   const arrayBuffer = await resp.arrayBuffer();
-  if (arrayBuffer.byteLength > MAX_UPLOAD_BYTES) {
-    throw new Error(`File too large: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)}MB`);
-  }
+  console.log(`Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB for transcription`);
 
-  // Detect format
+  // Detect format from URL
   const urlLower = audioUrl.toLowerCase();
-  let filename = "audio.wav";
-  let mimeType = "audio/wav";
+  let filename = "audio.mp3";
+  let mimeType = "audio/mpeg";
 
-  if (urlLower.includes(".mp3")) {
-    filename = "audio.mp3";
-    mimeType = "audio/mpeg";
+  if (urlLower.includes(".wav")) {
+    filename = "audio.wav";
+    mimeType = "audio/wav";
   } else if (urlLower.includes(".m4a")) {
     filename = "audio.m4a";
     mimeType = "audio/mp4";
@@ -471,5 +692,6 @@ async function transcribeWithElevenLabs(
   }
 
   const result = await response.json();
+  console.log(`Transcription complete: ${result.words?.length || 0} words`);
   return (result.words || []) as ElevenLabsWord[];
 }
