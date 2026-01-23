@@ -41,7 +41,11 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
   const aggregatedAt = metadata?.aggregated_at;
   
   // Show waiting state with countdown (from hook)
-  if (isWaiting && countdown !== null) {
+  if (isWaiting && countdown !== null && countdown > 0) {
+    // Safe countdown value for calculations
+    const safeCountdown = Math.max(0, Math.min(10, countdown));
+    const progressValue = ((10 - safeCountdown) / 10) * 100;
+    
     return (
       <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-2 animate-fade-in">
         <div className="flex items-center justify-between">
@@ -53,7 +57,7 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
             <div className="flex items-center gap-1.5 bg-yellow-500/20 px-2 py-1 rounded-full">
               <Loader2 className="h-3 w-3 animate-spin text-yellow-400" />
               <span className="text-sm font-mono font-bold text-yellow-400">
-                {countdown}s
+                {safeCountdown}s
               </span>
             </div>
           </div>
@@ -66,11 +70,11 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
         {/* Countdown progress bar */}
         <div className="space-y-1">
           <Progress 
-            value={((10 - countdown) / 10) * 100} 
+            value={isNaN(progressValue) ? 0 : progressValue} 
             className="h-1.5"
           />
           <p className="text-xs text-muted-foreground text-center">
-            Retry automático em {countdown} segundo{countdown !== 1 ? 's' : ''}
+            Retry automático em {safeCountdown} segundo{safeCountdown !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
