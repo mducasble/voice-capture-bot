@@ -29,6 +29,7 @@ serve(async (req) => {
     const recording_id: string | undefined = body?.recording_id;
     const mode: Mode = body?.mode === "full" ? "full" : "chunks";
     const state: ChunkState | undefined = body?.state;
+    const force: boolean = Boolean(body?.force);
 
     if (!recording_id) {
       return json({ error: "Missing recording_id" }, 400);
@@ -46,7 +47,9 @@ serve(async (req) => {
 
     const { data: recording, error: fetchError } = await supabase
       .from("voice_recordings")
-      .select("id, file_url, mp3_file_url, language, file_size_bytes, format")
+      .select(
+        "id, file_url, mp3_file_url, language, file_size_bytes, format, transcription_elevenlabs_status, transcription_elevenlabs, elevenlabs_chunk_state, metadata"
+      )
       .eq("id", recording_id)
       .single();
 
@@ -54,19 +57,33 @@ serve(async (req) => {
       return json({ error: "Recording not found" }, 404);
     }
 
+    // Idempotency guard: avoid re-processing an already completed transcription unless explicitly forced.
+    // This is the most common source of unexpected credit usage (e.g., button clicked twice).
+    if (!force && recording?.transcription_elevenlabs_status === "completed") {
+      return json(
+        {
+          success: true,
+          skipped: true,
+          reason: "already_completed",
+          recording_id,
+          mode,
+        },
+        200
+      );
+    }
+
     if (mode === "full") {
       return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
     }
 
     // mode === 'chunks' - first check if chunks exist, fallback to full mode if not
-    // Load current state from database (idempotent)
-    const { data: currentRow } = await supabase
-      .from("voice_recordings")
-      .select("transcription_elevenlabs, elevenlabs_chunk_state")
-      .eq("id", recording_id)
-      .single();
+    // Load current state from row (idempotent)
+    const currentRow = recording as unknown as {
+      transcription_elevenlabs: string | null;
+      elevenlabs_chunk_state: ChunkState | null;
+    };
 
-    let chunkState: ChunkState | null = currentRow?.elevenlabs_chunk_state as ChunkState | null;
+    let chunkState: ChunkState | null = (currentRow?.elevenlabs_chunk_state as ChunkState | null) ?? null;
 
     // Check for lock - if another invocation is processing, skip gracefully (2xx so invoke() doesn't throw)
     if (chunkState?.lockedAt) {
