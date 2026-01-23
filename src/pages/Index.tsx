@@ -8,6 +8,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { StorageStatsCard } from "@/components/StorageStatsCard";
 import { AudioSpecBadge } from "@/components/AudioSpecBadge";
 import { AudioUpload } from "@/components/AudioUpload";
+import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
 import { useRecordings, useRecordingStats, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -143,8 +144,9 @@ const Index = () => {
         </section>
 
         {/* Upload Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <AudioUpload />
+          <MultiSpeakerUpload />
           <StorageStatsCard stats={stats.storageStats} />
         </section>
 
