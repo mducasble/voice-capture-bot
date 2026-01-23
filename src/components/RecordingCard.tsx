@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -13,6 +13,7 @@ import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElev
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { useResumeElevenLabsTranscription, getIncompleteTranscriptionInfo } from "@/hooks/useResumeElevenLabsTranscription";
 import { useClearTranscription } from "@/hooks/useClearTranscription";
+import { useStopGemini } from "@/hooks/useStopGemini";
 import { useElevenLabsTestTranscription } from "@/hooks/useElevenLabsTestTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
@@ -56,6 +57,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const sessionTranscription = useSessionTranscription();
   const resumeElevenLabs = useResumeElevenLabsTranscription();
   const clearTranscription = useClearTranscription();
+  const stopGemini = useStopGemini();
   const elevenLabsTest = useElevenLabsTestTranscription();
   const regenerateJson = useRegenerateJson();
 
@@ -418,7 +420,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 <CollapsibleContent className="mt-2 space-y-2">
                   {/* Progress bar while processing */}
                   {recording.transcription_status === 'processing' && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {recording.gemini_chunk_state && recording.gemini_chunk_state.chunkUrls?.length > 0 ? (
                         <>
                           <div className="flex justify-between text-xs text-muted-foreground">
@@ -443,6 +445,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                           </div>
                         </>
                       )}
+                      {/* Stop Gemini Button */}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full text-xs"
+                        onClick={() => stopGemini.mutate(recording.id)}
+                        disabled={stopGemini.isPending}
+                      >
+                        {stopGemini.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <StopCircle className="h-3 w-3 mr-1" />
+                        )}
+                        Parar Gemini
+                      </Button>
                     </div>
                   )}
                   
