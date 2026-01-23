@@ -153,7 +153,7 @@ export function useSessionTranscription() {
         notifyWaitingListeners();
         
         toast.info("Gerando chunks de áudio...", {
-          description: "Retry automático em 10s"
+          description: "Checando novamente em 10s"
         });
         
         clearRetryTimeout();
