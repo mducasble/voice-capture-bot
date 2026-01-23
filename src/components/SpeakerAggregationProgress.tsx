@@ -75,7 +75,7 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
             className="h-1.5"
           />
           <p className="text-xs text-muted-foreground text-center">
-            Retry automático em {safeCountdown} segundo{safeCountdown !== 1 ? 's' : ''}
+            Checando novamente em {safeCountdown} segundo{safeCountdown !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
