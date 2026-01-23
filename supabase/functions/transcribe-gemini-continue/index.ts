@@ -133,7 +133,8 @@ serve(async (req) => {
       console.log(`Transcribing chunk ${chunk.index}...`);
 
       try {
-        const transcription = await transcribeChunk(chunk.url, state.detectedLanguage, LOVABLE_API_KEY);
+        // NOTE: do NOT force language; let the model transcribe in the original language.
+        const transcription = await transcribeChunk(chunk.url, null, LOVABLE_API_KEY);
 
         if (transcription.text) {
           state.transcriptions[i] = transcription.text;
@@ -229,21 +230,32 @@ serve(async (req) => {
         })
         .eq('id', recording_id);
 
-      console.log(`Saved progress at chunk ${state.nextIndex}, scheduling continuation...`);
+      // Schedule continuation, but only if the job wasn't cancelled (gemini_chunk_state still exists)
+      const { data: latest } = await supabase
+        .from("voice_recordings")
+        .select("gemini_chunk_state")
+        .eq("id", recording_id)
+        .single();
 
-      // Schedule continuation
-      const invokePromise = supabase.functions.invoke('transcribe-gemini-continue', {
-        body: { recording_id }
-      });
+      const stillActive = !!latest?.gemini_chunk_state;
+      if (stillActive) {
+        console.log(`Saved progress at chunk ${state.nextIndex}, scheduling continuation...`);
 
-      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-        // @ts-ignore
-        EdgeRuntime.waitUntil(
-          invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err))
-        );
+        const invokePromise = supabase.functions.invoke('transcribe-gemini-continue', {
+          body: { recording_id }
+        });
+
+        // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(
+            invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err))
+          );
+        } else {
+          await invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err));
+        }
       } else {
-        await invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err));
+        console.log("Gemini job was cancelled; skipping continuation scheduling");
       }
 
       return new Response(
@@ -290,9 +302,9 @@ async function transcribeChunk(
 
   const base64Audio = encode(audioBytes.buffer);
 
-  const languageInstruction = language
-    ? `The audio is in ${language}. Transcribe it EXACTLY in that language.`
-    : 'Automatically detect the language and transcribe EXACTLY in that language.';
+  // Do not force a language; we only want the original-language transcription.
+  // (We still allow the model to report detected_language in the JSON.)
+  const languageInstruction = "Transcribe in the ORIGINAL language. Do NOT translate.";
 
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -301,7 +313,8 @@ async function transcribeChunk(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-3-flash-preview',
+      temperature: 0,
       messages: [
         {
           role: 'system',
@@ -312,9 +325,10 @@ CRITICAL RULES:
 2. Do NOT describe sounds, noises, or what you "hear"
 3. Do NOT add commentary or interpretation
 4. Do NOT invent or hallucinate content
-5. If the audio is silence or unintelligible, return empty transcription
-6. If you cannot understand the speech, return empty transcription
+ 5. If the audio is silence or unintelligible, return empty transcription
+ 6. If you cannot understand the speech, return empty transcription
 7. NEVER generate fake conversations or made-up dialogue
+ 8. If you are uncertain about the words, DO NOT guess: return empty transcription
 
 ${languageInstruction}
 
