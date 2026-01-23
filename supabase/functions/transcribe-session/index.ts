@@ -66,6 +66,14 @@ interface SpeakerSegment {
   end: number;
 }
 
+// Output format matching the expected JSON structure
+interface FormattedSegment {
+  start: string;   // e.g., "0:02"
+  end: string;     // e.g., "0:07"
+  speaker: string; // e.g., "speaker A"
+  text: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabaseClient = SupabaseClient<any, any, any>;
 
@@ -487,9 +495,22 @@ async function finalizeSession(
   state.all_segments.sort((a, b) => a.start - b.start);
   const mergedSegments = mergeAdjacentSegments(state.all_segments);
 
-  const timelineTranscription = mergedSegments
+  // Generate formatted JSON output (matching the expected format)
+  const formattedSegments = formatSegmentsForExport(mergedSegments);
+  const jsonTranscription = JSON.stringify(formattedSegments, null, 2);
+
+  // Also generate a human-readable version for display
+  const readableTranscription = mergedSegments
     .map(seg => `[${seg.speaker}]: ${seg.text}`)
     .join('\n\n');
+
+  // Create speaker mapping info for reference
+  const speakerMapping: Record<string, string> = {};
+  const letterCode = (n: number) => String.fromCharCode(65 + n);
+  const uniqueSpeakers = [...new Set(mergedSegments.map(s => s.speaker))];
+  uniqueSpeakers.forEach((speaker, i) => {
+    speakerMapping[`speaker ${letterCode(i)}`] = speaker;
+  });
 
   // Update mixed recording if provided
   if (state.mixed_recording_id) {
@@ -508,12 +529,15 @@ async function finalizeSession(
     const { error: updateError } = await supabase
       .from('voice_recordings')
       .update({
-        transcription_elevenlabs: timelineTranscription,
+        transcription_elevenlabs: jsonTranscription,
         transcription_elevenlabs_status: 'completed',
         metadata: {
           ...cleanedMetadata,
-          speaker_segments: mergedSegments,
+          speaker_segments: formattedSegments,
+          speaker_segments_raw: mergedSegments,
+          speaker_mapping: speakerMapping,
           speakers: state.speaker_meta,
+          readable_transcription: readableTranscription,
           aggregated_at: new Date().toISOString()
         }
       })
@@ -528,8 +552,10 @@ async function finalizeSession(
     success: true,
     session_id: state.session_id,
     speakers: state.speaker_meta,
-    transcription: timelineTranscription,
-    segment_count: mergedSegments.length,
+    speaker_mapping: speakerMapping,
+    transcription: jsonTranscription,
+    readable_transcription: readableTranscription,
+    segment_count: formattedSegments.length,
     stats: {
       total_tracks: state.speaker_meta.length,
       transcribed: successfulSpeakers.length,
@@ -542,6 +568,39 @@ function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+// Format seconds to "M:SS" or "H:MM:SS" for longer durations
+function formatTimestamp(seconds: number): string {
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+// Convert internal segments to the expected JSON format
+function formatSegmentsForExport(segments: SpeakerSegment[]): FormattedSegment[] {
+  // Create speaker mapping (discord username -> "speaker A", "speaker B", etc.)
+  const speakerMap = new Map<string, string>();
+  const letterCode = (n: number) => String.fromCharCode(65 + n); // 65 = 'A'
+  
+  return segments.map(seg => {
+    if (!speakerMap.has(seg.speaker)) {
+      speakerMap.set(seg.speaker, `speaker ${letterCode(speakerMap.size)}`);
+    }
+    
+    return {
+      start: formatTimestamp(seg.start),
+      end: formatTimestamp(seg.end),
+      speaker: speakerMap.get(seg.speaker)!,
+      text: seg.text,
+    };
   });
 }
 
