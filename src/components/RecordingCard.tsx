@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -11,6 +11,7 @@ import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { useResumeElevenLabsTranscription, getIncompleteTranscriptionInfo } from "@/hooks/useResumeElevenLabsTranscription";
+import { useClearTranscription } from "@/hooks/useClearTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
@@ -50,6 +51,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const elevenLabsTranscription = useElevenLabsTranscription();
   const sessionTranscription = useSessionTranscription();
   const resumeElevenLabs = useResumeElevenLabsTranscription();
+  const clearTranscription = useClearTranscription();
 
   // Check if transcription is incomplete (stopped midway)
   const incompleteInfo = getIncompleteTranscriptionInfo(recording);
@@ -72,6 +74,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const handleResumeElevenLabs = () => {
     resumeElevenLabs.mutate({ recordingId: recording.id });
+  };
+
+  const handleClearTranscription = () => {
+    clearTranscription.mutate(recording.id);
   };
 
   const handleAggregateSession = () => {
@@ -560,6 +566,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     )}
                   </Button>
                 )}
+                {/* Clear transcription button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearTranscription}
+                  disabled={clearTranscription.isPending}
+                  className="text-yellow-500 hover:text-yellow-500 hover:bg-yellow-500/10"
+                  title="Limpar transcrições"
+                >
+                  {clearTranscription.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eraser className="h-4 w-4" />
+                  )}
+                </Button>
                 {/* Reprocess button - always available, only disabled during local mutation */}
                 <Button
                   variant="ghost"
