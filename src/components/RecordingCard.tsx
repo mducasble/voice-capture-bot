@@ -19,6 +19,7 @@ import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
 import { ChunkGenerationProgress } from "@/components/ChunkGenerationProgress";
 import { JsonPreviewDialog } from "@/components/JsonPreviewDialog";
+import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +48,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isElevenLabsTranscriptOpen, setIsElevenLabsTranscriptOpen] = useState(false);
   const [isSpeakerTranscriptOpen, setIsSpeakerTranscriptOpen] = useState(false);
   const [isWaveformOpen, setIsWaveformOpen] = useState(false);
+  const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
@@ -102,6 +104,22 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const handleElevenLabsTranscribe = (mode: ElevenLabsMode) => {
     elevenLabsTranscription.mutate({ recordingId: recording.id, mode });
   };
+
+  const handleElevenLabsClick = () => {
+    // Show cost estimation dialog before transcribing
+    setIsCostDialogOpen(true);
+  };
+
+  const handleConfirmTranscription = () => {
+    setIsCostDialogOpen(false);
+    handleElevenLabsTranscribe('chunks');
+  };
+
+  // Get existing chunk count from state if available
+  const existingChunkCount = (() => {
+    const state = recording.elevenlabs_chunk_state as { chunkNames?: string[] } | null;
+    return state?.chunkNames?.length ?? null;
+  })();
 
   const handleResumeElevenLabs = () => {
     resumeElevenLabs.mutate({ recordingId: recording.id });
@@ -573,14 +591,14 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     )}
                   </Button>
                 )}
-                {/* ElevenLabs Transcription button - always uses chunks mode for reliability */}
+                {/* ElevenLabs Transcription button - shows cost dialog before transcribing */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleElevenLabsTranscribe('chunks')}
+                  onClick={handleElevenLabsClick}
                   disabled={elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing'}
                   className="text-accent hover:text-accent hover:bg-accent/10"
-                  title="Transcrever com ElevenLabs"
+                  title="Transcrever com ElevenLabs (mostra estimativa)"
                 >
                   {elevenLabsTranscription.isPending || recording.transcription_elevenlabs_status === 'processing' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -750,6 +768,17 @@ export function RecordingCard({ recording }: RecordingCardProps) {
           </div>
         </div>
       </CardContent>
+
+      {/* Cost estimation dialog */}
+      <TranscriptionCostDialog
+        open={isCostDialogOpen}
+        onOpenChange={setIsCostDialogOpen}
+        onConfirm={handleConfirmTranscription}
+        durationSeconds={recording.duration_seconds}
+        recordingType={recording.recording_type}
+        sessionId={recording.session_id}
+        existingChunks={existingChunkCount}
+      />
     </Card>
   );
 }
