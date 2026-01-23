@@ -18,6 +18,7 @@ interface SessionState {
   processed_track_ids: string[];
   all_segments: SpeakerSegment[];
   speaker_meta: SpeakerMeta[];
+  lock_id?: string; // Unique ID for this processing chain to prevent parallel execution
 
   // When a single track is being transcribed chunk-by-chunk, we keep progress here.
   current_track?: {
@@ -77,6 +78,9 @@ interface FormattedSegment {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabaseClient = SupabaseClient<any, any, any>;
 
+// Lock timeout in milliseconds (3 minutes - enough for chunk processing)
+const LOCK_TIMEOUT_MS = 3 * 60 * 1000;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -87,6 +91,7 @@ serve(async (req) => {
     const session_id: string | undefined = body?.session_id;
     const mixed_recording_id: string | undefined = body?.mixed_recording_id;
     const state: SessionState | undefined = body?.state;
+    const force: boolean = body?.force === true;
 
     if (!session_id && !mixed_recording_id && !state) {
       return json({ error: "Missing session_id, mixed_recording_id, or state" }, 400);
@@ -102,19 +107,78 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // If continuing from previous invocation
+    // Determine target mixed_recording_id for locking
+    let targetMixedId = mixed_recording_id;
+    let targetSessionId = session_id;
+    
+    if (state) {
+      targetMixedId = state.mixed_recording_id;
+      targetSessionId = state.session_id;
+    }
+
+    // If we have a mixed_recording_id, use it for locking
+    if (targetMixedId) {
+      // Check for existing lock to prevent parallel processing
+      const { data: mixedRec } = await supabase
+        .from('voice_recordings')
+        .select('metadata, session_id')
+        .eq('id', targetMixedId)
+        .single();
+
+      if (mixedRec) {
+        targetSessionId = targetSessionId || mixedRec.session_id;
+        const metadata = mixedRec.metadata as Record<string, unknown> | null;
+        const aggState = metadata?.aggregation_state as Record<string, unknown> | undefined;
+        const lockedAt = aggState?.locked_at as string | undefined;
+        const lockId = aggState?.lock_id as string | undefined;
+        
+        // Check if there's an active lock from another invocation
+        if (lockedAt && !force) {
+          const lockAge = Date.now() - new Date(lockedAt).getTime();
+          
+          // If lock is still valid AND this is a new invocation (not continuation with matching lock)
+          if (lockAge < LOCK_TIMEOUT_MS) {
+            // If this is a continuation, check if it matches the current lock
+            const incomingLockId = state?.lock_id;
+            if (!incomingLockId || incomingLockId !== lockId) {
+              console.log(`Session ${targetSessionId} is locked (age: ${Math.round(lockAge/1000)}s). Skipping duplicate invocation.`);
+              return json({
+                success: true,
+                status: 'already_processing',
+                session_id: targetSessionId,
+                message: 'Já existe um processamento em andamento para esta sessão.'
+              }, 200);
+            }
+          } else {
+            console.log(`Lock expired (age: ${Math.round(lockAge/1000)}s). Taking over.`);
+          }
+        }
+      }
+    } else if (targetSessionId) {
+      // Find mixed recording for this session to use for locking
+      const { data: mixedRecs } = await supabase
+        .from('voice_recordings')
+        .select('id')
+        .eq('session_id', targetSessionId)
+        .eq('recording_type', 'mixed')
+        .limit(1);
+      
+      if (mixedRecs && mixedRecs.length > 0) {
+        targetMixedId = mixedRecs[0].id;
+      }
+    }
+
+    // If continuing from previous invocation with valid lock
     if (state) {
       return await processContinuation(supabase, state, ELEVENLABS_API_KEY);
     }
 
     // Initial invocation - set up state
-    let targetSessionId = session_id;
-
-    if (!targetSessionId && mixed_recording_id) {
+    if (!targetSessionId && targetMixedId) {
       const { data: mixedRec } = await supabase
         .from('voice_recordings')
         .select('session_id')
-        .eq('id', mixed_recording_id)
+        .eq('id', targetMixedId)
         .single();
 
       if (!mixedRec?.session_id) {
@@ -124,6 +188,34 @@ serve(async (req) => {
     }
 
     console.log(`Starting session transcription for: ${targetSessionId}`);
+
+    // Generate unique lock ID for this processing chain
+    const newLockId = crypto.randomUUID();
+
+    // Acquire lock immediately
+    if (targetMixedId) {
+      const { data: mixedRec } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', targetMixedId)
+        .single();
+
+      const existingMetadata = (mixedRec?.metadata as Record<string, unknown> | null) ?? {};
+      await supabase
+        .from('voice_recordings')
+        .update({
+          metadata: {
+            ...existingMetadata,
+            aggregation_state: {
+              status: 'processing',
+              locked_at: new Date().toISOString(),
+              lock_id: newLockId,
+              updated_at: new Date().toISOString()
+            }
+          }
+        })
+        .eq('id', targetMixedId);
+    }
 
     // Fetch all individual recordings
     const { data: recordings, error: fetchError } = await supabase
@@ -185,22 +277,24 @@ serve(async (req) => {
     if (pendingIds.length === 0) {
       return await finalizeSession(supabase, {
         session_id: targetSessionId!,
-        mixed_recording_id,
+        mixed_recording_id: targetMixedId,
         pending_track_ids: [],
         processed_track_ids: alreadyProcessed,
         all_segments: allSegments,
-        speaker_meta: speakerMeta
+        speaker_meta: speakerMeta,
+        lock_id: newLockId
       });
     }
 
     // Process first pending track
     const initialState: SessionState = {
       session_id: targetSessionId!,
-      mixed_recording_id,
+      mixed_recording_id: targetMixedId,
       pending_track_ids: pendingIds,
       processed_track_ids: alreadyProcessed,
       all_segments: allSegments,
-      speaker_meta: speakerMeta
+      speaker_meta: speakerMeta,
+      lock_id: newLockId
     };
 
     return await processContinuation(supabase, initialState, ELEVENLABS_API_KEY);
