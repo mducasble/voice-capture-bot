@@ -231,8 +231,41 @@ serve(async (req) => {
           language: recording.language ?? undefined,
         });
         if (t?.trim()) newParts.push(t.trim());
-      } catch (e) {
+      } catch (e: any) {
         console.error(`Chunk failed: ${name}`, e);
+        
+        // If quota exceeded, stop immediately and save progress
+        if (e?.isQuotaExceeded) {
+          console.error("Quota exceeded - stopping processing immediately");
+          
+          // Save current progress
+          const newText = newParts.join(" ");
+          const merged = existing.trim() ? `${existing.trim()} ${newText}` : newText;
+          
+          await supabase
+            .from("voice_recordings")
+            .update({
+              transcription_elevenlabs: merged || null,
+              transcription_elevenlabs_status: "failed",
+              elevenlabs_chunk_state: {
+                ...chunkState,
+                nextIndex: i, // Save position for resume later
+                lockedAt: "",
+                error: "quota_exceeded"
+              },
+            })
+            .eq("id", recording_id);
+          
+          return json({
+            success: false,
+            recording_id,
+            error: "quota_exceeded",
+            message: "Créditos ElevenLabs esgotados. Progresso salvo para retomar depois.",
+            chunks_completed: i,
+            total_chunks: chunkState.chunkNames.length,
+          });
+        }
+        
         newParts.push(`[chunk ${i}] (falhou)`);
       }
     }
@@ -567,6 +600,14 @@ async function transcribeWithElevenLabsDiarized(params: {
   if (!response.ok) {
     const errText = await response.text();
     console.error("ElevenLabs API error:", response.status, errText);
+    
+    // Check for quota exceeded error - throw a special error that will stop all processing
+    if (response.status === 401 && errText.includes("quota_exceeded")) {
+      const error = new Error(`QUOTA_EXCEEDED: ${errText}`);
+      (error as any).isQuotaExceeded = true;
+      throw error;
+    }
+    
     throw new Error(`ElevenLabs API error: ${response.status}`);
   }
 
