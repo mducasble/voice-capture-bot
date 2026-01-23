@@ -543,7 +543,17 @@ async function finalizeSession(
 
   // Generate formatted JSON output (matching the expected format)
   const formattedSegments = formatSegmentsForExport(mergedSegments);
-  const jsonTranscription = JSON.stringify(formattedSegments, null, 2);
+  // Stringify with guaranteed property order: start, end, speaker, text
+  const jsonTranscription = JSON.stringify(
+    formattedSegments.map(seg => ({
+      start: seg.start,
+      end: seg.end,
+      speaker: seg.speaker,
+      text: seg.text,
+    })),
+    null,
+    2
+  );
 
   // Also generate a human-readable version for display
   const readableTranscription = mergedSegments
