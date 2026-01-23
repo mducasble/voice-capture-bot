@@ -31,8 +31,8 @@ export function useElevenLabsTranscription() {
         toast.message('Processamento iniciado — a transcrição vai começar em seguida.', { id: 'elevenlabs-transcription' });
       } else if (data?.success && !data?.skipped) {
         toast.success('Transcrição ElevenLabs concluída!', { id: 'elevenlabs-transcription' });
-      } else if (data?.skipped && data?.reason === 'individual_track_skipped') {
-        toast.warning('Track individual pulado para economizar créditos. Use o track "mixed" da sessão.', { id: 'elevenlabs-transcription' });
+      } else if (data?.skipped && data?.reason === 'mixed_track_skipped') {
+        toast.warning('Track "mixed" pulado. Use "Agregar Sessão" para transcrição com speakers corretos.', { id: 'elevenlabs-transcription' });
       } else if (data?.skipped && data?.reason === 'already_completed') {
         toast.message('Transcrição já foi concluída anteriormente.', { id: 'elevenlabs-transcription' });
       } else if (data?.skipped) {
