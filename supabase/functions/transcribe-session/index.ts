@@ -1,16 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { createMp3Encoder } from "https://esm.sh/wasm-media-encoders@0.7.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB for ElevenLabs
-const MAX_WAV_FOR_CONVERSION = 2 * 1024 * 1024 * 1024; // 2GB max WAV to convert
-const TARGET_SAMPLE_RATE = 16000;
-const MP3_BITRATE = 128;
+// Keep each upload small to avoid edge runtime memory/CPU limits.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
+const CHUNKS_PER_INVOCATION = 3; // per track, per invocation
+const CHUNK_DURATION_SECONDS = 30; // must match process-audio
 
 interface SessionState {
   session_id: string;
@@ -19,6 +18,17 @@ interface SessionState {
   processed_track_ids: string[];
   all_segments: SpeakerSegment[];
   speaker_meta: SpeakerMeta[];
+
+  // When a single track is being transcribed chunk-by-chunk, we keep progress here.
+  current_track?: {
+    track_id: string;
+    speaker: string;
+    user_id: string;
+    language: string | null;
+    chunkUrls: { url: string; index: number }[];
+    nextIndex: number;
+    track_segments: SpeakerSegment[];
+  };
 }
 
 interface SpeakerMeta {
@@ -37,6 +47,9 @@ interface IndividualRecording {
   language: string | null;
   metadata: Record<string, unknown> | null;
   file_size_bytes: number | null;
+  gemini_chunk_state?: {
+    chunkUrls?: { url: string; index: number }[];
+  } | null;
 }
 
 interface ElevenLabsWord {
@@ -107,7 +120,7 @@ serve(async (req) => {
     // Fetch all individual recordings
     const { data: recordings, error: fetchError } = await supabase
       .from('voice_recordings')
-      .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes')
+      .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes, gemini_chunk_state')
       .eq('session_id', targetSessionId)
       .eq('recording_type', 'individual')
       .order('discord_user_id');
@@ -136,12 +149,18 @@ serve(async (req) => {
     for (const rec of recordings as IndividualRecording[]) {
       const speaker = rec.discord_username || `User_${rec.discord_user_id.slice(-4)}`;
       const cachedWords = rec.metadata?.elevenlabs_words as ElevenLabsWord[] | undefined;
+      const cachedSegments = rec.metadata?.elevenlabs_segments as SpeakerSegment[] | undefined;
       
-      if (cachedWords && cachedWords.length > 0) {
+      if (cachedSegments && cachedSegments.length > 0) {
+        console.log(`Using cached segments for ${speaker}`);
+        allSegments.push(...cachedSegments);
+        setSpeakerMeta(speakerMeta, { username: speaker, user_id: rec.discord_user_id, has_transcription: true });
+        alreadyProcessed.push(rec.id);
+      } else if (cachedWords && cachedWords.length > 0) {
         console.log(`Using cached transcription for ${speaker}`);
         const segments = wordsToSegments(cachedWords, speaker);
         allSegments.push(...segments);
-        speakerMeta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: true });
+        setSpeakerMeta(speakerMeta, { username: speaker, user_id: rec.discord_user_id, has_transcription: true });
         alreadyProcessed.push(rec.id);
       } else {
         // Check if we have any usable audio
@@ -149,7 +168,7 @@ serve(async (req) => {
         if (hasAudio) {
           pendingIds.push(rec.id);
         } else {
-          speakerMeta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_audio' });
+          setSpeakerMeta(speakerMeta, { username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_audio' });
         }
       }
     }
@@ -189,11 +208,16 @@ async function processContinuation(
   state: SessionState,
   apiKey: string
 ): Promise<Response> {
+  // If we are mid-track, continue chunk processing first.
+  if (state.current_track) {
+    return await processCurrentTrackChunks(supabase, state, apiKey);
+  }
+
   if (state.pending_track_ids.length === 0) {
     return await finalizeSession(supabase, state);
   }
 
-  // Process ONE track only to stay within memory limits
+  // Start processing the next track (chunk-by-chunk)
   const trackId = state.pending_track_ids[0];
   const remainingIds = state.pending_track_ids.slice(1);
 
@@ -201,7 +225,7 @@ async function processContinuation(
 
   const { data, error } = await supabase
     .from('voice_recordings')
-    .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes')
+    .select('id, discord_username, discord_user_id, file_url, mp3_file_url, language, metadata, file_size_bytes, gemini_chunk_state')
     .eq('id', trackId)
     .single();
 
@@ -217,286 +241,189 @@ async function processContinuation(
   const rec = data as IndividualRecording;
   const speaker = rec.discord_username || `User_${rec.discord_user_id.slice(-4)}`;
 
-  try {
-    console.log(`Processing track for ${speaker}...`);
-    
-    // Get or create MP3 file URL
-    let audioUrl = rec.mp3_file_url;
-    
-    if (!audioUrl && rec.file_url) {
-      // Need to convert WAV to MP3
-      const fileSize = rec.file_size_bytes || 0;
-      console.log(`No MP3 available for ${speaker}, WAV size: ${(fileSize / 1024 / 1024).toFixed(1)}MB`);
-      
-      if (fileSize > MAX_WAV_FOR_CONVERSION) {
-        throw new Error(`File too large to convert: ${(fileSize / 1024 / 1024).toFixed(0)}MB`);
-      }
-      
-      // Convert WAV to MP3 using streaming
-      audioUrl = await convertWavToMp3(supabase, rec.id, rec.file_url, speaker);
-      
-      if (audioUrl) {
-        // Update record with new MP3 URL
-        await supabase
-          .from('voice_recordings')
-          .update({ mp3_file_url: audioUrl })
-          .eq('id', rec.id);
-        console.log(`Saved MP3 URL for ${speaker}`);
-      }
-    }
-    
+  // 1) Use cached segments/words if available
+  const cachedSegments = rec.metadata?.elevenlabs_segments as SpeakerSegment[] | undefined;
+  const cachedWords = rec.metadata?.elevenlabs_words as ElevenLabsWord[] | undefined;
+  if (cachedSegments && cachedSegments.length > 0) {
+    state.all_segments.push(...cachedSegments);
+    setSpeakerMeta(state.speaker_meta, { username: speaker, user_id: rec.discord_user_id, has_transcription: true });
+    state.processed_track_ids.push(trackId);
+    return await scheduleContinuation(supabase, { ...state, pending_track_ids: remainingIds });
+  }
+  if (cachedWords && cachedWords.length > 0) {
+    const segments = wordsToSegments(cachedWords, speaker);
+    state.all_segments.push(...segments);
+    setSpeakerMeta(state.speaker_meta, { username: speaker, user_id: rec.discord_user_id, has_transcription: true });
+    state.processed_track_ids.push(trackId);
+    return await scheduleContinuation(supabase, { ...state, pending_track_ids: remainingIds });
+  }
+
+  // 2) Prefer chunkUrls from process-audio (stored in gemini_chunk_state)
+  const chunkUrls = rec.gemini_chunk_state?.chunkUrls;
+  if (!chunkUrls || chunkUrls.length === 0) {
+    // Kick off chunk generation (process-audio) and tell client to retry.
+    const audioUrl = rec.file_url;
     if (!audioUrl) {
-      throw new Error('No audio URL available');
+      setSpeakerMeta(state.speaker_meta, { username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_audio' });
+      state.processed_track_ids.push(trackId);
+      return await scheduleContinuation(supabase, { ...state, pending_track_ids: remainingIds });
     }
 
-    // Check MP3 file size
-    const headResp = await fetch(audioUrl, { method: 'HEAD' });
-    const mp3Size = parseInt(headResp.headers.get('content-length') || '0');
-    console.log(`MP3 size for ${speaker}: ${(mp3Size / 1024 / 1024).toFixed(1)}MB`);
-    
-    if (mp3Size > MAX_UPLOAD_BYTES) {
-      throw new Error(`MP3 still too large: ${(mp3Size / 1024 / 1024).toFixed(1)}MB (limit: 25MB)`);
+    console.log(`No chunks for ${trackId}. Starting process-audio...`);
+    await supabase.functions.invoke('process-audio', { body: { recording_id: trackId, audio_url: audioUrl } });
+
+    // Put the track back at the end of the queue so other tracks can proceed.
+    return json({
+      success: false,
+      status: 'waiting',
+      session_id: state.session_id,
+      message: `Gerando chunks para ${speaker}. Tente novamente em alguns instantes.`
+    }, 200);
+  }
+
+  // 3) Start chunk transcription for this track (progress stored in state.current_track)
+  const nextState: SessionState = {
+    ...state,
+    pending_track_ids: remainingIds,
+    current_track: {
+      track_id: trackId,
+      speaker,
+      user_id: rec.discord_user_id,
+      language: rec.language,
+      chunkUrls: chunkUrls,
+      nextIndex: 0,
+      track_segments: [],
     }
+  };
 
-    console.log(`Transcribing track for ${speaker}...`);
-    const words = await transcribeWithElevenLabs(audioUrl, apiKey, rec.language);
+  return await processCurrentTrackChunks(supabase, nextState, apiKey);
+}
 
-    if (words.length > 0) {
-      // Cache words in metadata
+async function processCurrentTrackChunks(
+  supabase: AnySupabaseClient,
+  state: SessionState,
+  apiKey: string
+): Promise<Response> {
+  const current = state.current_track;
+  if (!current) return json({ error: 'missing_current_track' }, 500);
+
+  const start = current.nextIndex;
+  const end = Math.min(start + CHUNKS_PER_INVOCATION, current.chunkUrls.length);
+  console.log(`Track ${current.track_id}: processing chunks ${start}-${end - 1} of ${current.chunkUrls.length}`);
+
+  for (let i = start; i < end; i++) {
+    const chunk = current.chunkUrls[i];
+    const offsetSeconds = (chunk.index ?? i) * CHUNK_DURATION_SECONDS;
+
+    try {
+      const { blob, mimeType, filename } = await safeFetchAudioBlob(chunk.url, MAX_UPLOAD_BYTES);
+      const words = await transcribeWithElevenLabsWords({
+        audioBlob: blob,
+        mimeType,
+        filename,
+        apiKey,
+        language: current.language ?? undefined,
+      });
+
+      const shiftedWords = words.map((w) => ({
+        ...w,
+        start: w.start + offsetSeconds,
+        end: w.end + offsetSeconds,
+      }));
+
+      const segs = wordsToSegments(shiftedWords, current.speaker);
+      current.track_segments.push(...segs);
+      state.all_segments.push(...segs);
+    } catch (e) {
+      console.error(`Chunk failed for track ${current.track_id} (chunk idx=${i}):`, e);
+    }
+  }
+
+  current.nextIndex = end;
+
+  // Track complete
+  if (current.nextIndex >= current.chunkUrls.length) {
+    console.log(`Track ${current.track_id} completed. segments=${current.track_segments.length}`);
+
+    // Cache segments (more compact than full word list) on the individual recording
+    try {
+      const { data: row } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', current.track_id)
+        .single();
+
+      const metadata = (row?.metadata as Record<string, unknown> | null) ?? {};
       await supabase
         .from('voice_recordings')
         .update({
           metadata: {
-            ...(rec.metadata || {}),
-            elevenlabs_words: words,
-            elevenlabs_transcribed_at: new Date().toISOString()
+            ...metadata,
+            elevenlabs_segments: current.track_segments,
+            elevenlabs_segments_at: new Date().toISOString(),
           }
         })
-        .eq('id', rec.id);
-
-      const segments = wordsToSegments(words, speaker);
-      state.all_segments.push(...segments);
-      state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: true });
-    } else {
-      state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'no_speech' });
+        .eq('id', current.track_id);
+    } catch (e) {
+      console.error('Failed to cache segments on individual recording:', e);
     }
 
-    state.processed_track_ids.push(trackId);
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error(`Failed to process ${speaker}:`, errorMsg);
-    state.speaker_meta.push({ username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: errorMsg });
-  }
-
-  // Schedule continuation for remaining tracks
-  return await scheduleContinuation(supabase, {
-    ...state,
-    pending_track_ids: remainingIds
-  });
-}
-
-// Convert WAV to MP3 using streaming to avoid memory issues
-async function convertWavToMp3(
-  supabase: AnySupabaseClient,
-  recordingId: string,
-  wavUrl: string,
-  speaker: string
-): Promise<string | null> {
-  console.log(`Converting WAV to MP3 for ${speaker}...`);
-  
-  // Fetch WAV header first
-  const headerResp = await fetch(wavUrl, { headers: { 'Range': 'bytes=0-1023' } });
-  if (!headerResp.ok) {
-    throw new Error(`Failed to fetch WAV header: ${headerResp.status}`);
-  }
-  
-  const headerBytes = new Uint8Array(await headerResp.arrayBuffer());
-  const wavInfo = parseWavHeader(headerBytes);
-  
-  if (!wavInfo) {
-    throw new Error('Invalid WAV file format');
-  }
-  
-  console.log(`WAV: ${wavInfo.sampleRate}Hz, ${wavInfo.channels}ch, data size: ${(wavInfo.dataSize / 1024 / 1024).toFixed(1)}MB`);
-  
-  // Calculate resampling ratio
-  const ratio = wavInfo.sampleRate / TARGET_SAMPLE_RATE;
-  const bytesPerFrame = wavInfo.channels * (wavInfo.bitsPerSample / 8);
-  
-  // Process in chunks to avoid memory issues (process 30 seconds at a time)
-  const CHUNK_SECONDS = 30;
-  const bytesPerChunk = Math.floor(wavInfo.sampleRate * CHUNK_SECONDS * bytesPerFrame);
-  
-  const encoder = await createMp3Encoder();
-  encoder.configure({
-    sampleRate: TARGET_SAMPLE_RATE,
-    channels: 1,
-    bitrate: MP3_BITRATE,
-  });
-  
-  const mp3Chunks: Uint8Array[] = [];
-  let bytesProcessed = 0;
-  let srcIdx = 0;
-  let outputSampleIdx = 0;
-  
-  while (bytesProcessed < wavInfo.dataSize) {
-    const rangeStart = wavInfo.dataOffset + bytesProcessed;
-    const rangeEnd = Math.min(rangeStart + bytesPerChunk - 1, wavInfo.dataOffset + wavInfo.dataSize - 1);
-    
-    const chunkResp = await fetch(wavUrl, {
-      headers: { 'Range': `bytes=${rangeStart}-${rangeEnd}` }
+    setSpeakerMeta(state.speaker_meta, {
+      username: current.speaker,
+      user_id: current.user_id,
+      has_transcription: current.track_segments.length > 0,
+      error: current.track_segments.length > 0 ? undefined : 'no_speech',
     });
-    
-    if (!chunkResp.ok && chunkResp.status !== 206) {
-      throw new Error(`Failed to fetch WAV chunk: ${chunkResp.status}`);
-    }
-    
-    const chunkData = new Uint8Array(await chunkResp.arrayBuffer());
-    const view = new DataView(chunkData.buffer, chunkData.byteOffset, chunkData.byteLength);
-    
-    // Resample and convert to mono
-    const samples: number[] = [];
-    let frameOffset = 0;
-    
-    while (frameOffset + bytesPerFrame <= chunkData.length) {
-      const targetOutputIdx = Math.floor(srcIdx / ratio);
-      
-      if (targetOutputIdx > outputSampleIdx) {
-        // Mix channels to mono
-        let sample = 0;
-        for (let ch = 0; ch < wavInfo.channels; ch++) {
-          sample += view.getInt16(frameOffset + ch * 2, true);
-        }
-        const monoSample = sample / wavInfo.channels / 32768.0; // Normalize to -1 to 1
-        samples.push(monoSample);
-        outputSampleIdx++;
-      }
-      
-      srcIdx++;
-      frameOffset += bytesPerFrame;
-    }
-    
-    bytesProcessed += frameOffset;
-    
-    // Encode samples to MP3
-    if (samples.length > 0) {
-      const floatSamples = new Float32Array(samples);
-      const mp3Data = encoder.encode([floatSamples]);
-      if (mp3Data.length > 0) {
-        mp3Chunks.push(mp3Data);
-      }
-    }
-    
-    console.log(`Converted ${Math.round(bytesProcessed / wavInfo.dataSize * 100)}% for ${speaker}`);
-  }
-  
-  // Finalize MP3
-  const finalFrames = encoder.finalize();
-  if (finalFrames.length > 0) {
-    mp3Chunks.push(finalFrames);
-  }
-  
-  // Combine all MP3 chunks
-  const totalSize = mp3Chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const fullMp3 = new Uint8Array(totalSize);
-  let offset = 0;
-  for (const chunk of mp3Chunks) {
-    fullMp3.set(chunk, offset);
-    offset += chunk.length;
-  }
-  
-  console.log(`Created MP3: ${(fullMp3.length / 1024 / 1024).toFixed(2)}MB for ${speaker}`);
-  
-  // Upload to storage
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const mp3Path = `mp3/${recordingId}_${timestamp}.mp3`;
-  
-  const { error: uploadError } = await supabase.storage
-    .from('voice-recordings')
-    .upload(mp3Path, fullMp3, {
-      contentType: 'audio/mpeg',
-      upsert: true
-    });
-  
-  if (uploadError) {
-    console.error('Failed to upload MP3:', uploadError);
-    throw new Error(`Failed to upload MP3: ${uploadError.message}`);
-  }
-  
-  const { data: { publicUrl } } = supabase.storage
-    .from('voice-recordings')
-    .getPublicUrl(mp3Path);
-  
-  console.log(`Uploaded MP3 for ${speaker}: ${publicUrl}`);
-  return publicUrl;
-}
 
-// Parse WAV header
-function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
-  if (headerBytes.length < 44) return null;
-  
-  const view = new DataView(headerBytes.buffer, headerBytes.byteOffset, headerBytes.byteLength);
-  
-  const riff = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
-  if (riff !== 'RIFF') return null;
-  
-  const wave = String.fromCharCode(headerBytes[8], headerBytes[9], headerBytes[10], headerBytes[11]);
-  if (wave !== 'WAVE') return null;
-  
-  let offset = 12;
-  let sampleRate = 48000;
-  let channels = 2;
-  let bitsPerSample = 16;
-  let dataOffset = 0;
-  let dataSize = 0;
-  
-  while (offset < Math.min(headerBytes.length - 8, 1000)) {
-    const chunkId = String.fromCharCode(
-      headerBytes[offset], headerBytes[offset + 1],
-      headerBytes[offset + 2], headerBytes[offset + 3]
-    );
-    const chunkSize = view.getUint32(offset + 4, true);
-    
-    if (chunkId === 'fmt ') {
-      channels = view.getUint16(offset + 10, true);
-      sampleRate = view.getUint32(offset + 12, true);
-      bitsPerSample = view.getUint16(offset + 22, true);
-    } else if (chunkId === 'data') {
-      dataOffset = offset + 8;
-      dataSize = chunkSize;
-      break;
-    }
-    
-    offset += 8 + chunkSize;
-    if (chunkSize % 2 !== 0) offset++;
+    state.processed_track_ids.push(current.track_id);
+    state.current_track = undefined;
+
+    return await scheduleContinuation(supabase, state);
   }
-  
-  if (dataOffset === 0) return null;
-  return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
+
+  // Continue same track
+  return await scheduleContinuation(supabase, state);
 }
 
 async function scheduleContinuation(
   supabase: AnySupabaseClient,
   state: SessionState
 ): Promise<Response> {
-  if (state.pending_track_ids.length === 0) {
+  const pending = state.pending_track_ids.length + (state.current_track ? 1 : 0);
+
+  if (pending === 0) {
     return await finalizeSession(supabase, state);
   }
 
-  console.log(`Scheduling continuation for ${state.pending_track_ids.length} remaining tracks`);
+  console.log(`Scheduling continuation: pending=${pending}, processed=${state.processed_track_ids.length}`);
 
-  // Fire-and-forget continuation
-  supabase.functions.invoke('transcribe-session', {
+  const invokePromise = supabase.functions.invoke('transcribe-session', {
     body: { state }
-  }).catch((err: Error) => console.error('Continuation invoke error:', err));
+  });
+
+  // @ts-ignore - EdgeRuntime is available in edge runtime
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      invokePromise
+        .then(({ error }: { error?: unknown }) => {
+          if (error) console.error('Continuation invoke error:', error);
+        })
+        .catch((err: unknown) => console.error('Continuation invoke error:', err))
+    );
+  } else {
+    // Fallback: await so the request is not dropped.
+    const { error } = await invokePromise;
+    if (error) console.error('Continuation invoke error:', error);
+  }
 
   return json({
     success: true,
     status: 'processing',
     session_id: state.session_id,
     processed: state.processed_track_ids.length,
-    pending: state.pending_track_ids.length,
-    message: `Processando ${state.pending_track_ids.length} faixas restantes...`
+    pending,
+    message: `Processando... (${state.processed_track_ids.length} concluídas, ${pending} pendentes)`
   });
 }
 
@@ -693,5 +620,91 @@ async function transcribeWithElevenLabs(
 
   const result = await response.json();
   console.log(`Transcription complete: ${result.words?.length || 0} words`);
+  return (result.words || []) as ElevenLabsWord[];
+}
+
+function setSpeakerMeta(list: SpeakerMeta[], meta: SpeakerMeta) {
+  const idx = list.findIndex((s) => s.user_id === meta.user_id);
+  if (idx >= 0) list[idx] = { ...list[idx], ...meta };
+  else list.push(meta);
+}
+
+async function safeFetchAudioBlob(url: string, maxBytes: number): Promise<{ blob: Blob; mimeType: string; filename: string }> {
+  // HEAD size check
+  try {
+    const head = await fetch(url, { method: 'HEAD' });
+    if (head.ok) {
+      const len = parseInt(head.headers.get('content-length') || '0');
+      if (len && len > maxBytes) throw new Error(`File too large: ${(len / 1024 / 1024).toFixed(1)}MB`);
+    }
+  } catch {
+    // ignore
+  }
+
+  const resp = await fetch(url);
+  if (!resp.ok || !resp.body) throw new Error(`Failed to download chunk: ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const parts: ArrayBuffer[] = [];
+  let received = 0;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value) {
+      received += value.length;
+      if (received > maxBytes) {
+        try { await reader.cancel(); } catch { /* ignore */ }
+        throw new Error(`File too large (>${(maxBytes / 1024 / 1024).toFixed(0)}MB)`);
+      }
+      parts.push(value.slice().buffer);
+    }
+  }
+
+  const lower = url.toLowerCase();
+  let filename = 'chunk.wav';
+  let mimeType = 'audio/wav';
+  if (lower.includes('.mp3')) { filename = 'chunk.mp3'; mimeType = 'audio/mpeg'; }
+  else if (lower.includes('.m4a')) { filename = 'chunk.m4a'; mimeType = 'audio/mp4'; }
+  else if (lower.includes('.ogg')) { filename = 'chunk.ogg'; mimeType = 'audio/ogg'; }
+
+  return { blob: new Blob(parts), mimeType, filename };
+}
+
+async function transcribeWithElevenLabsWords(params: {
+  audioBlob: Blob;
+  filename: string;
+  mimeType: string;
+  apiKey: string;
+  language?: string;
+}): Promise<ElevenLabsWord[]> {
+  const { audioBlob, filename, mimeType, apiKey, language } = params;
+
+  const formData = new FormData();
+  formData.append('file', new Blob([audioBlob], { type: mimeType }), filename);
+  formData.append('model_id', 'scribe_v2');
+  formData.append('timestamps_granularity', 'word');
+
+  if (language) {
+    const langMap: Record<string, string> = {
+      pt: 'por', en: 'eng', es: 'spa', fr: 'fra', de: 'deu',
+      it: 'ita', ja: 'jpn', ko: 'kor', zh: 'zho', ru: 'rus'
+    };
+    formData.append('language_code', langMap[language.toLowerCase()] || language);
+  }
+
+  const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+    method: 'POST',
+    headers: { 'xi-api-key': apiKey },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('ElevenLabs API error:', response.status, errText);
+    throw new Error(`ElevenLabs API error: ${response.status}`);
+  }
+
+  const result = await response.json();
   return (result.words || []) as ElevenLabsWord[];
 }
