@@ -30,6 +30,8 @@ serve(async (req) => {
     const mode: Mode = body?.mode === "full" ? "full" : "chunks";
     const state: ChunkState | undefined = body?.state;
     const force: boolean = Boolean(body?.force);
+    // Optional: limit the number of chunks to process (for testing purposes)
+    const maxChunks: number | undefined = typeof body?.max_chunks === 'number' ? body.max_chunks : undefined;
 
     if (!recording_id) {
       return json({ error: "Missing recording_id" }, 400);
@@ -217,12 +219,17 @@ serve(async (req) => {
       })
       .eq("id", recording_id);
 
+    // Determine the effective total chunks (respecting maxChunks limit for testing)
+    const effectiveTotalChunks = maxChunks 
+      ? Math.min(maxChunks, chunkState.chunkNames.length) 
+      : chunkState.chunkNames.length;
+
     console.log(
-      `Starting ElevenLabs transcription for ${recording_id}, mode: chunks, nextIndex=${chunkState.nextIndex}, total=${chunkState.chunkNames.length}`
+      `Starting ElevenLabs transcription for ${recording_id}, mode: chunks, nextIndex=${chunkState.nextIndex}, total=${effectiveTotalChunks}${maxChunks ? ` (limited to ${maxChunks})` : ''}`
     );
 
     const start = chunkState.nextIndex;
-    const end = Math.min(start + CHUNKS_PER_INVOCATION, chunkState.chunkNames.length);
+    const end = Math.min(start + CHUNKS_PER_INVOCATION, effectiveTotalChunks);
 
     const newParts: string[] = [];
     const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
@@ -321,7 +328,7 @@ serve(async (req) => {
     const existingWords = (existingMeta.accumulated_words as ElevenLabsWord[] | null) ?? [];
     const accumulatedWords = [...existingWords, ...allWords];
 
-    if (end >= chunkState.chunkNames.length) {
+    if (end >= effectiveTotalChunks) {
       // Completed - process all accumulated words into speaker segments
       const segments = wordsToSegments(accumulatedWords);
       const { formatted: formattedSegments, mapping: speakerMapping } = formatSegmentsForExport(segments);
@@ -382,9 +389,9 @@ serve(async (req) => {
       })
       .eq("id", recording_id);
 
-    // Schedule continuation reliably
+    // Schedule continuation reliably (pass maxChunks to maintain limit through invocations)
     const invokePromise = supabase.functions.invoke("transcribe-elevenlabs", {
-      body: { recording_id, mode: "chunks" },
+      body: { recording_id, mode: "chunks", max_chunks: maxChunks },
     });
 
     // @ts-ignore EdgeRuntime available
