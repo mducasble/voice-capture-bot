@@ -58,7 +58,34 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   // Check for speaker transcription in metadata
   const speakerTranscription = (recording.metadata as { speaker_transcription?: string })?.speaker_transcription;
+  const readableSpeakerTranscription = (recording.metadata as { readable_transcription?: string })?.readable_transcription;
   const speakers = (recording.metadata as { speakers?: { username: string }[] })?.speakers;
+
+  const speakerTranscriptText = (() => {
+    if (readableSpeakerTranscription) return readableSpeakerTranscription;
+    if (speakerTranscription) return speakerTranscription;
+    if (!recording.transcription_elevenlabs) return null;
+
+    // If ElevenLabs transcription is stored as JSON segments, convert it into
+    // the "[speaker]: text" format expected by <SpeakerTranscript />.
+    try {
+      const parsed = JSON.parse(recording.transcription_elevenlabs);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((seg: any) => {
+            const speaker = typeof seg?.speaker === "string" ? seg.speaker : "speaker";
+            const text = typeof seg?.text === "string" ? seg.text : "";
+            return text.trim() ? `[${speaker}]: ${text.trim()}` : null;
+          })
+          .filter(Boolean)
+          .join("\n\n");
+      }
+    } catch {
+      // ignore
+    }
+
+    return recording.transcription_elevenlabs;
+  })();
 
   const handleDelete = () => {
     deleteRecording.mutate(recording.id);
@@ -486,7 +513,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             )}
 
             {/* Speaker-Identified Transcription Section (for mixed recordings with session) */}
-            {recording.recording_type === 'mixed' && recording.transcription_elevenlabs && (
+            {recording.recording_type === 'mixed' && speakerTranscriptText && (
               <Collapsible open={isSpeakerTranscriptOpen} onOpenChange={setIsSpeakerTranscriptOpen}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full justify-between text-purple-400 hover:text-purple-400">
@@ -504,7 +531,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <SpeakerTranscript 
-                    transcription={recording.transcription_elevenlabs} 
+                    transcription={speakerTranscriptText} 
                     speakers={speakers}
                   />
                 </CollapsibleContent>
