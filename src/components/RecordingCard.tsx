@@ -431,7 +431,27 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     </div>
                   )}
                   <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
-                    <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs || 'Processando...'}</p>
+                    {(() => {
+                      if (!recording.transcription_elevenlabs) return <p>Processando...</p>;
+                      try {
+                        const segments = JSON.parse(recording.transcription_elevenlabs);
+                        if (Array.isArray(segments)) {
+                          return (
+                            <div className="space-y-2">
+                              {segments.map((seg: { start: string; end: string; speaker: string; text: string }, i: number) => (
+                                <div key={i} className="border-l-2 border-accent/40 pl-2">
+                                  <span className="text-xs text-muted-foreground">[{seg.start} - {seg.end}] {seg.speaker}</span>
+                                  <p className="whitespace-pre-wrap">{seg.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs}</p>;
+                      } catch {
+                        return <p className="whitespace-pre-wrap">{recording.transcription_elevenlabs}</p>;
+                      }
+                    })()}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
