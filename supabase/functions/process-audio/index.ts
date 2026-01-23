@@ -624,6 +624,28 @@ async function scheduleContinuation(
 ) {
   console.log(`Scheduling continuation for chunk ${state.chunkIndex}`);
 
+  // Save partial progress to database so UI can show progress
+  const estimatedTotalChunks = Math.ceil(state.header.dataSize / (state.header.sampleRate * state.header.channels * (state.header.bitsPerSample / 8) * CHUNK_DURATION_SECONDS / (state.header.sampleRate / TARGET_SAMPLE_RATE)));
+  
+  try {
+    await supabase
+      .from('voice_recordings')
+      .update({
+        metadata: {
+          chunk_generation_progress: {
+            chunks_completed: state.uploadedChunks.length,
+            estimated_total: estimatedTotalChunks,
+            bytes_processed: state.bytesProcessed,
+            total_bytes: state.header.dataSize,
+            updated_at: new Date().toISOString()
+          }
+        }
+      })
+      .eq('id', state.recording_id);
+  } catch (e) {
+    console.error('Failed to update chunk progress:', e);
+  }
+
   const invokePromise = supabase.functions.invoke("process-audio", { body: { state } });
 
   // Ensure the continuation request actually gets sent even if this invocation returns quickly.
