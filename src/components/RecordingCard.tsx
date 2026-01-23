@@ -14,6 +14,7 @@ import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
 import { ChunkGenerationProgress } from "@/components/ChunkGenerationProgress";
+import { JsonPreviewDialog } from "@/components/JsonPreviewDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,46 +83,48 @@ export function RecordingCard({ recording }: RecordingCardProps) {
     }
   };
 
-  const handleDownloadTranscriptionJson = () => {
-    // Try to get the formatted segments from metadata first
+  // Get transcription segments for JSON preview/download
+  const getTranscriptionSegments = (): { 
+    segments: Array<{ start: string; end: string; speaker: string; text: string }>; 
+    speakerMapping?: Record<string, string>;
+  } | null => {
     const metadata = recording.metadata as {
       speaker_segments?: Array<{ start: string; end: string; speaker: string; text: string }>;
       speaker_mapping?: Record<string, string>;
     };
     
-    let jsonContent: string;
-    
     if (metadata?.speaker_segments && Array.isArray(metadata.speaker_segments)) {
-      // Use the pre-formatted segments from metadata
-      jsonContent = JSON.stringify(metadata.speaker_segments, null, 2);
-    } else if (recording.transcription_elevenlabs) {
-      // Try to parse the transcription_elevenlabs field (might already be JSON)
-      try {
-        const parsed = JSON.parse(recording.transcription_elevenlabs);
-        jsonContent = JSON.stringify(parsed, null, 2);
-      } catch {
-        // If not valid JSON, create a simple format
-        jsonContent = JSON.stringify([{
-          start: "0:00",
-          end: "0:00",
-          speaker: "speaker A",
-          text: recording.transcription_elevenlabs
-        }], null, 2);
-      }
-    } else {
-      return;
+      return { 
+        segments: metadata.speaker_segments,
+        speakerMapping: metadata.speaker_mapping
+      };
     }
     
-    const blob = new Blob([jsonContent], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transcription-${recording.discord_channel_name || recording.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (recording.transcription_elevenlabs) {
+      try {
+        const parsed = JSON.parse(recording.transcription_elevenlabs);
+        if (Array.isArray(parsed)) {
+          return { segments: parsed, speakerMapping: metadata?.speaker_mapping };
+        }
+      } catch {
+        // If not valid JSON, create a simple format
+        return {
+          segments: [{
+            start: "0:00",
+            end: "0:00",
+            speaker: "speaker A",
+            text: recording.transcription_elevenlabs
+          }]
+        };
+      }
+    }
+    
+    return null;
   };
+
+  const transcriptionData = recording.transcription_elevenlabs && recording.transcription_elevenlabs_status === 'completed' 
+    ? getTranscriptionSegments() 
+    : null;
 
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
@@ -579,17 +582,22 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     </a>
                   </Button>
                 )}
-                {recording.transcription_elevenlabs && recording.transcription_elevenlabs_status === 'completed' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDownloadTranscriptionJson}
-                    className="text-accent hover:text-accent hover:bg-accent/10"
-                    title="Download transcrição JSON"
+                {transcriptionData && (
+                  <JsonPreviewDialog
+                    segments={transcriptionData.segments}
+                    speakerMapping={transcriptionData.speakerMapping}
+                    filename={`transcription-${recording.discord_channel_name || recording.id}.json`}
                   >
-                    <Download className="h-4 w-4 mr-1" />
-                    JSON
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-accent hover:text-accent hover:bg-accent/10"
+                      title="Preview e download da transcrição JSON"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      JSON
+                    </Button>
+                  </JsonPreviewDialog>
                 )}
               </div>
             </div>
