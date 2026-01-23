@@ -11,6 +11,8 @@ interface SessionTranscriptionResult {
   status?: string;
   message?: string;
   error?: string;
+  processed?: number;
+  pending?: number;
 }
 
 export function useSessionTranscription() {
@@ -38,10 +40,17 @@ export function useSessionTranscription() {
       return data as SessionTranscriptionResult;
     },
     onSuccess: (data) => {
+      console.log('Session transcription result:', data);
       if (data.success) {
-        toast.success("Transcrição agregada!", {
-          description: `${data.stats?.transcribed || 0} faixas com ${data.speakers?.length || 0} speakers identificados`
-        });
+        if (data.status === 'processing') {
+          toast.info("Processando transcrições...", {
+            description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
+          });
+        } else {
+          toast.success("Transcrição agregada!", {
+            description: `${data.stats?.transcribed || 0} faixas com ${data.speakers?.length || 0} speakers identificados`
+          });
+        }
         queryClient.invalidateQueries({ queryKey: ['recordings'] });
       } else if (data.status === 'waiting') {
         toast.info("Aguardando transcrições", {
@@ -50,6 +59,10 @@ export function useSessionTranscription() {
       } else if (data.error === 'no_individual_tracks') {
         toast.warning("Sem faixas individuais", {
           description: data.message
+        });
+      } else if (data.error === 'no_transcriptions') {
+        toast.warning("Nenhuma transcrição disponível", {
+          description: data.message || "As faixas individuais podem ser muito grandes (limite: 25MB)"
         });
       } else {
         toast.error("Erro na agregação", {
