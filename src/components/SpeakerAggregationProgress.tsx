@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle2, AlertTriangle, Clock, User } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Clock, User, Timer } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
+import { useWaitingState } from "@/hooks/useSessionTranscription";
 
 interface SpeakerMeta {
   username: string;
@@ -27,6 +28,8 @@ interface SpeakerAggregationProgressProps {
 }
 
 export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProgressProps) {
+  const { countdown, message: waitingMessage, isWaiting } = useWaitingState(recording.id);
+  
   const metadata = recording.metadata as { 
     aggregation_state?: AggregationState;
     speakers?: SpeakerMeta[];
@@ -36,6 +39,43 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
   const aggregationState = metadata?.aggregation_state;
   const speakers = metadata?.speakers || aggregationState?.speakers;
   const aggregatedAt = metadata?.aggregated_at;
+  
+  // Show waiting state with countdown (from hook)
+  if (isWaiting && countdown !== null) {
+    return (
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-2 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-yellow-400">
+            <Timer className="h-4 w-4" />
+            <span className="font-medium">Aguardando chunks de áudio</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-yellow-500/20 px-2 py-1 rounded-full">
+              <Loader2 className="h-3 w-3 animate-spin text-yellow-400" />
+              <span className="text-sm font-mono font-bold text-yellow-400">
+                {countdown}s
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {waitingMessage && (
+          <p className="text-xs text-muted-foreground">{waitingMessage}</p>
+        )}
+        
+        {/* Countdown progress bar */}
+        <div className="space-y-1">
+          <Progress 
+            value={((10 - countdown) / 10) * 100} 
+            className="h-1.5"
+          />
+          <p className="text-xs text-muted-foreground text-center">
+            Retry automático em {countdown} segundo{countdown !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+    );
+  }
   
   // If no aggregation in progress and no completed aggregation, return null
   if (!aggregationState && !aggregatedAt) {
@@ -48,7 +88,7 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
     const failed = speakers?.filter(s => !s.has_transcription) || [];
     
     return (
-      <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 space-y-2">
+      <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 space-y-2 animate-fade-in">
         <div className="flex items-center gap-2 text-sm text-green-400">
           <CheckCircle2 className="h-4 w-4" />
           <span className="font-medium">Agregação concluída</span>
@@ -94,7 +134,7 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
     const progressPercent = total > 0 ? (processed / total) * 100 : 0;
     
     return (
-      <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 space-y-3">
+      <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 space-y-3 animate-fade-in">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-purple-400">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -150,10 +190,10 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
     );
   }
 
-  // Waiting state
+  // Waiting state (from metadata, fallback)
   if (aggregationState?.status === 'waiting') {
     return (
-      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 animate-fade-in">
         <div className="flex items-center gap-2 text-sm text-yellow-400">
           <Clock className="h-4 w-4" />
           <span className="font-medium">Aguardando processamento de áudio</span>
@@ -168,7 +208,7 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
   // Failed state
   if (aggregationState?.status === 'failed') {
     return (
-      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 animate-fade-in">
         <div className="flex items-center gap-2 text-sm text-red-400">
           <AlertTriangle className="h-4 w-4" />
           <span className="font-medium">Falha na agregação</span>
