@@ -13,6 +13,7 @@ import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
+import { ChunkGenerationProgress } from "@/components/ChunkGenerationProgress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,6 +245,9 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {recording.sample_rate / 1000}kHz • {recording.bit_depth}-bit • {recording.channels === 2 ? "Stereo" : "Mono"}
               </span>
             </div>
+
+            {/* Chunk Generation Progress (for recordings being processed) */}
+            <ChunkGenerationProgress recording={recording} />
 
             {/* Waveform Visualizer Section */}
             {recording.file_url && recording.status === 'completed' && (
