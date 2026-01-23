@@ -107,6 +107,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // If this is a continuation, stop immediately if the mixed recording was cancelled.
+    if (state?.mixed_recording_id) {
+      const cancelled = await isMixedRecordingCancelled(supabase, state.mixed_recording_id);
+      if (cancelled) {
+        console.log(`Session transcription cancelled for mixed recording ${state.mixed_recording_id}`);
+        return json(
+          {
+            success: false,
+            status: 'cancelled',
+            session_id: state.session_id,
+            message: 'Processamento cancelado. Nenhuma chamada adicional ao ElevenLabs será feita.'
+          },
+          200
+        );
+      }
+    }
+
     // Determine target mixed_recording_id for locking
     let targetMixedId = mixed_recording_id;
     let targetSessionId = session_id;
@@ -126,6 +143,21 @@ serve(async (req) => {
         .single();
 
       if (mixedRec) {
+        // If user cancelled, do not proceed and do not acquire locks.
+        const cancelled = isAggregationCancelledInMetadata(mixedRec.metadata as Record<string, unknown> | null);
+        if (cancelled) {
+          console.log(`Mixed recording ${targetMixedId} is cancelled; skipping transcription.`);
+          return json(
+            {
+              success: false,
+              status: 'cancelled',
+              session_id: mixedRec.session_id,
+              message: 'Processamento cancelado. Nenhuma chamada ao ElevenLabs será feita.'
+            },
+            200
+          );
+        }
+
         targetSessionId = targetSessionId || mixedRec.session_id;
         const metadata = mixedRec.metadata as Record<string, unknown> | null;
         const aggState = metadata?.aggregation_state as Record<string, unknown> | undefined;
@@ -455,11 +487,29 @@ async function processCurrentTrackChunks(
   const current = state.current_track;
   if (!current) return json({ error: 'missing_current_track' }, 500);
 
+  // Respect cancellation before doing any work.
+  if (state.mixed_recording_id) {
+    const cancelled = await isMixedRecordingCancelled(supabase, state.mixed_recording_id);
+    if (cancelled) {
+      console.log(`Cancelled during current track. Stopping before calling ElevenLabs (track=${current.track_id})`);
+      return json({ success: false, status: 'cancelled', session_id: state.session_id }, 200);
+    }
+  }
+
   const start = current.nextIndex;
   const end = Math.min(start + CHUNKS_PER_INVOCATION, current.chunkUrls.length);
   console.log(`Track ${current.track_id}: processing chunks ${start}-${end - 1} of ${current.chunkUrls.length}`);
 
   for (let i = start; i < end; i++) {
+    // Check cancellation between chunks so we can stop quickly.
+    if (state.mixed_recording_id) {
+      const cancelled = await isMixedRecordingCancelled(supabase, state.mixed_recording_id);
+      if (cancelled) {
+        console.log(`Cancelled mid-batch. Stopping before chunk ${i} (track=${current.track_id})`);
+        return json({ success: false, status: 'cancelled', session_id: state.session_id }, 200);
+      }
+    }
+
     const chunk = current.chunkUrls[i];
     const offsetSeconds = (chunk.index ?? i) * CHUNK_DURATION_SECONDS;
 
@@ -537,6 +587,23 @@ async function scheduleContinuation(
   supabase: AnySupabaseClient,
   state: SessionState
 ): Promise<Response> {
+  // If cancelled, do not update UI state to "processing" and do not schedule more work.
+  if (state.mixed_recording_id) {
+    const cancelled = await isMixedRecordingCancelled(supabase, state.mixed_recording_id);
+    if (cancelled) {
+      console.log(`Not scheduling continuation because session is cancelled (mixed=${state.mixed_recording_id})`);
+      return json(
+        {
+          success: false,
+          status: 'cancelled',
+          session_id: state.session_id,
+          message: 'Processamento cancelado.'
+        },
+        200
+      );
+    }
+  }
+
   const pending = state.pending_track_ids.length + (state.current_track ? 1 : 0);
 
   if (pending === 0) {
@@ -725,6 +792,30 @@ function json(payload: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
+}
+
+function isAggregationCancelledInMetadata(metadata: Record<string, unknown> | null): boolean {
+  const aggState = (metadata?.aggregation_state as Record<string, unknown> | undefined) ?? undefined;
+  const status = aggState?.status as string | undefined;
+  return status === 'cancelled';
+}
+
+async function isMixedRecordingCancelled(
+  supabase: AnySupabaseClient,
+  mixedRecordingId: string
+): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('voice_recordings')
+      .select('metadata')
+      .eq('id', mixedRecordingId)
+      .single();
+
+    return isAggregationCancelledInMetadata((data?.metadata as Record<string, unknown> | null) ?? null);
+  } catch (e) {
+    console.error('Failed to check cancellation state:', e);
+    return false;
+  }
 }
 
 // Format seconds to "M:SS" or "H:MM:SS" for longer durations
