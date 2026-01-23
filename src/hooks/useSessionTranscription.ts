@@ -108,28 +108,31 @@ export function useSessionTranscription() {
         notifyWaitingListeners();
         
         if (data.status === 'processing') {
+          // Backend handles continuation automatically via EdgeRuntime.waitUntil
+          // Frontend should NOT retry during processing - it interferes with chunk processing
+          // Only show status, let backend work autonomously
           toast.info("Processando transcrições...", {
-            description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
-          });
-
-          // Client-side polling as fallback only - backend handles continuation via lock
-          // Use longer delay to avoid creating parallel invocations
-          const retryDelay = 20000; // 20 seconds - enough time for backend to process
-          clearRetryTimeout();
-          retryTimeoutRef.current = setTimeout(() => {
-            mutation.mutate(variables);
-          }, retryDelay);
-        } else if (data.status === 'already_processing') {
-          // Another invocation is already processing - just wait and check later
-          toast.info("Processamento em andamento...", {
-            description: "Aguardando conclusão do processamento atual"
+            description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`,
+            duration: 5000
           });
           
-          const retryDelay = 15000; // 15 seconds
+          // Clear any pending retry - backend will complete on its own
           clearRetryTimeout();
+          
+          // VERY long fallback only (2 minutes) - safety net if backend continuation fails
           retryTimeoutRef.current = setTimeout(() => {
+            console.log('Fallback retry after 2 minutes - checking if still processing');
             mutation.mutate(variables);
-          }, retryDelay);
+          }, 120000); // 2 minutes
+        } else if (data.status === 'already_processing') {
+          // Another invocation is already processing - just wait
+          toast.info("Processamento em andamento...", {
+            description: "O backend está processando. Aguarde a conclusão.",
+            duration: 5000
+          });
+          
+          // Don't retry - let the existing process complete
+          clearRetryTimeout();
         } else {
           clearRetryTimeout();
           toast.success("Transcrição agregada!", {
