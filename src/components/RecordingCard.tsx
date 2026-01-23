@@ -228,6 +228,9 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 <h3 className="font-medium text-foreground flex items-center gap-2">
                   <Hash className="h-4 w-4 text-muted-foreground" />
                   {recording.discord_channel_name || "Unknown Channel"}
+                  <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                    {recording.id.split('-')[0]}
+                  </code>
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {recording.discord_guild_name || "Unknown Server"} • by {recording.discord_username || "Unknown"}
