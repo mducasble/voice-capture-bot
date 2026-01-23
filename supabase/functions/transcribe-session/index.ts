@@ -280,11 +280,57 @@ async function processContinuation(
     console.log(`No chunks for ${trackId}. Starting process-audio...`);
     await supabase.functions.invoke('process-audio', { body: { recording_id: trackId, audio_url: audioUrl } });
 
+    // Add speaker to meta as pending so UI shows all speakers
+    setSpeakerMeta(state.speaker_meta, { username: speaker, user_id: rec.discord_user_id, has_transcription: false, error: 'generating_chunks' });
+
     // Put the track back at the end of the queue so other tracks can proceed.
+    // Instead of returning early, continue with other tracks if available.
+    const updatedPendingIds = [...remainingIds, trackId]; // Move this track to end of queue
+    
+    // Update aggregation state to show waiting status
+    if (state.mixed_recording_id) {
+      try {
+        const { data: mixedRec } = await supabase
+          .from('voice_recordings')
+          .select('metadata')
+          .eq('id', state.mixed_recording_id)
+          .single();
+
+        const existingMetadata = (mixedRec?.metadata as Record<string, unknown> | null) ?? {};
+        await supabase
+          .from('voice_recordings')
+          .update({
+            metadata: {
+              ...existingMetadata,
+              aggregation_state: {
+                status: 'processing',
+                processed_count: state.processed_track_ids.length,
+                pending_count: updatedPendingIds.length,
+                current_speaker: speaker,
+                waiting_for_chunks: true,
+                speakers: state.speaker_meta,
+                updated_at: new Date().toISOString()
+              }
+            }
+          })
+          .eq('id', state.mixed_recording_id);
+      } catch (e) {
+        console.error('Failed to update aggregation state:', e);
+      }
+    }
+
+    // If there are other tracks to process, continue with them
+    if (remainingIds.length > 0) {
+      console.log(`Moving ${speaker} to end of queue, continuing with other tracks...`);
+      return await scheduleContinuation(supabase, { ...state, pending_track_ids: updatedPendingIds });
+    }
+
+    // No other tracks - tell client to retry later
     return json({
       success: false,
       status: 'waiting',
       session_id: state.session_id,
+      waiting_for: speaker,
       message: `Gerando chunks para ${speaker}. Tente novamente em alguns instantes.`
     }, 200);
   }

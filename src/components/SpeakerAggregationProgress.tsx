@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle2, AlertTriangle, Clock, User, Timer } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Clock, User, Timer, Cog } from "lucide-react";
 import type { Recording } from "@/hooks/useRecordings";
 import { useWaitingState } from "@/hooks/useSessionTranscription";
 
@@ -21,6 +21,7 @@ interface AggregationState {
   speakers?: SpeakerMeta[];
   message?: string;
   updated_at?: string;
+  waiting_for_chunks?: boolean;
 }
 
 interface SpeakerAggregationProgressProps {
@@ -165,29 +166,46 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
         
         {speakers && speakers.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-purple-500/20">
-            {speakers.map((speaker) => (
-              <Badge
-                key={speaker.user_id}
-                variant="outline"
-                className={`text-xs flex items-center gap-1 ${
-                  speaker.has_transcription
-                    ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                    : speaker.username === aggregationState.current_speaker
-                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 animate-pulse'
-                    : 'bg-muted/50 text-muted-foreground border-border'
-                }`}
-              >
-                <User className="h-3 w-3" />
-                {speaker.username}
-                {speaker.has_transcription ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : speaker.username === aggregationState.current_speaker ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Clock className="h-3 w-3" />
-                )}
-              </Badge>
-            ))}
+            {speakers.map((speaker) => {
+              const isGeneratingChunks = speaker.error === 'generating_chunks';
+              const isCurrent = speaker.username === aggregationState.current_speaker;
+              
+              return (
+                <Badge
+                  key={speaker.user_id}
+                  variant="outline"
+                  className={`text-xs flex items-center gap-1 ${
+                    speaker.has_transcription
+                      ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                      : isGeneratingChunks
+                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 animate-pulse'
+                      : isCurrent
+                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 animate-pulse'
+                      : 'bg-muted/50 text-muted-foreground border-border'
+                  }`}
+                >
+                  <User className="h-3 w-3" />
+                  {speaker.username}
+                  {speaker.has_transcription ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : isGeneratingChunks ? (
+                    <Cog className="h-3 w-3 animate-spin" />
+                  ) : isCurrent ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Show waiting for chunks indicator */}
+        {aggregationState.waiting_for_chunks && (
+          <div className="flex items-center gap-2 text-xs text-blue-400 pt-1">
+            <Cog className="h-3 w-3 animate-spin" />
+            <span>Aguardando geração de chunks para {aggregationState.current_speaker}...</span>
           </div>
         )}
       </div>
