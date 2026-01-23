@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -81,6 +81,48 @@ export function RecordingCard({ recording }: RecordingCardProps) {
       });
     }
   };
+
+  const handleDownloadTranscriptionJson = () => {
+    // Try to get the formatted segments from metadata first
+    const metadata = recording.metadata as {
+      speaker_segments?: Array<{ start: string; end: string; speaker: string; text: string }>;
+      speaker_mapping?: Record<string, string>;
+    };
+    
+    let jsonContent: string;
+    
+    if (metadata?.speaker_segments && Array.isArray(metadata.speaker_segments)) {
+      // Use the pre-formatted segments from metadata
+      jsonContent = JSON.stringify(metadata.speaker_segments, null, 2);
+    } else if (recording.transcription_elevenlabs) {
+      // Try to parse the transcription_elevenlabs field (might already be JSON)
+      try {
+        const parsed = JSON.parse(recording.transcription_elevenlabs);
+        jsonContent = JSON.stringify(parsed, null, 2);
+      } catch {
+        // If not valid JSON, create a simple format
+        jsonContent = JSON.stringify([{
+          start: "0:00",
+          end: "0:00",
+          speaker: "speaker A",
+          text: recording.transcription_elevenlabs
+        }], null, 2);
+      }
+    } else {
+      return;
+    }
+    
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcription-${recording.discord_channel_name || recording.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const togglePlay = () => {
     if (!audioRef.current || !recording.file_url) return;
     
@@ -535,6 +577,18 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       <FileVolume2 className="h-4 w-4 mr-1" />
                       Comprimido
                     </a>
+                  </Button>
+                )}
+                {recording.transcription_elevenlabs && recording.transcription_elevenlabs_status === 'completed' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDownloadTranscriptionJson}
+                    className="text-accent hover:text-accent hover:bg-accent/10"
+                    title="Download transcrição JSON"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    JSON
                   </Button>
                 )}
               </div>
