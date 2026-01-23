@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -10,6 +10,7 @@ import { useDeleteRecording } from "@/hooks/useDeleteRecording";
 import { useReprocessRecording } from "@/hooks/useReprocessRecording";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
+import { useResumeElevenLabsTranscription, getIncompleteTranscriptionInfo } from "@/hooks/useResumeElevenLabsTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
@@ -48,6 +49,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const reprocessRecording = useReprocessRecording();
   const elevenLabsTranscription = useElevenLabsTranscription();
   const sessionTranscription = useSessionTranscription();
+  const resumeElevenLabs = useResumeElevenLabsTranscription();
+
+  // Check if transcription is incomplete (stopped midway)
+  const incompleteInfo = getIncompleteTranscriptionInfo(recording);
 
   // Check for speaker transcription in metadata
   const speakerTranscription = (recording.metadata as { speaker_transcription?: string })?.speaker_transcription;
@@ -63,6 +68,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const handleElevenLabsTranscribe = (mode: ElevenLabsMode) => {
     elevenLabsTranscription.mutate({ recordingId: recording.id, mode });
+  };
+
+  const handleResumeElevenLabs = () => {
+    resumeElevenLabs.mutate({ recordingId: recording.id });
   };
 
   const handleAggregateSession = () => {
@@ -377,10 +386,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             )}
 
             {/* Transcription Section - ElevenLabs */}
-            {(recording.transcription_elevenlabs || recording.transcription_elevenlabs_status === 'processing') && (
+            {(recording.transcription_elevenlabs || recording.transcription_elevenlabs_status === 'processing' || incompleteInfo.isIncomplete) && (
               <Collapsible open={isElevenLabsTranscriptOpen} onOpenChange={setIsElevenLabsTranscriptOpen}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-accent hover:text-accent">
+                  <Button variant="ghost" size="sm" className={`w-full justify-between ${incompleteInfo.isIncomplete ? 'text-orange-400 hover:text-orange-400' : 'text-accent hover:text-accent'}`}>
                     <span className="flex items-center gap-2">
                       <AudioLines className="h-4 w-4" />
                       Transcrição (ElevenLabs)
@@ -395,6 +404,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                             <span className="text-xs text-muted-foreground">(arquivo completo)</span>
                           )}
                         </>
+                      )}
+                      {incompleteInfo.isIncomplete && recording.transcription_elevenlabs_status !== 'processing' && (
+                        <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-xs">
+                          {incompleteInfo.percentComplete}% - {incompleteInfo.reason === 'quota_exceeded' ? 'Créditos esgotados' : 'Incompleto'}
+                        </Badge>
                       )}
                     </span>
                     {isElevenLabsTranscriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -526,6 +540,23 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <AudioLines className="h-4 w-4" />
                   )}
                 </Button>
+                {/* Resume ElevenLabs button - shows when transcription is incomplete */}
+                {incompleteInfo.isIncomplete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResumeElevenLabs}
+                    disabled={resumeElevenLabs.isPending || recording.transcription_elevenlabs_status === 'processing'}
+                    className="text-orange-400 hover:text-orange-400 hover:bg-orange-500/10"
+                    title={`Retomar transcrição (${incompleteInfo.percentComplete}% concluído, ~${Math.round(incompleteInfo.estimatedMissingSeconds / 60)}min restantes)`}
+                  >
+                    {resumeElevenLabs.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 {/* Reprocess button - always available, only disabled during local mutation */}
                 <Button
                   variant="ghost"
