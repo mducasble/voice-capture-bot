@@ -715,11 +715,26 @@ function formatTimestamp(seconds: number): string {
 function wordsToSegments(words: ElevenLabsWord[]): SpeakerSegment[] {
   if (!words || words.length === 0) return [];
 
+  // Defensive normalization:
+  // - Ensure chronological order (prevents inverted time ranges like 4:00 - 0:04)
+  // - Clamp end >= start
+  // This also makes diarization more reliable if words arrive slightly out-of-order
+  // across invocations or due to overlapping chunk processing.
+  const normalizedWords = words
+    .filter((w) =>
+      typeof w?.start === "number" &&
+      typeof w?.end === "number" &&
+      Number.isFinite(w.start) &&
+      Number.isFinite(w.end)
+    )
+    .map((w) => ({ ...w, end: Math.max(w.end, w.start) }))
+    .sort((a, b) => (a.start - b.start) || (a.end - b.end));
+
   const segments: SpeakerSegment[] = [];
   let currentSegment: SpeakerSegment | null = null;
   const SILENCE_THRESHOLD = 1.5; // seconds - start new segment after silence
 
-  for (const word of words) {
+  for (const word of normalizedWords) {
     const speaker = word.speaker || "speaker_1";
     
     // Start new segment if: first word, different speaker, or long silence
@@ -738,7 +753,7 @@ function wordsToSegments(words: ElevenLabsWord[]): SpeakerSegment[] {
         text: word.text,
       };
     } else if (currentSegment) {
-      currentSegment.end = word.end;
+      currentSegment.end = Math.max(currentSegment.end, word.end);
       currentSegment.text += ` ${word.text}`;
     }
   }
