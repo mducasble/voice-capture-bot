@@ -494,8 +494,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
-                {/* Aggregate Session Transcription button - for mixed recordings */}
-                {recording.recording_type === 'mixed' && (
+                {/* Aggregate Session Transcription button - only for mixed recordings with a session_id (Discord sessions) */}
+                {recording.recording_type === 'mixed' && recording.session_id && (
                   <Button
                     variant="ghost"
                     size="sm"
