@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCallback, useRef } from "react";
 
 interface SessionTranscriptionResult {
   success: boolean;
@@ -17,8 +18,16 @@ interface SessionTranscriptionResult {
 
 export function useSessionTranscription() {
   const queryClient = useQueryClient();
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  return useMutation({
+  const clearRetryTimeout = useCallback(() => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  }, []);
+
+  const mutation = useMutation({
     mutationFn: async ({ 
       sessionId, 
       mixedRecordingId 
@@ -39,23 +48,31 @@ export function useSessionTranscription() {
 
       return data as SessionTranscriptionResult;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       console.log('Session transcription result:', data);
+      queryClient.invalidateQueries({ queryKey: ['recordings'] });
+      
       if (data.success) {
         if (data.status === 'processing') {
           toast.info("Processando transcrições...", {
             description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
           });
         } else {
+          clearRetryTimeout();
           toast.success("Transcrição agregada!", {
             description: `${data.stats?.transcribed || 0} faixas com ${data.speakers?.length || 0} speakers identificados`
           });
         }
-        queryClient.invalidateQueries({ queryKey: ['recordings'] });
       } else if (data.status === 'waiting') {
-        toast.info("Aguardando transcrições", {
-          description: data.message
+        // Auto-retry after 10 seconds when waiting for chunks
+        toast.info("Gerando chunks de áudio...", {
+          description: data.message + " Tentando novamente em 10s..."
         });
+        
+        clearRetryTimeout();
+        retryTimeoutRef.current = setTimeout(() => {
+          mutation.mutate(variables);
+        }, 10000);
       } else if (data.error === 'no_individual_tracks') {
         toast.warning("Sem faixas individuais", {
           description: data.message
@@ -77,4 +94,6 @@ export function useSessionTranscription() {
       });
     }
   });
+
+  return mutation;
 }
