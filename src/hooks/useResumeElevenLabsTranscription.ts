@@ -25,6 +25,7 @@ export interface IncompleteTranscriptionInfo {
 export function getIncompleteTranscriptionInfo(recording: Recording): IncompleteTranscriptionInfo {
   const chunkState = recording.elevenlabs_chunk_state as ChunkState | null;
   const status = recording.transcription_elevenlabs_status;
+  const transcription = recording.transcription_elevenlabs || '';
   
   // Default: not incomplete
   const defaultResult: IncompleteTranscriptionInfo = {
@@ -36,9 +37,26 @@ export function getIncompleteTranscriptionInfo(recording: Recording): Incomplete
     estimatedMissingSeconds: 0,
   };
 
-  // If completed and no chunk state, it's done
-  if (status === 'completed' && !chunkState) {
-    return defaultResult;
+  // Check if transcription contains failure markers (chunks that failed)
+  const failedChunkMatches = transcription.match(/\[chunk \d+\] \(falhou\)/g);
+  const hasFailedChunks = failedChunkMatches && failedChunkMatches.length > 0;
+  
+  if (hasFailedChunks) {
+    const failedCount = failedChunkMatches.length;
+    // Estimate total chunks from duration (30s per chunk)
+    const estimatedTotal = recording.duration_seconds 
+      ? Math.ceil(recording.duration_seconds / 30) 
+      : failedCount;
+    const completedCount = estimatedTotal - failedCount;
+    
+    return {
+      isIncomplete: true,
+      reason: 'quota_exceeded',
+      chunksCompleted: completedCount,
+      chunksTotal: estimatedTotal,
+      percentComplete: Math.round((completedCount / estimatedTotal) * 100),
+      estimatedMissingSeconds: failedCount * 30,
+    };
   }
 
   // If there's chunk state with progress info
@@ -62,7 +80,7 @@ export function getIncompleteTranscriptionInfo(recording: Recording): Incomplete
   }
 
   // If failed status without completed transcription
-  if (status === 'failed' && !recording.transcription_elevenlabs) {
+  if (status === 'failed') {
     return {
       isIncomplete: true,
       reason: 'failed',
