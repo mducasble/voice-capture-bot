@@ -74,19 +74,20 @@ serve(async (req) => {
       );
     }
 
-    // Credit-saving guard: For multi-track sessions, skip individual tracks (only transcribe mixed)
-    // Individual tracks are much longer and redundant - the mixed track contains all speakers already.
+    // Credit-saving guard: For multi-track sessions, skip MIXED tracks
+    // The individual tracks contain the real speaker names - mixed is redundant.
+    // Use transcribe-session to aggregate individuals into a proper timeline.
     const recordingType = (recording as unknown as { recording_type?: string }).recording_type;
     const sessionId = (recording as unknown as { session_id?: string }).session_id;
     
-    if (!force && recordingType === "individual" && sessionId) {
-      console.log(`Skipping individual track ${recording_id} (session: ${sessionId}) - use mixed track instead to save credits`);
+    if (!force && recordingType === "mixed" && sessionId) {
+      console.log(`Skipping mixed track ${recording_id} (session: ${sessionId}) - use transcribe-session instead for proper speaker attribution`);
       return json(
         {
           success: true,
           skipped: true,
-          reason: "individual_track_skipped",
-          message: "Tracks individuais são pulados automaticamente. Use o track 'mixed' da sessão para economizar créditos.",
+          reason: "mixed_track_skipped",
+          message: "Track 'mixed' pulado. Use 'Agregar Sessão' para transcrever com atribuição correta de speakers via tracks individuais.",
           recording_id,
           session_id: sessionId,
         },
