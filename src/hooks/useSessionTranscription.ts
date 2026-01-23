@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 
 interface SessionTranscriptionResult {
   success: boolean;
@@ -14,6 +14,54 @@ interface SessionTranscriptionResult {
   error?: string;
   processed?: number;
   pending?: number;
+}
+
+interface WaitingState {
+  mixedRecordingId?: string;
+  sessionId?: string;
+  message?: string;
+  retryAt: number; // timestamp when retry will happen
+}
+
+// Global state for waiting recordings (shared across hook instances)
+const waitingRecordings = new Map<string, WaitingState>();
+const waitingListeners = new Set<() => void>();
+
+function notifyWaitingListeners() {
+  waitingListeners.forEach(listener => listener());
+}
+
+export function useWaitingState(mixedRecordingId?: string) {
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mixedRecordingId) return;
+
+    const updateState = () => {
+      const state = waitingRecordings.get(mixedRecordingId);
+      if (state) {
+        const remaining = Math.max(0, Math.ceil((state.retryAt - Date.now()) / 1000));
+        setCountdown(remaining);
+        setMessage(state.message || null);
+      } else {
+        setCountdown(null);
+        setMessage(null);
+      }
+    };
+
+    updateState();
+    waitingListeners.add(updateState);
+
+    const interval = setInterval(updateState, 1000);
+
+    return () => {
+      waitingListeners.delete(updateState);
+      clearInterval(interval);
+    };
+  }, [mixedRecordingId]);
+
+  return { countdown, message, isWaiting: countdown !== null && countdown > 0 };
 }
 
 export function useSessionTranscription() {
@@ -52,7 +100,13 @@ export function useSessionTranscription() {
       console.log('Session transcription result:', data);
       queryClient.invalidateQueries({ queryKey: ['recordings'] });
       
+      const recordingKey = variables.mixedRecordingId || variables.sessionId || '';
+      
       if (data.success) {
+        // Clear waiting state on success
+        waitingRecordings.delete(recordingKey);
+        notifyWaitingListeners();
+        
         if (data.status === 'processing') {
           toast.info("Processando transcrições...", {
             description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
@@ -64,30 +118,53 @@ export function useSessionTranscription() {
           });
         }
       } else if (data.status === 'waiting') {
-        // Auto-retry after 10 seconds when waiting for chunks
+        const retryDelay = 10000; // 10 seconds
+        const retryAt = Date.now() + retryDelay;
+        
+        // Set waiting state
+        waitingRecordings.set(recordingKey, {
+          mixedRecordingId: variables.mixedRecordingId,
+          sessionId: variables.sessionId,
+          message: data.message,
+          retryAt
+        });
+        notifyWaitingListeners();
+        
         toast.info("Gerando chunks de áudio...", {
-          description: data.message + " Tentando novamente em 10s..."
+          description: "Retry automático em 10s"
         });
         
         clearRetryTimeout();
         retryTimeoutRef.current = setTimeout(() => {
+          waitingRecordings.delete(recordingKey);
+          notifyWaitingListeners();
           mutation.mutate(variables);
-        }, 10000);
+        }, retryDelay);
       } else if (data.error === 'no_individual_tracks') {
+        waitingRecordings.delete(recordingKey);
+        notifyWaitingListeners();
         toast.warning("Sem faixas individuais", {
           description: data.message
         });
       } else if (data.error === 'no_transcriptions') {
+        waitingRecordings.delete(recordingKey);
+        notifyWaitingListeners();
         toast.warning("Nenhuma transcrição disponível", {
           description: data.message || "As faixas individuais podem ser muito grandes (limite: 25MB)"
         });
       } else {
+        waitingRecordings.delete(recordingKey);
+        notifyWaitingListeners();
         toast.error("Erro na agregação", {
           description: data.message || data.error
         });
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      const recordingKey = variables.mixedRecordingId || variables.sessionId || '';
+      waitingRecordings.delete(recordingKey);
+      notifyWaitingListeners();
+      
       console.error('Session transcription error:', error);
       toast.error("Erro ao agregar transcrições", {
         description: error.message
