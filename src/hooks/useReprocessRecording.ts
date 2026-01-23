@@ -29,6 +29,7 @@ export function useReprocessRecording() {
         speaker_mapping: null,
         readable_transcription: null,
         transcribed_at: null,
+        accumulated_words: null, // Clear accumulated words from chunk diarization
         // Session aggregation exports
         aggregation_state: null,
         aggregated_at: null,
