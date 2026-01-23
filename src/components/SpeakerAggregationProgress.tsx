@@ -12,7 +12,7 @@ interface SpeakerMeta {
 }
 
 interface AggregationState {
-  status: 'processing' | 'waiting' | 'completed' | 'failed';
+  status: 'processing' | 'waiting' | 'completed' | 'failed' | 'cancelled';
   processed_count?: number;
   pending_count?: number;
   current_speaker?: string;
@@ -238,6 +238,21 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
         {aggregationState.message && (
           <p className="text-xs text-muted-foreground mt-1">{aggregationState.message}</p>
         )}
+      </div>
+    );
+  }
+
+  // Cancelled state
+  if (aggregationState?.status === 'cancelled') {
+    return (
+      <div className="bg-muted/50 border border-border/50 rounded-lg p-3 animate-fade-in">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="font-medium">Agregação cancelada</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Processamento interrompido para evitar consumo de créditos.
+        </p>
       </div>
     );
   }
