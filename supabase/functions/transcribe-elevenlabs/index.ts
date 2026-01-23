@@ -216,12 +216,17 @@ serve(async (req) => {
 
       console.log(`Transcribing chunk ${i + 1}/${chunkState.chunkNames.length}: ${name}`);
 
+      // Detect format from chunk filename
+      const isChunkMp3 = name.toLowerCase().endsWith('.mp3');
+      const chunkFilename = isChunkMp3 ? "chunk.mp3" : "chunk.wav";
+      const chunkMimeType = isChunkMp3 ? "audio/mpeg" : "audio/wav";
+
       try {
         const blob = await safeFetchBlob(chunkUrl, MAX_UPLOAD_BYTES);
         const t = await transcribeWithElevenLabs({
           audioBlob: blob,
-          filename: "chunk.wav",
-          mimeType: "audio/wav",
+          filename: chunkFilename,
+          mimeType: chunkMimeType,
           apiKey: ELEVENLABS_API_KEY,
           language: recording.language ?? undefined,
         });
