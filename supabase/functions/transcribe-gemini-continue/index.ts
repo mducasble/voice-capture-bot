@@ -291,8 +291,8 @@ async function transcribeChunk(
   const base64Audio = encode(audioBytes.buffer);
 
   const languageInstruction = language
-    ? `The audio is in ${language}. Transcribe it in that language.`
-    : 'Automatically detect the language and transcribe in that language.';
+    ? `The audio is in ${language}. Transcribe it EXACTLY in that language.`
+    : 'Automatically detect the language and transcribe EXACTLY in that language.';
 
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -305,12 +305,25 @@ async function transcribeChunk(
       messages: [
         {
           role: 'system',
-          content: `You are an audio transcription assistant. ${languageInstruction}\n\nRespond ONLY with JSON: {"detected_language": "ISO code", "transcription": "text"}`
+          content: `You are a STRICT audio transcription tool. Your ONLY job is to transcribe the EXACT words spoken in the audio.
+
+CRITICAL RULES:
+1. Transcribe ONLY what is actually spoken - word for word
+2. Do NOT describe sounds, noises, or what you "hear"
+3. Do NOT add commentary or interpretation
+4. Do NOT invent or hallucinate content
+5. If the audio is silence or unintelligible, return empty transcription
+6. If you cannot understand the speech, return empty transcription
+7. NEVER generate fake conversations or made-up dialogue
+
+${languageInstruction}
+
+Respond ONLY with this exact JSON format: {"detected_language": "ISO code", "transcription": "exact words spoken or empty string"}`
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Transcribe this audio:' },
+            { type: 'text', text: 'Transcribe the EXACT words spoken in this audio. Do not describe or interpret - only transcribe:' },
             { type: 'input_audio', input_audio: { data: base64Audio, format: audioFormat } }
           ]
         }
