@@ -32,14 +32,34 @@ export function useElevenLabsTestTranscription() {
     onSuccess: (data: any) => {
       if (data?.success && data?.scheduled_processing) {
         toast.message('Processamento iniciado — teste vai começar em seguida.', { id: 'elevenlabs-test' });
+      } else if (data?.success && data?.done) {
+        toast.success('Teste de transcrição concluído (4min)!', { id: 'elevenlabs-test' });
       } else if (data?.success && !data?.skipped) {
-        toast.success('Teste de transcrição concluído!', { id: 'elevenlabs-test' });
+        const nextIndex = typeof data?.nextIndex === 'number' ? data.nextIndex : undefined;
+        toast.message(
+          nextIndex != null
+            ? `Teste em andamento… (${nextIndex}/8 chunks processados)`
+            : 'Teste em andamento…',
+          { id: 'elevenlabs-test' }
+        );
       } else if (data?.skipped) {
         toast.message('Transcrição já está em processamento.', { id: 'elevenlabs-test' });
       } else {
         toast.error(data?.message || 'Erro no teste de transcrição', { id: 'elevenlabs-test' });
       }
+
       queryClient.invalidateQueries({ queryKey: ['recordings'] });
+
+      // The backend schedules continuation calls; here we just poll the UI a bit
+      // so the user sees the diarized result as soon as it finishes.
+      if (data?.success && !data?.done) {
+        const delays = [2500, 6000, 12000];
+        delays.forEach((ms) => {
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['recordings'] });
+          }, ms);
+        });
+      }
     },
     onError: (error) => {
       console.error('ElevenLabs test transcription error:', error);
