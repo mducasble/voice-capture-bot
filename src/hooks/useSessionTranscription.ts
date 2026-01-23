@@ -111,6 +111,14 @@ export function useSessionTranscription() {
           toast.info("Processando transcrições...", {
             description: data.message || `${data.processed || 0} processadas, ${data.pending || 0} restantes`
           });
+
+          // Fallback client-side polling: sometimes the backend continuation may not get scheduled.
+          // In that case, we re-invoke after a short delay to keep progress moving.
+          const retryDelay = 8000; // 8 seconds
+          clearRetryTimeout();
+          retryTimeoutRef.current = setTimeout(() => {
+            mutation.mutate(variables);
+          }, retryDelay);
         } else {
           clearRetryTimeout();
           toast.success("Transcrição agregada!", {
