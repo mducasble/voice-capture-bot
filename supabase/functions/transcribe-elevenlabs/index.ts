@@ -74,6 +74,26 @@ serve(async (req) => {
       );
     }
 
+    // Credit-saving guard: For multi-track sessions, skip individual tracks (only transcribe mixed)
+    // Individual tracks are much longer and redundant - the mixed track contains all speakers already.
+    const recordingType = (recording as unknown as { recording_type?: string }).recording_type;
+    const sessionId = (recording as unknown as { session_id?: string }).session_id;
+    
+    if (!force && recordingType === "individual" && sessionId) {
+      console.log(`Skipping individual track ${recording_id} (session: ${sessionId}) - use mixed track instead to save credits`);
+      return json(
+        {
+          success: true,
+          skipped: true,
+          reason: "individual_track_skipped",
+          message: "Tracks individuais são pulados automaticamente. Use o track 'mixed' da sessão para economizar créditos.",
+          recording_id,
+          session_id: sessionId,
+        },
+        200
+      );
+    }
+
     if (mode === "full") {
       return await processFullMode(supabase, recording, ELEVENLABS_API_KEY);
     }
