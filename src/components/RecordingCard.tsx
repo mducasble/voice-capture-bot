@@ -2,8 +2,9 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDeleteRecording } from "@/hooks/useDeleteRecording";
@@ -54,6 +55,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const resumeElevenLabs = useResumeElevenLabsTranscription();
   const clearTranscription = useClearTranscription();
   const elevenLabsTest = useElevenLabsTestTranscription();
+  const regenerateJson = useRegenerateJson();
 
   // Check if transcription is incomplete (stopped midway)
   const incompleteInfo = getIncompleteTranscriptionInfo(recording);
@@ -111,6 +113,10 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
   const handleElevenLabsTest = () => {
     elevenLabsTest.mutate({ recordingId: recording.id });
+  };
+
+  const handleRegenerateJson = () => {
+    regenerateJson.mutate(recording.id);
   };
 
   const handleAggregateSession = () => {
@@ -614,6 +620,23 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <Eraser className="h-4 w-4" />
                   )}
                 </Button>
+                {/* Regenerate JSON button - only when speaker_segments exist */}
+                {(recording.metadata as { speaker_segments?: unknown })?.speaker_segments && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRegenerateJson}
+                    disabled={regenerateJson.isPending}
+                    className="text-cyan-500 hover:text-cyan-500 hover:bg-cyan-500/10"
+                    title="Regenerar JSON (sem gastar créditos)"
+                  >
+                    {regenerateJson.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 {/* Test ElevenLabs (4 minutes) - for validation */}
                 <Button
                   variant="ghost"
