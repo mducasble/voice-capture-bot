@@ -63,9 +63,18 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   };
 
   const handleAggregateSession = () => {
+    console.log('Aggregate session clicked', { 
+      session_id: recording.session_id, 
+      recording_id: recording.id 
+    });
     if (recording.session_id) {
       sessionTranscription.mutate({ 
         sessionId: recording.session_id,
+        mixedRecordingId: recording.id 
+      });
+    } else if (recording.recording_type === 'mixed') {
+      // For mixed recordings without session_id, use the recording id to find session
+      sessionTranscription.mutate({ 
         mixedRecordingId: recording.id 
       });
     }
@@ -410,8 +419,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {formatDate(recording.created_at)}
               </span>
               <div className="flex items-center gap-2">
-                {/* Aggregate Session Transcription button - only for mixed recordings with session_id */}
-                {recording.recording_type === 'mixed' && recording.session_id && (
+                {/* Aggregate Session Transcription button - for mixed recordings */}
+                {recording.recording_type === 'mixed' && (
                   <Button
                     variant="ghost"
                     size="sm"
