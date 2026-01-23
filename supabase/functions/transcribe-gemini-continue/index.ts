@@ -10,6 +10,7 @@ const corsHeaders = {
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const CHUNKS_PER_INVOCATION = 5;
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_TRANSCRIPTION_CHARS_PER_CHUNK = 1800;
 
 interface GeminiChunkState {
   chunkUrls: { url: string; index: number }[];
@@ -278,6 +279,49 @@ serve(async (req) => {
   }
 });
 
+function normalizeWhitespace(input: string): string {
+  return input.replace(/\s+/g, ' ').trim();
+}
+
+function isLikelyHallucination(text: string): boolean {
+  const cleaned = normalizeWhitespace(text);
+  if (!cleaned) return false;
+  if (cleaned.length > MAX_TRANSCRIPTION_CHARS_PER_CHUNK) return true;
+
+  const lower = cleaned.toLowerCase();
+  const badPhrases = [
+    "as an ai",
+    "i'm sorry",
+    "i cannot",
+    "i can't",
+    "i am unable",
+    "i don't have access",
+  ];
+  if (badPhrases.some((p) => lower.includes(p))) return true;
+
+  const words = lower.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+
+  // Detect extreme repetition (common failure mode when audio is unclear).
+  let run = 1;
+  for (let i = 1; i < words.length; i++) {
+    if (words[i] === words[i - 1]) {
+      run++;
+      if (run >= 8) return true;
+    } else {
+      run = 1;
+    }
+  }
+
+  // If the vocabulary is too small for a long chunk, it's likely a loop/hallucination.
+  if (words.length >= 30) {
+    const uniqueRatio = new Set(words).size / words.length;
+    if (uniqueRatio < 0.25) return true;
+  }
+
+  return false;
+}
+
 async function transcribeChunk(
   audioUrl: string,
   language: string | null,
@@ -313,7 +357,7 @@ async function transcribeChunk(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-flash-preview',
+      model: 'google/gemini-2.5-flash',
       temperature: 0,
       messages: [
         {
@@ -354,19 +398,31 @@ Respond ONLY with this exact JSON format: {"detected_language": "ISO code", "tra
   const aiData = await aiResponse.json();
   const rawContent = aiData.choices?.[0]?.message?.content?.trim() || '';
 
-  let transcription = rawContent;
+  // We ONLY accept valid JSON. If the model drifts, we treat it as an empty transcription
+  // to avoid hallucinated text contaminating the final output.
   let detectedLanguage: string | null = null;
-
   try {
     const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      transcription = parsed.transcription || rawContent;
-      detectedLanguage = parsed.detected_language || null;
+    if (!jsonMatch) {
+      console.warn('AI returned non-JSON content; dropping chunk transcription');
+      return { text: '', language: null };
     }
-  } catch {
-    // Use raw content as transcription
-  }
 
-  return { text: transcription, language: detectedLanguage };
+    const parsed = JSON.parse(jsonMatch[0]);
+    detectedLanguage = typeof parsed?.detected_language === 'string' ? parsed.detected_language : null;
+    const text = typeof parsed?.transcription === 'string' ? parsed.transcription : '';
+
+    const trimmed = text.trim();
+    if (!trimmed) return { text: '', language: detectedLanguage };
+
+    if (isLikelyHallucination(trimmed)) {
+      console.warn('Chunk transcription flagged as likely hallucination; dropping');
+      return { text: '', language: detectedLanguage };
+    }
+
+    return { text: trimmed, language: detectedLanguage };
+  } catch (e) {
+    console.warn('Failed to parse AI JSON; dropping chunk transcription', e);
+    return { text: '', language: null };
+  }
 }
