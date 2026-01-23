@@ -397,6 +397,39 @@ async function scheduleContinuation(
 
   console.log(`Scheduling continuation: pending=${pending}, processed=${state.processed_track_ids.length}`);
 
+  // Update aggregation state on mixed recording for real-time UI feedback
+  if (state.mixed_recording_id) {
+    try {
+      const { data: mixedRec } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', state.mixed_recording_id)
+        .single();
+
+      const existingMetadata = (mixedRec?.metadata as Record<string, unknown> | null) ?? {};
+      await supabase
+        .from('voice_recordings')
+        .update({
+          metadata: {
+            ...existingMetadata,
+            aggregation_state: {
+              status: 'processing',
+              processed_count: state.processed_track_ids.length,
+              pending_count: pending,
+              current_speaker: state.current_track?.speaker || null,
+              current_chunk: state.current_track?.nextIndex || null,
+              total_chunks: state.current_track?.chunkUrls?.length || null,
+              speakers: state.speaker_meta,
+              updated_at: new Date().toISOString()
+            }
+          }
+        })
+        .eq('id', state.mixed_recording_id);
+    } catch (e) {
+      console.error('Failed to update aggregation state:', e);
+    }
+  }
+
   const invokePromise = supabase.functions.invoke('transcribe-session', {
     body: { state }
   });
@@ -460,12 +493,25 @@ async function finalizeSession(
 
   // Update mixed recording if provided
   if (state.mixed_recording_id) {
+    // Fetch existing metadata to preserve other fields
+    const { data: mixedRec } = await supabase
+      .from('voice_recordings')
+      .select('metadata')
+      .eq('id', state.mixed_recording_id)
+      .single();
+
+    const existingMetadata = (mixedRec?.metadata as Record<string, unknown> | null) ?? {};
+    
+    // Remove aggregation_state as processing is complete
+    const { aggregation_state: _, ...cleanedMetadata } = existingMetadata;
+
     const { error: updateError } = await supabase
       .from('voice_recordings')
       .update({
         transcription_elevenlabs: timelineTranscription,
         transcription_elevenlabs_status: 'completed',
         metadata: {
+          ...cleanedMetadata,
           speaker_segments: mergedSegments,
           speakers: state.speaker_meta,
           aggregated_at: new Date().toISOString()

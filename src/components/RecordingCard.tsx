@@ -12,6 +12,7 @@ import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElev
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
+import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -385,6 +386,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   </div>
                 </CollapsibleContent>
               </Collapsible>
+            )}
+
+            {/* Speaker Aggregation Progress (for mixed recordings) */}
+            {recording.recording_type === 'mixed' && (
+              <SpeakerAggregationProgress recording={recording} />
             )}
 
             {/* Speaker-Identified Transcription Section (for mixed recordings with session) */}
