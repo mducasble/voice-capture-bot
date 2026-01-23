@@ -16,6 +16,32 @@ const SAMPLES_PER_CHUNK = TARGET_SAMPLE_RATE * CHUNK_DURATION_SECONDS;
 const MAX_PROCESSING_TIME_MS = 8000; // Stop processing after 8 seconds to avoid CPU timeout
 const MP3_BITRATE = 128; // 128kbps for good speech quality
 
+// Detect audio format from header bytes
+function detectAudioFormat(headerBytes: Uint8Array): 'wav' | 'mp3' | 'unknown' {
+  if (headerBytes.length < 4) return 'unknown';
+  
+  // Check for WAV (RIFF header)
+  const riff = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
+  if (riff === 'RIFF') {
+    if (headerBytes.length >= 12) {
+      const wave = String.fromCharCode(headerBytes[8], headerBytes[9], headerBytes[10], headerBytes[11]);
+      if (wave === 'WAVE') return 'wav';
+    }
+  }
+  
+  // Check for MP3 (ID3 tag or frame sync)
+  // ID3v2 tag starts with "ID3"
+  if (headerBytes[0] === 0x49 && headerBytes[1] === 0x44 && headerBytes[2] === 0x33) {
+    return 'mp3';
+  }
+  // MP3 frame sync (0xFF followed by 0xE* or 0xF*)
+  if (headerBytes[0] === 0xFF && (headerBytes[1] & 0xE0) === 0xE0) {
+    return 'mp3';
+  }
+  
+  return 'unknown';
+}
+
 // Parse WAV header to get audio info
 function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
   if (headerBytes.length < 44) return null;
@@ -58,6 +84,56 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
   
   if (dataOffset === 0) return null;
   return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
+}
+
+// Decode MP3 to PCM samples
+async function decodeMp3ToPcm(mp3Buffer: ArrayBuffer): Promise<{ samples: Int16Array; sampleRate: number; channels: number }> {
+  const { MPEGDecoderWebWorker } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+  
+  const decoder = new MPEGDecoderWebWorker();
+  await decoder.ready;
+  
+  const decoded = await decoder.decode(new Uint8Array(mp3Buffer));
+  await decoder.free();
+  
+  if (!decoded || !decoded.channelData || decoded.channelData.length === 0) {
+    throw new Error('Failed to decode MP3');
+  }
+  
+  const inputSampleRate = decoded.sampleRate;
+  const inputChannels = decoded.channelData.length;
+  const inputSamples = decoded.samplesDecoded;
+  
+  console.log(`MP3 decoded: ${inputSamples} samples, ${inputSampleRate}Hz, ${inputChannels} channels`);
+  
+  // Convert to mono Int16Array at target sample rate
+  const resampleRatio = TARGET_SAMPLE_RATE / inputSampleRate;
+  const outputSamples = Math.floor(inputSamples * resampleRatio);
+  const samples = new Int16Array(outputSamples);
+  
+  for (let i = 0; i < outputSamples; i++) {
+    const srcPos = i / resampleRatio;
+    const srcIndex = Math.floor(srcPos);
+    const frac = srcPos - srcIndex;
+    const nextIndex = Math.min(srcIndex + 1, inputSamples - 1);
+    
+    // Mix all channels to mono with linear interpolation
+    let monoSample = 0;
+    for (let ch = 0; ch < inputChannels; ch++) {
+      const channelData = decoded.channelData[ch];
+      const sample1 = channelData[srcIndex] || 0;
+      const sample2 = channelData[nextIndex] || 0;
+      monoSample += sample1 + (sample2 - sample1) * frac;
+    }
+    monoSample /= inputChannels;
+    
+    // Convert float [-1, 1] to 16-bit signed integer
+    samples[i] = Math.max(-32768, Math.min(32767, Math.round(monoSample * 32767)));
+  }
+  
+  console.log(`Resampled to ${outputSamples} samples at ${TARGET_SAMPLE_RATE}Hz mono`);
+  
+  return { samples, sampleRate: TARGET_SAMPLE_RATE, channels: 1 };
 }
 
 // Voice Activity Detection (VAD) - finds regions with speech
@@ -290,6 +366,7 @@ interface ProcessingState {
   recording_id: string;
   audio_url: string;
   timestamp: string;
+  format: 'wav' | 'mp3';
   header: {
     sampleRate: number;
     channels: number;
@@ -297,6 +374,9 @@ interface ProcessingState {
     dataOffset: number;
     dataSize: number;
   };
+  // For MP3: pre-decoded samples
+  mp3Samples?: number[];
+  mp3SampleIndex?: number;
   bytesProcessed: number;
   srcIdx: number;
   outputSampleIdx: number;
@@ -343,120 +423,126 @@ serve(async (req) => {
       // Update status to processing
       await supabase.from('voice_recordings').update({ status: 'processing' }).eq('id', recording_id);
 
-      // Fetch just the header first
+      // Fetch header to detect format
       const headerResponse = await fetch(audio_url, {
         headers: { 'Range': 'bytes=0-1023' }
       });
       
-      if (!headerResponse.ok) {
+      if (!headerResponse.ok && headerResponse.status !== 206) {
         throw new Error(`Failed to fetch audio header: ${headerResponse.status}`);
       }
 
       const headerBytes = new Uint8Array(await headerResponse.arrayBuffer());
-      const header = parseWavHeader(headerBytes);
+      const audioFormat = detectAudioFormat(headerBytes);
       
-      if (!header) {
-        throw new Error('Invalid WAV file');
+      console.log(`Detected audio format: ${audioFormat}`);
+
+      if (audioFormat === 'mp3') {
+        // For MP3: fetch entire file and decode
+        console.log('Fetching entire MP3 file for decoding...');
+        const fullResponse = await fetch(audio_url);
+        if (!fullResponse.ok) {
+          throw new Error(`Failed to fetch MP3: ${fullResponse.status}`);
+        }
+        const mp3Buffer = await fullResponse.arrayBuffer();
+        console.log(`MP3 file size: ${mp3Buffer.byteLength} bytes`);
+        
+        const { samples } = await decodeMp3ToPcm(mp3Buffer);
+        
+        // Create state with pre-decoded samples
+        state = {
+          recording_id,
+          audio_url,
+          timestamp: new Date().toISOString().replace(/[:.]/g, '-'),
+          format: 'mp3',
+          header: {
+            sampleRate: TARGET_SAMPLE_RATE,
+            channels: 1,
+            bitsPerSample: 16,
+            dataOffset: 0,
+            dataSize: samples.length * 2,
+          },
+          mp3Samples: Array.from(samples),
+          mp3SampleIndex: 0,
+          bytesProcessed: 0,
+          srcIdx: 0,
+          outputSampleIdx: 0,
+          chunkIndex: 0,
+          uploadedChunks: [],
+          snrDb: null,
+          snrSamples: []
+        };
+        
+        console.log(`MP3 decoded to ${samples.length} samples, ready for chunking`);
+      } else if (audioFormat === 'wav') {
+        const header = parseWavHeader(headerBytes);
+        
+        if (!header) {
+          throw new Error('Invalid WAV file');
+        }
+
+        console.log(`WAV Audio: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit, data at ${header.dataOffset}, size ${header.dataSize}`);
+
+        state = {
+          recording_id,
+          audio_url,
+          timestamp: new Date().toISOString().replace(/[:.]/g, '-'),
+          format: 'wav',
+          header,
+          bytesProcessed: 0,
+          srcIdx: 0,
+          outputSampleIdx: 0,
+          chunkIndex: 0,
+          uploadedChunks: [],
+          snrDb: null,
+          snrSamples: []
+        };
+      } else {
+        throw new Error(`Unsupported audio format. Expected WAV or MP3.`);
       }
-
-      console.log(`Audio: ${header.sampleRate}Hz, ${header.channels}ch, ${header.bitsPerSample}bit, data at ${header.dataOffset}, size ${header.dataSize}`);
-
-      state = {
-        recording_id,
-        audio_url,
-        timestamp: new Date().toISOString().replace(/[:.]/g, '-'),
-        header,
-        bytesProcessed: 0,
-        srcIdx: 0,
-        outputSampleIdx: 0,
-        chunkIndex: 0,
-        uploadedChunks: [],
-        snrDb: null,
-        snrSamples: []
-      };
     }
 
     const { header } = state;
-    const ratio = header.sampleRate / TARGET_SAMPLE_RATE;
-    const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
     const snrSampleTarget = TARGET_SAMPLE_RATE * 5; // 5 seconds for SNR
 
-    // Calculate how much data to fetch this iteration
-    // Fetch ~30 seconds of source audio at a time
-    const bytesPerSecondSource = header.sampleRate * bytesPerFrame;
-    const bytesToFetch = bytesPerSecondSource * 30;
-    
-    const rangeStart = header.dataOffset + state.bytesProcessed;
-    const rangeEnd = Math.min(
-      rangeStart + bytesToFetch - 1,
-      header.dataOffset + header.dataSize - 1
-    );
+    // Handle MP3 (already decoded) vs WAV (streaming)
+    if (state.format === 'mp3' && state.mp3Samples) {
+      // MP3 is already decoded - process samples directly
+      const samples = state.mp3Samples;
+      const mp3SampleIndex = state.mp3SampleIndex || 0;
+      let chunkSamples: number[] = [];
+      let currentIndex = mp3SampleIndex;
 
-    if (rangeStart > header.dataOffset + header.dataSize) {
-      // All data processed, finalize
-      return await finalizeProcessing(supabase, state);
-    }
+      while (currentIndex < samples.length) {
+        // Check if we're running out of time
+        if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
+          console.log(`Time limit approaching at chunk ${state.chunkIndex}. Uploading partial audio and continuing...`);
 
-    console.log(`Fetching bytes ${rangeStart}-${rangeEnd}`);
-    
-    const audioResponse = await fetch(state.audio_url, {
-      headers: { 'Range': `bytes=${rangeStart}-${rangeEnd}` }
-    });
+          if (chunkSamples.length > 0) {
+            await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+            chunkSamples = [];
+          }
 
-    if (!audioResponse.ok && audioResponse.status !== 206) {
-      throw new Error(`Failed to fetch audio chunk: ${audioResponse.status}`);
-    }
+          state.mp3SampleIndex = currentIndex;
 
-    const audioData = new Uint8Array(await audioResponse.arrayBuffer());
-    console.log(`Fetched ${audioData.length} bytes`);
+          await scheduleContinuation(supabase, state);
 
-    // Process audio data
-    const view = new DataView(audioData.buffer, audioData.byteOffset, audioData.byteLength);
-    let frameOffset = 0;
-    let chunkSamples: number[] = [];
-
-    while (frameOffset + bytesPerFrame <= audioData.length) {
-      // Check if we're running out of time
-      if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
-        console.log(`Time limit approaching at chunk ${state.chunkIndex}. Uploading partial audio and continuing...`);
-
-        // Upload partial samples so we don't lose progress between invocations
-        if (chunkSamples.length > 0) {
-          await uploadChunk(supabase, state, new Int16Array(chunkSamples));
-          chunkSamples = [];
+          return new Response(
+            JSON.stringify({
+              status: 'processing',
+              chunks_completed: state.uploadedChunks.length,
+              message: 'Continuing in next invocation'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        state.bytesProcessed += frameOffset;
-
-        // Schedule continuation
-        await scheduleContinuation(supabase, state);
-
-        return new Response(
-          JSON.stringify({
-            status: 'processing',
-            chunks_completed: state.uploadedChunks.length,
-            message: 'Continuing in next invocation'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const targetOutputIdx = Math.floor(state.srcIdx / ratio);
-
-      if (targetOutputIdx > state.outputSampleIdx) {
-        // Mix channels to mono
-        let sample = 0;
-        for (let ch = 0; ch < header.channels; ch++) {
-          sample += view.getInt16(frameOffset + ch * 2, true);
-        }
-        const monoSample = Math.round(sample / header.channels);
-
-        chunkSamples.push(monoSample);
-        state.outputSampleIdx++;
+        const sample = samples[currentIndex];
+        chunkSamples.push(sample);
 
         // Collect SNR samples
         if (state.snrSamples.length < snrSampleTarget) {
-          state.snrSamples.push(monoSample);
+          state.snrSamples.push(sample);
         }
 
         // Check if chunk is complete
@@ -464,41 +550,128 @@ serve(async (req) => {
           await uploadChunk(supabase, state, new Int16Array(chunkSamples));
           chunkSamples = [];
         }
+
+        currentIndex++;
       }
 
-      state.srcIdx++;
-      frameOffset += bytesPerFrame;
-    }
+      // Upload final partial chunk
+      if (chunkSamples.length > 0) {
+        await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+      }
 
-    // Update bytes processed
-    state.bytesProcessed += frameOffset;
-
-    // Upload any partial chunk at the end of this invocation (avoids losing samples)
-    if (chunkSamples.length > 0) {
-      await uploadChunk(supabase, state, new Int16Array(chunkSamples));
-      chunkSamples = [];
-    }
-
-    // Check if we've processed all data
-    const isComplete = state.bytesProcessed >= header.dataSize;
-
-    if (isComplete) {
+      state.mp3SampleIndex = currentIndex;
       return await finalizeProcessing(supabase, state);
+
+    } else {
+      // WAV: streaming processing
+      const ratio = header.sampleRate / TARGET_SAMPLE_RATE;
+      const bytesPerFrame = header.channels * (header.bitsPerSample / 8);
+
+      // Calculate how much data to fetch this iteration
+      const bytesPerSecondSource = header.sampleRate * bytesPerFrame;
+      const bytesToFetch = bytesPerSecondSource * 30;
+      
+      const rangeStart = header.dataOffset + state.bytesProcessed;
+      const rangeEnd = Math.min(
+        rangeStart + bytesToFetch - 1,
+        header.dataOffset + header.dataSize - 1
+      );
+
+      if (rangeStart > header.dataOffset + header.dataSize) {
+        return await finalizeProcessing(supabase, state);
+      }
+
+      console.log(`Fetching bytes ${rangeStart}-${rangeEnd}`);
+      
+      const audioResponse = await fetch(state.audio_url, {
+        headers: { 'Range': `bytes=${rangeStart}-${rangeEnd}` }
+      });
+
+      if (!audioResponse.ok && audioResponse.status !== 206) {
+        throw new Error(`Failed to fetch audio chunk: ${audioResponse.status}`);
+      }
+
+      const audioData = new Uint8Array(await audioResponse.arrayBuffer());
+      console.log(`Fetched ${audioData.length} bytes`);
+
+      const view = new DataView(audioData.buffer, audioData.byteOffset, audioData.byteLength);
+      let frameOffset = 0;
+      let chunkSamples: number[] = [];
+
+      while (frameOffset + bytesPerFrame <= audioData.length) {
+        if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
+          console.log(`Time limit approaching at chunk ${state.chunkIndex}. Uploading partial audio and continuing...`);
+
+          if (chunkSamples.length > 0) {
+            await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+            chunkSamples = [];
+          }
+
+          state.bytesProcessed += frameOffset;
+
+          await scheduleContinuation(supabase, state);
+
+          return new Response(
+            JSON.stringify({
+              status: 'processing',
+              chunks_completed: state.uploadedChunks.length,
+              message: 'Continuing in next invocation'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const targetOutputIdx = Math.floor(state.srcIdx / ratio);
+
+        if (targetOutputIdx > state.outputSampleIdx) {
+          let sample = 0;
+          for (let ch = 0; ch < header.channels; ch++) {
+            sample += view.getInt16(frameOffset + ch * 2, true);
+          }
+          const monoSample = Math.round(sample / header.channels);
+
+          chunkSamples.push(monoSample);
+          state.outputSampleIdx++;
+
+          if (state.snrSamples.length < snrSampleTarget) {
+            state.snrSamples.push(monoSample);
+          }
+
+          if (chunkSamples.length >= SAMPLES_PER_CHUNK) {
+            await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+            chunkSamples = [];
+          }
+        }
+
+        state.srcIdx++;
+        frameOffset += bytesPerFrame;
+      }
+
+      state.bytesProcessed += frameOffset;
+
+      if (chunkSamples.length > 0) {
+        await uploadChunk(supabase, state, new Int16Array(chunkSamples));
+      }
+
+      const isComplete = state.bytesProcessed >= header.dataSize;
+
+      if (isComplete) {
+        return await finalizeProcessing(supabase, state);
+      }
+
+      await scheduleContinuation(supabase, state);
+
+      return new Response(
+        JSON.stringify({
+          status: 'processing',
+          chunks_completed: state.uploadedChunks.length,
+          bytes_processed: state.bytesProcessed,
+          total_bytes: header.dataSize,
+          progress: Math.round(state.bytesProcessed / header.dataSize * 100)
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    // Need to continue processing
-    await scheduleContinuation(supabase, state);
-
-    return new Response(
-      JSON.stringify({
-        status: 'processing',
-        chunks_completed: state.uploadedChunks.length,
-        bytes_processed: state.bytesProcessed,
-        total_bytes: header.dataSize,
-        progress: Math.round(state.bytesProcessed / header.dataSize * 100)
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
 
   } catch (error) {
     console.error('Error processing audio:', error);
