@@ -334,7 +334,7 @@ serve(async (req) => {
       const { formatted: formattedSegments, mapping: speakerMapping } = formatSegmentsForExport(segments);
       
       const hasSpeakers = formattedSegments.length > 0;
-      const jsonTranscription = hasSpeakers ? JSON.stringify(formattedSegments) : merged;
+      const jsonTranscription = hasSpeakers ? stringifySegments(formattedSegments) : merged;
       const readableTranscription = hasSpeakers 
         ? formattedSegments.map(seg => `[${seg.speaker}]: ${seg.text}`).join('\n\n')
         : merged;
@@ -496,8 +496,8 @@ async function processFullMode(
   const segments = wordsToSegments(words);
   const { formatted: formattedSegments, mapping: speakerMapping } = formatSegmentsForExport(segments);
 
-  // Create JSON transcription
-  const jsonTranscription = JSON.stringify(formattedSegments);
+  // Create JSON transcription with guaranteed property order
+  const jsonTranscription = stringifySegments(formattedSegments);
 
   // Create readable transcription
   const readableTranscription = formattedSegments
@@ -696,6 +696,17 @@ async function transcribeWithElevenLabsDiarized(params: {
   }
 
   return await response.json();
+}
+
+// Stringify segments with guaranteed property order: start, end, speaker, text
+function stringifySegments(segments: FormattedSegment[], pretty = false): string {
+  const ordered = segments.map(seg => ({
+    start: seg.start,
+    end: seg.end,
+    speaker: seg.speaker,
+    text: seg.text,
+  }));
+  return pretty ? JSON.stringify(ordered, null, 2) : JSON.stringify(ordered);
 }
 
 // Format seconds to "M:SS" or "H:MM:SS" for longer durations
