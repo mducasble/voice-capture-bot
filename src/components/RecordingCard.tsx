@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -66,6 +66,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const speakerTranscription = (recording.metadata as { speaker_transcription?: string })?.speaker_transcription;
   const readableSpeakerTranscription = (recording.metadata as { readable_transcription?: string })?.readable_transcription;
   const speakers = (recording.metadata as { speakers?: { username: string }[] })?.speakers;
+  const geminiSegments = (recording.metadata as { gemini_segments?: { start: string; end: string; speaker: string; text: string }[] })?.gemini_segments;
 
   const speakerTranscriptText = (() => {
     if (readableSpeakerTranscription) return readableSpeakerTranscription;
@@ -444,9 +445,33 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       )}
                     </div>
                   )}
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
-                    <p className="whitespace-pre-wrap">{recording.transcription || 'Processando...'}</p>
-                  </div>
+                  
+                  {/* Display segments with timestamps if available, otherwise plain text */}
+                  {geminiSegments && geminiSegments.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="bg-muted/50 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto space-y-2">
+                        {geminiSegments.map((seg, i) => (
+                          <div key={i} className="border-l-2 border-primary/40 pl-2">
+                            <span className="text-xs text-muted-foreground">[{seg.start} - {seg.end}]</span>
+                            <p className="whitespace-pre-wrap">{seg.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <JsonPreviewDialog
+                        segments={geminiSegments}
+                        filename={`gemini_${recording.id.split('-')[0]}.json`}
+                      >
+                        <Button variant="outline" size="sm" className="w-full text-xs">
+                          <FileJson className="h-3 w-3 mr-1" />
+                          Ver/Baixar JSON (Gemini)
+                        </Button>
+                      </JsonPreviewDialog>
+                    </div>
+                  ) : (
+                    <div className="bg-muted/50 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
+                      <p className="whitespace-pre-wrap">{recording.transcription || 'Processando...'}</p>
+                    </div>
+                  )}
                 </CollapsibleContent>
               </Collapsible>
             )}

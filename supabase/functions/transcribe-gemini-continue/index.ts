@@ -19,6 +19,25 @@ interface GeminiChunkState {
   lockedAt: string | null;
 }
 
+interface TranscriptionSegment {
+  start: string;
+  end: string;
+  speaker: string;
+  text: string;
+}
+
+const CHUNK_DURATION_SECONDS = 30;
+
+function formatTimestamp(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -137,25 +156,62 @@ serve(async (req) => {
 
     // Check if all chunks are done
     if (state.nextIndex >= state.chunkUrls.length) {
-      // Combine transcriptions
+      // Combine transcriptions into plain text
       const fullTranscription = state.transcriptions.filter(t => t).join('\n\n');
+      
+      // Build segments with timestamps based on chunk positions
+      const segments: TranscriptionSegment[] = [];
+      for (let i = 0; i < state.transcriptions.length; i++) {
+        const text = state.transcriptions[i]?.trim();
+        if (!text) continue;
+        
+        const startSeconds = i * CHUNK_DURATION_SECONDS;
+        const endSeconds = (i + 1) * CHUNK_DURATION_SECONDS;
+        
+        segments.push({
+          start: formatTimestamp(startSeconds),
+          end: formatTimestamp(endSeconds),
+          speaker: "speaker A", // Single speaker for individual tracks
+          text: text
+        });
+      }
+      
+      // Prepare metadata with segments
+      const updatedMetadata: Record<string, unknown> = {
+        gemini_segments: segments,
+        gemini_completed_at: new Date().toISOString()
+      };
+
+      // First fetch current metadata to merge
+      const { data: currentRec } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', recording_id)
+        .single();
+      
+      const mergedMetadata = {
+        ...(currentRec?.metadata || {}),
+        ...updatedMetadata
+      };
 
       await supabase.from('voice_recordings')
         .update({
           transcription: fullTranscription,
           transcription_status: fullTranscription ? 'completed' : 'failed',
           language: state.detectedLanguage?.toLowerCase() || recording.language,
-          gemini_chunk_state: null // Clear state when done
+          gemini_chunk_state: null, // Clear state when done
+          metadata: mergedMetadata
         })
         .eq('id', recording_id);
 
-      console.log(`Transcription complete: ${fullTranscription.length} chars`);
+      console.log(`Transcription complete: ${fullTranscription.length} chars, ${segments.length} segments`);
 
       return new Response(
         JSON.stringify({
           success: true,
           transcription_length: fullTranscription.length,
-          chunks_processed: state.chunkUrls.length
+          chunks_processed: state.chunkUrls.length,
+          segments_count: segments.length
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
