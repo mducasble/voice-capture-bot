@@ -18,7 +18,6 @@ interface AggregationState {
   current_speaker?: string;
   current_chunk?: number;
   total_chunks?: number;
-  processed_chunks_total?: number;
   speakers?: SpeakerMeta[];
   message?: string;
   updated_at?: string;
@@ -160,11 +159,6 @@ export function SpeakerAggregationProgress({ recording }: SpeakerAggregationProg
             {aggregationState.current_chunk !== undefined && aggregationState.total_chunks !== undefined && (
               <span className="ml-auto">
                 chunk {aggregationState.current_chunk}/{aggregationState.total_chunks}
-                {aggregationState.processed_chunks_total !== undefined && (
-                  <span className="text-muted-foreground/60 ml-1">
-                    (total: {aggregationState.processed_chunks_total})
-                  </span>
-                )}
               </span>
             )}
           </div>

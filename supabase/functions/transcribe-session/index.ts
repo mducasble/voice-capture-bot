@@ -462,36 +462,10 @@ async function scheduleContinuation(
 
       const existingMetadata = (mixedRec?.metadata as Record<string, unknown> | null) ?? {};
       
-      // Get existing aggregation state to preserve cumulative chunk progress
-      const existingAggState = existingMetadata?.aggregation_state as Record<string, unknown> | undefined;
-      const existingProcessedChunks = (existingAggState?.processed_chunks_total as number) || 0;
-      
-      // Calculate total chunks processed across all speakers
-      let processedChunksTotal = existingProcessedChunks;
-      let currentChunkInTrack = state.current_track?.nextIndex || 0;
-      let totalChunksInTrack = state.current_track?.chunkUrls?.length || 0;
-      
-      // If we're on a new speaker (nextIndex is 0 or very low compared to existing), 
-      // don't reset - keep the accumulated count
-      // Only add new chunks when we're actually making progress in current track
-      if (state.current_track) {
-        // If this is a fresh track start (nextIndex near start), preserve existing total
-        // Otherwise, this is mid-track progress
-        const currentSpeaker = state.current_track.speaker;
-        const previousSpeaker = existingAggState?.current_speaker as string | undefined;
-        
-        if (currentSpeaker !== previousSpeaker) {
-          // New speaker - don't reset accumulated count, it's already correct
-          // processedChunksTotal stays as existingProcessedChunks
-        } else {
-          // Same speaker, progressing - update based on actual progress
-          const previousChunkIndex = (existingAggState?.current_chunk as number) || 0;
-          const chunksProgressedThisBatch = currentChunkInTrack - previousChunkIndex;
-          if (chunksProgressedThisBatch > 0) {
-            processedChunksTotal = existingProcessedChunks + chunksProgressedThisBatch;
-          }
-        }
-      }
+      // Calculate absolute progress - NOT incremental
+      // Current track progress
+      const currentChunkInTrack = state.current_track?.nextIndex || 0;
+      const totalChunksInTrack = state.current_track?.chunkUrls?.length || 0;
       
       await supabase
         .from('voice_recordings')
@@ -505,7 +479,6 @@ async function scheduleContinuation(
               current_speaker: state.current_track?.speaker || null,
               current_chunk: currentChunkInTrack,
               total_chunks: totalChunksInTrack,
-              processed_chunks_total: processedChunksTotal,
               speakers: state.speaker_meta,
               updated_at: new Date().toISOString()
             }
