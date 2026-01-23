@@ -48,11 +48,16 @@ export function useRegenerateJson() {
 
       const jsonTranscription = JSON.stringify(orderedSegments);
 
-      // Update the transcription_elevenlabs field
+      // Update both transcription_elevenlabs (string) AND speaker_segments (array)
+      // so the UI/export always uses the corrected structure.
       const { error: updateError } = await supabase
         .from("voice_recordings")
         .update({
           transcription_elevenlabs: jsonTranscription,
+          metadata: {
+            ...(metadata ?? {}),
+            speaker_segments: orderedSegments,
+          },
         })
         .eq("id", recordingId);
 

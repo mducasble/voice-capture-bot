@@ -42,7 +42,15 @@ export function JsonPreviewDialog({
   }, [segments, showAll]);
 
   const jsonContent = useMemo(() => {
-    return JSON.stringify(segments, null, 2);
+    // Force a stable key order in the exported JSON: start, end, speaker, text
+    // (JS object serialization order is not reliable across runtimes)
+    const ordered = segments.map((seg) => ({
+      start: seg.start,
+      end: seg.end,
+      speaker: seg.speaker,
+      text: seg.text,
+    }));
+    return JSON.stringify(ordered, null, 2);
   }, [segments]);
 
   const handleCopy = async () => {
