@@ -227,6 +227,11 @@ serve(async (req) => {
     const newParts: string[] = [];
     const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
 
+    // Track words across all chunks for diarization
+    const allWords: ElevenLabsWord[] = [];
+    // Get timing offset from chunk index (each chunk ~30 seconds)
+    const CHUNK_DURATION_SECONDS = 30;
+
     for (let i = start; i < end; i++) {
       const name = chunkState.chunkNames[i];
       const chunkUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/voice-recordings/chunks/${name}`;
@@ -240,14 +245,28 @@ serve(async (req) => {
 
       try {
         const blob = await safeFetchBlob(chunkUrl, MAX_UPLOAD_BYTES);
-        const t = await transcribeWithElevenLabs({
+        const result = await transcribeWithElevenLabsDiarized({
           audioBlob: blob,
           filename: chunkFilename,
           mimeType: chunkMimeType,
           apiKey: ELEVENLABS_API_KEY,
           language: recording.language ?? undefined,
         });
-        if (t?.trim()) newParts.push(t.trim());
+        
+        // Add words with adjusted timestamps for chunk offset
+        const chunkOffset = i * CHUNK_DURATION_SECONDS;
+        if (result.words && result.words.length > 0) {
+          for (const word of result.words) {
+            allWords.push({
+              text: word.text,
+              start: word.start + chunkOffset,
+              end: word.end + chunkOffset,
+              speaker: word.speaker,
+            });
+          }
+        }
+        
+        if (result.text?.trim()) newParts.push(result.text.trim());
       } catch (e: any) {
         console.error(`Chunk failed: ${name}`, e);
         
@@ -291,23 +310,60 @@ serve(async (req) => {
     const newText = newParts.join(" ");
     const merged = existing.trim() ? `${existing.trim()} ${newText}` : newText;
 
+    // Get existing metadata to accumulate words across invocations
+    const { data: currentRecData } = await supabase
+      .from("voice_recordings")
+      .select("metadata")
+      .eq("id", recording_id)
+      .single();
+    
+    const existingMeta = (currentRecData?.metadata as Record<string, unknown> | null) ?? {};
+    const existingWords = (existingMeta.accumulated_words as ElevenLabsWord[] | null) ?? [];
+    const accumulatedWords = [...existingWords, ...allWords];
+
     if (end >= chunkState.chunkNames.length) {
-      // Completed - clear state and release lock
+      // Completed - process all accumulated words into speaker segments
+      const segments = wordsToSegments(accumulatedWords);
+      const { formatted: formattedSegments, mapping: speakerMapping } = formatSegmentsForExport(segments);
+      
+      const hasSpeakers = formattedSegments.length > 0;
+      const jsonTranscription = hasSpeakers ? JSON.stringify(formattedSegments) : merged;
+      const readableTranscription = hasSpeakers 
+        ? formattedSegments.map(seg => `[${seg.speaker}]: ${seg.text}`).join('\n\n')
+        : merged;
+
+      // Clear accumulated words and state, save final results
       await supabase
         .from("voice_recordings")
         .update({
-          transcription_elevenlabs: merged,
+          transcription_elevenlabs: jsonTranscription,
           transcription_elevenlabs_status: merged.trim() ? "completed" : "failed",
-          elevenlabs_chunk_state: null, // Clear state on completion
+          elevenlabs_chunk_state: null,
+          metadata: {
+            ...existingMeta,
+            accumulated_words: null, // Clear accumulated words
+            speaker_segments: hasSpeakers ? formattedSegments : undefined,
+            speaker_mapping: hasSpeakers ? speakerMapping : undefined,
+            readable_transcription: hasSpeakers ? readableTranscription : undefined,
+            transcribed_at: new Date().toISOString(),
+          },
         })
         .eq("id", recording_id);
 
-      console.log(`ElevenLabs chunks completed for ${recording_id}`);
-      return json({ success: true, recording_id, mode: "chunks", done: true });
+      console.log(`ElevenLabs chunks completed for ${recording_id} with ${formattedSegments.length} speaker segments`);
+      return json({ 
+        success: true, 
+        recording_id, 
+        mode: "chunks", 
+        done: true,
+        diarized: hasSpeakers,
+        speaker_count: Object.keys(speakerMapping).length,
+        segment_count: formattedSegments.length,
+      });
     }
 
     // Update state with new progress and RELEASE lock (continuation will re-acquire).
-    // Keeping the lock here causes the self-scheduled continuation to immediately hit "locked" and stall.
+    // Also save accumulated words for final diarization processing.
     const nextState: ChunkState = {
       chunkNames: chunkState.chunkNames,
       nextIndex: end,
@@ -319,6 +375,10 @@ serve(async (req) => {
       .update({
         transcription_elevenlabs: merged,
         elevenlabs_chunk_state: nextState,
+        metadata: {
+          ...existingMeta,
+          accumulated_words: accumulatedWords, // Save words for final diarization
+        },
       })
       .eq("id", recording_id);
 
