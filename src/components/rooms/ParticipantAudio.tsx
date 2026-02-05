@@ -32,7 +32,7 @@ export const ParticipantAudio = ({
 
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
 
-  // Audio level visualization (separate from recording)
+  // Audio level visualization (separate from recording) - with gain applied
   useEffect(() => {
     if (!stream) return;
 
@@ -42,7 +42,13 @@ export const ParticipantAudio = ({
     analyserRef.current = analyser;
     
     const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
+    
+    // Apply same gain as recording for accurate level display
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 5.0; // Match recording gain
+    
+    source.connect(gainNode);
+    gainNode.connect(analyser);
     
     analyser.fftSize = 256;
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
