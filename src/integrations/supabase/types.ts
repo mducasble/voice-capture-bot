@@ -336,6 +336,80 @@ export type Database = {
         }
         Relationships: []
       }
+      room_participants: {
+        Row: {
+          id: string
+          is_connected: boolean | null
+          is_creator: boolean | null
+          joined_at: string
+          left_at: string | null
+          name: string
+          room_id: string
+        }
+        Insert: {
+          id?: string
+          is_connected?: boolean | null
+          is_creator?: boolean | null
+          joined_at?: string
+          left_at?: string | null
+          name: string
+          room_id: string
+        }
+        Update: {
+          id?: string
+          is_connected?: boolean | null
+          is_creator?: boolean | null
+          joined_at?: string
+          left_at?: string | null
+          name?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          creator_name: string
+          id: string
+          is_recording: boolean | null
+          recording_started_at: string | null
+          room_name: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_name: string
+          id?: string
+          is_recording?: boolean | null
+          recording_started_at?: string | null
+          room_name?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_name?: string
+          id?: string
+          is_recording?: boolean | null
+          recording_started_at?: string | null
+          room_name?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       voice_recordings: {
         Row: {
           bit_depth: number | null

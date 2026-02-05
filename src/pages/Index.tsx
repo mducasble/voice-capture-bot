@@ -73,6 +73,12 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="default" asChild>
+              <Link to="/rooms" className="flex items-center gap-2">
+                <Radio className="h-4 w-4" />
+                Salas de Áudio
+              </Link>
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/campaigns" className="flex items-center gap-2">
                 <FolderOpen className="h-4 w-4" />
