@@ -927,155 +927,28 @@ async function finalizeProcessing(
   );
 }
 
-const GEMINI_CHUNKS_PER_INVOCATION = 5;
-const GEMINI_LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-
-interface GeminiChunkState {
-  chunkUrls: { url: string; index: number }[];
-  nextIndex: number;
-  transcriptions: string[];
-  detectedLanguage: string | null;
-  lockedAt: string | null;
-}
-
+// Simplified: just trigger transcribe-gemini-continue
 // deno-lint-ignore no-explicit-any
 async function transcribeChunksWithRetry(
   supabase: any,
   recording_id: string
 ) {
   try {
-    // Fetch current state
-    const { data: recording, error: fetchError } = await supabase
-      .from('voice_recordings')
-      .select('gemini_chunk_state, transcription, transcription_status')
-      .eq('id', recording_id)
-      .single();
-
-    if (fetchError || !recording) {
-      console.error('Failed to fetch recording:', fetchError);
-      return;
-    }
-
-    let state: GeminiChunkState = recording.gemini_chunk_state;
+    // Simply invoke transcribe-gemini-continue which handles everything
+    console.log(`Triggering transcribe-gemini-continue for ${recording_id}`);
     
-    if (!state || !state.chunkUrls || state.chunkUrls.length === 0) {
-      console.log('No chunks to transcribe');
+    const { error } = await supabase.functions.invoke('transcribe-gemini-continue', {
+      body: { recording_id }
+    });
+
+    if (error) {
+      console.error('Failed to trigger transcription:', error);
       await supabase.from('voice_recordings')
         .update({ transcription_status: 'failed' })
         .eq('id', recording_id);
-      return;
     }
-
-    // Check if locked by another process
-    if (state.lockedAt) {
-      const lockAge = Date.now() - new Date(state.lockedAt).getTime();
-      if (lockAge < GEMINI_LOCK_TIMEOUT_MS) {
-        console.log(`Recording is locked (${Math.round(lockAge / 1000)}s old), skipping`);
-        return;
-      }
-      console.log(`Lock expired (${Math.round(lockAge / 1000)}s old), taking over`);
-    }
-
-    // Acquire lock
-    state.lockedAt = new Date().toISOString();
-    await supabase.from('voice_recordings')
-      .update({
-        gemini_chunk_state: state,
-        transcription_status: 'processing'
-      })
-      .eq('id', recording_id);
-
-    // Process chunks
-    const startIdx = state.nextIndex;
-    const endIdx = Math.min(startIdx + GEMINI_CHUNKS_PER_INVOCATION, state.chunkUrls.length);
-
-    console.log(`Processing Gemini chunks ${startIdx}-${endIdx - 1} of ${state.chunkUrls.length}`);
-
-    for (let i = startIdx; i < endIdx; i++) {
-      const chunk = state.chunkUrls[i];
-      console.log(`Transcribing chunk ${chunk.index}...`);
-
-      try {
-        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-          body: {
-            recording_id: `${recording_id}_chunk_${chunk.index}`,
-            audio_url: chunk.url,
-            language: state.detectedLanguage,
-          },
-        });
-
-        if (error) {
-          console.error(`Chunk ${chunk.index} transcription failed:`, error);
-          state.transcriptions.push(''); // Placeholder for failed chunk
-          continue;
-        }
-
-        const chunkData = (data || {}) as { transcription?: string; detected_language?: string };
-
-        state.transcriptions.push(chunkData.transcription || '');
-        
-        if (!state.detectedLanguage && chunkData.detected_language) {
-          state.detectedLanguage = chunkData.detected_language;
-        }
-
-        console.log(`Chunk ${chunk.index} transcribed: ${chunkData.transcription?.length || 0} chars`);
-      } catch (chunkError) {
-        console.error(`Chunk ${chunk.index} error:`, chunkError);
-        state.transcriptions.push(''); // Placeholder for failed chunk
-      }
-    }
-
-    state.nextIndex = endIdx;
-
-    // Check if all chunks are done
-    if (state.nextIndex >= state.chunkUrls.length) {
-      // Combine transcriptions
-      const fullTranscription = state.transcriptions.filter(t => t).join('\n\n');
-      
-      await supabase.from('voice_recordings')
-        .update({
-          transcription: fullTranscription,
-          transcription_status: fullTranscription ? 'completed' : 'failed',
-          language: state.detectedLanguage?.toLowerCase() || null,
-          gemini_chunk_state: null // Clear state when done
-        })
-        .eq('id', recording_id);
-
-      console.log(`Transcription complete: ${fullTranscription.length} chars, language: ${state.detectedLanguage}`);
-    } else {
-      // Save progress and continue
-      state.lockedAt = null; // Release lock before continuation
-      
-      // Save intermediate transcription
-      const partialTranscription = state.transcriptions.filter(t => t).join('\n\n');
-      
-      await supabase.from('voice_recordings')
-        .update({
-          gemini_chunk_state: state,
-          transcription: partialTranscription
-        })
-        .eq('id', recording_id);
-
-      console.log(`Saved progress at chunk ${state.nextIndex}, scheduling continuation...`);
-
-      // Schedule continuation
-      const invokePromise = supabase.functions.invoke('transcribe-gemini-continue', {
-        body: { recording_id }
-      });
-
-      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-        // @ts-ignore
-        EdgeRuntime.waitUntil(
-          invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err))
-        );
-      } else {
-        await invokePromise.catch((err: unknown) => console.error("Failed to schedule continuation:", err));
-      }
-    }
-
   } catch (error) {
-    console.error('Transcription failed:', error);
+    console.error('Transcription trigger failed:', error);
     await supabase.from('voice_recordings')
       .update({ transcription_status: 'failed' })
       .eq('id', recording_id);
