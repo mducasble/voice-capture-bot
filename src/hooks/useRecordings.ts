@@ -11,6 +11,7 @@ interface GeminiChunkState {
   chunkUrls: { url: string; index: number }[];
   nextIndex: number;
   transcriptions: string[];
+  chunkSegments?: { start: string; end: string; speaker: string; text: string }[][];
   detectedLanguage: string | null;
   lockedAt: string | null;
 }
