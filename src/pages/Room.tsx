@@ -70,6 +70,45 @@ const Room = () => {
     fetchRoom();
   }, [roomId, navigate]);
 
+  // Check if current user is the creator and auto-connect
+  useEffect(() => {
+    if (!roomId || !room) return;
+
+    const checkCreatorParticipant = async () => {
+      // Check if there's a creator participant that matches the room creator
+      const { data: creatorParticipant } = await supabase
+        .from("room_participants")
+        .select("*")
+        .eq("room_id", roomId)
+        .eq("is_creator", true)
+        .single();
+
+      if (creatorParticipant && !currentParticipant) {
+        // Store creator name in sessionStorage to recognize them
+        const storedCreatorId = sessionStorage.getItem(`room_${roomId}_participant`);
+        if (storedCreatorId === creatorParticipant.id) {
+          // This is the creator returning - auto-connect them
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+              audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+                sampleRate: 48000,
+              } 
+            });
+            mediaStreamRef.current = stream;
+            setCurrentParticipant(creatorParticipant as Participant);
+          } catch (error) {
+            console.error("Error getting microphone:", error);
+          }
+        }
+      }
+    };
+
+    checkCreatorParticipant();
+  }, [roomId, room, currentParticipant]);
+
   // Fetch and subscribe to participants
   useEffect(() => {
     if (!roomId) return;
@@ -129,12 +168,13 @@ const Room = () => {
     };
   }, [room?.is_recording, room?.recording_started_at]);
 
-  // Handle joining room
-  const handleJoin = async () => {
-    if (!joinName.trim() || !roomId) {
+  // Handle joining room (for non-creators or creator first time)
+  const handleJoin = async (asCreator = false) => {
+    if (!asCreator && !joinName.trim()) {
       toast.error("Digite seu nome");
       return;
     }
+    if (!roomId) return;
 
     setIsJoining(true);
     try {
@@ -149,7 +189,25 @@ const Room = () => {
       });
       mediaStreamRef.current = stream;
 
-      // Add participant to database
+      if (asCreator) {
+        // Creator joining - find their existing participant record
+        const { data: creatorParticipant } = await supabase
+          .from("room_participants")
+          .select("*")
+          .eq("room_id", roomId)
+          .eq("is_creator", true)
+          .single();
+
+        if (creatorParticipant) {
+          // Store in sessionStorage for reconnection
+          sessionStorage.setItem(`room_${roomId}_participant`, creatorParticipant.id);
+          setCurrentParticipant(creatorParticipant as Participant);
+          toast.success("Conectado à sala!");
+          return;
+        }
+      }
+
+      // Add new participant to database
       const { data, error } = await supabase
         .from("room_participants")
         .insert({
@@ -162,6 +220,8 @@ const Room = () => {
 
       if (error) throw error;
 
+      // Store in sessionStorage for reconnection
+      sessionStorage.setItem(`room_${roomId}_participant`, data.id);
       setCurrentParticipant(data as Participant);
       toast.success("Conectado à sala!");
     } catch (error: any) {
@@ -257,6 +317,9 @@ const Room = () => {
     );
   }
 
+  // Check if user might be the creator
+  const isCreatorName = room.creator_name;
+
   // Join screen
   if (!currentParticipant) {
     return (
@@ -272,21 +335,41 @@ const Room = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Creator quick join button */}
+            <Button 
+              className="w-full" 
+              variant="default"
+              onClick={() => handleJoin(true)}
+              disabled={isJoining}
+            >
+              {isJoining ? "Conectando..." : `Entrar como ${isCreatorName} (Criador)`}
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou entre como participante</span>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Seu Nome</label>
               <Input
                 placeholder="Digite seu nome para entrar"
                 value={joinName}
                 onChange={(e) => setJoinName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                onKeyDown={(e) => e.key === "Enter" && handleJoin(false)}
               />
             </div>
             <Button 
               className="w-full" 
-              onClick={handleJoin}
-              disabled={isJoining}
+              variant="outline"
+              onClick={() => handleJoin(false)}
+              disabled={isJoining || !joinName.trim()}
             >
-              {isJoining ? "Conectando..." : "Entrar na Sala"}
+              {isJoining ? "Conectando..." : "Entrar como Participante"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               Será solicitada permissão para acessar seu microfone
