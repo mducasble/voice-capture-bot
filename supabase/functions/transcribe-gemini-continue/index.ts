@@ -16,6 +16,7 @@ interface GeminiChunkState {
   chunkUrls: { url: string; index: number }[];
   nextIndex: number;
   transcriptions: string[];
+  chunkSegments: TranscriptionSegment[][]; // Segments per chunk for fine-grained timestamps
   detectedLanguage: string | null;
   lockedAt: string | null;
 }
@@ -25,6 +26,17 @@ interface TranscriptionSegment {
   end: string;
   speaker: string;
   text: string;
+}
+
+interface ChunkSegment {
+  start_offset: number; // seconds from chunk start
+  end_offset: number;
+  text: string;
+}
+
+interface ChunkResult {
+  segments: ChunkSegment[];
+  language: string | null;
 }
 
 const CHUNK_DURATION_SECONDS = 30;
@@ -92,6 +104,11 @@ serve(async (req) => {
       );
     }
 
+    // Initialize chunkSegments array if not present (backwards compatibility)
+    if (!state.chunkSegments) {
+      state.chunkSegments = state.chunkUrls.map(() => []);
+    }
+
     // Check if already completed
     if (state.nextIndex >= state.chunkUrls.length) {
       console.log('All chunks already processed');
@@ -135,22 +152,31 @@ serve(async (req) => {
 
       try {
         // NOTE: do NOT force language; let the model transcribe in the original language.
-        const transcription = await transcribeChunk(chunk.url, null, LOVABLE_API_KEY);
+        const result = await transcribeChunkWithSegments(chunk.url, null, LOVABLE_API_KEY);
+        const chunkBaseSeconds = chunk.index * CHUNK_DURATION_SECONDS;
 
-        if (transcription.text) {
-          state.transcriptions[i] = transcription.text;
-        } else {
-          state.transcriptions[i] = '';
+        // Convert relative offsets to absolute timestamps
+        const absoluteSegments: TranscriptionSegment[] = result.segments.map(seg => ({
+          start: formatTimestamp(chunkBaseSeconds + seg.start_offset),
+          end: formatTimestamp(chunkBaseSeconds + seg.end_offset),
+          speaker: "speaker A",
+          text: seg.text
+        }));
+
+        // Store plain text for backward compatibility
+        const plainText = result.segments.map(s => s.text).join(' ');
+        state.transcriptions[i] = plainText;
+        state.chunkSegments[i] = absoluteSegments;
+
+        if (!state.detectedLanguage && result.language) {
+          state.detectedLanguage = result.language;
         }
 
-        if (!state.detectedLanguage && transcription.language) {
-          state.detectedLanguage = transcription.language;
-        }
-
-        console.log(`Chunk ${chunk.index} transcribed: ${transcription.text?.length || 0} chars`);
+        console.log(`Chunk ${chunk.index} transcribed: ${result.segments.length} segments, ${plainText.length} chars`);
       } catch (chunkError) {
         console.error(`Chunk ${chunk.index} error:`, chunkError);
         state.transcriptions[i] = '';
+        state.chunkSegments[i] = [];
       }
     }
 
@@ -161,22 +187,8 @@ serve(async (req) => {
       // Combine transcriptions into plain text
       const fullTranscription = state.transcriptions.filter(t => t).join('\n\n');
       
-      // Build segments with timestamps based on chunk positions
-      const segments: TranscriptionSegment[] = [];
-      for (let i = 0; i < state.transcriptions.length; i++) {
-        const text = state.transcriptions[i]?.trim();
-        if (!text) continue;
-        
-        const startSeconds = i * CHUNK_DURATION_SECONDS;
-        const endSeconds = (i + 1) * CHUNK_DURATION_SECONDS;
-        
-        segments.push({
-          start: formatTimestamp(startSeconds),
-          end: formatTimestamp(endSeconds),
-          speaker: "speaker A", // Single speaker for individual tracks
-          text: text
-        });
-      }
+      // Flatten all chunk segments into final segments array
+      const segments: TranscriptionSegment[] = state.chunkSegments.flat().filter(s => s.text.trim());
       
       // Prepare metadata with segments
       const updatedMetadata: Record<string, unknown> = {
@@ -322,11 +334,11 @@ function isLikelyHallucination(text: string): boolean {
   return false;
 }
 
-async function transcribeChunk(
+async function transcribeChunkWithSegments(
   audioUrl: string,
   language: string | null,
   apiKey: string
-): Promise<{ text: string; language: string | null }> {
+): Promise<ChunkResult> {
   // Download audio
   const audioResp = await fetch(audioUrl);
   if (!audioResp.ok) {
@@ -346,8 +358,6 @@ async function transcribeChunk(
 
   const base64Audio = encode(audioBytes.buffer);
 
-  // Do not force a language; we only want the original-language transcription.
-  // (We still allow the model to report detected_language in the JSON.)
   const languageInstruction = "Transcribe in the ORIGINAL language. Do NOT translate.";
 
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -362,26 +372,41 @@ async function transcribeChunk(
       messages: [
         {
           role: 'system',
-          content: `You are a STRICT audio transcription tool. Your ONLY job is to transcribe the EXACT words spoken in the audio.
+          content: `You are a STRICT audio transcription tool with TIMESTAMP capability. Your job is to transcribe the EXACT words spoken and provide timestamps for each sentence or phrase.
 
 CRITICAL RULES:
 1. Transcribe ONLY what is actually spoken - word for word
 2. Do NOT describe sounds, noises, or what you "hear"
 3. Do NOT add commentary or interpretation
 4. Do NOT invent or hallucinate content
- 5. If the audio is silence or unintelligible, return empty transcription
- 6. If you cannot understand the speech, return empty transcription
+5. If the audio is silence or unintelligible, return empty segments array
+6. If you cannot understand the speech, return empty segments array
 7. NEVER generate fake conversations or made-up dialogue
- 8. If you are uncertain about the words, DO NOT guess: return empty transcription
+8. If you are uncertain about the words, DO NOT guess: return empty segments
+
+TIMESTAMP RULES:
+- The audio chunk is up to 30 seconds long
+- Provide start_offset and end_offset in SECONDS (0-30) relative to the start of this chunk
+- Split the transcription into natural sentences or phrases (typically 3-10 seconds each)
+- Estimate timestamps based on when words are spoken in the audio
 
 ${languageInstruction}
 
-Respond ONLY with this exact JSON format: {"detected_language": "ISO code", "transcription": "exact words spoken or empty string"}`
+Respond ONLY with this exact JSON format:
+{
+  "detected_language": "ISO code",
+  "segments": [
+    {"start_offset": 0.0, "end_offset": 5.2, "text": "First sentence spoken"},
+    {"start_offset": 5.5, "end_offset": 12.0, "text": "Second sentence spoken"}
+  ]
+}
+
+If no speech is detected, return: {"detected_language": null, "segments": []}`
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Transcribe the EXACT words spoken in this audio. Do not describe or interpret - only transcribe:' },
+            { type: 'text', text: 'Transcribe the EXACT words spoken in this audio with timestamps for each sentence. Do not describe or interpret - only transcribe:' },
             { type: 'input_audio', input_audio: { data: base64Audio, format: audioFormat } }
           ]
         }
@@ -398,31 +423,38 @@ Respond ONLY with this exact JSON format: {"detected_language": "ISO code", "tra
   const aiData = await aiResponse.json();
   const rawContent = aiData.choices?.[0]?.message?.content?.trim() || '';
 
-  // We ONLY accept valid JSON. If the model drifts, we treat it as an empty transcription
-  // to avoid hallucinated text contaminating the final output.
+  // Parse JSON response
   let detectedLanguage: string | null = null;
   try {
     const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.warn('AI returned non-JSON content; dropping chunk transcription');
-      return { text: '', language: null };
+      return { segments: [], language: null };
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
     detectedLanguage = typeof parsed?.detected_language === 'string' ? parsed.detected_language : null;
-    const text = typeof parsed?.transcription === 'string' ? parsed.transcription : '';
+    
+    const rawSegments = Array.isArray(parsed?.segments) ? parsed.segments : [];
+    
+    // Validate and filter segments
+    const validSegments: ChunkSegment[] = rawSegments
+      .filter((seg: any) => {
+        if (typeof seg?.text !== 'string' || !seg.text.trim()) return false;
+        if (typeof seg?.start_offset !== 'number' || typeof seg?.end_offset !== 'number') return false;
+        if (seg.start_offset < 0 || seg.end_offset > CHUNK_DURATION_SECONDS + 5) return false; // Allow small overflow
+        return true;
+      })
+      .map((seg: any) => ({
+        start_offset: Math.max(0, seg.start_offset),
+        end_offset: Math.min(CHUNK_DURATION_SECONDS, seg.end_offset),
+        text: seg.text.trim()
+      }))
+      .filter((seg: ChunkSegment) => !isLikelyHallucination(seg.text));
 
-    const trimmed = text.trim();
-    if (!trimmed) return { text: '', language: detectedLanguage };
-
-    if (isLikelyHallucination(trimmed)) {
-      console.warn('Chunk transcription flagged as likely hallucination; dropping');
-      return { text: '', language: detectedLanguage };
-    }
-
-    return { text: trimmed, language: detectedLanguage };
+    return { segments: validSegments, language: detectedLanguage };
   } catch (e) {
     console.warn('Failed to parse AI JSON; dropping chunk transcription', e);
-    return { text: '', language: null };
+    return { segments: [], language: null };
   }
 }

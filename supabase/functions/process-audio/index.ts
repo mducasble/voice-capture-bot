@@ -859,6 +859,7 @@ async function finalizeProcessing(
     chunkUrls: state.uploadedChunks,
     nextIndex: 0,
     transcriptions: [] as string[],
+    chunkSegments: [] as { start: string; end: string; speaker: string; text: string }[][],
     detectedLanguage: null as string | null,
     lockedAt: null as string | null
   };
