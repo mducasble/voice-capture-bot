@@ -3,6 +3,7 @@ import { useRef, useCallback, useState } from "react";
 interface WavRecorderOptions {
   sampleRate?: number;
   channels?: number;
+  gain?: number; // Amplification factor (1.0 = no change, 2.0 = double volume)
 }
 
 interface WavRecorderState {
@@ -11,7 +12,7 @@ interface WavRecorderState {
 }
 
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
-  const { sampleRate = 48000, channels = 1 } = options;
+  const { sampleRate = 48000, channels = 1, gain = 3.0 } = options; // Default 3x gain
   
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
@@ -20,6 +21,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -36,19 +38,30 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     const sourceNode = audioContext.createMediaStreamSource(stream);
     sourceNodeRef.current = sourceNode;
 
+    // Create gain node for amplification
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = gain;
+    gainNodeRef.current = gainNode;
+
     // Create script processor (4096 buffer size for balance between latency and performance)
     const processorNode = audioContext.createScriptProcessor(4096, channels, channels);
     processorNodeRef.current = processorNode;
 
-    // Capture audio data
+    // Capture audio data with soft clipping to prevent distortion
     processorNode.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
-      // Make a copy of the data since the buffer gets reused
-      chunksRef.current.push(new Float32Array(inputData));
+      // Make a copy and apply soft clipping
+      const processedData = new Float32Array(inputData.length);
+      for (let i = 0; i < inputData.length; i++) {
+        // Soft clipping using tanh to prevent harsh distortion
+        processedData[i] = Math.tanh(inputData[i]);
+      }
+      chunksRef.current.push(processedData);
     };
 
-    // Connect nodes
-    sourceNode.connect(processorNode);
+    // Connect nodes: source -> gain -> processor -> destination
+    sourceNode.connect(gainNode);
+    gainNode.connect(processorNode);
     processorNode.connect(audioContext.destination);
 
     startTimeRef.current = Date.now();
@@ -62,7 +75,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     }, 1000);
 
     setState({ isRecording: true, duration: 0 });
-  }, [sampleRate, channels]);
+  }, [sampleRate, channels, gain]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (durationIntervalRef.current) {
@@ -77,6 +90,9 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     // Disconnect nodes
     if (processorNodeRef.current) {
       processorNodeRef.current.disconnect();
+    }
+    if (gainNodeRef.current) {
+      gainNodeRef.current.disconnect();
     }
     if (sourceNodeRef.current) {
       sourceNodeRef.current.disconnect();
