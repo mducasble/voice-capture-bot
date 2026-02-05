@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { useWavRecorder } from "@/hooks/useWavRecorder";
 
 interface ParticipantAudioProps {
   participantId: string;
@@ -23,18 +24,20 @@ export const ParticipantAudio = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const levelAudioContextRef = useRef<AudioContext | null>(null);
+  const isRecordingRef = useRef(false);
+  const pendingBlobRef = useRef<Blob | null>(null);
 
-  // Audio level visualization
+  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
+
+  // Audio level visualization (separate from recording)
   useEffect(() => {
     if (!stream) return;
 
     const audioContext = new AudioContext();
-    audioContextRef.current = audioContext;
+    levelAudioContextRef.current = audioContext;
     const analyser = audioContext.createAnalyser();
     analyserRef.current = analyser;
     
@@ -61,58 +64,38 @@ export const ParticipantAudio = ({
     };
   }, [stream]);
 
-  // Start/stop recording based on room state
+  // Start/stop WAV recording based on room state
   useEffect(() => {
     if (!stream) return;
 
-    if (isRecording && !mediaRecorderRef.current) {
-      // Start recording
-      recordedChunksRef.current = [];
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus",
-      });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
+    const handleRecordingChange = async () => {
+      if (isRecording && !isRecordingRef.current) {
+        // Start recording
+        isRecordingRef.current = true;
+        await wavRecorder.startRecording(stream);
+      } else if (!isRecording && isRecordingRef.current) {
+        // Stop recording and get WAV blob
+        isRecordingRef.current = false;
+        const wavBlob = await wavRecorder.stopRecording();
+        if (wavBlob) {
+          pendingBlobRef.current = wavBlob;
+          await uploadRecording(wavBlob);
         }
-      };
-
-      mediaRecorder.onstop = async () => {
-        if (recordedChunksRef.current.length > 0) {
-          await uploadRecording();
-        }
-      };
-
-      mediaRecorder.start(1000); // Collect data every second
-      mediaRecorderRef.current = mediaRecorder;
-      
-    } else if (!isRecording && mediaRecorderRef.current) {
-      // Stop recording
-      if (mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
-      }
-      mediaRecorderRef.current = null;
-    }
-
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
       }
     };
-  }, [isRecording, stream]);
 
-  // Upload recording to S3
-  const uploadRecording = useCallback(async () => {
-    if (recordedChunksRef.current.length === 0) return;
+    handleRecordingChange();
+  }, [isRecording, stream, wavRecorder]);
+
+  // Upload WAV recording to S3
+  const uploadRecording = useCallback(async (wavBlob: Blob) => {
+    if (!wavBlob || wavBlob.size === 0) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
-      const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-      const filename = `room_${sessionId}_${participantId}_${Date.now()}.webm`;
+      const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
 
       // Convert to base64 for upload
       const reader = new FileReader();
@@ -122,7 +105,7 @@ export const ParticipantAudio = ({
           resolve(base64);
         };
       });
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(wavBlob);
       const base64Data = await base64Promise;
 
       setUploadProgress(30);
@@ -143,6 +126,7 @@ export const ParticipantAudio = ({
             participant_id: participantId,
             participant_name: participantName,
             recording_type: "individual",
+            format: "wav",
           }),
         }
       );
@@ -161,7 +145,7 @@ export const ParticipantAudio = ({
       toast.error(`Erro ao enviar áudio de ${participantName}`);
     } finally {
       setIsUploading(false);
-      recordedChunksRef.current = [];
+      pendingBlobRef.current = null;
     }
   }, [sessionId, participantId, participantName]);
 
