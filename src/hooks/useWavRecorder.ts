@@ -12,7 +12,7 @@ interface WavRecorderState {
 }
 
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
-  const { sampleRate = 48000, channels = 1, gain = 6.0 } = options; // Default 6x gain for better capture
+  const { sampleRate = 48000, channels = 1, gain = 30.0 } = options; // Default 30x gain for maximum capture
   
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
