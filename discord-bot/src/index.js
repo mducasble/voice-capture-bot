@@ -778,13 +778,18 @@ async function startRecording(interaction) {
     });
 
     await interaction.editReply({
-      content: `🔴 **Recording started** in ${voiceChannel.name}\n\n` +
-               `📊 **Audio Settings:**\n` +
-               `• Sample Rate: ${CONFIG.SAMPLE_RATE}Hz\n` +
-               `• Bit Depth: ${CONFIG.BIT_DEPTH}-bit\n` +
-               `• Channels: Stereo (${CONFIG.CHANNELS} channels)\n` +
-               `• Format: WAV (uncompressed)\n\n` +
-               `Use \`/stop\` to end recording and upload.`
+      content: `🔴 **Gravação iniciada** em ${voiceChannel.name}\n\n` +
+               `📊 **Configurações de Áudio:**\n` +
+               `• Taxa de amostragem: ${CONFIG.SAMPLE_RATE}Hz\n` +
+               `• Profundidade: ${CONFIG.BIT_DEPTH}-bit\n` +
+               `• Canais: Estéreo (${CONFIG.CHANNELS} canais)\n` +
+               `• Formato: WAV (sem compressão)\n\n` +
+               `💡 **Para capturar mais áudio ambiente:**\n` +
+               `> Vá em **Configurações do Discord** → **Voz e Vídeo**\n` +
+               `> • Desative **Supressão de Ruído** (Krisp)\n` +
+               `> • Reduza a **Sensibilidade de Entrada** ao mínimo\n` +
+               `> • Ou use **Push to Talk** mantendo pressionado\n\n` +
+               `Use \`/stop\` para encerrar e fazer upload.`
     });
 
   } catch (error) {
