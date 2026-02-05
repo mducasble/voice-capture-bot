@@ -183,20 +183,9 @@ serve(async (req) => {
 
     console.log(`Recording registered: ${recordData.id}`);
 
-    // Trigger processing
-    const processUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-audio`;
-    
-    fetch(processUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      },
-      body: JSON.stringify({
-        recording_id: recordData.id,
-        audio_url: s3Url,
-      }),
-    }).catch(err => console.error('Failed to trigger processing:', err));
+    // Note: WebM format is not supported by process-audio yet (only WAV/MP3)
+    // Room recordings are saved as WebM and can be manually converted later
+    // The recording is marked as 'completed' - ready for future WebM support
 
     return new Response(
       JSON.stringify({ 
