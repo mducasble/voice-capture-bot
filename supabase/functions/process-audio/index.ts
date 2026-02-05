@@ -881,8 +881,8 @@ async function finalizeProcessing(
     throw updateError;
   }
 
-  // Start Gemini transcription with chunk-based processing
-  await transcribeChunksWithRetry(supabase, state.recording_id);
+  // Start Gemini transcription with chunk-based processing (non-blocking)
+  transcribeChunksWithRetry(supabase, state.recording_id);
 
   // DISABLED: Automatic ElevenLabs transcription to save credits during testing
   // To re-enable, uncomment the following block:
@@ -927,30 +927,34 @@ async function finalizeProcessing(
   );
 }
 
-// Simplified: just trigger transcribe-gemini-continue
+// Trigger transcribe-gemini-continue using waitUntil to avoid blocking
 // deno-lint-ignore no-explicit-any
-async function transcribeChunksWithRetry(
+function transcribeChunksWithRetry(
   supabase: any,
   recording_id: string
 ) {
-  try {
-    // Simply invoke transcribe-gemini-continue which handles everything
-    console.log(`Triggering transcribe-gemini-continue for ${recording_id}`);
-    
-    const { error } = await supabase.functions.invoke('transcribe-gemini-continue', {
-      body: { recording_id }
-    });
-
+  console.log(`Triggering transcribe-gemini-continue for ${recording_id}`);
+  
+  const invokePromise = supabase.functions.invoke('transcribe-gemini-continue', {
+    body: { recording_id }
+  }).then(({ error }: { error?: unknown }) => {
     if (error) {
       console.error('Failed to trigger transcription:', error);
-      await supabase.from('voice_recordings')
+      return supabase.from('voice_recordings')
         .update({ transcription_status: 'failed' })
         .eq('id', recording_id);
     }
-  } catch (error) {
-    console.error('Transcription trigger failed:', error);
-    await supabase.from('voice_recordings')
+    console.log(`Transcription started successfully for ${recording_id}`);
+  }).catch((err: unknown) => {
+    console.error('Transcription trigger failed:', err);
+    return supabase.from('voice_recordings')
       .update({ transcription_status: 'failed' })
       .eq('id', recording_id);
+  });
+
+  // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(invokePromise);
   }
 }
