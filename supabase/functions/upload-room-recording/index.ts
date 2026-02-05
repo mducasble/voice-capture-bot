@@ -24,6 +24,7 @@ serve(async (req) => {
       participant_id,
       participant_name,
       recording_type = 'individual',
+      format = 'wav',
     } = await req.json();
 
     if (!audio_base64 || !filename || !session_id) {
@@ -60,7 +61,7 @@ serve(async (req) => {
     const datestamp = timestamp.slice(0, 8);
     
     const host = `${s3Bucket}.s3.${s3Region}.amazonaws.com`;
-    const contentType = 'audio/webm';
+    const contentType = format === 'wav' ? 'audio/wav' : 'audio/webm';
     
     // Calculate content hash
     const encoder = new TextEncoder();
@@ -164,9 +165,9 @@ serve(async (req) => {
         file_size_bytes: bytes.length,
         sample_rate: 48000,
         bit_depth: 16,
-        channels: 2,
-        format: 'webm',
-        status: 'completed',
+        channels: format === 'wav' ? 1 : 2,
+        format,
+        status: format === 'wav' ? 'processing' : 'completed',
         session_id,
         recording_type,
         transcription_status: 'pending',
@@ -183,9 +184,24 @@ serve(async (req) => {
 
     console.log(`Recording registered: ${recordData.id}`);
 
-    // Note: WebM format is not supported by process-audio yet (only WAV/MP3)
-    // Room recordings are saved as WebM and can be manually converted later
-    // The recording is marked as 'completed' - ready for future WebM support
+    // Trigger processing for WAV files (compatible with process-audio)
+    if (format === 'wav') {
+      const processUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-audio`;
+      
+      fetch(processUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          recording_id: recordData.id,
+          audio_url: s3Url,
+        }),
+      }).catch(err => console.error('Failed to trigger processing:', err));
+      
+      console.log(`Triggered process-audio for WAV recording: ${recordData.id}`);
+    }
 
     return new Response(
       JSON.stringify({ 
