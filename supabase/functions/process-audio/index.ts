@@ -1021,6 +1021,9 @@ async function finalizeProcessing(
   // Estimate MOS score using Lovable AI (non-blocking)
   estimateMOSScore(supabase, state.recording_id, state.file_url, snrDb, rmsDbfs);
 
+  // Estimate advanced audio metrics using Lovable AI (non-blocking)
+  estimateAdvancedMetrics(supabase, state.recording_id, state.file_url, snrDb, rmsDbfs);
+
   // DISABLED: Automatic ElevenLabs transcription to save credits during testing
   // To re-enable, uncomment the following block:
   /*
@@ -1086,6 +1089,30 @@ function estimateMOSScore(
     );
   } else {
     invokePromise.catch((err: unknown) => console.error("Failed to estimate MOS score:", err));
+  }
+}
+
+// Estimate advanced audio metrics using Lovable AI (non-blocking)
+// deno-lint-ignore no-explicit-any
+function estimateAdvancedMetrics(
+  supabase: any,
+  recording_id: string,
+  file_url: string,
+  snr_db: number | null,
+  rms_dbfs: number | null
+) {
+  const invokePromise = supabase.functions.invoke('estimate-audio-metrics', {
+    body: { recording_id, file_url, snr_db, rms_dbfs }
+  });
+
+  // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      invokePromise.catch((err: unknown) => console.error("Failed to estimate advanced metrics:", err))
+    );
+  } else {
+    invokePromise.catch((err: unknown) => console.error("Failed to estimate advanced metrics:", err));
   }
 }
 
