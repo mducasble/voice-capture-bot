@@ -106,7 +106,7 @@ def compute_srmr(audio: np.ndarray, sr: int) -> Optional[float]:
         return None
 
 
-def compute_dnsmos(filepath: str) -> dict:
+def compute_dnsmos(filepath: str, sr: int) -> dict:
     """
     Compute DNSMOS P.835 scores (used as SigMOS proxy).
     Returns SIG (speech quality), BAK (background quality), OVRL (overall).
@@ -114,7 +114,7 @@ def compute_dnsmos(filepath: str) -> dict:
     """
     try:
         dnsmos = get_dnsmos()
-        result = dnsmos.run(filepath, verbose=False)
+        result = dnsmos.run(filepath, sr=sr, verbose=False)
         # result is a DataFrame with columns: filename, SIG, BAK, OVRL
         row = result.iloc[0]
         return {
@@ -284,7 +284,7 @@ async def analyze_audio(
 
         # Compute all metrics
         srmr_val = compute_srmr(audio, sr)
-        dnsmos_vals = compute_dnsmos(wav_path)
+        dnsmos_vals = compute_dnsmos(wav_path, sr)
         wvmos_val = compute_wvmos(wav_path)
         utmos_val = compute_utmos(audio, sr)
         mic_sr = estimate_mic_sample_rate(audio, sr)

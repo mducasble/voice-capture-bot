@@ -21,9 +21,8 @@ onnxruntime==1.20.1
 # WVMOS (wav2vec 2.0 MOS predictor)
 wvmos @ git+https://github.com/AndreevP/wvmos.git
 
-# UTMOS (MOS predictor)
-utmos==0.1.1
+# UTMOS (MOS predictor via torch.hub - no separate package needed)
 
-# PyTorch (CPU only for HF Space efficiency)
-torch==2.5.1
-torchaudio==2.5.1
+# PyTorch (CPU only, >=2.6 required for safe torch.load)
+torch==2.6.0
+torchaudio==2.6.0
