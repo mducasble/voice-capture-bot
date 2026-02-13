@@ -17,31 +17,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const {
-      filename,
-      audio_base64,
-      session_id,
-      participant_id,
-      participant_name,
-      recording_type = 'individual',
-      format = 'wav',
-    } = await req.json();
+    // Parse multipart form data (binary audio + metadata)
+    const formData = await req.formData();
+    const audioFile = formData.get('audio') as File | null;
+    const filename = formData.get('filename') as string;
+    const session_id = formData.get('session_id') as string;
+    const participant_id = formData.get('participant_id') as string;
+    const participant_name = formData.get('participant_name') as string;
+    const recording_type = (formData.get('recording_type') as string) || 'individual';
+    const format = (formData.get('format') as string) || 'wav';
 
-    if (!audio_base64 || !filename || !session_id) {
+    if (!audioFile || !filename || !session_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields (audio, filename, session_id)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Uploading room recording: ${filename} for participant ${participant_name}`);
+    console.log(`Uploading room recording: ${filename} for participant ${participant_name} (${audioFile.size} bytes)`);
 
-    // Decode base64 to binary
-    const binaryString = atob(audio_base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    // Read audio file as bytes
+    const bytes = new Uint8Array(await audioFile.arrayBuffer());
 
     // Upload to S3
     const s3Bucket = Deno.env.get('AWS_S3_BUCKET_NAME');
