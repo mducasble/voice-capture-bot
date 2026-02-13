@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
-import { supabase } from "@/integrations/supabase/client";
+
 
 interface ParticipantAudioProps {
   participantId: string;
@@ -94,7 +94,7 @@ export const ParticipantAudio = ({
     handleRecordingChange();
   }, [isRecording, stream, wavRecorder]);
 
-  // Upload WAV recording via Supabase Storage then register
+  // Upload WAV recording to S3 via Edge Function proxy (FormData)
   const uploadRecording = useCallback(async (wavBlob: Blob) => {
     if (!wavBlob || wavBlob.size === 0) return;
 
@@ -103,55 +103,33 @@ export const ParticipantAudio = ({
 
     try {
       const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
-      const storagePath = `rooms/${sessionId}/${filename}`;
 
-      // Step 1: Upload to Supabase Storage
+      // Send binary audio via FormData to Edge Function (uploads to S3 server-side)
       setUploadProgress(10);
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("voice-recordings")
-        .upload(storagePath, wavBlob, {
-          contentType: "audio/wav",
-          cacheControl: "3600",
-        });
+      const formData = new FormData();
+      formData.append("audio", wavBlob, filename);
+      formData.append("filename", filename);
+      formData.append("session_id", sessionId);
+      formData.append("participant_id", participantId);
+      formData.append("participant_name", participantName);
+      formData.append("recording_type", "individual");
+      formData.append("format", "wav");
 
-      if (uploadError) {
-        throw new Error(`Storage upload failed: ${uploadError.message}`);
-      }
-
-      setUploadProgress(60);
-
-      // Step 2: Get public URL
-      const { data: urlData } = supabase.storage
-        .from("voice-recordings")
-        .getPublicUrl(storagePath);
-
-      const publicUrl = urlData.publicUrl;
-
-      // Step 3: Register recording metadata
-      const registerResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-room-recording`,
+      setUploadProgress(30);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({
-            filename,
-            file_url: publicUrl,
-            file_size_bytes: wavBlob.size,
-            session_id: sessionId,
-            participant_id: participantId,
-            participant_name: participantName,
-            recording_type: "individual",
-            format: "wav",
-          }),
+          body: formData,
         }
       );
 
-      if (!registerResponse.ok) {
-        const errText = await registerResponse.text();
-        throw new Error(`Register failed: ${errText}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Upload failed: ${errText}`);
       }
 
       setUploadProgress(100);
