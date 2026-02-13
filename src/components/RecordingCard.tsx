@@ -341,7 +341,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     ) : (
                       <AlertTriangle className="h-3 w-3" />
                     )}
-                    {recording.quality_status === "passed" ? "Passed" : "Failed"}
+                {recording.quality_status === "passed" ? "Passed" : "Failed"}
                   </Badge>
                 )}
                 {recording.snr_db !== null && (
@@ -359,7 +359,16 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   </Badge>
                 )}
                 {(() => {
-                  const meta = recording.metadata as { rms_dbfs?: number; mos_score?: number; mos_reasoning?: string } | null;
+                  const meta = recording.metadata as { 
+                    rms_dbfs?: number
+                    mos_score?: number
+                    srmr?: number
+                    sigmos_disc?: number
+                    sigmos_ovrl?: number
+                    sigmos_reverb?: number
+                    vqscore?: number
+                    wvmos?: number
+                  } | null;
                   return (
                     <>
                       {meta?.rms_dbfs !== undefined && meta?.rms_dbfs !== null && (
@@ -386,6 +395,62 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                           }`}
                         >
                           MOS {meta.mos_score.toFixed(1)}
+                        </Badge>
+                      )}
+                      {meta?.srmr !== undefined && meta?.srmr !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.srmr >= 20
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.srmr >= 10
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          SRMR {meta.srmr.toFixed(1)}dB
+                        </Badge>
+                      )}
+                      {meta?.wvmos !== undefined && meta?.wvmos !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.wvmos >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.wvmos >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          WVMOS {meta.wvmos.toFixed(1)}
+                        </Badge>
+                      )}
+                      {meta?.vqscore !== undefined && meta?.vqscore !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.vqscore >= 80
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.vqscore >= 60
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          VQ {meta.vqscore.toFixed(0)}
+                        </Badge>
+                      )}
+                      {meta?.sigmos_ovrl !== undefined && meta?.sigmos_ovrl !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.sigmos_ovrl >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.sigmos_ovrl >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          SigMOS {meta.sigmos_ovrl.toFixed(1)}
                         </Badge>
                       )}
                     </>

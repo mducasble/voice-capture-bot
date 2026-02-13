@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.estimate-mos]
 verify_jwt = false
+
+[functions.estimate-audio-metrics]
+verify_jwt = false
