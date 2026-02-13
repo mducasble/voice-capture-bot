@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.upload-transcribe]
 verify_jwt = false
+
+[functions.estimate-mos]
+verify_jwt = false
