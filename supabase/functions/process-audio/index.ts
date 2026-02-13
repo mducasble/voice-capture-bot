@@ -239,6 +239,28 @@ function detectSpeechRegions(samples: Int16Array, sampleRate: number): SpeechReg
   return regions;
 }
 
+// Calculate RMS Level in dBFS from audio samples
+function calculateRMSLevel(samples: Int16Array): number {
+  if (samples.length === 0) return -96.0; // Silence
+  
+  // Calculate RMS from all samples
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const normalized = samples[i] / 32768.0;
+    sum += normalized * normalized;
+  }
+  const rms = Math.sqrt(sum / samples.length);
+  
+  // Convert to dBFS (0 dBFS = full scale 1.0)
+  if (rms === 0) return -96.0; // Silence floor
+  const dbfs = 20 * Math.log10(rms);
+  
+  // Clamp to reasonable range (-96 to 0 dBFS)
+  const clamped = Math.max(-96.0, Math.min(0, dbfs));
+  console.log(`RMS Level: ${rms.toExponential(2)} linear = ${clamped.toFixed(1)} dBFS`);
+  return Math.round(clamped * 10) / 10;
+}
+
 // Calculate SNR from audio samples using VAD-based speech detection
 // Only analyzes regions where speech is actually present
 function calculateSNR(samples: Int16Array, sampleRate: number = 16000): number {
@@ -383,6 +405,7 @@ interface ProcessingState {
   chunkIndex: number;
   uploadedChunks: { url: string; index: number }[];
   snrDb: number | null;
+  rmsDbfs: number | null;
   snrSamples: number[];
 }
 
@@ -468,9 +491,10 @@ serve(async (req) => {
           srcIdx: 0,
           outputSampleIdx: 0,
           chunkIndex: 0,
-          uploadedChunks: [],
-          snrDb: null,
-          snrSamples: []
+           uploadedChunks: [],
+           snrDb: null,
+           rmsDbfs: null,
+           snrSamples: []
         };
         
         console.log(`MP3 decoded to ${samples.length} samples, ready for chunking`);
@@ -495,6 +519,7 @@ serve(async (req) => {
           chunkIndex: 0,
           uploadedChunks: [],
           snrDb: null,
+          rmsDbfs: null,
           snrSamples: []
         };
       } else {
@@ -846,13 +871,17 @@ async function finalizeProcessing(
   supabase: any,
   state: ProcessingState
 ) {
-  // Calculate SNR using VAD-based speech detection
+  // Calculate SNR and RMS using VAD-based speech detection
   const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples), TARGET_SAMPLE_RATE) : null;
-  // Lower threshold for individual tracks (they have more silence which affects SNR)
-  // Use 10dB threshold instead of 20dB - still ensures reasonable audio quality
-  const qualityStatus = snrDb !== null ? (snrDb >= 10 ? 'passed' : 'failed') : 'error';
+  const rmsDbfs = state.snrSamples.length > 0 ? calculateRMSLevel(new Int16Array(state.snrSamples)) : null;
   
-  console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB`);
+  // Updated threshold: SNR >= 25 dB (was 10 dB), RMS: -26 to -20 dBFS
+  const qualityStatus = 
+    snrDb !== null && rmsDbfs !== null
+      ? (snrDb >= 25 && rmsDbfs >= -26 && rmsDbfs <= -20 ? 'passed' : 'failed')
+      : 'error';
+  
+  console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB, RMS=${rmsDbfs}dBFS`);
 
   // Save chunk state for resumable Gemini transcription
   const geminiChunkState = {
@@ -864,7 +893,7 @@ async function finalizeProcessing(
     lockedAt: null as string | null
   };
 
-  // Update recording with SNR + quality + chunk state
+  // Update recording with SNR + RMS + quality + chunk state
   const { error: updateError } = await supabase
     .from('voice_recordings')
     .update({
@@ -872,7 +901,16 @@ async function finalizeProcessing(
       quality_status: qualityStatus,
       status: 'completed',
       gemini_chunk_state: geminiChunkState,
-      transcription_status: 'pending'
+      transcription_status: 'pending',
+      metadata: {
+        rms_dbfs: rmsDbfs,
+        quality_metrics: {
+          snr_db: snrDb,
+          rms_dbfs: rmsDbfs,
+          required_snr: 25,
+          required_rms_range: '-26 to -20 dBFS'
+        }
+      }
     })
     .eq('id', state.recording_id);
 
@@ -921,6 +959,7 @@ async function finalizeProcessing(
       recording_id: state.recording_id,
       chunks: state.uploadedChunks.length,
       snr_db: snrDb,
+      rms_dbfs: rmsDbfs,
       quality_status: qualityStatus
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
