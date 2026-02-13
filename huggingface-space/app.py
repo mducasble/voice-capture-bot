@@ -70,8 +70,15 @@ def get_dnsmos():
 def get_wvmos():
     global _wvmos_model
     if _wvmos_model is None:
-        from wvmos import get_wvmos
-        _wvmos_model = get_wvmos(cuda=False)
+        import torch
+        # Override torch.load to allow unsafe weights for wvmos checkpoint
+        _original_load = torch.load
+        torch.load = lambda *args, **kwargs: _original_load(*args, **{**kwargs, 'weights_only': False})
+        try:
+            from wvmos import get_wvmos
+            _wvmos_model = get_wvmos(cuda=False)
+        finally:
+            torch.load = _original_load
     return _wvmos_model
 
 
@@ -79,9 +86,15 @@ def get_utmos():
     global _utmos_predictor
     if _utmos_predictor is None:
         import torch
-        _utmos_predictor = torch.hub.load(
-            "tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True
-        )
+        # UTMOS checkpoint requires weights_only=False
+        _original_load = torch.load
+        torch.load = lambda *args, **kwargs: _original_load(*args, **{**kwargs, 'weights_only': False})
+        try:
+            _utmos_predictor = torch.hub.load(
+                "tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True
+            )
+        finally:
+            torch.load = _original_load
     return _utmos_predictor
 
 
@@ -111,10 +124,23 @@ def compute_dnsmos(filepath: str, sr: int) -> dict:
     Compute DNSMOS P.835 scores (used as SigMOS proxy).
     Returns SIG (speech quality), BAK (background quality), OVRL (overall).
     Mapping: SIG → sigmos_disc, BAK → sigmos_reverb, OVRL → sigmos_ovrl
+    DNSMOS requires 16kHz audio - we resample if needed.
     """
     try:
         dnsmos = get_dnsmos()
-        result = dnsmos.run(filepath, sr=sr, verbose=False)
+        target_sr = 16000
+        if sr != target_sr:
+            # Resample audio to 16kHz and save to temp file
+            audio_data, _ = librosa.load(filepath, sr=target_sr, mono=True)
+            resampled_path = filepath + ".16k.wav"
+            sf.write(resampled_path, audio_data, target_sr)
+            result = dnsmos.run(resampled_path, sr=target_sr, verbose=False)
+            try:
+                os.unlink(resampled_path)
+            except OSError:
+                pass
+        else:
+            result = dnsmos.run(filepath, sr=target_sr, verbose=False)
         # result is a DataFrame with columns: filename, SIG, BAK, OVRL
         row = result.iloc[0]
         return {
