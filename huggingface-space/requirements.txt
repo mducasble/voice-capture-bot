@@ -1,0 +1,29 @@
+# HuggingFace Space - Audio Quality Metrics API
+# Runtime: Python 3.10+
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Audio processing
+librosa==0.10.2.post1
+soundfile==0.13.1
+numpy==1.26.4
+scipy==1.14.1
+
+# SRMR (Speech-to-Reverberation Modulation Ratio)
+SRMRpy @ git+https://github.com/jfsantos/SRMRpy.git
+
+# DNSMOS / SigMOS (Microsoft speech quality models)
+speechmos==0.0.1.1
+onnxruntime==1.20.1
+
+# WVMOS (wav2vec 2.0 MOS predictor)
+wvmos @ git+https://github.com/AndreevP/wvmos.git
+
+# UTMOS (MOS predictor)
+utmos==0.1.1
+
+# PyTorch (CPU only for HF Space efficiency)
+torch==2.5.1
+torchaudio==2.5.1
