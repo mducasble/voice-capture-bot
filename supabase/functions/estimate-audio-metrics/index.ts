@@ -23,6 +23,7 @@ serve(async (req) => {
 
     const METRICS_API_URL = Deno.env.get('METRICS_API_URL');
     const METRICS_API_SECRET = Deno.env.get('METRICS_API_SECRET');
+    console.log(`METRICS_API_URL value: "${METRICS_API_URL}"`);
     if (!METRICS_API_URL) {
       return new Response(
         JSON.stringify({ error: 'METRICS_API_URL not configured' }),
