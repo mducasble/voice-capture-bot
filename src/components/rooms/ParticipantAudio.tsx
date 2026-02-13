@@ -93,7 +93,7 @@ export const ParticipantAudio = ({
     handleRecordingChange();
   }, [isRecording, stream, wavRecorder]);
 
-  // Upload WAV recording to S3
+  // Upload WAV recording to S3 via pre-signed URL
   const uploadRecording = useCallback(async (wavBlob: Blob) => {
     if (!wavBlob || wavBlob.size === 0) return;
 
@@ -103,22 +103,10 @@ export const ParticipantAudio = ({
     try {
       const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
 
-      // Convert to base64 for upload
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          resolve(base64);
-        };
-      });
-      reader.readAsDataURL(wavBlob);
-      const base64Data = await base64Promise;
-
-      setUploadProgress(30);
-
-      // Upload via edge function
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
+      // Step 1: Get pre-signed upload URL
+      setUploadProgress(10);
+      const urlResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-room-upload-url`,
         {
           method: "POST",
           headers: {
@@ -127,7 +115,47 @@ export const ParticipantAudio = ({
           },
           body: JSON.stringify({
             filename,
-            audio_base64: base64Data,
+            session_id: sessionId,
+            content_type: "audio/wav",
+          }),
+        }
+      );
+
+      if (!urlResponse.ok) {
+        const err = await urlResponse.text();
+        throw new Error(`Failed to get upload URL: ${err}`);
+      }
+
+      const { upload_url, upload_headers, public_url } = await urlResponse.json();
+      setUploadProgress(20);
+
+      // Step 2: Upload directly to S3
+      const s3Response = await fetch(upload_url, {
+        method: "PUT",
+        headers: upload_headers,
+        body: wavBlob,
+      });
+
+      if (!s3Response.ok) {
+        const errText = await s3Response.text();
+        throw new Error(`S3 upload failed: ${s3Response.status} - ${errText}`);
+      }
+
+      setUploadProgress(70);
+
+      // Step 3: Register recording metadata
+      const registerResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-room-recording`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            filename,
+            file_url: public_url,
+            file_size_bytes: wavBlob.size,
             session_id: sessionId,
             participant_id: participantId,
             participant_name: participantName,
@@ -137,10 +165,8 @@ export const ParticipantAudio = ({
         }
       );
 
-      setUploadProgress(80);
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
+      if (!registerResponse.ok) {
+        throw new Error("Failed to register recording");
       }
 
       setUploadProgress(100);
