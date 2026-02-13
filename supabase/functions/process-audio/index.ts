@@ -356,6 +356,95 @@ function calculateSNR(samples: Int16Array, sampleRate: number = 16000): number {
   return Math.round(snr * 10) / 10;
 }
 
+// Apply noise gate to samples - zeros out samples below adaptive threshold
+
+// Apply noise gate to samples - zeros out samples below adaptive threshold
+// Uses VAD-like energy analysis to determine gate threshold
+function applyNoiseGate(samples: Int16Array, sampleRate: number): Int16Array {
+  if (samples.length === 0) return samples;
+  
+  const windowSize = Math.floor(sampleRate * 0.02); // 20ms windows
+  const hopSize = Math.floor(windowSize / 2);
+  const numWindows = Math.floor((samples.length - windowSize) / hopSize) + 1;
+  
+  if (numWindows < 3) return samples;
+  
+  // Calculate energy per window
+  const energies: number[] = [];
+  for (let w = 0; w < numWindows; w++) {
+    const start = w * hopSize;
+    let energy = 0;
+    for (let i = 0; i < windowSize && start + i < samples.length; i++) {
+      const s = samples[start + i] / 32768.0;
+      energy += s * s;
+    }
+    energies.push(energy / windowSize);
+  }
+  
+  // Noise floor from bottom 20% of windows
+  const sorted = [...energies].sort((a, b) => a - b);
+  const noiseIdx = Math.floor(sorted.length * 0.2);
+  let noiseFloor = 0;
+  for (let i = 0; i < noiseIdx; i++) noiseFloor += sorted[i];
+  noiseFloor = noiseIdx > 0 ? noiseFloor / noiseIdx : 0.0001;
+  
+  // Gate threshold: 2x noise floor (gentler than VAD's 3x)
+  const gateThreshold = Math.max(noiseFloor * 2, 0.00005);
+  
+  console.log(`Noise Gate: threshold=${gateThreshold.toExponential(2)}, noise_floor=${noiseFloor.toExponential(2)}`);
+  
+  // Apply gate with 5ms attack/release for smooth transitions
+  const fadeLength = Math.floor(sampleRate * 0.005);
+  const output = new Int16Array(samples.length);
+  let gateOpen = false;
+  let fadeCounter = 0;
+  
+  for (let w = 0; w < numWindows; w++) {
+    const isAbove = energies[w] > gateThreshold;
+    const start = w * hopSize;
+    const end = Math.min(start + hopSize, samples.length);
+    
+    if (isAbove && !gateOpen) {
+      gateOpen = true;
+      fadeCounter = fadeLength;
+    } else if (!isAbove && gateOpen) {
+      gateOpen = false;
+      fadeCounter = fadeLength;
+    }
+    
+    for (let i = start; i < end; i++) {
+      if (gateOpen) {
+        if (fadeCounter > 0) {
+          // Fade in
+          const gain = 1.0 - (fadeCounter / fadeLength);
+          output[i] = Math.round(samples[i] * gain);
+          fadeCounter--;
+        } else {
+          output[i] = samples[i];
+        }
+      } else {
+        if (fadeCounter > 0) {
+          // Fade out
+          const gain = fadeCounter / fadeLength;
+          output[i] = Math.round(samples[i] * gain);
+          fadeCounter--;
+        } else {
+          output[i] = 0;
+        }
+      }
+    }
+  }
+  
+  // Count gated samples for logging
+  let gatedCount = 0;
+  for (let i = 0; i < output.length; i++) {
+    if (output[i] === 0 && samples[i] !== 0) gatedCount++;
+  }
+  console.log(`Noise Gate: gated ${gatedCount}/${samples.length} samples (${(gatedCount/samples.length*100).toFixed(1)}%)`);
+  
+  return output;
+}
+
 // Encode samples to MP3 using WASM encoder
 async function encodeToMp3(samples: Int16Array, sampleRate: number): Promise<Uint8Array> {
   const encoder = await createMp3Encoder();
@@ -407,6 +496,8 @@ interface ProcessingState {
   snrDb: number | null;
   rmsDbfs: number | null;
   snrSamples: number[];
+  noiseGateEnabled?: boolean;
+  file_url?: string;
 }
 
 serve(async (req) => {
@@ -432,7 +523,8 @@ serve(async (req) => {
       console.log(`Resuming processing for ${state.recording_id} at chunk ${state.chunkIndex}`);
     } else {
       // New processing request
-      const { recording_id, audio_url } = body;
+      const { recording_id, audio_url, noise_gate_enabled } = body;
+      const noiseGateEnabled = noise_gate_enabled === true;
 
       if (!recording_id || !audio_url) {
         return new Response(
@@ -494,7 +586,8 @@ serve(async (req) => {
            uploadedChunks: [],
            snrDb: null,
            rmsDbfs: null,
-           snrSamples: []
+           snrSamples: [],
+           noiseGateEnabled,
         };
         
         console.log(`MP3 decoded to ${samples.length} samples, ready for chunking`);
@@ -520,7 +613,8 @@ serve(async (req) => {
           uploadedChunks: [],
           snrDb: null,
           rmsDbfs: null,
-          snrSamples: []
+          snrSamples: [],
+          noiseGateEnabled,
         };
       } else {
         throw new Error(`Unsupported audio format. Expected WAV or MP3.`);
@@ -714,12 +808,14 @@ async function uploadChunk(
   state: ProcessingState,
   samples: Int16Array
 ) {
-  console.log(`Encoding chunk ${state.chunkIndex} with ${samples.length} samples to MP3`);
+  // Apply noise gate if enabled
+  const processedSamples = state.noiseGateEnabled ? applyNoiseGate(samples, TARGET_SAMPLE_RATE) : samples;
+  console.log(`Encoding chunk ${state.chunkIndex} with ${processedSamples.length} samples to MP3${state.noiseGateEnabled ? ' (noise gate ON)' : ''}`);
   
   try {
     // Encode to MP3
-    const mp3Data = await encodeToMp3(samples, TARGET_SAMPLE_RATE);
-    console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(mp3Data.length / 1024).toFixed(1)} KB MP3`);
+    const mp3Data = await encodeToMp3(processedSamples, TARGET_SAMPLE_RATE);
+    console.log(`Chunk ${state.chunkIndex}: ${processedSamples.length} samples -> ${(mp3Data.length / 1024).toFixed(1)} KB MP3`);
     
     const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.mp3`;
     
@@ -746,8 +842,8 @@ async function uploadChunk(
     // Fallback to WAV if MP3 encoding fails
     console.warn(`MP3 encoding failed for chunk ${state.chunkIndex}, falling back to WAV:`, encodeError);
     
-    const wavData = createWavChunk(samples, TARGET_SAMPLE_RATE);
-    console.log(`Chunk ${state.chunkIndex}: ${samples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV (fallback)`);
+    const wavData = createWavChunk(processedSamples, TARGET_SAMPLE_RATE);
+    console.log(`Chunk ${state.chunkIndex}: ${processedSamples.length} samples -> ${(wavData.length / 1024).toFixed(1)} KB WAV (fallback)`);
     
     const chunkPath = `chunks/${state.recording_id}_${state.timestamp}_chunk${String(state.chunkIndex).padStart(3, '0')}.wav`;
     

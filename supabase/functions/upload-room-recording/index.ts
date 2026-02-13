@@ -26,6 +26,7 @@ serve(async (req) => {
     const participant_name = formData.get('participant_name') as string;
     const recording_type = (formData.get('recording_type') as string) || 'individual';
     const format = (formData.get('format') as string) || 'wav';
+    const noise_gate_enabled = (formData.get('noise_gate_enabled') as string) === 'true';
 
     if (!audioFile || !filename || !session_id) {
       return new Response(
@@ -193,6 +194,7 @@ serve(async (req) => {
         body: JSON.stringify({
           recording_id: recordData.id,
           audio_url: s3Url,
+          noise_gate_enabled,
         }),
       }).catch(err => console.error('Failed to trigger processing:', err));
       
