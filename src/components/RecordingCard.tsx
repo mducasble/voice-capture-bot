@@ -388,6 +388,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   <WaveformVisualizer 
                     audioUrl={recording.file_url} 
                     snrDb={recording.snr_db}
+                    mosScore={(recording.metadata as { mos_score?: number })?.mos_score}
                   />
                 </CollapsibleContent>
               </Collapsible>

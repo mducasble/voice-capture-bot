@@ -21,6 +21,7 @@ interface WaveformData {
 interface WaveformVisualizerProps {
   audioUrl: string | null;
   snrDb: number | null;
+  mosScore?: number | null;
   className?: string;
 }
 
@@ -30,7 +31,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: WaveformVisualizerProps) {
+export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }: WaveformVisualizerProps) {
   const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -383,7 +384,7 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
                   : 'bg-red-500/10 text-red-400 border-red-500/30'
             }`}
           >
-            SNR {snrDb}dB
+            SNR {snrDb}dB {mosScore !== undefined && mosScore !== null && `• MOS ${mosScore.toFixed(2)}`}
           </Badge>
         )}
 
