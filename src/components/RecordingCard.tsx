@@ -330,7 +330,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 )}
                 {/* Transcription Status Badge */}
                 {getTranscriptionStatusBadge()}
-                {/* Quality Badge */}
+                {/* Quality Badges */}
                 {recording.quality_status && (
                   <Badge 
                     variant={recording.quality_status === "passed" ? "default" : "destructive"}
@@ -341,9 +341,56 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     ) : (
                       <AlertTriangle className="h-3 w-3" />
                     )}
-                    {recording.snr_db !== null ? `SNR ${recording.snr_db}dB` : recording.quality_status}
+                    {recording.quality_status === "passed" ? "Passed" : "Failed"}
                   </Badge>
                 )}
+                {recording.snr_db !== null && (
+                  <Badge 
+                    variant="outline"
+                    className={`text-xs ${
+                      recording.snr_db >= 25 
+                        ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                        : recording.snr_db >= 15 
+                          ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                          : 'bg-red-500/10 text-red-400 border-red-500/30'
+                    }`}
+                  >
+                    SNR {recording.snr_db}dB
+                  </Badge>
+                )}
+                {(() => {
+                  const meta = recording.metadata as { rms_dbfs?: number; mos_score?: number; mos_reasoning?: string } | null;
+                  return (
+                    <>
+                      {meta?.rms_dbfs !== undefined && meta?.rms_dbfs !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.rms_dbfs >= -26 && meta.rms_dbfs <= -20
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          RMS {meta.rms_dbfs.toFixed(1)} dBFS
+                        </Badge>
+                      )}
+                      {meta?.mos_score !== undefined && meta?.mos_score !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.mos_score >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.mos_score >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          MOS {meta.mos_score.toFixed(1)}
+                        </Badge>
+                      )}
+                    </>
+                  );
+                })()}
                 <Badge 
                   variant={recording.status === "completed" ? "default" : "secondary"}
                   className={recording.status === "completed" ? "bg-accent text-accent-foreground" : ""}
