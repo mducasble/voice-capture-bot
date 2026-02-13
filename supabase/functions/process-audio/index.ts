@@ -922,6 +922,9 @@ async function finalizeProcessing(
   // Start Gemini transcription with chunk-based processing (non-blocking)
   transcribeChunksWithRetry(supabase, state.recording_id);
 
+  // Estimate MOS score using Lovable AI (non-blocking)
+  estimateMOSScore(supabase, state.recording_id, state.file_url, snrDb, rmsDbfs);
+
   // DISABLED: Automatic ElevenLabs transcription to save credits during testing
   // To re-enable, uncomment the following block:
   /*
@@ -964,6 +967,30 @@ async function finalizeProcessing(
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+// Estimate MOS score using Lovable AI (non-blocking)
+// deno-lint-ignore no-explicit-any
+function estimateMOSScore(
+  supabase: any,
+  recording_id: string,
+  file_url: string,
+  snr_db: number | null,
+  rms_dbfs: number | null
+) {
+  const invokePromise = supabase.functions.invoke('estimate-mos', {
+    body: { recording_id, file_url, snr_db, rms_dbfs }
+  });
+
+  // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(
+      invokePromise.catch((err: unknown) => console.error("Failed to estimate MOS score:", err))
+    );
+  } else {
+    invokePromise.catch((err: unknown) => console.error("Failed to estimate MOS score:", err));
+  }
 }
 
 // Trigger transcribe-gemini-continue using waitUntil to avoid blocking
