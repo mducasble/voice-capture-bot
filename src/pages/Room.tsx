@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
@@ -41,11 +42,77 @@ const Room = () => {
   const [copied, setCopied] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Enumerate audio input devices
+  useEffect(() => {
+    const loadDevices = async () => {
+      try {
+        // Need to request permission first to get device labels
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(d => d.kind === "audioinput");
+        setAudioDevices(audioInputs);
+        if (audioInputs.length > 0 && !selectedDeviceId) {
+          setSelectedDeviceId(audioInputs[0].deviceId);
+        }
+      } catch (e) {
+        console.error("Error enumerating devices:", e);
+      }
+    };
+    loadDevices();
+
+    navigator.mediaDevices.addEventListener("devicechange", loadDevices);
+    return () => navigator.mediaDevices.removeEventListener("devicechange", loadDevices);
+  }, []);
+
+  // Helper to get audio constraints with selected device
+  const getAudioConstraints = useCallback(() => ({
+    audio: {
+      deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      sampleRate: 48000,
+    }
+  }), [selectedDeviceId]);
+
+  // Switch device while connected
+  const handleDeviceChange = useCallback(async (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+    if (!currentParticipant) return;
+
+    // Replace the active stream
+    try {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: { exact: deviceId },
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 48000,
+        }
+      });
+      // Apply mute state
+      stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+      mediaStreamRef.current = stream;
+      // Force re-render to pass new stream to ParticipantAudio
+      setCurrentParticipant(prev => prev ? { ...prev } : null);
+      toast.success("Dispositivo alterado!");
+    } catch (err) {
+      console.error("Error switching device:", err);
+      toast.error("Erro ao trocar dispositivo");
+    }
+  }, [currentParticipant, isMuted]);
 
   // Fetch room data
   useEffect(() => {
@@ -75,7 +142,6 @@ const Room = () => {
     if (!roomId || !room) return;
 
     const checkCreatorParticipant = async () => {
-      // Check if there's a creator participant that matches the room creator
       const { data: creatorParticipant } = await supabase
         .from("room_participants")
         .select("*")
@@ -84,19 +150,10 @@ const Room = () => {
         .single();
 
       if (creatorParticipant && !currentParticipant) {
-        // Store creator name in sessionStorage to recognize them
         const storedCreatorId = sessionStorage.getItem(`room_${roomId}_participant`);
         if (storedCreatorId === creatorParticipant.id) {
-          // This is the creator returning - auto-connect them
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-              audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-                sampleRate: 48000,
-              } 
-            });
+            const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
             mediaStreamRef.current = stream;
             setCurrentParticipant(creatorParticipant as Participant);
           } catch (error) {
@@ -107,7 +164,7 @@ const Room = () => {
     };
 
     checkCreatorParticipant();
-  }, [roomId, room, currentParticipant]);
+  }, [roomId, room, currentParticipant, getAudioConstraints]);
 
   // Fetch and subscribe to participants
   useEffect(() => {
@@ -179,14 +236,7 @@ const Room = () => {
     setIsJoining(true);
     try {
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 48000,
-        } 
-      });
+      const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
       mediaStreamRef.current = stream;
 
       if (asCreator) {
@@ -335,6 +385,27 @@ const Room = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Audio device selector */}
+            {audioDevices.length > 1 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Mic className="h-4 w-4" /> Dispositivo de Áudio
+                </label>
+                <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o microfone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {audioDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Creator quick join button */}
             <Button 
               className="w-full" 
@@ -471,7 +542,22 @@ const Room = () => {
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {/* Device selector */}
+            {audioDevices.length > 1 && (
+              <Select value={selectedDeviceId} onValueChange={handleDeviceChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Selecione o microfone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {audioDevices.map((device) => (
+                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                      {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <ParticipantAudio
               participantId={currentParticipant.id}
               participantName={currentParticipant.name}
