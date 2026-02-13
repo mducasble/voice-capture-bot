@@ -341,14 +341,14 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
           <Badge 
             variant="outline" 
             className={`text-xs ${
-              snrDb >= 20 
+              snrDb >= 25 
                 ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                : snrDb >= 10 
+                : snrDb >= 15 
                   ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
                   : 'bg-red-500/10 text-red-400 border-red-500/30'
             }`}
           >
-            SNR {snrDb}dB {snrDb >= 20 ? '✓ Good quality' : snrDb >= 10 ? '⚠ Fair quality' : '✗ Poor quality'}
+            SNR {snrDb}dB {snrDb >= 25 ? '✓ Good quality' : snrDb >= 15 ? '⚠ Fair quality' : '✗ Poor quality'}
           </Badge>
         </div>
         <div className="text-[10px] text-muted-foreground/60">
@@ -376,9 +376,9 @@ export function WaveformVisualizer({ audioUrl, snrDb, className = "" }: Waveform
           <Badge 
             variant="outline" 
             className={`text-xs ${
-              snrDb >= 20 
+              snrDb >= 25 
                 ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                : snrDb >= 10 
+                : snrDb >= 15 
                   ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
                   : 'bg-red-500/10 text-red-400 border-red-500/30'
             }`}
