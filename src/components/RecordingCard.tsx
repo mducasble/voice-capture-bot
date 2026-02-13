@@ -368,6 +368,9 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     sigmos_reverb?: number
                     vqscore?: number
                     wvmos?: number
+                    utmos?: number
+                    mic_sr?: number
+                    file_sr?: number
                   } | null;
                   return (
                     <>
@@ -451,6 +454,34 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                           }`}
                         >
                           SigMOS {meta.sigmos_ovrl.toFixed(1)}
+                        </Badge>
+                      )}
+                      {meta?.utmos !== undefined && meta?.utmos !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.utmos >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.utmos >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          UTMOS {meta.utmos.toFixed(2)}
+                        </Badge>
+                      )}
+                      {meta?.mic_sr !== undefined && meta?.mic_sr !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.mic_sr >= 44100
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.mic_sr >= 16000
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          Mic {(meta.mic_sr / 1000).toFixed(1)}kHz
                         </Badge>
                       )}
                     </>
