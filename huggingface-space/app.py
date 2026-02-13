@@ -71,9 +71,11 @@ def get_wvmos():
     global _wvmos_model
     if _wvmos_model is None:
         import torch
-        # Override torch.load to allow unsafe weights for wvmos checkpoint
+        # Override torch.load to allow unsafe weights AND force CPU mapping
         _original_load = torch.load
-        torch.load = lambda *args, **kwargs: _original_load(*args, **{**kwargs, 'weights_only': False})
+        torch.load = lambda *args, **kwargs: _original_load(
+            *args, **{**kwargs, 'weights_only': False, 'map_location': torch.device('cpu')}
+        )
         try:
             from wvmos import get_wvmos
             _wvmos_model = get_wvmos(cuda=False)
@@ -86,9 +88,11 @@ def get_utmos():
     global _utmos_predictor
     if _utmos_predictor is None:
         import torch
-        # UTMOS checkpoint requires weights_only=False
+        # UTMOS via torch.hub - requires weights_only=False and CPU mapping
         _original_load = torch.load
-        torch.load = lambda *args, **kwargs: _original_load(*args, **{**kwargs, 'weights_only': False})
+        torch.load = lambda *args, **kwargs: _original_load(
+            *args, **{**kwargs, 'weights_only': False, 'map_location': torch.device('cpu')}
+        )
         try:
             _utmos_predictor = torch.hub.load(
                 "tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True
@@ -141,12 +145,20 @@ def compute_dnsmos(filepath: str, sr: int) -> dict:
                 pass
         else:
             result = dnsmos.run(filepath, sr=target_sr, verbose=False)
-        # result is a DataFrame with columns: filename, SIG, BAK, OVRL
-        row = result.iloc[0]
+        # result can be a DataFrame or a dict depending on speechmos version
+        if hasattr(result, 'iloc'):
+            row = result.iloc[0]
+            sig, bak, ovrl = float(row["SIG"]), float(row["BAK"]), float(row["OVRL"])
+        elif isinstance(result, dict):
+            sig = float(result.get("sig_mos", result.get("SIG", 0)))
+            bak = float(result.get("bak_mos", result.get("BAK", 0)))
+            ovrl = float(result.get("ovr_mos", result.get("OVRL", result.get("ovrl_mos", 0))))
+        else:
+            raise ValueError(f"Unexpected DNSMOS result type: {type(result)}")
         return {
-            "sigmos_disc": round(float(row["SIG"]), 4),
-            "sigmos_reverb": round(float(row["BAK"]), 4),
-            "sigmos_ovrl": round(float(row["OVRL"]), 4),
+            "sigmos_disc": round(sig, 4),
+            "sigmos_reverb": round(bak, 4),
+            "sigmos_ovrl": round(ovrl, 4),
         }
     except Exception as e:
         print(f"DNSMOS error: {e}")
