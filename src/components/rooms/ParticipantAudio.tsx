@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ParticipantAudioProps {
   participantId: string;
@@ -93,7 +94,7 @@ export const ParticipantAudio = ({
     handleRecordingChange();
   }, [isRecording, stream, wavRecorder]);
 
-  // Upload WAV recording to S3 via pre-signed URL
+  // Upload WAV recording via Supabase Storage then register
   const uploadRecording = useCallback(async (wavBlob: Blob) => {
     if (!wavBlob || wavBlob.size === 0) return;
 
@@ -102,46 +103,29 @@ export const ParticipantAudio = ({
 
     try {
       const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
+      const storagePath = `rooms/${sessionId}/${filename}`;
 
-      // Step 1: Get pre-signed upload URL
+      // Step 1: Upload to Supabase Storage
       setUploadProgress(10);
-      const urlResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-room-upload-url`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            filename,
-            session_id: sessionId,
-            content_type: "audio/wav",
-          }),
-        }
-      );
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("voice-recordings")
+        .upload(storagePath, wavBlob, {
+          contentType: "audio/wav",
+          cacheControl: "3600",
+        });
 
-      if (!urlResponse.ok) {
-        const err = await urlResponse.text();
-        throw new Error(`Failed to get upload URL: ${err}`);
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
 
-      const { upload_url, upload_headers, public_url } = await urlResponse.json();
-      setUploadProgress(20);
+      setUploadProgress(60);
 
-      // Step 2: Upload directly to S3
-      const s3Response = await fetch(upload_url, {
-        method: "PUT",
-        headers: upload_headers,
-        body: wavBlob,
-      });
+      // Step 2: Get public URL
+      const { data: urlData } = supabase.storage
+        .from("voice-recordings")
+        .getPublicUrl(storagePath);
 
-      if (!s3Response.ok) {
-        const errText = await s3Response.text();
-        throw new Error(`S3 upload failed: ${s3Response.status} - ${errText}`);
-      }
-
-      setUploadProgress(70);
+      const publicUrl = urlData.publicUrl;
 
       // Step 3: Register recording metadata
       const registerResponse = await fetch(
@@ -154,7 +138,7 @@ export const ParticipantAudio = ({
           },
           body: JSON.stringify({
             filename,
-            file_url: public_url,
+            file_url: publicUrl,
             file_size_bytes: wavBlob.size,
             session_id: sessionId,
             participant_id: participantId,
@@ -166,7 +150,8 @@ export const ParticipantAudio = ({
       );
 
       if (!registerResponse.ok) {
-        throw new Error("Failed to register recording");
+        const errText = await registerResponse.text();
+        throw new Error(`Register failed: ${errText}`);
       }
 
       setUploadProgress(100);
