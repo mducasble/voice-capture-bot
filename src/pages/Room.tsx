@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
@@ -17,6 +18,7 @@ interface Room {
   status: string;
   session_id: string;
   is_recording: boolean;
+  noise_gate_enabled: boolean;
   recording_started_at: string | null;
   created_at: string;
 }
@@ -501,7 +503,7 @@ const Room = () => {
         {/* Recording Controls (Creator only) */}
         {currentParticipant.is_creator && (
           <Card>
-            <CardContent className="py-4">
+            <CardContent className="py-4 space-y-4">
               <div className="flex items-center justify-center gap-4">
                 {!room.is_recording ? (
                   <Button 
@@ -523,6 +525,23 @@ const Room = () => {
                     Parar Gravação
                   </Button>
                 )}
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/50">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
+                  Noise Gate
+                </label>
+                <Switch
+                  id="noise-gate"
+                  checked={room.noise_gate_enabled}
+                  disabled={room.is_recording}
+                  onCheckedChange={async (checked) => {
+                    await supabase
+                      .from("rooms")
+                      .update({ noise_gate_enabled: checked })
+                      .eq("id", roomId);
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -565,6 +584,7 @@ const Room = () => {
               isRecording={room.is_recording}
               sessionId={room.session_id}
               isMuted={isMuted}
+              noiseGateEnabled={room.noise_gate_enabled}
             />
           </CardContent>
         </Card>

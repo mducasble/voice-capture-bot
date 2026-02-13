@@ -1,0 +1,1 @@
+ALTER TABLE public.rooms ADD COLUMN noise_gate_enabled boolean NOT NULL DEFAULT false;

@@ -380,6 +380,7 @@ export type Database = {
           creator_name: string
           id: string
           is_recording: boolean | null
+          noise_gate_enabled: boolean
           recording_started_at: string | null
           room_name: string | null
           session_id: string | null
@@ -391,6 +392,7 @@ export type Database = {
           creator_name: string
           id?: string
           is_recording?: boolean | null
+          noise_gate_enabled?: boolean
           recording_started_at?: string | null
           room_name?: string | null
           session_id?: string | null
@@ -402,6 +404,7 @@ export type Database = {
           creator_name?: string
           id?: string
           is_recording?: boolean | null
+          noise_gate_enabled?: boolean
           recording_started_at?: string | null
           room_name?: string | null
           session_id?: string | null
