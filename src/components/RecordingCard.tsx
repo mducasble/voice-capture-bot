@@ -453,7 +453,35 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                                 : 'bg-red-500/10 text-red-400 border-red-500/30'
                           }`}
                         >
-                          SigMOS {meta.sigmos_ovrl.toFixed(1)}
+                          SigMOS Ovrl {meta.sigmos_ovrl.toFixed(1)}
+                        </Badge>
+                      )}
+                      {meta?.sigmos_disc !== undefined && meta?.sigmos_disc !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.sigmos_disc >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.sigmos_disc >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          SigMOS Disc {meta.sigmos_disc.toFixed(1)}
+                        </Badge>
+                      )}
+                      {meta?.sigmos_reverb !== undefined && meta?.sigmos_reverb !== null && (
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            meta.sigmos_reverb >= 3.5
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                              : meta.sigmos_reverb >= 2.5
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          SigMOS Reverb {meta.sigmos_reverb.toFixed(1)}
                         </Badge>
                       )}
                       {meta?.utmos !== undefined && meta?.utmos !== null && (
