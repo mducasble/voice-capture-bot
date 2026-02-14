@@ -412,11 +412,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       metrics.push({ label: 'RMS', value: `${meta.rms_dbfs.toFixed(1)} dBFS`, level });
                     }
                     if (meta?.srmr != null) {
-                      const level = meta.srmr >= 20 ? 'good' : meta.srmr >= 10 ? 'fair' : 'bad';
+                      const level = meta.srmr >= 6 ? 'good' : meta.srmr >= 10 ? 'fair' : 'bad';
                       metrics.push({ label: 'SRMR', value: `${meta.srmr.toFixed(2)} dB`, level });
                     }
                     if (meta?.wvmos != null) {
-                      const level = meta.wvmos >= 3.5 ? 'good' : meta.wvmos >= 2.5 ? 'fair' : 'bad';
+                      const level = meta.wvmos >= 1.5 ? 'good' : meta.wvmos >= 2.5 ? 'fair' : 'bad';
                       metrics.push({ label: 'WVMOS', value: meta.wvmos.toFixed(2), level });
                     }
                     if (meta?.utmos != null) {
@@ -424,7 +424,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       metrics.push({ label: 'UTMOS', value: meta.utmos.toFixed(2), level });
                     }
                     if (meta?.sigmos_ovrl != null) {
-                      const level = meta.sigmos_ovrl >= 3.5 ? 'good' : meta.sigmos_ovrl >= 2.5 ? 'fair' : 'bad';
+                      const level = meta.sigmos_ovrl >= 2.8 ? 'good' : meta.sigmos_ovrl >= 2.5 ? 'fair' : 'bad';
                       metrics.push({ label: 'SigMOS Ovrl', value: meta.sigmos_ovrl.toFixed(2), level });
                     }
                     if (meta?.sigmos_disc != null) {
@@ -436,7 +436,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       metrics.push({ label: 'SigMOS Reverb', value: meta.sigmos_reverb.toFixed(2), level });
                     }
                     if (meta?.vqscore != null) {
-                      const level = meta.vqscore >= 80 ? 'good' : meta.vqscore >= 60 ? 'fair' : 'bad';
+                      const level = meta.vqscore >= 0.65 ? 'good' : meta.vqscore >= 60 ? 'fair' : 'bad';
                       metrics.push({ label: 'VQScore', value: meta.vqscore.toFixed(1), level });
                     }
                     if (meta?.mos_score != null) {
