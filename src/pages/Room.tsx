@@ -539,6 +539,7 @@ const Room = () => {
             stream={mediaStreamRef.current}
             testStatus={currentParticipant.audio_test_status || "pending"}
             testResults={currentParticipant.audio_test_results}
+            enhanceAudio={audioEnhanced}
             onTestComplete={() => {
               // Refresh participants to get updated test status
               const fetchParticipants = async () => {

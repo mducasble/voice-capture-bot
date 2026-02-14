@@ -36,6 +36,7 @@ interface AudioTestFlowProps {
   testStatus: string;
   testResults: TestResults | null;
   onTestComplete: () => void;
+  enhanceAudio?: boolean;
 }
 
 const TEST_DURATION = 10;
@@ -48,6 +49,7 @@ export const AudioTestFlow = ({
   testStatus,
   testResults: initialResults,
   onTestComplete,
+  enhanceAudio = false,
 }: AudioTestFlowProps) => {
   const [phase, setPhase] = useState<"idle" | "recording" | "analyzing" | "results">(
     initialResults ? "results" : "idle"
@@ -56,7 +58,7 @@ export const AudioTestFlow = ({
   const [results, setResults] = useState<TestResults | null>(initialResults);
   const [analysisProgress, setAnalysisProgress] = useState(0);
 
-  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
+  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, enhanceAudio });
 
   // Update results when props change (realtime)
   useEffect(() => {
