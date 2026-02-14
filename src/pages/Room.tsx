@@ -575,16 +575,11 @@ const Room = () => {
                             size="lg" 
                             onClick={handleStartRecording}
                             className="bg-red-600 hover:bg-red-700"
-                            disabled={room.status === "completed" || !allPassed}
+                            disabled={room.status === "completed"}
                           >
                             <Circle className="h-5 w-5 mr-2 fill-current" />
                             Iniciar Gravação
                           </Button>
-                          {!allPassed && (
-                            <p className="text-xs text-muted-foreground text-center">
-                              Aguardando teste de áudio: {pendingNames.join(", ")}
-                            </p>
-                          )}
                         </div>
                       ) : (
                         <Button 
