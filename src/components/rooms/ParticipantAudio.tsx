@@ -12,6 +12,7 @@ interface ParticipantAudioProps {
   sessionId: string;
   isMuted: boolean;
   noiseGateEnabled?: boolean;
+  audioEnhanced?: boolean;
 }
 
 export const ParticipantAudio = ({
@@ -22,6 +23,7 @@ export const ParticipantAudio = ({
   sessionId,
   isMuted,
   noiseGateEnabled = false,
+  audioEnhanced = false,
 }: ParticipantAudioProps) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,9 +35,9 @@ export const ParticipantAudio = ({
   const isRecordingRef = useRef(false);
   const pendingBlobRef = useRef<Blob | null>(null);
 
-  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
+  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, enhanceAudio: audioEnhanced });
 
-  // Audio level visualization (separate from recording) - with gain applied
+  // Audio level visualization (separate from recording) - with gain and optional filters
   useEffect(() => {
     if (!stream) return;
 
@@ -49,8 +51,27 @@ export const ParticipantAudio = ({
     // Apply same gain as recording for accurate level display
     const gainNode = audioContext.createGain();
     gainNode.gain.value = 15.0; // Match recording gain
-    
-    source.connect(gainNode);
+
+    let lastNode: AudioNode = source;
+
+    // Add filters when enhancement is active (match recording chain)
+    if (audioEnhanced) {
+      const highpass = audioContext.createBiquadFilter();
+      highpass.type = "highpass";
+      highpass.frequency.value = 80;
+      highpass.Q.value = 0.7;
+
+      const lowpass = audioContext.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.frequency.value = 12000;
+      lowpass.Q.value = 0.7;
+
+      lastNode.connect(highpass);
+      highpass.connect(lowpass);
+      lastNode = lowpass;
+    }
+
+    lastNode.connect(gainNode);
     gainNode.connect(analyser);
     
     analyser.fftSize = 256;
@@ -71,7 +92,7 @@ export const ParticipantAudio = ({
       }
       audioContext.close();
     };
-  }, [stream]);
+  }, [stream, audioEnhanced]);
 
   // Start/stop WAV recording based on room state
   useEffect(() => {
@@ -79,11 +100,9 @@ export const ParticipantAudio = ({
 
     const handleRecordingChange = async () => {
       if (isRecording && !isRecordingRef.current) {
-        // Start recording
         isRecordingRef.current = true;
         await wavRecorder.startRecording(stream);
       } else if (!isRecording && isRecordingRef.current) {
-        // Stop recording and get WAV blob
         isRecordingRef.current = false;
         const wavBlob = await wavRecorder.stopRecording();
         if (wavBlob) {
@@ -106,7 +125,6 @@ export const ParticipantAudio = ({
     try {
       const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
 
-      // Send binary audio via FormData to Edge Function (uploads to S3 server-side)
       setUploadProgress(10);
       const formData = new FormData();
       formData.append("audio", wavBlob, filename);
