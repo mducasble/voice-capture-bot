@@ -71,14 +71,17 @@ def get_wvmos():
     global _wvmos_model
     if _wvmos_model is None:
         import torch
-        # Override torch.load to allow unsafe weights AND force CPU mapping
+        # Patch torch.load BEFORE importing wvmos so its internal
+        # imports also pick up the patched version.
         _original_load = torch.load
-        torch.load = lambda *args, **kwargs: _original_load(
-            *args, **{**kwargs, 'weights_only': False, 'map_location': torch.device('cpu')}
-        )
+        def _patched_load(*args, **kwargs):
+            kwargs['weights_only'] = False
+            kwargs['map_location'] = torch.device('cpu')
+            return _original_load(*args, **kwargs)
+        torch.load = _patched_load
         try:
-            from wvmos import get_wvmos
-            _wvmos_model = get_wvmos(cuda=False)
+            from wvmos import get_wvmos as _init_wvmos
+            _wvmos_model = _init_wvmos(cuda=False)
         finally:
             torch.load = _original_load
     return _wvmos_model
@@ -87,18 +90,32 @@ def get_wvmos():
 def get_utmos():
     global _utmos_predictor
     if _utmos_predictor is None:
+        import sys
         import torch
-        # UTMOS via torch.hub - requires weights_only=False and CPU mapping
+
         _original_load = torch.load
-        torch.load = lambda *args, **kwargs: _original_load(
-            *args, **{**kwargs, 'weights_only': False, 'map_location': torch.device('cpu')}
-        )
+        def _patched_load(*args, **kwargs):
+            kwargs['weights_only'] = False
+            kwargs['map_location'] = torch.device('cpu')
+            return _original_load(*args, **kwargs)
+        torch.load = _patched_load
+
+        # The pip package "speechmos" (DNSMOS-only) shadows the torch.hub
+        # repo's "speechmos" package which contains utmos22.  Temporarily
+        # remove the pip version from sys.modules so torch.hub can load
+        # its own speechmos.utmos22 sub-module.
+        saved_modules = {k: v for k, v in sys.modules.items() if k.startswith('speechmos')}
+        for k in saved_modules:
+            del sys.modules[k]
+
         try:
             _utmos_predictor = torch.hub.load(
                 "tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True
             )
         finally:
             torch.load = _original_load
+            # Restore the pip speechmos so DNSMOS keeps working
+            sys.modules.update(saved_modules)
     return _utmos_predictor
 
 
