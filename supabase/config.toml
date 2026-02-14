@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.estimate-audio-metrics]
 verify_jwt = false
+
+[functions.test-room-audio]
+verify_jwt = false
