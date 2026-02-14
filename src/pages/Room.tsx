@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
+import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
 
 interface Room {
   id: string;
@@ -30,6 +31,8 @@ interface Participant {
   is_creator: boolean;
   is_connected: boolean;
   joined_at: string;
+  audio_test_status: string;
+  audio_test_results: any;
 }
 
 const Room = () => {
@@ -500,49 +503,92 @@ const Room = () => {
       </header>
 
       <main className="container py-8 max-w-2xl space-y-6">
+        {/* Audio Test Flow */}
+        {!room.is_recording && room.status !== "completed" && (
+          <AudioTestFlow
+            participantId={currentParticipant.id}
+            participantName={currentParticipant.name}
+            roomId={room.id}
+            stream={mediaStreamRef.current}
+            testStatus={currentParticipant.audio_test_status || "pending"}
+            testResults={currentParticipant.audio_test_results}
+            onTestComplete={() => {
+              // Refresh participants to get updated test status
+              const fetchParticipants = async () => {
+                const { data } = await supabase
+                  .from("room_participants")
+                  .select("*")
+                  .eq("room_id", roomId)
+                  .eq("is_connected", true);
+                if (data) {
+                  setParticipants(data as Participant[]);
+                  const me = data.find((p: any) => p.id === currentParticipant.id);
+                  if (me) setCurrentParticipant(me as Participant);
+                }
+              };
+              fetchParticipants();
+            }}
+          />
+        )}
+
         {/* Recording Controls (Creator only) */}
         {currentParticipant.is_creator && (
           <Card>
             <CardContent className="py-4 space-y-4">
-              <div className="flex items-center justify-center gap-4">
-                {!room.is_recording ? (
-                  <Button 
-                    size="lg" 
-                    onClick={handleStartRecording}
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={room.status === "completed"}
-                  >
-                    <Circle className="h-5 w-5 mr-2 fill-current" />
-                    Iniciar Gravação
-                  </Button>
-                ) : (
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    onClick={handleStopRecording}
-                  >
-                    <Square className="h-5 w-5 mr-2 fill-current" />
-                    Parar Gravação
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/50">
-                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
-                  Noise Gate
-                </label>
-                <Switch
-                  id="noise-gate"
-                  checked={room.noise_gate_enabled}
-                  disabled={room.is_recording}
-                  onCheckedChange={async (checked) => {
-                    await supabase
-                      .from("rooms")
-                      .update({ noise_gate_enabled: checked })
-                      .eq("id", roomId);
-                  }}
-                />
-              </div>
+              {(() => {
+                const allPassed = participants.every(p => p.audio_test_status === "passed");
+                const pendingNames = participants.filter(p => p.audio_test_status !== "passed").map(p => p.name);
+                return (
+                  <>
+                    <div className="flex items-center justify-center gap-4">
+                      {!room.is_recording ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Button 
+                            size="lg" 
+                            onClick={handleStartRecording}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={room.status === "completed" || !allPassed}
+                          >
+                            <Circle className="h-5 w-5 mr-2 fill-current" />
+                            Iniciar Gravação
+                          </Button>
+                          {!allPassed && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              Aguardando teste de áudio: {pendingNames.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <Button 
+                          size="lg" 
+                          variant="outline"
+                          onClick={handleStopRecording}
+                        >
+                          <Square className="h-5 w-5 mr-2 fill-current" />
+                          Parar Gravação
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/50">
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                      <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
+                        Noise Gate
+                      </label>
+                      <Switch
+                        id="noise-gate"
+                        checked={room.noise_gate_enabled}
+                        disabled={room.is_recording}
+                        onCheckedChange={async (checked) => {
+                          await supabase
+                            .from("rooms")
+                            .update({ noise_gate_enabled: checked })
+                            .eq("id", roomId);
+                        }}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
@@ -609,6 +655,15 @@ const Room = () => {
                     )}
                     {p.id === currentParticipant.id && (
                       <Badge variant="secondary" className="text-xs">Você</Badge>
+                    )}
+                    {p.audio_test_status === "passed" && (
+                      <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">✅ Teste OK</Badge>
+                    )}
+                    {p.audio_test_status === "failed" && (
+                      <Badge variant="outline" className="text-xs border-red-500/50 text-red-500">❌ Teste</Badge>
+                    )}
+                    {p.audio_test_status === "testing" && (
+                      <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">⏳ Testando</Badge>
                     )}
                   </div>
                   <Mic className="h-4 w-4 text-muted-foreground" />

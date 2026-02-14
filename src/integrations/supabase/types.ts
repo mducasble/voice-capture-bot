@@ -338,6 +338,8 @@ export type Database = {
       }
       room_participants: {
         Row: {
+          audio_test_results: Json | null
+          audio_test_status: string
           id: string
           is_connected: boolean | null
           is_creator: boolean | null
@@ -347,6 +349,8 @@ export type Database = {
           room_id: string
         }
         Insert: {
+          audio_test_results?: Json | null
+          audio_test_status?: string
           id?: string
           is_connected?: boolean | null
           is_creator?: boolean | null
@@ -356,6 +360,8 @@ export type Database = {
           room_id: string
         }
         Update: {
+          audio_test_results?: Json | null
+          audio_test_status?: string
           id?: string
           is_connected?: boolean | null
           is_creator?: boolean | null
