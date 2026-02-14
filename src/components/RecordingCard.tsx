@@ -443,12 +443,12 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       const level = meta.mos_score >= 3.5 ? 'good' : meta.mos_score >= 2.5 ? 'fair' : 'bad';
                       metrics.push({ label: 'MOS', value: meta.mos_score.toFixed(2), level });
                     }
+                    if (meta?.file_sr != null) {
+                      metrics.push({ label: 'Device SR', value: `${(meta.file_sr / 1000).toFixed(1)} kHz`, level: 'good' });
+                    }
                     if (meta?.mic_sr != null) {
                       const level = meta.mic_sr >= 44100 ? 'good' : meta.mic_sr >= 16000 ? 'fair' : 'bad';
-                      metrics.push({ label: 'Mic SR', value: `${(meta.mic_sr / 1000).toFixed(1)} kHz`, level });
-                    }
-                    if (meta?.file_sr != null) {
-                      metrics.push({ label: 'File SR', value: `${(meta.file_sr / 1000).toFixed(1)} kHz`, level: 'good' });
+                      metrics.push({ label: 'Eff. BW', value: `${(meta.mic_sr / 1000).toFixed(1)} kHz`, level });
                     }
 
                     if (metrics.length === 0) return null;

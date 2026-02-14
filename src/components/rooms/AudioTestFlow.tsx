@@ -219,7 +219,7 @@ export const AudioTestFlow = ({
 
   const formatValue = (key: string, value: number | null) => {
     if (value === null) return "—";
-    if (key === "mic_sr") return `${(value / 1000).toFixed(1)}kHz`;
+    if (key === "mic_sr" || key === "device_sr") return `${(value / 1000).toFixed(1)}kHz`;
     if (key === "rms") return `${value.toFixed(1)} dBFS`;
     if (key === "snr") return `${value.toFixed(1)} dB`;
     if (key === "vqscore") return value.toFixed(2);

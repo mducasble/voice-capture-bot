@@ -334,7 +334,8 @@ serve(async (req) => {
     const allMetrics: Record<string, { value: number | null; status: string; label: string }> = {
       snr: { value: snr, status: getMetricStatus('snr', snr), label: 'SNR (dB)' },
       rms: { value: rms, status: getMetricStatus('rms', rms), label: 'RMS (dBFS)' },
-      mic_sr: { value: micSr, status: getMetricStatus('mic_sr', micSr), label: 'Mic SR (Hz)' },
+      device_sr: { value: header.sampleRate, status: 'good', label: 'Device SR (Hz)' },
+      mic_sr: { value: micSr, status: getMetricStatus('mic_sr', micSr), label: 'Eff. BW (Hz)' },
     };
 
     // Add advanced metrics if available
