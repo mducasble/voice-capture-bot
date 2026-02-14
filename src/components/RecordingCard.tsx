@@ -344,177 +344,6 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                 {recording.quality_status === "passed" ? "Passed" : "Failed"}
                   </Badge>
                 )}
-                {recording.snr_db !== null && (
-                  <Badge 
-                    variant="outline"
-                    className={`text-xs ${
-                      recording.snr_db >= 25 
-                        ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                        : recording.snr_db >= 15 
-                          ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                          : 'bg-red-500/10 text-red-400 border-red-500/30'
-                    }`}
-                  >
-                    SNR {recording.snr_db}dB
-                  </Badge>
-                )}
-                {(() => {
-                  const meta = recording.metadata as { 
-                    rms_dbfs?: number
-                    mos_score?: number
-                    srmr?: number
-                    sigmos_disc?: number
-                    sigmos_ovrl?: number
-                    sigmos_reverb?: number
-                    vqscore?: number
-                    wvmos?: number
-                    utmos?: number
-                    mic_sr?: number
-                    file_sr?: number
-                  } | null;
-                  return (
-                    <>
-                      {meta?.rms_dbfs !== undefined && meta?.rms_dbfs !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.rms_dbfs >= -26 && meta.rms_dbfs <= -20
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          RMS {meta.rms_dbfs.toFixed(1)} dBFS
-                        </Badge>
-                      )}
-                      {meta?.mos_score !== undefined && meta?.mos_score !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.mos_score >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.mos_score >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          MOS {meta.mos_score.toFixed(1)}
-                        </Badge>
-                      )}
-                      {meta?.srmr !== undefined && meta?.srmr !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.srmr >= 20
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.srmr >= 10
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          SRMR {meta.srmr.toFixed(1)}dB
-                        </Badge>
-                      )}
-                      {meta?.wvmos !== undefined && meta?.wvmos !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.wvmos >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.wvmos >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          WVMOS {meta.wvmos.toFixed(1)}
-                        </Badge>
-                      )}
-                      {meta?.vqscore !== undefined && meta?.vqscore !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.vqscore >= 80
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.vqscore >= 60
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          VQ {meta.vqscore.toFixed(0)}
-                        </Badge>
-                      )}
-                      {meta?.sigmos_ovrl !== undefined && meta?.sigmos_ovrl !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.sigmos_ovrl >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.sigmos_ovrl >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          SigMOS Ovrl {meta.sigmos_ovrl.toFixed(1)}
-                        </Badge>
-                      )}
-                      {meta?.sigmos_disc !== undefined && meta?.sigmos_disc !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.sigmos_disc >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.sigmos_disc >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          SigMOS Disc {meta.sigmos_disc.toFixed(1)}
-                        </Badge>
-                      )}
-                      {meta?.sigmos_reverb !== undefined && meta?.sigmos_reverb !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.sigmos_reverb >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.sigmos_reverb >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          SigMOS Reverb {meta.sigmos_reverb.toFixed(1)}
-                        </Badge>
-                      )}
-                      {meta?.utmos !== undefined && meta?.utmos !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.utmos >= 3.5
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.utmos >= 2.5
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          UTMOS {meta.utmos.toFixed(2)}
-                        </Badge>
-                      )}
-                      {meta?.mic_sr !== undefined && meta?.mic_sr !== null && (
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            meta.mic_sr >= 44100
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                              : meta.mic_sr >= 16000
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}
-                        >
-                          Mic {(meta.mic_sr / 1000).toFixed(1)}kHz
-                        </Badge>
-                      )}
-                    </>
-                  );
-                })()}
                 <Badge 
                   variant={recording.status === "completed" ? "default" : "secondary"}
                   className={recording.status === "completed" ? "bg-accent text-accent-foreground" : ""}
@@ -555,7 +384,100 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     {isWaveformOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
+                <CollapsibleContent className="mt-2 space-y-3">
+                  {/* Metrics Table */}
+                  {(() => {
+                    const meta = recording.metadata as {
+                      rms_dbfs?: number; mos_score?: number; srmr?: number;
+                      sigmos_disc?: number; sigmos_ovrl?: number; sigmos_reverb?: number;
+                      vqscore?: number; wvmos?: number; utmos?: number;
+                      mic_sr?: number; file_sr?: number;
+                    } | null;
+
+                    const getColor = (level: 'good' | 'fair' | 'bad') => {
+                      if (level === 'good') return 'bg-green-500/20 text-green-400 border-green-500/30';
+                      if (level === 'fair') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                      return 'bg-red-500/20 text-red-400 border-red-500/30';
+                    };
+
+                    type MetricDef = { label: string; value: string; level: 'good' | 'fair' | 'bad' };
+                    const metrics: MetricDef[] = [];
+
+                    if (recording.snr_db !== null && recording.snr_db !== undefined) {
+                      const level = recording.snr_db >= 25 ? 'good' : recording.snr_db >= 15 ? 'fair' : 'bad';
+                      metrics.push({ label: 'SNR', value: `${recording.snr_db} dB`, level });
+                    }
+                    if (meta?.rms_dbfs != null) {
+                      const level = (meta.rms_dbfs >= -26 && meta.rms_dbfs <= -20) ? 'good' : 'bad';
+                      metrics.push({ label: 'RMS', value: `${meta.rms_dbfs.toFixed(1)} dBFS`, level });
+                    }
+                    if (meta?.srmr != null) {
+                      const level = meta.srmr >= 20 ? 'good' : meta.srmr >= 10 ? 'fair' : 'bad';
+                      metrics.push({ label: 'SRMR', value: `${meta.srmr.toFixed(2)} dB`, level });
+                    }
+                    if (meta?.wvmos != null) {
+                      const level = meta.wvmos >= 3.5 ? 'good' : meta.wvmos >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'WVMOS', value: meta.wvmos.toFixed(2), level });
+                    }
+                    if (meta?.utmos != null) {
+                      const level = meta.utmos >= 3.5 ? 'good' : meta.utmos >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'UTMOS', value: meta.utmos.toFixed(2), level });
+                    }
+                    if (meta?.sigmos_ovrl != null) {
+                      const level = meta.sigmos_ovrl >= 3.5 ? 'good' : meta.sigmos_ovrl >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'SigMOS Ovrl', value: meta.sigmos_ovrl.toFixed(2), level });
+                    }
+                    if (meta?.sigmos_disc != null) {
+                      const level = meta.sigmos_disc >= 3.5 ? 'good' : meta.sigmos_disc >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'SigMOS Disc', value: meta.sigmos_disc.toFixed(2), level });
+                    }
+                    if (meta?.sigmos_reverb != null) {
+                      const level = meta.sigmos_reverb >= 3.5 ? 'good' : meta.sigmos_reverb >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'SigMOS Reverb', value: meta.sigmos_reverb.toFixed(2), level });
+                    }
+                    if (meta?.vqscore != null) {
+                      const level = meta.vqscore >= 80 ? 'good' : meta.vqscore >= 60 ? 'fair' : 'bad';
+                      metrics.push({ label: 'VQScore', value: meta.vqscore.toFixed(1), level });
+                    }
+                    if (meta?.mos_score != null) {
+                      const level = meta.mos_score >= 3.5 ? 'good' : meta.mos_score >= 2.5 ? 'fair' : 'bad';
+                      metrics.push({ label: 'MOS', value: meta.mos_score.toFixed(2), level });
+                    }
+                    if (meta?.mic_sr != null) {
+                      const level = meta.mic_sr >= 44100 ? 'good' : meta.mic_sr >= 16000 ? 'fair' : 'bad';
+                      metrics.push({ label: 'Mic SR', value: `${(meta.mic_sr / 1000).toFixed(1)} kHz`, level });
+                    }
+                    if (meta?.file_sr != null) {
+                      metrics.push({ label: 'File SR', value: `${(meta.file_sr / 1000).toFixed(1)} kHz`, level: 'good' });
+                    }
+
+                    if (metrics.length === 0) return null;
+
+                    return (
+                      <div className="overflow-x-auto rounded-lg border border-border/50">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr>
+                              {metrics.map((m) => (
+                                <th key={m.label} className={`px-2 py-1.5 font-medium border-b border-border/50 text-center ${getColor(m.level)}`}>
+                                  {m.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              {metrics.map((m) => (
+                                <td key={m.label} className="px-2 py-2 text-center text-foreground font-mono text-xs">
+                                  {m.value}
+                                </td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                   <WaveformVisualizer 
                     audioUrl={recording.file_url} 
                     snrDb={recording.snr_db}
