@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +49,7 @@ const Room = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [audioEnhanced, setAudioEnhanced] = useState(false);
   
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -81,12 +82,12 @@ const Room = () => {
   const getAudioConstraints = useCallback(() => ({
     audio: {
       deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
+      echoCancellation: audioEnhanced,
+      noiseSuppression: audioEnhanced,
+      autoGainControl: audioEnhanced,
       sampleRate: 48000,
     }
-  }), [selectedDeviceId]);
+  }), [selectedDeviceId, audioEnhanced]);
 
   // Switch device while connected
   const handleDeviceChange = useCallback(async (deviceId: string) => {
@@ -101,9 +102,9 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: audioEnhanced,
+          noiseSuppression: audioEnhanced,
+          autoGainControl: audioEnhanced,
           sampleRate: 48000,
         }
       });
@@ -117,7 +118,33 @@ const Room = () => {
       console.error("Error switching device:", err);
       toast.error("Erro ao trocar dispositivo");
     }
-  }, [currentParticipant, isMuted]);
+  }, [currentParticipant, isMuted, audioEnhanced]);
+
+  // Toggle audio enhancement and re-acquire stream
+  const handleToggleEnhancement = useCallback(async (enabled: boolean) => {
+    setAudioEnhanced(enabled);
+    if (!currentParticipant || !mediaStreamRef.current) return;
+
+    try {
+      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+          echoCancellation: enabled,
+          noiseSuppression: enabled,
+          autoGainControl: enabled,
+          sampleRate: 48000,
+        }
+      });
+      stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+      mediaStreamRef.current = stream;
+      setCurrentParticipant(prev => prev ? { ...prev } : null);
+      toast.success(enabled ? "Aprimoramento de áudio ativado!" : "Aprimoramento de áudio desativado!");
+    } catch (err) {
+      console.error("Error toggling enhancement:", err);
+      toast.error("Erro ao alterar aprimoramento de áudio");
+    }
+  }, [currentParticipant, selectedDeviceId, isMuted]);
 
   // Fetch room data
   useEffect(() => {
@@ -569,22 +596,36 @@ const Room = () => {
                         </Button>
                       )}
                     </div>
-                    <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/50">
-                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                      <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
-                        Noise Gate
-                      </label>
-                      <Switch
-                        id="noise-gate"
-                        checked={room.noise_gate_enabled}
-                        disabled={room.is_recording}
-                        onCheckedChange={async (checked) => {
-                          await supabase
-                            .from("rooms")
-                            .update({ noise_gate_enabled: checked })
-                            .eq("id", roomId);
-                        }}
-                      />
+                    <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                        <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
+                          Noise Gate
+                        </label>
+                        <Switch
+                          id="noise-gate"
+                          checked={room.noise_gate_enabled}
+                          disabled={room.is_recording}
+                          onCheckedChange={async (checked) => {
+                            await supabase
+                              .from("rooms")
+                              .update({ noise_gate_enabled: checked })
+                              .eq("id", roomId);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        <label htmlFor="audio-enhance" className="text-sm text-muted-foreground cursor-pointer">
+                          Aprimorar Áudio
+                        </label>
+                        <Switch
+                          id="audio-enhance"
+                          checked={audioEnhanced}
+                          disabled={room.is_recording}
+                          onCheckedChange={handleToggleEnhancement}
+                        />
+                      </div>
                     </div>
                   </>
                 );
@@ -631,6 +672,7 @@ const Room = () => {
               sessionId={room.session_id}
               isMuted={isMuted}
               noiseGateEnabled={room.noise_gate_enabled}
+              audioEnhanced={audioEnhanced}
             />
           </CardContent>
         </Card>

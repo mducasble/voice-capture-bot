@@ -3,7 +3,8 @@ import { useRef, useCallback, useState } from "react";
 interface WavRecorderOptions {
   sampleRate?: number;
   channels?: number;
-  gain?: number; // Amplification factor (1.0 = no change, 2.0 = double volume)
+  gain?: number;
+  enhanceAudio?: boolean;
 }
 
 interface WavRecorderState {
@@ -11,8 +12,10 @@ interface WavRecorderState {
   duration: number;
 }
 
+const RNNOISE_FRAME_SIZE = 480; // RNNoise expects 480 samples at 48kHz (10ms)
+
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
-  const { sampleRate = 48000, channels = 1, gain = 15.0 } = options; // Default 15x gain
+  const { sampleRate = 48000, channels = 1, gain = 15.0, enhanceAudio = false } = options;
   
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
@@ -23,50 +26,141 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const highpassRef = useRef<BiquadFilterNode | null>(null);
+  const lowpassRef = useRef<BiquadFilterNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const rnnoiseStateRef = useRef<any>(null);
+  const rnnoiseLeftoverRef = useRef<Float32Array>(new Float32Array(0));
+  const enhanceRef = useRef(enhanceAudio);
+  enhanceRef.current = enhanceAudio;
+
+  const loadRnnoise = useCallback(async () => {
+    try {
+      const { Rnnoise } = await import("@shiguredo/rnnoise-wasm");
+      const rnnoise = await Rnnoise.load();
+      const denoiseState = rnnoise.createDenoiseState();
+      rnnoiseStateRef.current = denoiseState;
+      console.log("[AudioEnhancer] RNNoise loaded successfully");
+    } catch (err) {
+      console.error("[AudioEnhancer] Failed to load RNNoise:", err);
+    }
+  }, []);
+
+  const processWithRnnoise = useCallback((inputData: Float32Array): Float32Array => {
+    const denoiseState = rnnoiseStateRef.current;
+    if (!denoiseState) return inputData;
+
+    // Combine leftover from previous call with new input
+    const leftover = rnnoiseLeftoverRef.current;
+    const combined = new Float32Array(leftover.length + inputData.length);
+    combined.set(leftover);
+    combined.set(inputData, leftover.length);
+
+    const processedChunks: Float32Array[] = [];
+    let offset = 0;
+
+    while (offset + RNNOISE_FRAME_SIZE <= combined.length) {
+      const frame = new Float32Array(RNNOISE_FRAME_SIZE);
+      frame.set(combined.subarray(offset, offset + RNNOISE_FRAME_SIZE));
+      denoiseState.processFrame(frame);
+      processedChunks.push(frame);
+      offset += RNNOISE_FRAME_SIZE;
+    }
+
+    // Store leftover for next call
+    rnnoiseLeftoverRef.current = combined.slice(offset);
+
+    // Merge processed chunks
+    const totalLength = processedChunks.reduce((acc, c) => acc + c.length, 0);
+    const result = new Float32Array(totalLength);
+    let resultOffset = 0;
+    for (const chunk of processedChunks) {
+      result.set(chunk, resultOffset);
+      resultOffset += chunk.length;
+    }
+
+    return result;
+  }, []);
 
   const startRecording = useCallback(async (stream: MediaStream) => {
     chunksRef.current = [];
+    rnnoiseLeftoverRef.current = new Float32Array(0);
     
-    // Create audio context with desired sample rate
     const audioContext = new AudioContext({ sampleRate });
     audioContextRef.current = audioContext;
 
-    // Create source from stream
     const sourceNode = audioContext.createMediaStreamSource(stream);
     sourceNodeRef.current = sourceNode;
 
-    // Create gain node for amplification
+    // Create gain node
     const gainNode = audioContext.createGain();
     gainNode.gain.value = gain;
     gainNodeRef.current = gainNode;
 
-    // Create script processor (4096 buffer size for balance between latency and performance)
+    // Build audio chain
+    let lastNode: AudioNode = sourceNode;
+
+    // Add filters when enhancement is enabled
+    if (enhanceRef.current) {
+      // Highpass filter at 80Hz - removes low-frequency rumble
+      const highpass = audioContext.createBiquadFilter();
+      highpass.type = "highpass";
+      highpass.frequency.value = 80;
+      highpass.Q.value = 0.7;
+      highpassRef.current = highpass;
+
+      // Lowpass filter at 12kHz - removes high-frequency hiss
+      const lowpass = audioContext.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.frequency.value = 12000;
+      lowpass.Q.value = 0.7;
+      lowpassRef.current = lowpass;
+
+      lastNode.connect(highpass);
+      highpass.connect(lowpass);
+      lastNode = lowpass;
+
+      // Load RNNoise
+      await loadRnnoise();
+    }
+
+    // Connect gain
+    lastNode.connect(gainNode);
+
+    // Create script processor
     const processorNode = audioContext.createScriptProcessor(4096, channels, channels);
     processorNodeRef.current = processorNode;
 
-    // Capture audio data with soft clipping to prevent distortion
     processorNode.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
-      // Make a copy and apply soft clipping
-      const processedData = new Float32Array(inputData.length);
-      for (let i = 0; i < inputData.length; i++) {
-        // Soft clipping using tanh to prevent harsh distortion
-        processedData[i] = Math.tanh(inputData[i]);
+
+      if (enhanceRef.current && rnnoiseStateRef.current) {
+        // Process through RNNoise then soft clip
+        const denoised = processWithRnnoise(inputData);
+        const processed = new Float32Array(denoised.length);
+        for (let i = 0; i < denoised.length; i++) {
+          processed[i] = Math.tanh(denoised[i]);
+        }
+        if (processed.length > 0) {
+          chunksRef.current.push(processed);
+        }
+      } else {
+        // Standard processing: soft clip only
+        const processedData = new Float32Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          processedData[i] = Math.tanh(inputData[i]);
+        }
+        chunksRef.current.push(processedData);
       }
-      chunksRef.current.push(processedData);
     };
 
-    // Connect nodes: source -> gain -> processor -> destination
-    sourceNode.connect(gainNode);
     gainNode.connect(processorNode);
     processorNode.connect(audioContext.destination);
 
     startTimeRef.current = Date.now();
     
-    // Track duration
     durationIntervalRef.current = setInterval(() => {
       setState(prev => ({
         ...prev,
@@ -75,7 +169,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     }, 1000);
 
     setState({ isRecording: true, duration: 0 });
-  }, [sampleRate, channels, gain]);
+  }, [sampleRate, channels, gain, loadRnnoise, processWithRnnoise]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (durationIntervalRef.current) {
@@ -87,18 +181,37 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       return null;
     }
 
-    // Disconnect nodes
-    if (processorNodeRef.current) {
-      processorNodeRef.current.disconnect();
-    }
-    if (gainNodeRef.current) {
-      gainNodeRef.current.disconnect();
-    }
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.disconnect();
+    // Process any remaining RNNoise leftover
+    if (rnnoiseStateRef.current && rnnoiseLeftoverRef.current.length > 0) {
+      const remaining = rnnoiseLeftoverRef.current;
+      if (remaining.length > 0) {
+        // Pad to RNNOISE_FRAME_SIZE and process
+        const frame = new Float32Array(RNNOISE_FRAME_SIZE);
+        frame.set(remaining);
+        rnnoiseStateRef.current.processFrame(frame);
+        const clipped = new Float32Array(remaining.length);
+        for (let i = 0; i < remaining.length; i++) {
+          clipped[i] = Math.tanh(frame[i]);
+        }
+        chunksRef.current.push(clipped);
+      }
     }
 
-    // Merge all chunks into one buffer
+    // Disconnect nodes
+    processorNodeRef.current?.disconnect();
+    gainNodeRef.current?.disconnect();
+    highpassRef.current?.disconnect();
+    lowpassRef.current?.disconnect();
+    sourceNodeRef.current?.disconnect();
+
+    // Clean up RNNoise
+    if (rnnoiseStateRef.current) {
+      try { rnnoiseStateRef.current.destroy(); } catch {}
+      rnnoiseStateRef.current = null;
+    }
+    rnnoiseLeftoverRef.current = new Float32Array(0);
+
+    // Merge all chunks
     const totalLength = chunksRef.current.reduce((acc, chunk) => acc + chunk.length, 0);
     const mergedBuffer = new Float32Array(totalLength);
     let offset = 0;
@@ -107,13 +220,9 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       offset += chunk.length;
     }
 
-    // Convert Float32 to Int16 PCM
     const pcmData = float32ToInt16(mergedBuffer);
-
-    // Create WAV file
     const wavBlob = createWavBlob(pcmData, sampleRate, channels);
 
-    // Close audio context
     await audioContextRef.current.close();
     audioContextRef.current = null;
     chunksRef.current = [];
@@ -134,9 +243,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
 function float32ToInt16(buffer: Float32Array): Int16Array {
   const result = new Int16Array(buffer.length);
   for (let i = 0; i < buffer.length; i++) {
-    // Clamp value between -1 and 1
     const s = Math.max(-1, Math.min(1, buffer[i]));
-    // Convert to 16-bit integer
     result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
   }
   return result;
@@ -144,30 +251,28 @@ function float32ToInt16(buffer: Float32Array): Int16Array {
 
 // Create WAV blob from PCM data
 function createWavBlob(pcmData: Int16Array, sampleRate: number, numChannels: number): Blob {
-  const byteRate = sampleRate * numChannels * 2; // 16-bit = 2 bytes per sample
+  const byteRate = sampleRate * numChannels * 2;
   const blockAlign = numChannels * 2;
   const dataSize = pcmData.length * 2;
-  const bufferSize = 44 + dataSize; // 44 bytes for WAV header
+  const bufferSize = 44 + dataSize;
 
   const buffer = new ArrayBuffer(bufferSize);
   const view = new DataView(buffer);
 
-  // WAV header
   writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true); // File size - 8
+  view.setUint32(4, 36 + dataSize, true);
   writeString(view, 8, 'WAVE');
   writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // Subchunk1 size (16 for PCM)
-  view.setUint16(20, 1, true); // Audio format (1 = PCM)
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true); // Bits per sample
+  view.setUint16(34, 16, true);
   writeString(view, 36, 'data');
   view.setUint32(40, dataSize, true);
 
-  // Write PCM data
   const pcmOffset = 44;
   for (let i = 0; i < pcmData.length; i++) {
     view.setInt16(pcmOffset + i * 2, pcmData[i], true);
