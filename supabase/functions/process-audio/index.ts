@@ -1019,10 +1019,10 @@ async function finalizeProcessing(
   transcribeChunksWithRetry(supabase, state.recording_id);
 
   // Estimate MOS score using Lovable AI (non-blocking)
-  estimateMOSScore(supabase, state.recording_id, state.file_url, snrDb, rmsDbfs);
+  estimateMOSScore(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
 
-  // Estimate advanced audio metrics using Lovable AI (non-blocking)
-  estimateAdvancedMetrics(supabase, state.recording_id, state.file_url, snrDb, rmsDbfs);
+  // Estimate advanced audio metrics using HuggingFace Space (non-blocking)
+  estimateAdvancedMetrics(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
 
   // DISABLED: Automatic ElevenLabs transcription to save credits during testing
   // To re-enable, uncomment the following block:
