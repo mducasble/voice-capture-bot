@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
+import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 
 interface MetricResult {
   value: number | null;
@@ -36,7 +39,8 @@ interface AudioTestFlowProps {
   testStatus: string;
   testResults: TestResults | null;
   onTestComplete: () => void;
-  enhanceAudio?: boolean;
+  onProfileRecommended?: (profile: AudioProfile) => void;
+  currentProfile?: AudioProfile | null;
 }
 
 const TEST_DURATION = 10;
@@ -49,7 +53,8 @@ export const AudioTestFlow = ({
   testStatus,
   testResults: initialResults,
   onTestComplete,
-  enhanceAudio = false,
+  onProfileRecommended,
+  currentProfile,
 }: AudioTestFlowProps) => {
   const [phase, setPhase] = useState<"idle" | "recording" | "analyzing" | "results">(
     initialResults ? "results" : "idle"
@@ -57,14 +62,23 @@ export const AudioTestFlow = ({
   const [countdown, setCountdown] = useState(TEST_DURATION);
   const [results, setResults] = useState<TestResults | null>(initialResults);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
+  const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
+  const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
 
-  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, enhanceAudio });
+  // Test uses no profile (raw capture for accurate measurement)
+  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
 
   // Update results when props change (realtime)
   useEffect(() => {
     if (initialResults) {
       setResults(initialResults);
       if (phase !== "results") setPhase("results");
+      // Compute profile from initial results
+      const metrics = extractMetrics(initialResults);
+      const profile = computeAudioProfile(metrics);
+      setRecommendedProfile(profile);
+      setEditedProfile(profile);
     }
   }, [initialResults]);
 
@@ -79,6 +93,21 @@ export const AudioTestFlow = ({
     return () => clearTimeout(timer);
   }, [phase, countdown]);
 
+  function extractMetrics(res: TestResults): TestMetrics {
+    return {
+      snr: res.metrics.snr?.value ?? null,
+      rms: res.metrics.rms?.value ?? null,
+      srmr: res.metrics.srmr?.value ?? null,
+      wvmos: res.metrics.wvmos?.value ?? null,
+      utmos: res.metrics.utmos?.value ?? null,
+      sigmos_ovrl: res.metrics.sigmos_ovrl?.value ?? null,
+      sigmos_disc: res.metrics.sigmos_disc?.value ?? null,
+      sigmos_reverb: res.metrics.sigmos_reverb?.value ?? null,
+      vqscore: res.metrics.vqscore?.value ?? null,
+      mic_sr: res.metrics.mic_sr?.value ?? null,
+    };
+  }
+
   const startTest = useCallback(async () => {
     if (!stream) {
       toast.error("Microfone não disponível");
@@ -87,6 +116,8 @@ export const AudioTestFlow = ({
     setPhase("recording");
     setCountdown(TEST_DURATION);
     setResults(null);
+    setRecommendedProfile(null);
+    setEditedProfile(null);
     await wavRecorder.startRecording(stream);
   }, [stream, wavRecorder]);
 
@@ -135,6 +166,12 @@ export const AudioTestFlow = ({
       setPhase("results");
       onTestComplete();
 
+      // Compute recommended profile
+      const metrics = extractMetrics(data);
+      const profile = computeAudioProfile(metrics);
+      setRecommendedProfile(profile);
+      setEditedProfile(profile);
+
       if (data.overall_status === "passed") {
         toast.success("Teste de áudio aprovado! ✅");
       } else {
@@ -151,6 +188,15 @@ export const AudioTestFlow = ({
     setPhase("idle");
     setResults(null);
     setCountdown(TEST_DURATION);
+    setRecommendedProfile(null);
+    setEditedProfile(null);
+  };
+
+  const applyProfile = () => {
+    if (editedProfile && onProfileRecommended) {
+      onProfileRecommended(editedProfile);
+      toast.success("Configuração de áudio aplicada! 🎛️");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -176,7 +222,7 @@ export const AudioTestFlow = ({
     if (key === "mic_sr") return `${(value / 1000).toFixed(1)}kHz`;
     if (key === "rms") return `${value.toFixed(1)} dBFS`;
     if (key === "snr") return `${value.toFixed(1)} dB`;
-    if (key === "vqscore") return value.toFixed(0);
+    if (key === "vqscore") return value.toFixed(2);
     return value.toFixed(2);
   };
 
@@ -249,6 +295,9 @@ export const AudioTestFlow = ({
   // Results
   if (phase === "results" && results) {
     const passed = results.overall_status === "passed";
+    const profileApplied = currentProfile != null && editedProfile != null;
+    const descriptions = editedProfile ? getProfileDescriptions(editedProfile) : [];
+
     return (
       <Card className={`border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}`}>
         <CardHeader className="pb-2">
@@ -308,6 +357,166 @@ export const AudioTestFlow = ({
                   <p className="text-xs opacity-90">{issue.guidance}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Recommended Audio Profile */}
+          {editedProfile && (
+            <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Configuração Recomendada</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => setShowProfileDetails(!showProfileDetails)}
+                >
+                  {showProfileDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              {/* Summary badges */}
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="outline" className="text-xs">
+                  Ganho: {editedProfile.gain.toFixed(1)}x
+                </Badge>
+                {editedProfile.highpassFreq > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    HP: {editedProfile.highpassFreq}Hz
+                  </Badge>
+                )}
+                {editedProfile.lowpassFreq > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    LP: {(editedProfile.lowpassFreq / 1000).toFixed(0)}kHz
+                  </Badge>
+                )}
+                {editedProfile.enableRnnoise && (
+                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
+                    RNNoise
+                  </Badge>
+                )}
+                {editedProfile.enableNoiseGate && (
+                  <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
+                    Noise Gate
+                  </Badge>
+                )}
+                {editedProfile.enableConstraints && (
+                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                    Constraints
+                  </Badge>
+                )}
+              </div>
+
+              {/* Editable details */}
+              {showProfileDetails && (
+                <div className="space-y-3 pt-2 border-t border-border/50">
+                  {/* Gain slider */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Ganho</span>
+                      <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
+                    </div>
+                    <Slider
+                      value={[editedProfile.gain]}
+                      min={0.5}
+                      max={20}
+                      step={0.1}
+                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, gain: val } : p)}
+                    />
+                  </div>
+
+                  {/* Highpass slider */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">High-pass</span>
+                      <span className="font-mono">{editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : "Off"}</span>
+                    </div>
+                    <Slider
+                      value={[editedProfile.highpassFreq]}
+                      min={0}
+                      max={200}
+                      step={10}
+                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, highpassFreq: val } : p)}
+                    />
+                  </div>
+
+                  {/* Lowpass slider */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Low-pass</span>
+                      <span className="font-mono">{editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : "Off"}</span>
+                    </div>
+                    <Slider
+                      value={[editedProfile.lowpassFreq]}
+                      min={0}
+                      max={22000}
+                      step={1000}
+                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, lowpassFreq: val } : p)}
+                    />
+                  </div>
+
+                  {/* Toggles */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">RNNoise</span>
+                      <Switch
+                        checked={editedProfile.enableRnnoise}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v } : p)}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Noise Gate</span>
+                      <Switch
+                        checked={editedProfile.enableNoiseGate}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseGate: v } : p)}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Constraints</span>
+                      <Switch
+                        checked={editedProfile.enableConstraints}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableConstraints: v } : p)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Descriptions */}
+                  <div className="space-y-1.5">
+                    {descriptions.map((d, i) => (
+                      <div key={i} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{d.label}:</span> {d.detail}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Reset to recommended */}
+                  {recommendedProfile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => setEditedProfile(recommendedProfile)}
+                    >
+                      Restaurar recomendação original
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Apply button */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={applyProfile}
+                >
+                  <Settings2 className="h-4 w-4 mr-1.5" />
+                  {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
+                </Button>
+              </div>
             </div>
           )}
 

@@ -1,10 +1,10 @@
 import { useRef, useCallback, useState } from "react";
+import type { AudioProfile } from "@/lib/audioProfile";
 
 interface WavRecorderOptions {
   sampleRate?: number;
   channels?: number;
-  gain?: number;
-  enhanceAudio?: boolean;
+  profile?: AudioProfile | null;
 }
 
 interface WavRecorderState {
@@ -15,7 +15,7 @@ interface WavRecorderState {
 const RNNOISE_FRAME_SIZE = 480; // RNNoise expects 480 samples at 48kHz (10ms)
 
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
-  const { sampleRate = 48000, channels = 1, gain = 1.0, enhanceAudio = false } = options;
+  const { sampleRate = 48000, channels = 1, profile = null } = options;
   
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
@@ -33,8 +33,8 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const rnnoiseStateRef = useRef<any>(null);
   const rnnoiseLeftoverRef = useRef<Float32Array>(new Float32Array(0));
-  const enhanceRef = useRef(enhanceAudio);
-  enhanceRef.current = enhanceAudio;
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
 
   const loadRnnoise = useCallback(async () => {
     try {
@@ -52,7 +52,6 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     const denoiseState = rnnoiseStateRef.current;
     if (!denoiseState) return inputData;
 
-    // Combine leftover from previous call with new input
     const leftover = rnnoiseLeftoverRef.current;
     const combined = new Float32Array(leftover.length + inputData.length);
     combined.set(leftover);
@@ -69,10 +68,8 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       offset += RNNOISE_FRAME_SIZE;
     }
 
-    // Store leftover for next call
     rnnoiseLeftoverRef.current = combined.slice(offset);
 
-    // Merge processed chunks
     const totalLength = processedChunks.reduce((acc, c) => acc + c.length, 0);
     const result = new Float32Array(totalLength);
     let resultOffset = 0;
@@ -88,6 +85,12 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     chunksRef.current = [];
     rnnoiseLeftoverRef.current = new Float32Array(0);
     
+    const p = profileRef.current;
+    const gainValue = p?.gain ?? 1.0;
+    const useRnnoise = p?.enableRnnoise ?? false;
+    const hpFreq = p?.highpassFreq ?? 0;
+    const lpFreq = p?.lowpassFreq ?? 0;
+    
     const audioContext = new AudioContext({ sampleRate });
     audioContextRef.current = audioContext;
 
@@ -96,33 +99,36 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
 
     // Create gain node
     const gainNode = audioContext.createGain();
-    gainNode.gain.value = gain;
+    gainNode.gain.value = gainValue;
     gainNodeRef.current = gainNode;
 
     // Build audio chain
     let lastNode: AudioNode = sourceNode;
 
-    // Add filters when enhancement is enabled
-    if (enhanceRef.current) {
-      // Highpass filter at 80Hz - removes low-frequency rumble
+    // Add highpass filter if configured
+    if (hpFreq > 0) {
       const highpass = audioContext.createBiquadFilter();
       highpass.type = "highpass";
-      highpass.frequency.value = 80;
+      highpass.frequency.value = hpFreq;
       highpass.Q.value = 0.7;
       highpassRef.current = highpass;
+      lastNode.connect(highpass);
+      lastNode = highpass;
+    }
 
-      // Lowpass filter at 12kHz - removes high-frequency hiss
+    // Add lowpass filter if configured
+    if (lpFreq > 0) {
       const lowpass = audioContext.createBiquadFilter();
       lowpass.type = "lowpass";
-      lowpass.frequency.value = 12000;
+      lowpass.frequency.value = lpFreq;
       lowpass.Q.value = 0.7;
       lowpassRef.current = lowpass;
-
-      lastNode.connect(highpass);
-      highpass.connect(lowpass);
+      lastNode.connect(lowpass);
       lastNode = lowpass;
+    }
 
-      // Load RNNoise
+    // Load RNNoise if needed
+    if (useRnnoise) {
       await loadRnnoise();
     }
 
@@ -136,8 +142,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     processorNode.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
 
-      if (enhanceRef.current && rnnoiseStateRef.current) {
-        // Process through RNNoise then soft clip
+      if (useRnnoise && rnnoiseStateRef.current) {
         const denoised = processWithRnnoise(inputData);
         const processed = new Float32Array(denoised.length);
         for (let i = 0; i < denoised.length; i++) {
@@ -147,7 +152,6 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
           chunksRef.current.push(processed);
         }
       } else {
-        // Standard processing: soft clip only
         const processedData = new Float32Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
           processedData[i] = Math.tanh(inputData[i]);
@@ -169,7 +173,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     }, 1000);
 
     setState({ isRecording: true, duration: 0 });
-  }, [sampleRate, channels, gain, loadRnnoise, processWithRnnoise]);
+  }, [sampleRate, channels, loadRnnoise, processWithRnnoise]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (durationIntervalRef.current) {
@@ -185,7 +189,6 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     if (rnnoiseStateRef.current && rnnoiseLeftoverRef.current.length > 0) {
       const remaining = rnnoiseLeftoverRef.current;
       if (remaining.length > 0) {
-        // Pad to RNNOISE_FRAME_SIZE and process
         const frame = new Float32Array(RNNOISE_FRAME_SIZE);
         frame.set(remaining);
         rnnoiseStateRef.current.processFrame(frame);
