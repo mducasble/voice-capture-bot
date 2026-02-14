@@ -38,7 +38,7 @@ interface AudioTestFlowProps {
   onTestComplete: () => void;
 }
 
-const TEST_DURATION = 30;
+const TEST_DURATION = 10;
 
 export const AudioTestFlow = ({
   participantId,
