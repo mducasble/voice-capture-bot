@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck, Sparkles } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
+import type { AudioProfile } from "@/lib/audioProfile";
 
 interface Room {
   id: string;
@@ -49,7 +51,7 @@ const Room = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  const [audioEnhanced, setAudioEnhanced] = useState(false);
+  const [audioProfile, setAudioProfile] = useState<AudioProfile | null>(null);
   
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -79,15 +81,18 @@ const Room = () => {
   }, []);
 
   // Helper to get audio constraints with selected device
-  const getAudioConstraints = useCallback(() => ({
-    audio: {
-      deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-      echoCancellation: audioEnhanced,
-      noiseSuppression: audioEnhanced,
-      autoGainControl: audioEnhanced,
-      sampleRate: 48000,
-    }
-  }), [selectedDeviceId, audioEnhanced]);
+  const getAudioConstraints = useCallback(() => {
+    const useConstraints = audioProfile?.enableConstraints ?? false;
+    return {
+      audio: {
+        deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+        echoCancellation: useConstraints,
+        noiseSuppression: useConstraints,
+        autoGainControl: useConstraints,
+        sampleRate: 48000,
+      }
+    };
+  }, [selectedDeviceId, audioProfile]);
 
   // Switch device while connected
   const handleDeviceChange = useCallback(async (deviceId: string) => {
@@ -99,12 +104,13 @@ const Room = () => {
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(t => t.stop());
       }
+      const useConstraints = audioProfile?.enableConstraints ?? false;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: audioEnhanced,
-          noiseSuppression: audioEnhanced,
-          autoGainControl: audioEnhanced,
+          echoCancellation: useConstraints,
+          noiseSuppression: useConstraints,
+          autoGainControl: useConstraints,
           sampleRate: 48000,
         }
       });
@@ -118,11 +124,11 @@ const Room = () => {
       console.error("Error switching device:", err);
       toast.error("Erro ao trocar dispositivo");
     }
-  }, [currentParticipant, isMuted, audioEnhanced]);
+  }, [currentParticipant, isMuted, audioProfile]);
 
-  // Toggle audio enhancement and re-acquire stream
-  const handleToggleEnhancement = useCallback(async (enabled: boolean) => {
-    setAudioEnhanced(enabled);
+  // Handle profile application - re-acquire stream with new constraints
+  const handleProfileApplied = useCallback(async (profile: AudioProfile) => {
+    setAudioProfile(profile);
     if (!currentParticipant || !mediaStreamRef.current) return;
 
     try {
@@ -130,19 +136,18 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          echoCancellation: enabled,
-          noiseSuppression: enabled,
-          autoGainControl: enabled,
+          echoCancellation: profile.enableConstraints,
+          noiseSuppression: profile.enableConstraints,
+          autoGainControl: profile.enableConstraints,
           sampleRate: 48000,
         }
       });
       stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
       mediaStreamRef.current = stream;
       setCurrentParticipant(prev => prev ? { ...prev } : null);
-      toast.success(enabled ? "Aprimoramento de áudio ativado!" : "Aprimoramento de áudio desativado!");
     } catch (err) {
-      console.error("Error toggling enhancement:", err);
-      toast.error("Erro ao alterar aprimoramento de áudio");
+      console.error("Error applying audio profile:", err);
+      toast.error("Erro ao aplicar configuração de áudio");
     }
   }, [currentParticipant, selectedDeviceId, isMuted]);
 
@@ -539,7 +544,8 @@ const Room = () => {
             stream={mediaStreamRef.current}
             testStatus={currentParticipant.audio_test_status || "pending"}
             testResults={currentParticipant.audio_test_results}
-            enhanceAudio={audioEnhanced}
+            onProfileRecommended={handleProfileApplied}
+            currentProfile={audioProfile}
             onTestComplete={() => {
               // Refresh participants to get updated test status
               const fetchParticipants = async () => {
@@ -610,18 +616,11 @@ const Room = () => {
                           }}
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-muted-foreground" />
-                        <label htmlFor="audio-enhance" className="text-sm text-muted-foreground cursor-pointer">
-                          Aprimorar Áudio
-                        </label>
-                        <Switch
-                          id="audio-enhance"
-                          checked={audioEnhanced}
-                          disabled={room.is_recording}
-                          onCheckedChange={handleToggleEnhancement}
-                        />
-                      </div>
+                      {audioProfile && (
+                        <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                          🎛️ Perfil Adaptativo
+                        </Badge>
+                      )}
                     </div>
                   </>
                 );
@@ -668,7 +667,7 @@ const Room = () => {
               sessionId={room.session_id}
               isMuted={isMuted}
               noiseGateEnabled={room.noise_gate_enabled}
-              audioEnhanced={audioEnhanced}
+              audioProfile={audioProfile}
             />
           </CardContent>
         </Card>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
+import type { AudioProfile } from "@/lib/audioProfile";
 
 
 interface ParticipantAudioProps {
@@ -12,7 +13,7 @@ interface ParticipantAudioProps {
   sessionId: string;
   isMuted: boolean;
   noiseGateEnabled?: boolean;
-  audioEnhanced?: boolean;
+  audioProfile?: AudioProfile | null;
 }
 
 export const ParticipantAudio = ({
@@ -23,7 +24,7 @@ export const ParticipantAudio = ({
   sessionId,
   isMuted,
   noiseGateEnabled = false,
-  audioEnhanced = false,
+  audioProfile = null,
 }: ParticipantAudioProps) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -35,9 +36,9 @@ export const ParticipantAudio = ({
   const isRecordingRef = useRef(false);
   const pendingBlobRef = useRef<Blob | null>(null);
 
-  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, enhanceAudio: audioEnhanced });
+  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, profile: audioProfile });
 
-  // Audio level visualization (separate from recording) - with gain and optional filters
+  // Audio level visualization - mirrors the recording chain for accurate display
   useEffect(() => {
     if (!stream) return;
 
@@ -48,26 +49,27 @@ export const ParticipantAudio = ({
     
     const source = audioContext.createMediaStreamSource(stream);
     
-    // Apply same gain as recording for accurate level display
     const gainNode = audioContext.createGain();
-    gainNode.gain.value = 1.0; // No gain amplification
+    gainNode.gain.value = audioProfile?.gain ?? 1.0;
 
     let lastNode: AudioNode = source;
 
-    // Add filters when enhancement is active (match recording chain)
-    if (audioEnhanced) {
+    // Mirror filters from profile
+    if (audioProfile && audioProfile.highpassFreq > 0) {
       const highpass = audioContext.createBiquadFilter();
       highpass.type = "highpass";
-      highpass.frequency.value = 80;
+      highpass.frequency.value = audioProfile.highpassFreq;
       highpass.Q.value = 0.7;
+      lastNode.connect(highpass);
+      lastNode = highpass;
+    }
 
+    if (audioProfile && audioProfile.lowpassFreq > 0) {
       const lowpass = audioContext.createBiquadFilter();
       lowpass.type = "lowpass";
-      lowpass.frequency.value = 12000;
+      lowpass.frequency.value = audioProfile.lowpassFreq;
       lowpass.Q.value = 0.7;
-
-      lastNode.connect(highpass);
-      highpass.connect(lowpass);
+      lastNode.connect(lowpass);
       lastNode = lowpass;
     }
 
@@ -92,7 +94,7 @@ export const ParticipantAudio = ({
       }
       audioContext.close();
     };
-  }, [stream, audioEnhanced]);
+  }, [stream, audioProfile]);
 
   // Start/stop WAV recording based on room state
   useEffect(() => {
