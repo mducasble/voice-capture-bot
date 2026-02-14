@@ -15,7 +15,7 @@ interface WavRecorderState {
 const RNNOISE_FRAME_SIZE = 480; // RNNoise expects 480 samples at 48kHz (10ms)
 
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
-  const { sampleRate = 48000, channels = 1, gain = 15.0, enhanceAudio = false } = options;
+  const { sampleRate = 48000, channels = 1, gain = 1.0, enhanceAudio = false } = options;
   
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
