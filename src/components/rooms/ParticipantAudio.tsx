@@ -48,7 +48,7 @@ export const ParticipantAudio = ({
     
     // Apply same gain as recording for accurate level display
     const gainNode = audioContext.createGain();
-    gainNode.gain.value = 5.0; // Match recording gain
+    gainNode.gain.value = 15.0; // Match recording gain
     
     source.connect(gainNode);
     gainNode.connect(analyser);
