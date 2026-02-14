@@ -10,13 +10,13 @@ const corsHeaders = {
 const THRESHOLDS = {
   snr: { good: 25, fair: 15 },
   rms: { min: -26, max: -20 },
-  srmr: { good: 20, fair: 10 },
-  wvmos: { good: 3.5, fair: 2.5 },
+  srmr: { good: 6, fair: 10 },
+  wvmos: { good: 1.5, fair: 2.5 },
   utmos: { good: 3.5, fair: 2.5 },
-  sigmos_ovrl: { good: 3.5, fair: 2.5 },
+  sigmos_ovrl: { good: 2.8, fair: 2.5 },
   sigmos_disc: { good: 3.5, fair: 2.5 },
   sigmos_reverb: { good: 3.5, fair: 2.5 },
-  vqscore: { good: 80, fair: 60 },
+  vqscore: { good: 0.65, fair: 60 },
   mic_sr: { good: 16000, fair: 8000 },
 };
 
