@@ -320,7 +320,7 @@ export default function Review() {
 
       {/* Help text */}
       <div className="px-6 py-1 text-[10px] text-muted-foreground/60 text-center shrink-0">
-        Clique na palavra para navegar • Duplo-clique para editar • Botão direito para marcar erros • Espaço = play/pause • ← → = ±5s
+        Clique na palavra para navegar • Duplo-clique para editar • Duplo-clique no tempo para ajustar • Botão direito para marcar erros • Espaço = play/pause • ← → = ±5s
       </div>
 
       {/* Action bar */}
