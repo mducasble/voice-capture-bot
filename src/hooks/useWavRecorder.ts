@@ -12,11 +12,11 @@ interface WavRecorderState {
   duration: number;
 }
 
-const RNNOISE_FRAME_SIZE = 480; // RNNoise expects 480 samples at 48kHz (10ms)
+const RNNOISE_FRAME_SIZE = 480;
 
 export const useWavRecorder = (options: WavRecorderOptions = {}) => {
   const { sampleRate = 48000, channels = 1, profile = null } = options;
-  
+
   const [state, setState] = useState<WavRecorderState>({
     isRecording: false,
     duration: 0,
@@ -25,87 +25,80 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
-  const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const highpassRef = useRef<BiquadFilterNode | null>(null);
   const lowpassRef = useRef<BiquadFilterNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const rnnoiseStateRef = useRef<any>(null);
-  const rnnoiseLeftoverRef = useRef<Float32Array>(new Float32Array(0));
   const profileRef = useRef(profile);
   profileRef.current = profile;
 
-  const loadRnnoise = useCallback(async () => {
+  /**
+   * Apply RNNoise to the full recording buffer (post-processing).
+   * This avoids frame-boundary artifacts that occurred with real-time processing.
+   */
+  const applyRnnoise = useCallback(async (buffer: Float32Array): Promise<Float32Array> => {
     try {
       const { Rnnoise } = await import("@shiguredo/rnnoise-wasm");
       const rnnoise = await Rnnoise.load();
       const denoiseState = rnnoise.createDenoiseState();
-      rnnoiseStateRef.current = denoiseState;
-      console.log("[AudioEnhancer] RNNoise loaded successfully");
+      console.log("[AudioEnhancer] RNNoise loaded for post-processing");
+
+      const result = new Float32Array(buffer.length);
+      let offset = 0;
+
+      // Process complete frames
+      while (offset + RNNOISE_FRAME_SIZE <= buffer.length) {
+        const frame = new Float32Array(RNNOISE_FRAME_SIZE);
+        frame.set(buffer.subarray(offset, offset + RNNOISE_FRAME_SIZE));
+        denoiseState.processFrame(frame);
+        result.set(frame, offset);
+        offset += RNNOISE_FRAME_SIZE;
+      }
+
+      // Handle remaining samples (zero-pad last frame)
+      if (offset < buffer.length) {
+        const remaining = buffer.length - offset;
+        const frame = new Float32Array(RNNOISE_FRAME_SIZE);
+        frame.set(buffer.subarray(offset, offset + remaining));
+        denoiseState.processFrame(frame);
+        result.set(frame.subarray(0, remaining), offset);
+      }
+
+      denoiseState.destroy();
+      console.log("[AudioEnhancer] RNNoise post-processing complete");
+      return result;
     } catch (err) {
-      console.error("[AudioEnhancer] Failed to load RNNoise:", err);
+      console.error("[AudioEnhancer] Failed to apply RNNoise:", err);
+      return buffer;
     }
-  }, []);
-
-  const processWithRnnoise = useCallback((inputData: Float32Array): Float32Array => {
-    const denoiseState = rnnoiseStateRef.current;
-    if (!denoiseState) return inputData;
-
-    const leftover = rnnoiseLeftoverRef.current;
-    const combined = new Float32Array(leftover.length + inputData.length);
-    combined.set(leftover);
-    combined.set(inputData, leftover.length);
-
-    const processedChunks: Float32Array[] = [];
-    let offset = 0;
-
-    while (offset + RNNOISE_FRAME_SIZE <= combined.length) {
-      const frame = new Float32Array(RNNOISE_FRAME_SIZE);
-      frame.set(combined.subarray(offset, offset + RNNOISE_FRAME_SIZE));
-      denoiseState.processFrame(frame);
-      processedChunks.push(frame);
-      offset += RNNOISE_FRAME_SIZE;
-    }
-
-    rnnoiseLeftoverRef.current = combined.slice(offset);
-
-    const totalLength = processedChunks.reduce((acc, c) => acc + c.length, 0);
-    const result = new Float32Array(totalLength);
-    let resultOffset = 0;
-    for (const chunk of processedChunks) {
-      result.set(chunk, resultOffset);
-      resultOffset += chunk.length;
-    }
-
-    return result;
   }, []);
 
   const startRecording = useCallback(async (stream: MediaStream) => {
     chunksRef.current = [];
-    rnnoiseLeftoverRef.current = new Float32Array(0);
-    
+
     const p = profileRef.current;
     const gainValue = p?.gain ?? 1.0;
-    const useRnnoise = p?.enableRnnoise ?? false;
     const hpFreq = p?.highpassFreq ?? 0;
     const lpFreq = p?.lowpassFreq ?? 0;
-    
+
     const audioContext = new AudioContext({ sampleRate });
     audioContextRef.current = audioContext;
+
+    // Register the AudioWorklet processor
+    await audioContext.audioWorklet.addModule('/wav-processor.js');
 
     const sourceNode = audioContext.createMediaStreamSource(stream);
     sourceNodeRef.current = sourceNode;
 
-    // Create gain node
     const gainNode = audioContext.createGain();
     gainNode.gain.value = gainValue;
     gainNodeRef.current = gainNode;
 
-    // Build audio chain
+    // Build audio chain: source → [highpass] → [lowpass] → gain → worklet
     let lastNode: AudioNode = sourceNode;
 
-    // Add highpass filter if configured
     if (hpFreq > 0) {
       const highpass = audioContext.createBiquadFilter();
       highpass.type = "highpass";
@@ -116,7 +109,6 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       lastNode = highpass;
     }
 
-    // Add lowpass filter if configured
     if (lpFreq > 0) {
       const lowpass = audioContext.createBiquadFilter();
       lowpass.type = "lowpass";
@@ -127,44 +119,22 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       lastNode = lowpass;
     }
 
-    // Load RNNoise if needed
-    if (useRnnoise) {
-      await loadRnnoise();
-    }
-
-    // Connect gain
     lastNode.connect(gainNode);
 
-    // Create script processor
-    const processorNode = audioContext.createScriptProcessor(4096, channels, channels);
-    processorNodeRef.current = processorNode;
+    // Create AudioWorkletNode (runs in dedicated audio thread)
+    const workletNode = new AudioWorkletNode(audioContext, 'wav-processor');
+    workletNodeRef.current = workletNode;
 
-    processorNode.onaudioprocess = (event) => {
-      const inputData = event.inputBuffer.getChannelData(0);
-
-      if (useRnnoise && rnnoiseStateRef.current) {
-        const denoised = processWithRnnoise(inputData);
-        const processed = new Float32Array(denoised.length);
-        for (let i = 0; i < denoised.length; i++) {
-          processed[i] = Math.max(-1, Math.min(1, denoised[i]));
-        }
-        if (processed.length > 0) {
-          chunksRef.current.push(processed);
-        }
-      } else {
-        const processedData = new Float32Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          processedData[i] = Math.max(-1, Math.min(1, inputData[i]));
-        }
-        chunksRef.current.push(processedData);
+    workletNode.port.onmessage = (event) => {
+      if (event.data.type === 'samples') {
+        chunksRef.current.push(event.data.samples);
       }
     };
 
-    gainNode.connect(processorNode);
-    processorNode.connect(audioContext.destination);
+    gainNode.connect(workletNode);
 
     startTimeRef.current = Date.now();
-    
+
     durationIntervalRef.current = setInterval(() => {
       setState(prev => ({
         ...prev,
@@ -173,67 +143,78 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     }, 1000);
 
     setState({ isRecording: true, duration: 0 });
-  }, [sampleRate, channels, loadRnnoise, processWithRnnoise]);
+  }, [sampleRate, channels]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
     }
 
-    if (!audioContextRef.current || chunksRef.current.length === 0) {
+    const workletNode = workletNodeRef.current;
+    const audioContext = audioContextRef.current;
+
+    if (!audioContext || !workletNode) {
       setState({ isRecording: false, duration: 0 });
       return null;
     }
 
-    // Process any remaining RNNoise leftover
-    if (rnnoiseStateRef.current && rnnoiseLeftoverRef.current.length > 0) {
-      const remaining = rnnoiseLeftoverRef.current;
-      if (remaining.length > 0) {
-        const frame = new Float32Array(RNNOISE_FRAME_SIZE);
-        frame.set(remaining);
-        rnnoiseStateRef.current.processFrame(frame);
-        const clipped = new Float32Array(remaining.length);
-        for (let i = 0; i < remaining.length; i++) {
-          clipped[i] = Math.max(-1, Math.min(1, frame[i]));
+    // Signal the worklet to flush remaining samples and stop
+    await new Promise<void>((resolve) => {
+      const handler = (event: MessageEvent) => {
+        if (event.data.type === 'samples') {
+          chunksRef.current.push(event.data.samples);
         }
-        chunksRef.current.push(clipped);
-      }
+        if (event.data.type === 'done') {
+          workletNode.port.removeEventListener('message', handler);
+          resolve();
+        }
+      };
+      workletNode.port.addEventListener('message', handler);
+      workletNode.port.postMessage({ type: 'stop' });
+    });
+
+    if (chunksRef.current.length === 0) {
+      setState({ isRecording: false, duration: 0 });
+      return null;
     }
 
     // Disconnect nodes
-    processorNodeRef.current?.disconnect();
+    workletNode.disconnect();
     gainNodeRef.current?.disconnect();
     highpassRef.current?.disconnect();
     lowpassRef.current?.disconnect();
     sourceNodeRef.current?.disconnect();
 
-    // Clean up RNNoise
-    if (rnnoiseStateRef.current) {
-      try { rnnoiseStateRef.current.destroy(); } catch {}
-      rnnoiseStateRef.current = null;
-    }
-    rnnoiseLeftoverRef.current = new Float32Array(0);
-
     // Merge all chunks
     const totalLength = chunksRef.current.reduce((acc, chunk) => acc + chunk.length, 0);
-    const mergedBuffer = new Float32Array(totalLength);
+    const rawBuffer = new ArrayBuffer(totalLength * 4);
+    let mergedBuffer = new Float32Array(rawBuffer);
     let offset = 0;
     for (const chunk of chunksRef.current) {
       mergedBuffer.set(chunk, offset);
       offset += chunk.length;
     }
 
+    // Apply RNNoise as post-processing if enabled
+    const p = profileRef.current;
+    if (p?.enableRnnoise) {
+      const denoised = await applyRnnoise(mergedBuffer);
+      mergedBuffer = new Float32Array(new ArrayBuffer(denoised.length * 4));
+      mergedBuffer.set(denoised);
+    }
+
     const pcmData = float32ToInt16(mergedBuffer);
     const wavBlob = createWavBlob(pcmData, sampleRate, channels);
 
-    await audioContextRef.current.close();
+    await audioContext.close();
     audioContextRef.current = null;
+    workletNodeRef.current = null;
     chunksRef.current = [];
 
     setState({ isRecording: false, duration: 0 });
-    
+
     return wavBlob;
-  }, [sampleRate, channels]);
+  }, [sampleRate, channels, applyRnnoise]);
 
   return {
     ...state,
