@@ -3,6 +3,13 @@ import { cn } from "@/lib/utils";
 import { type TimedWord, type WordTag, WORD_TAG_LABELS } from "@/lib/reviewTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
+function formatTimestamp(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s % 1) * 100);
+  return `${m}:${sec.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
+}
 import {
   Popover,
   PopoverContent,
@@ -29,6 +36,8 @@ export function KaraokeText({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
   const [tagMenuIndex, setTagMenuIndex] = useState<number | null>(null);
+  const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
+  const [editTimeValue, setEditTimeValue] = useState("");
 
   // Find current active word
   const activeWordIndex = useMemo(() => {
@@ -78,6 +87,31 @@ export function KaraokeText({
     onWordsChange(updated);
     setEditingIndex(null);
   }, [editingIndex, editValue, words, onWordsChange]);
+
+  const parseTimeInput = useCallback((input: string): number | null => {
+    // Accept M:SS.ms or just seconds
+    const parts = input.split(':');
+    if (parts.length === 2) {
+      const m = parseInt(parts[0], 10);
+      const s = parseFloat(parts[1]);
+      if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+    }
+    const val = parseFloat(input);
+    return isNaN(val) ? null : val;
+  }, []);
+
+  const commitTimeEdit = useCallback(() => {
+    if (editingTimeIndex === null) return;
+    const newStart = parseTimeInput(editTimeValue);
+    if (newStart !== null && newStart >= 0) {
+      const updated = [...words];
+      const oldWord = updated[editingTimeIndex];
+      const duration = oldWord.end - oldWord.start;
+      updated[editingTimeIndex] = { ...oldWord, start: newStart, end: newStart + duration };
+      onWordsChange(updated);
+    }
+    setEditingTimeIndex(null);
+  }, [editingTimeIndex, editTimeValue, words, onWordsChange, parseTimeInput]);
 
   const applyTag = useCallback(
     (index: number, tag: WordTag | null) => {
@@ -129,7 +163,7 @@ export function KaraokeText({
       className="flex-1 overflow-y-auto px-6 py-4 space-y-3 text-lg leading-relaxed select-none"
     >
       {lines.map((line, lineIdx) => (
-        <p key={lineIdx} className="flex flex-wrap gap-x-1.5 gap-y-1">
+        <p key={lineIdx} className="flex flex-wrap gap-x-1.5 gap-y-4 pt-4">
           {line.words.map((word) => {
             const idx = word.globalIndex;
             const isActive = idx === activeWordIndex;
@@ -164,7 +198,7 @@ export function KaraokeText({
                   <span
                     ref={isActive ? activeRef : undefined}
                     className={cn(
-                      "cursor-pointer rounded px-0.5 py-0.5 transition-all duration-150 relative",
+                      "cursor-pointer rounded px-0.5 py-0.5 transition-all duration-150 relative group",
                       isPast && "text-foreground",
                       isActive && "text-foreground bg-primary/20 font-semibold scale-105",
                       !isPast && !isActive && "text-muted-foreground/50",
@@ -178,6 +212,33 @@ export function KaraokeText({
                       setTagMenuIndex(idx);
                     }}
                   >
+                    {/* Timestamp above word */}
+                    {editingTimeIndex === idx ? (
+                      <input
+                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] w-14 h-4 px-0.5 text-center bg-background border border-border rounded tabular-nums font-mono"
+                        value={editTimeValue}
+                        onChange={(e) => setEditTimeValue(e.target.value)}
+                        onBlur={commitTimeEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitTimeEdit();
+                          if (e.key === "Escape") setEditingTimeIndex(null);
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors tabular-nums font-mono whitespace-nowrap cursor-text"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTimeIndex(idx);
+                          setEditTimeValue(formatTimestamp(word.start));
+                        }}
+                      >
+                        {formatTimestamp(word.start)}
+                      </span>
+                    )}
                     {word.editedText ?? word.text}
                     {hasTag && (
                       <span className="absolute -top-3 -right-1 text-[10px]">
