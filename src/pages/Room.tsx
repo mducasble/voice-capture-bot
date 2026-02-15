@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, ShieldCheck } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
@@ -599,23 +599,6 @@ const Room = () => {
                       )}
                     </div>
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                        <label htmlFor="noise-gate" className="text-sm text-muted-foreground cursor-pointer">
-                          Noise Gate
-                        </label>
-                        <Switch
-                          id="noise-gate"
-                          checked={room.noise_gate_enabled}
-                          disabled={room.is_recording}
-                          onCheckedChange={async (checked) => {
-                            await supabase
-                              .from("rooms")
-                              .update({ noise_gate_enabled: checked })
-                              .eq("id", roomId);
-                          }}
-                        />
-                      </div>
                       {audioProfile && (
                         <Badge variant="outline" className="text-xs border-primary/50 text-primary">
                           🎛️ Perfil Adaptativo
@@ -666,7 +649,7 @@ const Room = () => {
               isRecording={room.is_recording}
               sessionId={room.session_id}
               isMuted={isMuted}
-              noiseGateEnabled={room.noise_gate_enabled}
+              noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
               audioProfile={audioProfile}
             />
           </CardContent>
