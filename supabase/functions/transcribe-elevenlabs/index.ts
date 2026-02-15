@@ -370,6 +370,7 @@ serve(async (req) => {
           metadata: {
             ...existingMeta,
             accumulated_words: null, // Clear accumulated words
+            elevenlabs_words: accumulatedWords, // Persist word-level timestamps for review
             speaker_segments: hasSpeakers ? formattedSegments : undefined,
             speaker_mapping: hasSpeakers ? speakerMapping : undefined,
             readable_transcription: hasSpeakers ? readableTranscription : undefined,
@@ -543,6 +544,7 @@ async function processFullMode(
       transcription_elevenlabs_status: result.text ? "completed" : "failed",
       metadata: {
         ...existingMetadata,
+        elevenlabs_words: words.length > 0 ? words : undefined, // Persist word-level timestamps for review
         speaker_segments: hasSpeakers ? formattedSegments : undefined,
         speaker_mapping: hasSpeakers ? speakerMapping : undefined,
         readable_transcription: hasSpeakers ? readableTranscription : undefined,
