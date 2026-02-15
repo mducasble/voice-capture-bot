@@ -214,24 +214,57 @@ export function KaraokeText({
                   >
                     {/* Timestamp above word */}
                     {editingTimeIndex === idx ? (
-                      <input
-                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] w-14 h-4 px-0.5 text-center bg-background border border-border rounded tabular-nums font-mono"
-                        value={editTimeValue}
-                        onChange={(e) => setEditTimeValue(e.target.value)}
-                        onBlur={commitTimeEdit}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitTimeEdit();
-                          if (e.key === "Escape") setEditingTimeIndex(null);
-                          e.stopPropagation();
-                        }}
+                      <span
+                        className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-0.5 z-10"
                         onClick={(e) => e.stopPropagation()}
-                        autoFocus
-                      />
+                      >
+                        <button
+                          className="text-[10px] w-5 h-5 rounded bg-muted hover:bg-muted/80 text-foreground font-bold flex items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...words];
+                            const oldWord = updated[idx];
+                            const newStart = Math.max(0, oldWord.start - 0.5);
+                            const duration = oldWord.end - oldWord.start;
+                            updated[idx] = { ...oldWord, start: newStart, end: newStart + duration };
+                            onWordsChange(updated);
+                            setEditTimeValue(formatTimestamp(newStart));
+                          }}
+                        >
+                          −
+                        </button>
+                        <input
+                          className="text-[11px] w-16 h-5 px-0.5 text-center bg-background border border-border rounded tabular-nums font-mono"
+                          value={editTimeValue}
+                          onChange={(e) => setEditTimeValue(e.target.value)}
+                          onBlur={commitTimeEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitTimeEdit();
+                            if (e.key === "Escape") setEditingTimeIndex(null);
+                            e.stopPropagation();
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          className="text-[10px] w-5 h-5 rounded bg-muted hover:bg-muted/80 text-foreground font-bold flex items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...words];
+                            const oldWord = updated[idx];
+                            const newStart = oldWord.start + 0.5;
+                            const duration = oldWord.end - oldWord.start;
+                            updated[idx] = { ...oldWord, start: newStart, end: newStart + duration };
+                            onWordsChange(updated);
+                            setEditTimeValue(formatTimestamp(newStart));
+                          }}
+                        >
+                          +
+                        </button>
+                      </span>
                     ) : (
                       <span
-                        className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors tabular-nums font-mono whitespace-nowrap cursor-text"
-                        onClick={(e) => e.stopPropagation()}
-                        onDoubleClick={(e) => {
+                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors tabular-nums font-mono whitespace-nowrap cursor-pointer"
+                        onClick={(e) => {
                           e.stopPropagation();
                           setEditingTimeIndex(idx);
                           setEditTimeValue(formatTimestamp(word.start));
