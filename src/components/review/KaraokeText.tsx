@@ -237,7 +237,11 @@ export function KaraokeText({
                           className="text-[11px] w-16 h-5 px-0.5 text-center bg-background border border-border rounded tabular-nums font-mono"
                           value={editTimeValue}
                           onChange={(e) => setEditTimeValue(e.target.value)}
-                          onBlur={commitTimeEdit}
+                          onBlur={(e) => {
+                            // Don't commit if focus moves to sibling buttons
+                            if (e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) return;
+                            commitTimeEdit();
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") commitTimeEdit();
                             if (e.key === "Escape") setEditingTimeIndex(null);
