@@ -146,7 +146,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
         const denoised = processWithRnnoise(inputData);
         const processed = new Float32Array(denoised.length);
         for (let i = 0; i < denoised.length; i++) {
-          processed[i] = Math.tanh(denoised[i]);
+          processed[i] = Math.max(-1, Math.min(1, denoised[i]));
         }
         if (processed.length > 0) {
           chunksRef.current.push(processed);
@@ -154,7 +154,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       } else {
         const processedData = new Float32Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
-          processedData[i] = Math.tanh(inputData[i]);
+          processedData[i] = Math.max(-1, Math.min(1, inputData[i]));
         }
         chunksRef.current.push(processedData);
       }
@@ -194,7 +194,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
         rnnoiseStateRef.current.processFrame(frame);
         const clipped = new Float32Array(remaining.length);
         for (let i = 0; i < remaining.length; i++) {
-          clipped[i] = Math.tanh(frame[i]);
+          clipped[i] = Math.max(-1, Math.min(1, frame[i]));
         }
         chunksRef.current.push(clipped);
       }
