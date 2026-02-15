@@ -230,6 +230,7 @@ export function KaraokeText({
                     ) : (
                       <span
                         className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/0 group-hover:text-muted-foreground/70 transition-colors tabular-nums font-mono whitespace-nowrap cursor-text"
+                        onClick={(e) => e.stopPropagation()}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           setEditingTimeIndex(idx);
