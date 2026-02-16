@@ -39,12 +39,14 @@ export function extractTimedWords(
   }> | null;
 
   if (elWords && elWords.length > 0) {
-    return elWords.map(w => ({
-      text: w.text,
-      start: w.start,
-      end: w.end,
-      speaker: w.speaker,
-    }));
+    return elWords
+      .filter(w => w.text?.trim()) // Filter out whitespace-only entries
+      .map(w => ({
+        text: w.text.trim(),
+        start: w.start,
+        end: w.end,
+        speaker: w.speaker,
+      }));
   }
 
   // 2. Gemini phrase-level segments
