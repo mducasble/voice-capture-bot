@@ -2,12 +2,13 @@ import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { type TimedWord, type WordTag, WORD_TAG_LABELS } from "@/lib/reviewTypes";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { WaveformZoomDialog } from "./WaveformZoomDialog";
 
 const CHUNK_DURATION = 30;
 
@@ -43,6 +44,9 @@ export function ChunkTimeline({
   const [tagMenuIndex, setTagMenuIndex] = useState<number | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [zoomRange, setZoomRange] = useState<{ start: number; end: number }>({ start: 0, end: 5 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeWordRef = useRef<HTMLSpanElement>(null);
@@ -187,9 +191,29 @@ export function ChunkTimeline({
       if (!containerRef.current || duration <= 0) return;
       const rect = containerRef.current.getBoundingClientRect();
       const pct = (e.clientX - rect.left) / rect.width;
-      onSeek(chunkStart + pct * CHUNK_DURATION);
+      const clickTime = chunkStart + pct * CHUNK_DURATION;
+
+      // Open zoom dialog centered around click point
+      const ZOOM_WINDOW = 5;
+      const half = ZOOM_WINDOW / 2;
+      let zStart = clickTime - half;
+      let zEnd = clickTime + half;
+      if (zStart < chunkStart) { zStart = chunkStart; zEnd = chunkStart + ZOOM_WINDOW; }
+      if (zEnd > chunkEnd) { zEnd = chunkEnd; zStart = Math.max(chunkStart, chunkEnd - ZOOM_WINDOW); }
+      setZoomRange({ start: zStart, end: zEnd });
+      setZoomOpen(true);
     },
-    [chunkStart, duration, onSeek]
+    [chunkStart, chunkEnd, duration]
+  );
+
+  const handleWaveformHover = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      setHoverPct(Math.max(0, Math.min(1, pct)));
+    },
+    []
   );
 
   const commitEdit = useCallback(() => {
@@ -259,10 +283,35 @@ export function ChunkTimeline({
       {/* Waveform */}
       <div
         ref={containerRef}
-        className="relative h-24 mx-4 mt-3 bg-muted/20 rounded-lg overflow-hidden cursor-pointer hover:bg-muted/30 transition-colors shrink-0"
+        className="relative h-24 mx-4 mt-3 bg-muted/20 rounded-lg overflow-hidden cursor-zoom-in transition-colors shrink-0"
         onClick={handleWaveformClick}
+        onMouseMove={handleWaveformHover}
+        onMouseLeave={() => setHoverPct(null)}
       >
         <canvas ref={canvasRef} className="absolute inset-0" />
+
+        {/* Hover zoom indicator */}
+        {hoverPct !== null && (
+          <>
+            {/* Highlight box (~5s window) */}
+            {(() => {
+              const windowPct = Math.min(5 / CHUNK_DURATION, 1);
+              const halfW = windowPct / 2;
+              const left = Math.max(0, Math.min(1 - windowPct, hoverPct - halfW));
+              return (
+                <div
+                  className="absolute top-0 bottom-0 bg-primary/10 border border-primary/30 rounded pointer-events-none transition-[left] duration-75"
+                  style={{ left: `${left * 100}%`, width: `${windowPct * 100}%` }}
+                >
+                  <div className="absolute top-1 right-1">
+                    <ZoomIn className="h-3.5 w-3.5 text-primary/60" />
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
+
         <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 pb-0.5">
           {[0, 5, 10, 15, 20, 25, 30].map((sec) => {
             const t = chunkStart + sec;
@@ -381,6 +430,20 @@ export function ChunkTimeline({
           })}
         </div>
       </div>
+
+      {/* Zoom dialog */}
+      {allPeaks && (
+        <WaveformZoomDialog
+          open={zoomOpen}
+          onOpenChange={setZoomOpen}
+          zoomStart={zoomRange.start}
+          zoomEnd={zoomRange.end}
+          allPeaks={allPeaks}
+          words={words}
+          onWordsChange={onWordsChange}
+          onSeek={onSeek}
+        />
+      )}
     </div>
   );
 }
