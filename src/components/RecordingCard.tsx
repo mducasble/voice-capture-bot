@@ -437,10 +437,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       const level = meta.wvmos >= 1.5 ? 'good' : meta.wvmos >= 2.5 ? 'fair' : 'bad';
                       metrics.push({ label: 'WVMOS', value: meta.wvmos.toFixed(2), level });
                     }
-                    if (meta?.utmos != null) {
-                      const level = meta.utmos >= 3.5 ? 'good' : meta.utmos >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'UTMOS', value: meta.utmos.toFixed(2), level });
-                    }
+                    // UTMOS: stored but hidden from UI
                     if (meta?.sigmos_ovrl != null) {
                       const level = meta.sigmos_ovrl >= 2.8 ? 'good' : meta.sigmos_ovrl >= 2.5 ? 'fair' : 'bad';
                       metrics.push({ label: 'SigMOS Ovrl', value: meta.sigmos_ovrl.toFixed(2), level });
