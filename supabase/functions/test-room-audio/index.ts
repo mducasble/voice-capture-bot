@@ -338,11 +338,12 @@ serve(async (req) => {
       mic_sr: { value: micSr, status: getMetricStatus('mic_sr', micSr), label: 'Eff. BW (Hz)' },
     };
 
-    // Add advanced metrics if available
+    // Add advanced metrics if available (utmos stored but hidden from UI)
+    const hiddenMetrics = new Set(['utmos']);
     for (const [key, val] of Object.entries(advancedMetrics)) {
-      if (val !== null && val !== undefined) {
+      if (val !== null && val !== undefined && !hiddenMetrics.has(key)) {
         const labelMap: Record<string, string> = {
-          srmr: 'SRMR', wvmos: 'WVMOS', utmos: 'UTMOS',
+          srmr: 'SRMR', wvmos: 'WVMOS',
           sigmos_ovrl: 'SigMOS Ovrl', sigmos_disc: 'SigMOS Disc', sigmos_reverb: 'SigMOS Reverb',
           vqscore: 'VQScore',
         };
