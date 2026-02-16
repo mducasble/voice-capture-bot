@@ -16,6 +16,7 @@ import { useReviewQueue, type ReviewRecording } from "@/hooks/useReviewQueue";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { ReviewWaveform } from "@/components/review/ReviewWaveform";
 import { KaraokeText } from "@/components/review/KaraokeText";
+import { ChunkTimeline } from "@/components/review/ChunkTimeline";
 import { extractTimedWords, type TimedWord } from "@/lib/reviewTypes";
 import { toast } from "sonner";
 
@@ -244,18 +245,8 @@ export default function Review() {
         />
       </div>
 
-      {/* Waveform + Controls */}
-      <div className="px-6 pt-4 pb-2 space-y-3 shrink-0">
-        {audioUrl && (
-          <ReviewWaveform
-            audioUrl={audioUrl}
-            currentTime={player.currentTime}
-            duration={player.duration}
-            onSeek={player.seek}
-          />
-        )}
-
-        {/* Player controls */}
+      {/* Player controls */}
+      <div className="px-6 pt-3 pb-1 shrink-0">
         <div className="flex items-center justify-center gap-4">
           <span className="text-xs text-muted-foreground w-12 text-right tabular-nums">
             {formatTime(player.currentTime)}
@@ -310,20 +301,32 @@ export default function Review() {
         </div>
       </div>
 
-      {/* Karaoke Text */}
+      {/* Chunk Timeline View */}
       <div className="flex-1 min-h-0 border-t border-border">
-        <KaraokeText
-          words={words}
-          currentTime={player.currentTime}
-          onSeek={player.seek}
-          onWordsChange={setWords}
-          isPlaying={player.isPlaying}
-        />
+        {audioUrl ? (
+          <ChunkTimeline
+            words={words}
+            currentTime={player.currentTime}
+            duration={player.duration}
+            audioUrl={audioUrl}
+            onSeek={player.seek}
+            onWordsChange={setWords}
+            isPlaying={player.isPlaying}
+          />
+        ) : (
+          <KaraokeText
+            words={words}
+            currentTime={player.currentTime}
+            onSeek={player.seek}
+            onWordsChange={setWords}
+            isPlaying={player.isPlaying}
+          />
+        )}
       </div>
 
       {/* Help text */}
       <div className="px-6 py-1 text-[10px] text-muted-foreground/60 text-center shrink-0">
-        Clique na palavra para navegar • Duplo-clique para editar • Duplo-clique no tempo para ajustar • Botão direito para marcar erros • Espaço = play/pause • ← → = ±5s
+        Arraste palavras para ajustar timing • Duplo-clique para editar • Botão direito para marcar erros • Espaço = play/pause • ← → = ±5s
       </div>
 
       {/* Action bar */}
