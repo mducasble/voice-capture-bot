@@ -34,11 +34,16 @@ const Rooms = () => {
       if (error) throw error;
 
       // Add creator as first participant
-      await supabase.from("room_participants").insert({
+      const { data: participant } = await supabase.from("room_participants").insert({
         room_id: room.id,
         name: creatorName.trim(),
         is_creator: true,
-      });
+      }).select().single();
+
+      // Store creator participant ID so Room page recognises them
+      if (participant) {
+        sessionStorage.setItem(`room_${room.id}_participant`, participant.id);
+      }
 
       toast.success("Sala criada com sucesso!");
       navigate(`/room/${room.id}`);
