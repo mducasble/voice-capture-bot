@@ -215,6 +215,9 @@ export default function Review() {
               {recording.discord_username}
             </Badge>
           )}
+          <Badge variant="secondary" className="text-xs">
+            {recording.transcription_elevenlabs_status === "completed" ? "ElevenLabs" : "Gemini"}
+          </Badge>
           {recording.language && (
             <Badge variant="secondary" className="text-xs">
               {recording.language}
