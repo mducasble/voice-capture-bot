@@ -69,6 +69,25 @@ export const AudioTestFlow = ({
   // Test uses no profile (raw capture for accurate measurement)
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
 
+  const STORAGE_KEY = `audio_test_${roomId}`;
+
+  // Restore cached results from localStorage on mount
+  useEffect(() => {
+    if (initialResults) return; // server data takes priority
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as { results: TestResults; profile: AudioProfile };
+        setResults(parsed.results);
+        setRecommendedProfile(parsed.profile);
+        setEditedProfile(parsed.profile);
+        setPhase("results");
+        // Auto-apply cached profile
+        if (onProfileRecommended) onProfileRecommended(parsed.profile);
+      }
+    } catch { /* ignore corrupt data */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Update results when props change (realtime)
   useEffect(() => {
     if (initialResults) {
@@ -195,6 +214,12 @@ export const AudioTestFlow = ({
   const applyProfile = () => {
     if (editedProfile && onProfileRecommended) {
       onProfileRecommended(editedProfile);
+      // Persist to localStorage
+      if (results) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ results, profile: editedProfile }));
+        } catch { /* quota exceeded */ }
+      }
       toast.success("Configuração de áudio aplicada! 🎛️");
     }
   };
