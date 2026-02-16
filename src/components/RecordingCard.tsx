@@ -650,28 +650,45 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     {(() => {
                       if (!recording.transcription_elevenlabs) return <p>Processando...</p>;
                       
-                      // Prefer word-level view from elevenlabs_words metadata
+                      // Prefer word-level view from elevenlabs_words metadata — subtitle format
                       const elWords = (recording.metadata as Record<string, unknown>)?.elevenlabs_words as Array<{ text: string; start: number; end: number; speaker?: string }> | undefined;
                       if (elWords && elWords.length > 0) {
                         const filteredWords = elWords.filter((w: { text: string }) => w.text?.trim());
                         const formatTs = (s: number) => {
                           const m = Math.floor(s / 60);
-                          const sec = Math.floor(s % 60);
-                          return `${m}:${sec.toString().padStart(2, '0')}`;
+                          const sec = s % 60;
+                          return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
                         };
+
+                        // Group words into subtitle-style lines (break on punctuation or silence > 0.3s)
+                        const subtitles: Array<{ start: number; end: number; text: string; speaker?: string }> = [];
+                        let current: { start: number; end: number; words: string[]; speaker?: string } | null = null;
+                        const PUNCT_RE = /[.!?;,:]$/;
+
+                        for (const w of filteredWords) {
+                          const gap = current ? w.start - current.end : 0;
+                          const prevEndsPunct = current && current.words.length > 0 && PUNCT_RE.test(current.words[current.words.length - 1]);
+                          
+                          if (!current || (prevEndsPunct && gap > 0.15) || gap > 0.5 || (current.speaker && w.speaker && current.speaker !== w.speaker)) {
+                            if (current) subtitles.push({ start: current.start, end: current.end, text: current.words.join(' '), speaker: current.speaker });
+                            current = { start: w.start, end: w.end, words: [w.text.trim()], speaker: w.speaker };
+                          } else {
+                            current.end = w.end;
+                            current.words.push(w.text.trim());
+                          }
+                        }
+                        if (current) subtitles.push({ start: current.start, end: current.end, text: current.words.join(' '), speaker: current.speaker });
+
                         return (
-                          <div className="flex flex-wrap gap-0.5">
-                            {filteredWords.map((w: { text: string; start: number; end: number; speaker?: string }, i: number) => (
-                              <span
-                                key={i}
-                                className="inline-flex flex-col items-center group cursor-default"
-                                title={`${formatTs(w.start)} - ${formatTs(w.end)}${w.speaker ? ` (${w.speaker})` : ''}`}
-                              >
-                                <span className="text-[9px] text-muted-foreground/50 font-mono leading-none opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {formatTs(w.start)}
+                          <div className="space-y-1.5">
+                            {subtitles.map((sub, i) => (
+                              <div key={i} className="border-l-2 border-accent/40 pl-2">
+                                <span className="text-[10px] text-muted-foreground font-mono">
+                                  [{formatTs(sub.start)} → {formatTs(sub.end)}]
+                                  {sub.speaker && <span className="ml-1 text-muted-foreground/70">{sub.speaker}</span>}
                                 </span>
-                                <span className="px-0.5">{w.text.trim()}</span>
-                              </span>
+                                <p className="whitespace-pre-wrap leading-snug">{sub.text}</p>
+                              </div>
                             ))}
                           </div>
                         );
