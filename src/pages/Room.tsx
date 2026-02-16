@@ -405,8 +405,10 @@ const Room = () => {
   }
 
     // Check if user might be the creator via sessionStorage
-    const storedCreatorId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
-    const isLikelyCreator = !!storedCreatorId;
+    const storedParticipantId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
+    // Also check if the stored ID matches the creator participant
+    const creatorParticipant = participants.find(p => p.is_creator);
+    const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
 
     // Join screen
     if (!currentParticipant) {
