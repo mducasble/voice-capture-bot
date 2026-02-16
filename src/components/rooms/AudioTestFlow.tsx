@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings2, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings2, ChevronDown, ChevronUp, Play, Pause } from "lucide-react";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
 import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
@@ -65,9 +66,11 @@ export const AudioTestFlow = ({
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
+  const testBlobUrlRef = useRef<string | null>(null);
 
   // Test uses no profile (raw capture for accurate measurement)
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
+  const audioPlayer = useAudioPlayer();
 
   const STORAGE_KEY = `audio_test_profile`;
 
@@ -153,6 +156,12 @@ export const AudioTestFlow = ({
 
     setAnalysisProgress(30);
 
+    // Store blob URL for playback
+    if (testBlobUrlRef.current) URL.revokeObjectURL(testBlobUrlRef.current);
+    const blobUrl = URL.createObjectURL(wavBlob);
+    testBlobUrlRef.current = blobUrl;
+    audioPlayer.load(blobUrl);
+
     try {
       const formData = new FormData();
       formData.append("audio", wavBlob, "test.wav");
@@ -209,6 +218,11 @@ export const AudioTestFlow = ({
     setCountdown(TEST_DURATION);
     setRecommendedProfile(null);
     setEditedProfile(null);
+    audioPlayer.cleanup();
+    if (testBlobUrlRef.current) {
+      URL.revokeObjectURL(testBlobUrlRef.current);
+      testBlobUrlRef.current = null;
+    }
   };
 
   const applyProfile = () => {
@@ -547,6 +561,12 @@ export const AudioTestFlow = ({
 
           {/* Actions */}
           <div className="flex justify-center gap-3">
+            {testBlobUrlRef.current && (
+              <Button variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="gap-1.5">
+                {audioPlayer.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {audioPlayer.isPlaying ? "Pausar" : "Ouvir Teste"}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
               <RotateCcw className="h-4 w-4" />
               Refazer Teste
