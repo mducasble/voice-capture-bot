@@ -30,7 +30,7 @@ export function useReviewQueue() {
         .select(
           "id, filename, file_url, mp3_file_url, duration_seconds, discord_username, transcription, transcription_elevenlabs, transcription_status, transcription_elevenlabs_status, metadata, created_at, session_id, language"
         )
-        .eq("transcription_status", "completed")
+        .or("transcription_elevenlabs_status.eq.completed,transcription_status.eq.completed")
         .order("created_at", { ascending: true });
 
       if (error) throw error;
