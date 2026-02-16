@@ -404,63 +404,68 @@ const Room = () => {
     );
   }
 
-  // Check if user might be the creator
-  const isCreatorName = room.creator_name;
+    // Check if user might be the creator via sessionStorage
+    const storedCreatorId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
+    const isLikelyCreator = !!storedCreatorId;
 
-  // Join screen
-  if (!currentParticipant) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit mb-2">
-              <Radio className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle>{room.room_name || `Sala de ${room.creator_name}`}</CardTitle>
-            <CardDescription>
-              Criada por {room.creator_name} • {participants.length} participante(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Audio device selector */}
-            {audioDevices.length > 1 && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <Mic className="h-4 w-4" /> Dispositivo de Áudio
-                </label>
-                <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o microfone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {audioDevices.map((device) => (
-                      <SelectItem key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+    // Join screen
+    if (!currentParticipant) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit mb-2">
+                <Radio className="h-8 w-8 text-primary" />
               </div>
-            )}
+              <CardTitle>{room.room_name || `Sala de ${room.creator_name}`}</CardTitle>
+              <CardDescription>
+                Criada por {room.creator_name} • {participants.length} participante(s)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Audio device selector */}
+              {audioDevices.length > 1 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Mic className="h-4 w-4" /> Dispositivo de Áudio
+                  </label>
+                  <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o microfone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {audioDevices.map((device) => (
+                        <SelectItem key={device.deviceId} value={device.deviceId}>
+                          {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            {/* Creator quick join button */}
-            <Button 
-              className="w-full" 
-              variant="default"
-              onClick={() => handleJoin(true)}
-              disabled={isJoining}
-            >
-              {isJoining ? "Conectando..." : `Entrar como ${isCreatorName} (Criador)`}
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">ou entre como participante</span>
-              </div>
-            </div>
+              {/* Creator quick join button - only visible to the original creator */}
+              {isLikelyCreator && (
+                <>
+                  <Button 
+                    className="w-full" 
+                    variant="default"
+                    onClick={() => handleJoin(true)}
+                    disabled={isJoining}
+                  >
+                    {isJoining ? "Conectando..." : `Entrar como ${room.creator_name} (Criador)`}
+                  </Button>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">ou entre como participante</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Seu Nome</label>
