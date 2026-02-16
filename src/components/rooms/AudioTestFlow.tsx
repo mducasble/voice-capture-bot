@@ -69,7 +69,7 @@ export const AudioTestFlow = ({
   // Test uses no profile (raw capture for accurate measurement)
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
 
-  const STORAGE_KEY = `audio_test_${roomId}`;
+  const STORAGE_KEY = `audio_test_profile`;
 
   // Restore cached results from localStorage on mount
   useEffect(() => {
