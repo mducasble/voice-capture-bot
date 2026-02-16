@@ -649,6 +649,35 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-sm text-foreground/90 max-h-48 overflow-y-auto">
                     {(() => {
                       if (!recording.transcription_elevenlabs) return <p>Processando...</p>;
+                      
+                      // Prefer word-level view from elevenlabs_words metadata
+                      const elWords = (recording.metadata as Record<string, unknown>)?.elevenlabs_words as Array<{ text: string; start: number; end: number; speaker?: string }> | undefined;
+                      if (elWords && elWords.length > 0) {
+                        const filteredWords = elWords.filter((w: { text: string }) => w.text?.trim());
+                        const formatTs = (s: number) => {
+                          const m = Math.floor(s / 60);
+                          const sec = Math.floor(s % 60);
+                          return `${m}:${sec.toString().padStart(2, '0')}`;
+                        };
+                        return (
+                          <div className="flex flex-wrap gap-0.5">
+                            {filteredWords.map((w: { text: string; start: number; end: number; speaker?: string }, i: number) => (
+                              <span
+                                key={i}
+                                className="inline-flex flex-col items-center group cursor-default"
+                                title={`${formatTs(w.start)} - ${formatTs(w.end)}${w.speaker ? ` (${w.speaker})` : ''}`}
+                              >
+                                <span className="text-[9px] text-muted-foreground/50 font-mono leading-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {formatTs(w.start)}
+                                </span>
+                                <span className="px-0.5">{w.text.trim()}</span>
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      }
+                      
+                      // Fallback: show speaker segments
                       try {
                         const segments = JSON.parse(recording.transcription_elevenlabs);
                         if (Array.isArray(segments)) {
