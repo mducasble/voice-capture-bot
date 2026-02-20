@@ -713,6 +713,16 @@ async function transcribeWithElevenLabsDiarized(params: {
       ko: "kor",
       zh: "zho",
       ru: "rus",
+      hi: "hin",
+      ar: "ara",
+      bn: "ben",
+      tr: "tur",
+      vi: "vie",
+      th: "tha",
+      pl: "pol",
+      nl: "nld",
+      sv: "swe",
+      uk: "ukr",
     };
     const langCode = langMap[language.toLowerCase()] || language;
     formData.append("language_code", langCode);
