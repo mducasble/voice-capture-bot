@@ -173,25 +173,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
       elevenlabs_words?: Array<{ text: string; start: number; end: number; speaker?: string }>;
     };
 
-    // Prefer word-level segments from elevenlabs_words
-    if (metadata?.elevenlabs_words && metadata.elevenlabs_words.length > 0) {
-      const formatTs = (s: number) => {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
-      };
-      const wordSegments = metadata.elevenlabs_words
-        .filter(w => w.text?.trim())
-        .map(w => ({
-          start: formatTs(w.start),
-          end: formatTs(w.end),
-          speaker: w.speaker || 'speaker A',
-          text: w.text.trim(),
-        }));
-      return { segments: wordSegments, speakerMapping: metadata.speaker_mapping };
-    }
-    
-    if (metadata?.speaker_segments && Array.isArray(metadata.speaker_segments)) {
+    // Prefer speaker_segments (already has speaker_A labels)
+    if (metadata?.speaker_segments && Array.isArray(metadata.speaker_segments) && metadata.speaker_segments.length > 0) {
       return { 
         segments: metadata.speaker_segments,
         speakerMapping: metadata.speaker_mapping
