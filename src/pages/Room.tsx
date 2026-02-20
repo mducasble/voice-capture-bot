@@ -53,6 +53,7 @@ const Room = () => {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [audioProfile, setAudioProfile] = useState<AudioProfile | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -64,7 +65,7 @@ const Room = () => {
   const { remoteStreams } = useWebRTC({
     roomId,
     participantId: currentParticipant?.id,
-    localStream: mediaStreamRef.current,
+    localStream,
     participants,
   });
 
@@ -151,6 +152,7 @@ const Room = () => {
       // Apply mute state
       stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
       mediaStreamRef.current = stream;
+      setLocalStream(stream);
       // Force re-render to pass new stream to ParticipantAudio
       setCurrentParticipant(prev => prev ? { ...prev } : null);
       toast.success("Dispositivo alterado!");
@@ -178,6 +180,7 @@ const Room = () => {
       });
       stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
       mediaStreamRef.current = stream;
+      setLocalStream(stream);
       setCurrentParticipant(prev => prev ? { ...prev } : null);
     } catch (err) {
       console.error("Error applying audio profile:", err);
@@ -226,6 +229,7 @@ const Room = () => {
           try {
             const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
             mediaStreamRef.current = stream;
+            setLocalStream(stream);
             setCurrentParticipant(creatorParticipant as Participant);
           } catch (error) {
             console.error("Error getting microphone:", error);
@@ -309,6 +313,7 @@ const Room = () => {
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
       mediaStreamRef.current = stream;
+      setLocalStream(stream);
 
       if (asCreator) {
         // Creator joining - find their existing participant record
@@ -425,6 +430,7 @@ const Room = () => {
 
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
     }
 
     navigate("/rooms");

@@ -5,12 +5,14 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
   ],
 };
 
 interface PeerState {
   connection: RTCPeerConnection;
   remoteStream: MediaStream;
+  pendingCandidates: RTCIceCandidateInit[];
 }
 
 interface UseWebRTCOptions {
@@ -27,18 +29,41 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
   const participantIdRef = useRef<string | undefined>();
 
   // Keep refs in sync
-  localStreamRef.current = localStream;
-  participantIdRef.current = participantId;
+  useEffect(() => {
+    localStreamRef.current = localStream;
+    participantIdRef.current = participantId;
+  }, [localStream, participantId]);
 
   const updateRemoteStreams = useCallback(() => {
     const map = new Map<string, MediaStream>();
     peersRef.current.forEach((peer, id) => {
-      map.set(id, peer.remoteStream);
+      if (peer.remoteStream.getTracks().length > 0) {
+        map.set(id, peer.remoteStream);
+      }
     });
     setRemoteStreams(new Map(map));
   }, []);
 
+  /** Flush queued ICE candidates once remoteDescription is set */
+  const flushCandidates = useCallback(async (peer: PeerState) => {
+    while (peer.pendingCandidates.length > 0) {
+      const candidate = peer.pendingCandidates.shift()!;
+      try {
+        await peer.connection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn("[WebRTC] Failed to add queued ICE candidate:", e);
+      }
+    }
+  }, []);
+
   const createPeerConnection = useCallback((remoteParticipantId: string): PeerState => {
+    // Close existing connection if any
+    const existing = peersRef.current.get(remoteParticipantId);
+    if (existing) {
+      existing.connection.close();
+      peersRef.current.delete(remoteParticipantId);
+    }
+
     const connection = new RTCPeerConnection(ICE_SERVERS);
     const remoteStream = new MediaStream();
 
@@ -47,13 +72,15 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       localStreamRef.current.getTracks().forEach(track => {
         connection.addTrack(track, localStreamRef.current!);
       });
+      console.log(`[WebRTC] Added ${localStreamRef.current.getTracks().length} local tracks for ${remoteParticipantId}`);
+    } else {
+      console.warn(`[WebRTC] No local stream when connecting to ${remoteParticipantId}`);
     }
 
     // Handle remote tracks
     connection.ontrack = (event) => {
-      event.streams[0]?.getTracks().forEach(track => {
-        remoteStream.addTrack(track);
-      });
+      console.log(`[WebRTC] Got remote track from ${remoteParticipantId}: ${event.track.kind}`);
+      remoteStream.addTrack(event.track);
       updateRemoteStreams();
     };
 
@@ -70,23 +97,27 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       }
     };
 
+    connection.oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] ICE state for ${remoteParticipantId}: ${connection.iceConnectionState}`);
+    };
+
     connection.onconnectionstatechange = () => {
       console.log(`[WebRTC] Connection to ${remoteParticipantId}: ${connection.connectionState}`);
-      if (connection.connectionState === "failed" || connection.connectionState === "disconnected") {
-        // Clean up failed connection
+      if (connection.connectionState === "failed") {
+        console.log(`[WebRTC] Connection failed to ${remoteParticipantId}, will retry on next participant update`);
         peersRef.current.delete(remoteParticipantId);
         updateRemoteStreams();
       }
     };
 
-    const state: PeerState = { connection, remoteStream };
+    const state: PeerState = { connection, remoteStream, pendingCandidates: [] };
     peersRef.current.set(remoteParticipantId, state);
     return state;
   }, [roomId, updateRemoteStreams]);
 
   // Initiate connection to a remote participant (caller side)
   const connectToPeer = useCallback(async (remoteParticipantId: string) => {
-    if (!participantIdRef.current || !roomId) return;
+    if (!participantIdRef.current || !roomId || !localStreamRef.current) return;
     if (peersRef.current.has(remoteParticipantId)) return;
 
     console.log(`[WebRTC] Creating offer for ${remoteParticipantId}`);
@@ -106,31 +137,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
 
   // Handle incoming signals via realtime subscription
   useEffect(() => {
-    if (!roomId || !participantId) return;
-
-    // Process any pending signals first
-    const processPendingSignals = async () => {
-      const { data: signals } = await supabase
-        .from("webrtc_signals")
-        .select("*")
-        .eq("room_id", roomId)
-        .eq("receiver_id", participantId)
-        .order("created_at", { ascending: true });
-
-      if (signals) {
-        for (const signal of signals) {
-          await handleSignal(signal);
-        }
-        // Clean up processed signals
-        if (signals.length > 0) {
-          await supabase
-            .from("webrtc_signals")
-            .delete()
-            .eq("receiver_id", participantId)
-            .eq("room_id", roomId);
-        }
-      }
-    };
+    if (!roomId || !participantId || !localStream) return;
 
     const handleSignal = async (signal: any) => {
       const senderId = signal.sender_id;
@@ -138,15 +145,9 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
 
       if (signal.signal_type === "offer") {
         console.log(`[WebRTC] Received offer from ${senderId}`);
-        // Remove existing peer if any
-        const existingPeer = peersRef.current.get(senderId);
-        if (existingPeer) {
-          existingPeer.connection.close();
-          peersRef.current.delete(senderId);
-        }
-
         const peer = createPeerConnection(senderId);
         await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
+        await flushCandidates(peer);
 
         const answer = await peer.connection.createAnswer();
         await peer.connection.setLocalDescription(answer);
@@ -165,16 +166,43 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         const peer = peersRef.current.get(senderId);
         if (peer && peer.connection.signalingState === "have-local-offer") {
           await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
+          await flushCandidates(peer);
         }
       } else if (signal.signal_type === "ice") {
         const peer = peersRef.current.get(senderId);
-        if (peer && peer.connection.remoteDescription) {
-          try {
-            await peer.connection.addIceCandidate(new RTCIceCandidate(signal.signal_data));
-          } catch (e) {
-            console.warn("[WebRTC] Failed to add ICE candidate:", e);
+        if (peer) {
+          if (peer.connection.remoteDescription) {
+            try {
+              await peer.connection.addIceCandidate(new RTCIceCandidate(signal.signal_data));
+            } catch (e) {
+              console.warn("[WebRTC] Failed to add ICE candidate:", e);
+            }
+          } else {
+            // Queue candidate — will be flushed when remoteDescription is set
+            peer.pendingCandidates.push(signal.signal_data);
           }
         }
+      }
+    };
+
+    // Process any pending signals first
+    const processPendingSignals = async () => {
+      const { data: signals } = await supabase
+        .from("webrtc_signals")
+        .select("*")
+        .eq("room_id", roomId)
+        .eq("receiver_id", participantId)
+        .order("created_at", { ascending: true });
+
+      if (signals && signals.length > 0) {
+        for (const signal of signals) {
+          await handleSignal(signal);
+        }
+        await supabase
+          .from("webrtc_signals")
+          .delete()
+          .eq("receiver_id", participantId)
+          .eq("room_id", roomId);
       }
     };
 
@@ -193,7 +221,6 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         },
         (payload) => {
           handleSignal(payload.new);
-          // Delete processed signal
           supabase.from("webrtc_signals").delete().eq("id", (payload.new as any).id).then(() => {});
         }
       )
@@ -202,7 +229,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, participantId, createPeerConnection, updateRemoteStreams]);
+  }, [roomId, participantId, localStream, createPeerConnection, updateRemoteStreams, flushCandidates]);
 
   // Connect to new participants when they appear
   useEffect(() => {
@@ -220,16 +247,18 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     }
   }, [participants, participantId, localStream, connectToPeer]);
 
-  // Update local tracks when stream changes
+  // Update local tracks when stream changes (e.g. device switch)
   useEffect(() => {
     if (!localStream) return;
 
-    peersRef.current.forEach((peer) => {
+    peersRef.current.forEach((peer, peerId) => {
       const senders = peer.connection.getSenders();
       localStream.getTracks().forEach(track => {
         const sender = senders.find(s => s.track?.kind === track.kind);
         if (sender) {
-          sender.replaceTrack(track);
+          sender.replaceTrack(track).catch(e => 
+            console.warn(`[WebRTC] Failed to replace track for ${peerId}:`, e)
+          );
         } else {
           peer.connection.addTrack(track, localStream);
         }
