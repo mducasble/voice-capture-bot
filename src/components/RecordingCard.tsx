@@ -173,7 +173,34 @@ export function RecordingCard({ recording }: RecordingCardProps) {
       elevenlabs_words?: Array<{ text: string; start: number; end: number; speaker?: string }>;
     };
 
-    // Prefer speaker_segments (already has speaker_A labels)
+    // Prefer word-level segments from elevenlabs_words (with speaker labels remapped to A, B, C...)
+    if (metadata?.elevenlabs_words && metadata.elevenlabs_words.length > 0) {
+      // Build a mapping from raw speaker IDs (speaker_0, speaker_1) to letter labels (speaker_A, speaker_B)
+      const rawToLabel = new Map<string, string>();
+      const letterCode = (n: number) => String.fromCharCode(65 + n);
+      
+      const formatTs = (s: number) => {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
+      };
+      const wordSegments = metadata.elevenlabs_words
+        .filter(w => w.text?.trim())
+        .map(w => {
+          const rawSpeaker = w.speaker || 'unknown';
+          if (!rawToLabel.has(rawSpeaker)) {
+            rawToLabel.set(rawSpeaker, `speaker_${letterCode(rawToLabel.size)}`);
+          }
+          return {
+            start: formatTs(w.start),
+            end: formatTs(w.end),
+            speaker: rawToLabel.get(rawSpeaker)!,
+            text: w.text.trim(),
+          };
+        });
+      return { segments: wordSegments, speakerMapping: metadata.speaker_mapping };
+    }
+    
     if (metadata?.speaker_segments && Array.isArray(metadata.speaker_segments) && metadata.speaker_segments.length > 0) {
       return { 
         segments: metadata.speaker_segments,
