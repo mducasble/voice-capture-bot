@@ -818,7 +818,7 @@ function wordsToSegments(words: ElevenLabsWord[]): SpeakerSegment[] {
   const SENTENCE_END_RE = /[.!?;]$/; // Break segments at sentence boundaries too
 
   for (const word of normalizedWords) {
-    const speaker = word.speaker_id || word.speaker || "speaker_1";
+    const speaker = word.speaker_id || word.speaker || "speaker_0";
     
     // Start new segment if: first word, different speaker, long silence, or after sentence end
     const prevEndedSentence = currentSegment && SENTENCE_END_RE.test(currentSegment.text);
@@ -857,7 +857,7 @@ function formatSegmentsForExport(segments: SpeakerSegment[]): { formatted: Forma
 
   const formatted = segments.map(seg => {
     if (!speakerMap.has(seg.speaker)) {
-      speakerMap.set(seg.speaker, `speaker ${letterCode(speakerMap.size)}`);
+      speakerMap.set(seg.speaker, `speaker_${letterCode(speakerMap.size)}`);
     }
 
     return {

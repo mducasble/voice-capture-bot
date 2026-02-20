@@ -38,13 +38,23 @@ export function useRegenerateJson() {
         throw new Error("No speaker segments found in metadata. Run ElevenLabs transcription first.");
       }
 
-      // Regenerate JSON with correct property order: start, end, speaker, text
-      const orderedSegments = metadata.speaker_segments.map(seg => ({
-        start: seg.start,
-        end: seg.end,
-        speaker: seg.speaker,
-        text: seg.text,
-      }));
+      // Re-map speakers to letter-based labels (speaker_A, speaker_B, etc.)
+      const letterCode = (n: number) => String.fromCharCode(65 + n); // 65 = 'A'
+      const speakerMap = new Map<string, string>();
+      
+      const orderedSegments = metadata.speaker_segments.map(seg => {
+        let speaker = seg.speaker;
+        // If speaker uses numeric format (speaker_0, speaker 0, etc.), remap to letters
+        if (!speakerMap.has(speaker)) {
+          speakerMap.set(speaker, `speaker_${letterCode(speakerMap.size)}`);
+        }
+        return {
+          start: seg.start,
+          end: seg.end,
+          speaker: speakerMap.get(speaker)!,
+          text: seg.text,
+        };
+      });
 
       const jsonTranscription = JSON.stringify(orderedSegments);
 
