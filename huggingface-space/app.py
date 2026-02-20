@@ -354,10 +354,10 @@ def enhance_speech_eq(audio: np.ndarray, sr: int, boost_db: float = 3.0) -> np.n
 def enhance_noise_gate(
     audio: np.ndarray,
     sr: int,
-    threshold_db: float = -40.0,
+    threshold_db: float = -50.0,
     attack_ms: float = 5.0,
-    release_ms: float = 50.0,
-    hold_ms: float = 100.0,
+    release_ms: float = 150.0,
+    hold_ms: float = 200.0,
 ) -> np.ndarray:
     """
     Apply a smooth noise gate that silences non-speech sections.
@@ -505,7 +505,7 @@ async def enhance_audio(
     speech_eq: Optional[str] = Form("true"),
     speech_eq_boost_db: Optional[str] = Form("1.5"),
     noise_gate: Optional[str] = Form("true"),
-    noise_gate_threshold_db: Optional[str] = Form("-45"),
+    noise_gate_threshold_db: Optional[str] = Form("-50"),
     target_lufs: Optional[str] = Form("-23"),
     output_format: Optional[str] = Form("wav"),
 ):
