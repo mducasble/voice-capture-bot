@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Play,
@@ -30,6 +30,7 @@ function formatTime(s: number): string {
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export default function Review() {
+  const [searchParams] = useSearchParams();
   const { recordings, isLoading, submitReview } = useReviewQueue();
   const player = useAudioPlayer();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,6 +38,17 @@ export default function Review() {
   const [playbackRate, setPlaybackRate] = useState(1);
 
   const recording: ReviewRecording | undefined = recordings[currentIndex];
+
+  // Pre-select recording from query param
+  useEffect(() => {
+    const targetId = searchParams.get("id");
+    if (targetId && recordings.length > 0) {
+      const idx = recordings.findIndex((r) => r.id === targetId);
+      if (idx >= 0 && idx !== currentIndex) {
+        setCurrentIndex(idx);
+      }
+    }
+  }, [recordings, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load audio when recording changes
   useEffect(() => {
