@@ -274,26 +274,100 @@ async function uploadToS3(data: Uint8Array, s3Key: string): Promise<string> {
 // Main handler
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Adaptive enhancement: decide steps based on original audio metrics
+// ---------------------------------------------------------------------------
+
+interface OriginalMetrics {
+  snr_db?: number | null;
+  rms_dbfs?: number | null;
+  srmr?: number | null;
+  sigmos_ovrl?: number | null;
+  sigmos_sig?: number | null;
+  sigmos_bak?: number | null;
+  mic_sr?: number | null;
+  file_sr?: number | null;
+}
+
+function buildAdaptiveOptions(metrics: OriginalMetrics, fileSr: number): { opts: EnhanceOptions; reasons: string[] } {
+  const reasons: string[] = [];
+
+  // --- Noise Gate ---
+  let noise_gate = false;
+  let noise_gate_threshold_db = -50;
+  const snr = metrics.snr_db;
+  if (snr != null && snr < 25) {
+    noise_gate = true;
+    // More aggressive for very noisy audio, gentler for moderate
+    noise_gate_threshold_db = snr < 10 ? -40 : snr < 18 ? -45 : -50;
+    reasons.push(`noise_gate: SNR=${snr}dB < 25 → threshold=${noise_gate_threshold_db}dB`);
+  } else {
+    reasons.push(`noise_gate: SKIP (SNR=${snr ?? 'N/A'}dB, already good)`);
+  }
+
+  // --- Highpass ---
+  let highpass = false;
+  let highpass_freq = 80;
+  const srmr = metrics.srmr;
+  if (srmr != null && srmr < 6.0) {
+    highpass = true;
+    // Lower SRMR → higher cutoff to remove more rumble
+    highpass_freq = srmr < 3.0 ? 120 : srmr < 4.5 ? 100 : 80;
+    reasons.push(`highpass: SRMR=${srmr} < 6.0 → cutoff=${highpass_freq}Hz`);
+  } else {
+    reasons.push(`highpass: SKIP (SRMR=${srmr ?? 'N/A'}, already good)`);
+  }
+
+  // --- Speech EQ ---
+  let speech_eq = false;
+  let speech_eq_boost_db = 2;
+  const sigSig = metrics.sigmos_sig;
+  if (sigSig != null && sigSig < 3.5) {
+    speech_eq = true;
+    // Bigger gap → more boost, capped at 4dB
+    const gap = 3.5 - sigSig;
+    speech_eq_boost_db = Math.min(4, Math.round(gap * 2 * 10) / 10);
+    reasons.push(`speech_eq: SigMOS_SIG=${sigSig} < 3.5 → boost=${speech_eq_boost_db}dB`);
+  } else {
+    reasons.push(`speech_eq: SKIP (SigMOS_SIG=${sigSig ?? 'N/A'}, already good)`);
+  }
+
+  // --- Lowpass ---
+  let lowpass = false;
+  let lowpass_freq = 16000;
+  const micSr = metrics.mic_sr;
+  if (micSr != null && micSr < fileSr && micSr < 16000) {
+    lowpass = true;
+    lowpass_freq = Math.round(micSr * 0.9);
+    reasons.push(`lowpass: mic_sr=${micSr} < file_sr=${fileSr} → cutoff=${lowpass_freq}Hz`);
+  } else {
+    reasons.push(`lowpass: SKIP (mic_sr=${micSr ?? 'N/A'})`);
+  }
+
+  // --- Normalize ---
+  let normalize = false;
+  let target_lufs = -23;
+  const rms = metrics.rms_dbfs;
+  if (rms != null && (rms < -26 || rms > -18)) {
+    normalize = true;
+    reasons.push(`normalize: RMS=${rms}dBFS outside [-26,-18] → target=${target_lufs}LUFS`);
+  } else {
+    reasons.push(`normalize: SKIP (RMS=${rms ?? 'N/A'}dBFS, within range)`);
+  }
+
+  return {
+    opts: { normalize, highpass, highpass_freq, lowpass, lowpass_freq, speech_eq, speech_eq_boost_db, noise_gate, noise_gate_threshold_db, target_lufs },
+    reasons,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const {
-      recording_id,
-      file_url,
-      normalize = true,
-      highpass = true,
-      highpass_freq = 80,
-      lowpass = false,
-      lowpass_freq = 16000,
-      speech_eq = true,
-      speech_eq_boost_db = 2,
-      noise_gate = true,
-      noise_gate_threshold_db = -50,
-      target_lufs = -23,
-    } = await req.json();
+    const { recording_id, file_url } = await req.json();
 
     if (!recording_id || !file_url) {
       return new Response(
@@ -312,10 +386,52 @@ serve(async (req) => {
       );
     }
 
-    const enhanceOpts: EnhanceOptions = {
-      normalize, highpass, highpass_freq, lowpass, lowpass_freq,
-      speech_eq, speech_eq_boost_db, noise_gate, noise_gate_threshold_db, target_lufs,
+    // --- Read original metrics from DB to drive adaptive decisions ---
+    const supabaseForRead = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: recData } = await supabaseForRead
+      .from('voice_recordings')
+      .select('metadata, snr_db, sample_rate')
+      .eq('id', recording_id)
+      .single();
+
+    const meta = (recData?.metadata as Record<string, unknown>) || {};
+    const fileSampleRate = (recData?.sample_rate as number) || 48000;
+
+    const originalMetrics: OriginalMetrics = {
+      snr_db: (recData?.snr_db as number) ?? (meta.snr_db as number | null) ?? null,
+      rms_dbfs: (meta.rms_dbfs as number | null) ?? null,
+      srmr: (meta.srmr as number | null) ?? null,
+      sigmos_ovrl: (meta.sigmos_ovrl as number | null) ?? null,
+      sigmos_sig: (meta.sigmos_sig as number | null) ?? null,
+      sigmos_bak: (meta.sigmos_bak as number | null) ?? null,
+      mic_sr: (meta.mic_sr as number | null) ?? null,
+      file_sr: (meta.file_sr as number | null) ?? fileSampleRate,
     };
+
+    const { opts: enhanceOpts, reasons } = buildAdaptiveOptions(originalMetrics, originalMetrics.file_sr || fileSampleRate);
+
+    const anyStepEnabled = enhanceOpts.normalize || enhanceOpts.highpass || enhanceOpts.lowpass || enhanceOpts.speech_eq || enhanceOpts.noise_gate;
+
+    console.log(`[enhance] Adaptive analysis for ${recording_id}:`);
+    reasons.forEach(r => console.log(`  → ${r}`));
+    console.log(`[enhance] Steps enabled: ${anyStepEnabled ? 'yes' : 'NONE — audio already good'}`);
+
+    if (!anyStepEnabled) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          recording_id,
+          skipped: true,
+          message: 'All metrics already within good range — no enhancement needed',
+          reasons,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const isMP3 = file_url.toLowerCase().includes('.mp3');
     let stepsApplied = '';
@@ -461,12 +577,7 @@ serve(async (req) => {
     console.log(`[enhance] Uploaded to: ${enhancedFileUrl}`);
 
     // --- Update DB metadata (merge) ---
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseForRead
       .from('voice_recordings')
       .select('metadata')
       .eq('id', recording_id)
@@ -480,9 +591,11 @@ serve(async (req) => {
       enhancement_original_rms: originalRms,
       enhancement_enhanced_rms: enhancedRms,
       enhancement_date: new Date().toISOString(),
+      enhancement_adaptive_reasons: reasons,
+      enhancement_original_metrics: originalMetrics,
     };
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseForRead
       .from('voice_recordings')
       .update({ metadata: mergedMetadata })
       .eq('id', recording_id);
@@ -499,6 +612,7 @@ serve(async (req) => {
         steps: stepsApplied,
         original_rms: originalRms,
         enhanced_rms: enhancedRms,
+        adaptive_reasons: reasons,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

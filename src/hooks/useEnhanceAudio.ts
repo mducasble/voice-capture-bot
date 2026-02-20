@@ -29,9 +29,19 @@ export function useEnhanceAudio() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast.success("Áudio melhorado com sucesso!", {
-        description: `Etapas: ${data.steps || "N/A"}`,
-      });
+      if (data.skipped) {
+        toast.info("Áudio já está bom — nenhum enhancement necessário", {
+          description: data.message,
+        });
+      } else {
+        const reasonsSummary = data.adaptive_reasons
+          ?.filter((r: string) => !r.includes('SKIP'))
+          ?.map((r: string) => r.split(':')[0])
+          ?.join(', ') || data.steps || 'N/A';
+        toast.success("Áudio melhorado com sucesso!", {
+          description: `Aplicado: ${reasonsSummary}`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error: Error) => {
