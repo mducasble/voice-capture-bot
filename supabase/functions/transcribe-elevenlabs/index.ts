@@ -8,7 +8,8 @@ const corsHeaders = {
 
 // ElevenLabs Scribe v2 limits (practical): keep uploads small to avoid edge runtime memory limits.
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
-const CHUNKS_PER_INVOCATION = 3;
+const CHUNKS_PER_GROUP = 10; // 10 chunks × 30s = ~5min per API call (better diarization)
+const GROUPS_PER_INVOCATION = 1; // groups processed per edge function invocation
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes - if locked longer, allow retry
 
 type Mode = "chunks" | "full";
@@ -245,67 +246,84 @@ serve(async (req) => {
       ? Math.min(maxChunks, chunkState.chunkNames.length) 
       : chunkState.chunkNames.length;
 
-    console.log(
-      `Starting ElevenLabs transcription for ${recording_id}, mode: chunks, nextIndex=${chunkState.nextIndex}, total=${effectiveTotalChunks}${maxChunks ? ` (limited to ${maxChunks})` : ''}`
-    );
-
+    // Calculate which group(s) to process in this invocation
     const start = chunkState.nextIndex;
-    const end = Math.min(start + CHUNKS_PER_INVOCATION, effectiveTotalChunks);
+    // Process GROUPS_PER_INVOCATION groups, each containing CHUNKS_PER_GROUP chunks
+    const groupEnd = Math.min(start + GROUPS_PER_INVOCATION * CHUNKS_PER_GROUP, effectiveTotalChunks);
+
+    console.log(
+      `Starting ElevenLabs transcription for ${recording_id}, mode: chunks (grouped), chunkRange=${start}-${groupEnd - 1}, total=${effectiveTotalChunks}${maxChunks ? ` (limited to ${maxChunks})` : ''}, groupSize=${CHUNKS_PER_GROUP}`
+    );
 
     const newParts: string[] = [];
     const existing = (currentRow?.transcription_elevenlabs as string | null) ?? "";
 
     // Track words across all chunks for diarization
     const allWords: ElevenLabsWord[] = [];
-    // Get timing offset from chunk index (each chunk ~30 seconds)
     const CHUNK_DURATION_SECONDS = 30;
 
-    for (let i = start; i < end; i++) {
-      const name = chunkState.chunkNames[i];
-      const chunkUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/voice-recordings/chunks/${name}`;
-
-      console.log(`Transcribing chunk ${i + 1}/${chunkState.chunkNames.length}: ${name}`);
-
-      // Detect format from chunk filename
-      const isChunkMp3 = name.toLowerCase().endsWith('.mp3');
-      const chunkFilename = isChunkMp3 ? "chunk.mp3" : "chunk.wav";
-      const chunkMimeType = isChunkMp3 ? "audio/mpeg" : "audio/wav";
+    // Process chunks in groups of CHUNKS_PER_GROUP
+    for (let groupStart = start; groupStart < groupEnd; groupStart += CHUNKS_PER_GROUP) {
+      const groupEndIdx = Math.min(groupStart + CHUNKS_PER_GROUP, groupEnd);
+      const groupChunkCount = groupEndIdx - groupStart;
+      
+      console.log(`Processing group: chunks ${groupStart}-${groupEndIdx - 1} (${groupChunkCount} chunks, ~${groupChunkCount * 30}s)`);
 
       try {
-        const blob = await safeFetchBlob(chunkUrl, MAX_UPLOAD_BYTES);
+        // Download all chunks in the group
+        const chunkBlobs: Blob[] = [];
+        let isGroupMp3 = true;
+
+        for (let i = groupStart; i < groupEndIdx; i++) {
+          const name = chunkState.chunkNames[i];
+          const chunkUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/voice-recordings/chunks/${name}`;
+          
+          console.log(`  Downloading chunk ${i + 1}/${chunkState.chunkNames.length}: ${name}`);
+          const blob = await safeFetchBlob(chunkUrl, MAX_UPLOAD_BYTES);
+          chunkBlobs.push(blob);
+          
+          if (!name.toLowerCase().endsWith('.mp3')) isGroupMp3 = false;
+        }
+
+        // Concatenate all chunk blobs into a single blob
+        const mergedBlob = new Blob(chunkBlobs, { type: isGroupMp3 ? "audio/mpeg" : "audio/wav" });
+        const mergedFilename = isGroupMp3 ? "merged_group.mp3" : "merged_group.wav";
+        const mergedMimeType = isGroupMp3 ? "audio/mpeg" : "audio/wav";
+
+        console.log(`  Merged group: ${(mergedBlob.size / 1024 / 1024).toFixed(1)}MB, sending to ElevenLabs...`);
+
         const result = await transcribeWithElevenLabsDiarized({
-          audioBlob: blob,
-          filename: chunkFilename,
-          mimeType: chunkMimeType,
+          audioBlob: mergedBlob,
+          filename: mergedFilename,
+          mimeType: mergedMimeType,
           apiKey: ELEVENLABS_API_KEY,
           language: recording.language ?? undefined,
         });
-        
-        // Add words with adjusted timestamps for chunk offset
-        const chunkOffset = i * CHUNK_DURATION_SECONDS;
+
+        // Add words with adjusted timestamps for the group's offset
+        const groupOffset = groupStart * CHUNK_DURATION_SECONDS;
         if (result.words && result.words.length > 0) {
           for (const word of result.words) {
             allWords.push({
               text: word.text,
-              start: word.start + chunkOffset,
-              end: word.end + chunkOffset,
+              start: word.start + groupOffset,
+              end: word.end + groupOffset,
               speaker: word.speaker,
             });
           }
         }
-        
+
         if (result.text?.trim()) newParts.push(result.text.trim());
       } catch (e: any) {
-        console.error(`Chunk failed: ${name}`, e);
-        
+        console.error(`Group ${groupStart}-${groupEndIdx - 1} failed:`, e);
+
         // If quota exceeded, stop immediately and save progress
         if (e?.isQuotaExceeded) {
           console.error("Quota exceeded - stopping processing immediately");
-          
-          // Save current progress
+
           const newText = newParts.join(" ");
           const merged = existing.trim() ? `${existing.trim()} ${newText}` : newText;
-          
+
           await supabase
             .from("voice_recordings")
             .update({
@@ -313,26 +331,28 @@ serve(async (req) => {
               transcription_elevenlabs_status: "failed",
               elevenlabs_chunk_state: {
                 ...chunkState,
-                nextIndex: i, // Save position for resume later
+                nextIndex: groupStart,
                 lockedAt: "",
                 error: "quota_exceeded"
               },
             })
             .eq("id", recording_id);
-          
+
           return json({
             success: false,
             recording_id,
             error: "quota_exceeded",
             message: "Créditos ElevenLabs esgotados. Progresso salvo para retomar depois.",
-            chunks_completed: i,
+            chunks_completed: groupStart,
             total_chunks: chunkState.chunkNames.length,
           });
         }
-        
-        newParts.push(`[chunk ${i}] (falhou)`);
+
+        newParts.push(`[group ${groupStart}-${groupEndIdx - 1}] (falhou)`);
       }
     }
+
+    const end = groupEnd;
 
     // Join new parts with space (continuous text), then append to existing
     const newText = newParts.join(" ");
