@@ -64,6 +64,8 @@ export const AudioTestFlow = ({
   const [results, setResults] = useState<TestResults | null>(initialResults);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
+  const [showResultDetails, setShowResultDetails] = useState(!false); // expanded by default for fresh tests
+  const [fromCache, setFromCache] = useState(false);
   const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
   const testBlobUrlRef = useRef<string | null>(null);
@@ -85,6 +87,8 @@ export const AudioTestFlow = ({
         setRecommendedProfile(parsed.profile);
         setEditedProfile(parsed.profile);
         setPhase("results");
+        setFromCache(true);
+        setShowResultDetails(false); // collapsed when from cache
         // Auto-apply cached profile
         if (onProfileRecommended) onProfileRecommended(parsed.profile);
       }
@@ -140,6 +144,8 @@ export const AudioTestFlow = ({
     setResults(null);
     setRecommendedProfile(null);
     setEditedProfile(null);
+    setFromCache(false);
+    setShowResultDetails(true);
     await wavRecorder.startRecording(stream);
   }, [stream, wavRecorder]);
 
@@ -339,7 +345,7 @@ export const AudioTestFlow = ({
 
     return (
       <Card className={`border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}`}>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowResultDetails(v => !v)}>
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
               {passed ? (
@@ -348,12 +354,19 @@ export const AudioTestFlow = ({
                 <AlertTriangle className="h-5 w-5 text-yellow-500" />
               )}
               Resultado do Teste
+              {fromCache && (
+                <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
+              )}
             </span>
-            <Badge variant={passed ? "default" : "destructive"}>
-              {passed ? "Aprovado ✅" : "Reprovado ❌"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={passed ? "default" : "destructive"}>
+                {passed ? "Aprovado ✅" : "Reprovado ❌"}
+              </Badge>
+              {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </div>
           </CardTitle>
         </CardHeader>
+        {showResultDetails && (
         <CardContent className="space-y-4">
           {/* Metrics Table */}
           <div className="rounded-md border overflow-hidden">
@@ -573,6 +586,16 @@ export const AudioTestFlow = ({
             </Button>
           </div>
         </CardContent>
+        )}
+        {/* Always show retry button even when collapsed */}
+        {!showResultDetails && (
+          <CardContent className="pt-0 flex justify-center gap-3">
+            <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
+              <RotateCcw className="h-4 w-4" />
+              Refazer Teste
+            </Button>
+          </CardContent>
+        )}
       </Card>
     );
   }
