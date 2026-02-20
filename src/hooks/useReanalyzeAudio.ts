@@ -11,7 +11,7 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
     mutationFn: async (recordingId: string) => {
       const { data: recording, error: fetchError } = await supabase
         .from("voice_recordings")
-        .select("file_url, mp3_file_url")
+        .select("file_url, mp3_file_url, metadata")
         .eq("id", recordingId)
         .single();
 
@@ -19,7 +19,10 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
         throw new Error("Gravação não encontrada");
       }
 
-      const audioUrl = recording.mp3_file_url || recording.file_url;
+      // Prioriza arquivo melhorado se existir
+      const meta = recording.metadata as Record<string, unknown> | null;
+      const enhancedUrl = meta?.enhanced_file_url as string | undefined;
+      const audioUrl = enhancedUrl || recording.mp3_file_url || recording.file_url;
       if (!audioUrl) {
         throw new Error("URL do áudio não encontrada");
       }
