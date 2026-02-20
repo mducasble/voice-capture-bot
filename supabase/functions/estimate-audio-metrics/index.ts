@@ -264,7 +264,7 @@ serve(async (req) => {
   }
 
   try {
-    const { recording_id, file_url, mode = 'sampled' } = await req.json();
+    const { recording_id, file_url, mode = 'sampled', target = 'original' } = await req.json();
 
     if (!recording_id || !file_url) {
       return new Response(
@@ -362,7 +362,7 @@ serve(async (req) => {
 
         // Save and return early for non-Range path
         if (metrics! !== undefined) {
-          await saveMetrics(recording_id, metrics!, metricsMode!);
+          await saveMetrics(recording_id, metrics!, metricsMode!, target);
           return new Response(
             JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -402,7 +402,7 @@ serve(async (req) => {
 
     console.log(`Metrics received for recording ${recording_id}:`, JSON.stringify(metrics));
 
-    await saveMetrics(recording_id, metrics, metricsMode);
+    await saveMetrics(recording_id, metrics, metricsMode, target);
 
     return new Response(
       JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode }),
@@ -418,7 +418,7 @@ serve(async (req) => {
   }
 });
 
-async function saveMetrics(recording_id: string, metrics: Record<string, number | null>, metricsMode: string) {
+async function saveMetrics(recording_id: string, metrics: Record<string, number | null>, metricsMode: string, target: string = 'original') {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -430,27 +430,56 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
     .eq('id', recording_id)
     .single();
 
-  const metadata = {
-    ...(recording?.metadata || {}),
-    srmr: metrics.srmr ?? null,
-    sigmos_disc: metrics.sigmos_disc ?? null,
-    sigmos_ovrl: metrics.sigmos_ovrl ?? null,
-    sigmos_reverb: metrics.sigmos_reverb ?? null,
-    vqscore: metrics.vqscore ?? null,
-    wvmos: metrics.wvmos ?? null,
-    utmos: metrics.utmos ?? null,
-    mic_sr: metrics.mic_sr ?? null,
-    file_sr: metrics.file_sr ?? null,
-    rms_dbfs: metrics.rms_dbfs ?? null,
-    metrics_source: 'huggingface-space',
-    metrics_estimated_at: new Date().toISOString(),
-    metrics_mode: metricsMode,
-  };
+  const existingMeta = (recording?.metadata || {}) as Record<string, unknown>;
 
-  await supabase
-    .from('voice_recordings')
-    .update({ metadata })
-    .eq('id', recording_id);
+  if (target === 'enhanced') {
+    // Store enhanced metrics under a separate key
+    const metadata = {
+      ...existingMeta,
+      enhanced_metrics: {
+        srmr: metrics.srmr ?? null,
+        sigmos_disc: metrics.sigmos_disc ?? null,
+        sigmos_ovrl: metrics.sigmos_ovrl ?? null,
+        sigmos_reverb: metrics.sigmos_reverb ?? null,
+        vqscore: metrics.vqscore ?? null,
+        wvmos: metrics.wvmos ?? null,
+        utmos: metrics.utmos ?? null,
+        mic_sr: metrics.mic_sr ?? null,
+        file_sr: metrics.file_sr ?? null,
+        rms_dbfs: metrics.rms_dbfs ?? null,
+        metrics_source: 'huggingface-space',
+        metrics_estimated_at: new Date().toISOString(),
+        metrics_mode: metricsMode,
+      },
+    };
 
-  console.log(`Metrics saved for recording ${recording_id} (mode: ${metricsMode})`);
+    await supabase
+      .from('voice_recordings')
+      .update({ metadata })
+      .eq('id', recording_id);
+  } else {
+    const metadata = {
+      ...existingMeta,
+      srmr: metrics.srmr ?? null,
+      sigmos_disc: metrics.sigmos_disc ?? null,
+      sigmos_ovrl: metrics.sigmos_ovrl ?? null,
+      sigmos_reverb: metrics.sigmos_reverb ?? null,
+      vqscore: metrics.vqscore ?? null,
+      wvmos: metrics.wvmos ?? null,
+      utmos: metrics.utmos ?? null,
+      mic_sr: metrics.mic_sr ?? null,
+      file_sr: metrics.file_sr ?? null,
+      rms_dbfs: metrics.rms_dbfs ?? null,
+      metrics_source: 'huggingface-space',
+      metrics_estimated_at: new Date().toISOString(),
+      metrics_mode: metricsMode,
+    };
+
+    await supabase
+      .from('voice_recordings')
+      .update({ metadata })
+      .eq('id', recording_id);
+  }
+
+  console.log(`Metrics saved for recording ${recording_id} (mode: ${metricsMode}, target: ${target})`);
 }
