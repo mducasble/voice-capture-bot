@@ -471,28 +471,50 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
                     if (metrics.length === 0) return null;
 
+                    const metaModeInfo = recording.metadata as {
+                      metrics_mode?: string;
+                      metrics_estimated_at?: string;
+                    } | null;
+
+                    const modeLabel = metaModeInfo?.metrics_mode
+                      ? metaModeInfo.metrics_mode.startsWith('full_segments')
+                        ? '🔬 Análise Completa'
+                        : metaModeInfo.metrics_mode.startsWith('sampled')
+                          ? '📊 Análise Amostrada'
+                          : metaModeInfo.metrics_mode.startsWith('full_mp3')
+                            ? '🎵 MP3 Completo'
+                            : metaModeInfo.metrics_mode
+                      : null;
+
                     return (
-                      <div className="overflow-x-auto rounded-lg border border-border/50">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr>
-                              {metrics.map((m) => (
-                                <th key={m.label} className={`px-2 py-1.5 font-medium border-b border-border/50 text-center ${getColor(m.level)}`}>
-                                  {m.label}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              {metrics.map((m) => (
-                                <td key={m.label} className="px-2 py-2 text-center text-foreground font-mono text-xs">
-                                  {m.value}
-                                </td>
-                              ))}
-                            </tr>
-                          </tbody>
-                        </table>
+                      <div className="space-y-1">
+                        <div className="overflow-x-auto rounded-lg border border-border/50">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr>
+                                {metrics.map((m) => (
+                                  <th key={m.label} className={`px-2 py-1.5 font-medium border-b border-border/50 text-center ${getColor(m.level)}`}>
+                                    {m.label}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                {metrics.map((m) => (
+                                  <td key={m.label} className="px-2 py-2 text-center text-foreground font-mono text-xs">
+                                    {m.value}
+                                  </td>
+                                ))}
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        {modeLabel && metaModeInfo?.metrics_estimated_at && (
+                          <p className="text-[10px] text-muted-foreground text-right px-1">
+                            {modeLabel} • {new Date(metaModeInfo.metrics_estimated_at).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     );
                   })()}
