@@ -289,9 +289,9 @@ serve(async (req) => {
       lowpass = false,
       lowpass_freq = 16000,
       speech_eq = true,
-      speech_eq_boost_db = 3,
+      speech_eq_boost_db = 2,
       noise_gate = true,
-      noise_gate_threshold_db = -40,
+      noise_gate_threshold_db = -50,
       target_lufs = -23,
     } = await req.json();
 
