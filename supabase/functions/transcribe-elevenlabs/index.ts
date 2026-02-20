@@ -297,8 +297,13 @@ serve(async (req) => {
           filename: mergedFilename,
           mimeType: mergedMimeType,
           apiKey: ELEVENLABS_API_KEY,
-          language: recording.language ?? undefined,
+          // Don't send language for grouped chunks - auto-detect works better for diarization
+          language: undefined,
         });
+
+        // Log speaker distribution for debugging
+        const speakersFound = new Set((result.words || []).map(w => w.speaker_id || w.speaker).filter(Boolean));
+        console.log(`  Group result: ${result.words?.length || 0} words, speakers found: [${[...speakersFound].join(', ')}], text length: ${result.text?.length || 0}`);
 
         // Add words with adjusted timestamps for the group's offset
         const groupOffset = groupStart * CHUNK_DURATION_SECONDS;
@@ -308,7 +313,7 @@ serve(async (req) => {
               text: word.text,
               start: word.start + groupOffset,
               end: word.end + groupOffset,
-              speaker: word.speaker,
+              speaker: word.speaker_id || word.speaker,
             });
           }
         }
@@ -654,6 +659,9 @@ type ElevenLabsWord = {
   start: number;
   end: number;
   speaker?: string;
+  speaker_id?: string;
+  type?: string;
+  logprob?: number;
 };
 
 type ElevenLabsResponse = {
@@ -738,7 +746,7 @@ async function transcribeWithElevenLabsDiarized(params: {
     const errText = await response.text();
     console.error("ElevenLabs API error:", response.status, errText);
     
-    // Check for quota exceeded error - throw a special error that will stop all processing
+    // Check for quota exceeded error
     if (response.status === 401 && errText.includes("quota_exceeded")) {
       const error = new Error(`QUOTA_EXCEEDED: ${errText}`);
       (error as any).isQuotaExceeded = true;
@@ -748,7 +756,17 @@ async function transcribeWithElevenLabsDiarized(params: {
     throw new Error(`ElevenLabs API error: ${response.status}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  
+  // Debug: log response structure to understand diarization output
+  const sampleWord = data.words?.[0];
+  const wordKeys = sampleWord ? Object.keys(sampleWord) : [];
+  const uniqueSpeakers = new Set((data.words || []).map((w: any) => w.speaker_id || w.speaker || w.speaker_label).filter(Boolean));
+  console.log(`  ElevenLabs response keys: ${Object.keys(data).join(', ')}`);
+  console.log(`  Sample word keys: [${wordKeys.join(', ')}], sample: ${JSON.stringify(sampleWord)}`);
+  console.log(`  Unique speakers (speaker/speaker_id/speaker_label): [${[...uniqueSpeakers].join(', ')}]`);
+  
+  return data;
 }
 
 // Stringify segments with guaranteed property order: start, end, speaker, text
@@ -800,7 +818,7 @@ function wordsToSegments(words: ElevenLabsWord[]): SpeakerSegment[] {
   const SENTENCE_END_RE = /[.!?;]$/; // Break segments at sentence boundaries too
 
   for (const word of normalizedWords) {
-    const speaker = word.speaker || "speaker_1";
+    const speaker = word.speaker_id || word.speaker || "speaker_1";
     
     // Start new segment if: first word, different speaker, long silence, or after sentence end
     const prevEndedSentence = currentSegment && SENTENCE_END_RE.test(currentSegment.text);
