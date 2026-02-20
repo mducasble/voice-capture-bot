@@ -11,7 +11,9 @@ export interface AudioProfile {
   lowpassFreq: number;    // 8000 – 22000 Hz (0 = disabled)
   enableRnnoise: boolean;
   enableNoiseGate: boolean;
-  enableConstraints: boolean; // echoCancellation, noiseSuppression, autoGainControl
+  enableEchoCancellation: boolean;
+  enableNoiseSuppression: boolean;
+  enableAutoGainControl: boolean;
 }
 
 export interface TestMetrics {
@@ -92,8 +94,11 @@ export function computeAudioProfile(metrics: TestMetrics): AudioProfile {
   // Enable Noise Gate if SNR is very low
   const enableNoiseGate = snr != null && snr < 15;
   
-  // Enable browser constraints if quality is below acceptable
-  const enableConstraints = enableRnnoise || (srmr != null && srmr < 6);
+  // Enable browser constraints individually if quality is below acceptable
+  const needsConstraints = enableRnnoise || (srmr != null && srmr < 6);
+  const enableEchoCancellation = needsConstraints;
+  const enableNoiseSuppression = needsConstraints;
+  const enableAutoGainControl = needsConstraints;
 
   return {
     gain,
@@ -101,7 +106,9 @@ export function computeAudioProfile(metrics: TestMetrics): AudioProfile {
     lowpassFreq,
     enableRnnoise,
     enableNoiseGate,
-    enableConstraints,
+    enableEchoCancellation,
+    enableNoiseSuppression,
+    enableAutoGainControl,
   };
 }
 
@@ -114,7 +121,9 @@ export const DEFAULT_PROFILE: AudioProfile = {
   lowpassFreq: 0,
   enableRnnoise: false,
   enableNoiseGate: false,
-  enableConstraints: false,
+  enableEchoCancellation: false,
+  enableNoiseSuppression: false,
+  enableAutoGainControl: false,
 };
 
 /**
@@ -164,11 +173,27 @@ export function getProfileDescriptions(profile: AudioProfile): { label: string; 
   });
 
   items.push({
-    label: "Constraints",
-    value: profile.enableConstraints ? "Ativadas" : "Desativadas",
-    detail: profile.enableConstraints 
-      ? "Echo cancellation, noise suppression e auto gain do navegador" 
-      : "Processamento nativo do navegador desativado",
+    label: "Echo Cancel.",
+    value: profile.enableEchoCancellation ? "Ativado" : "Desativado",
+    detail: profile.enableEchoCancellation 
+      ? "Cancelamento de eco do navegador ativo" 
+      : "Cancelamento de eco desativado",
+  });
+
+  items.push({
+    label: "Noise Suppr.",
+    value: profile.enableNoiseSuppression ? "Ativado" : "Desativado",
+    detail: profile.enableNoiseSuppression 
+      ? "Supressão de ruído nativa do navegador ativa" 
+      : "Supressão de ruído nativa desativada",
+  });
+
+  items.push({
+    label: "Auto Gain",
+    value: profile.enableAutoGainControl ? "Ativado" : "Desativado",
+    detail: profile.enableAutoGainControl 
+      ? "Controle automático de ganho do navegador ativo" 
+      : "Controle automático de ganho desativado",
   });
 
   return items;
