@@ -153,29 +153,48 @@ function splitIntoSegments(audioBytes: Uint8Array, header: { sampleRate: number;
   return segments;
 }
 
-/** Send a single audio blob to the metrics API and return the result */
+/** Send a single audio blob to the metrics API and return the result (with retry for sleeping Spaces) */
 async function callMetricsApi(audioBlob: Blob, filename: string, apiUrl: string, apiSecret?: string): Promise<Record<string, number | null>> {
-  const formData = new FormData();
-  formData.append('file', audioBlob, filename);
+  const maxRetries = 2;
 
-  const headers: Record<string, string> = {};
-  if (apiSecret) {
-    headers['Authorization'] = `Bearer ${apiSecret}`;
-  }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const formData = new FormData();
+    formData.append('file', audioBlob, filename);
 
-  const apiResponse = await fetch(`${apiUrl}/analyze`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
+    const headers: Record<string, string> = {};
+    if (apiSecret) {
+      headers['Authorization'] = `Bearer ${apiSecret}`;
+    }
 
-  if (!apiResponse.ok) {
+    const apiResponse = await fetch(`${apiUrl}/analyze`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (apiResponse.ok) {
+      return await apiResponse.json();
+    }
+
     const errText = await apiResponse.text();
-    console.error('Metrics API error:', apiResponse.status, errText);
-    throw new Error(`Metrics API error: ${apiResponse.status}`);
+    const isHtmlError = errText.trim().startsWith('<!DOCTYPE') || errText.trim().startsWith('<html');
+
+    if (isHtmlError && attempt < maxRetries) {
+      const waitSec = (attempt + 1) * 15;
+      console.warn(`Metrics API returned HTML (Space may be waking up), retrying in ${waitSec}s... (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(r => setTimeout(r, waitSec * 1000));
+      // Ping health endpoint to wake up the Space
+      try {
+        await fetch(`${apiUrl}/health`);
+      } catch (_) { /* ignore */ }
+      continue;
+    }
+
+    console.error('Metrics API error:', apiResponse.status, errText.substring(0, 200));
+    throw new Error(`Metrics API error: ${apiResponse.status}${isHtmlError ? ' (Space may be down or sleeping)' : ''}`);
   }
 
-  return await apiResponse.json();
+  throw new Error('Metrics API: max retries exceeded');
 }
 
 /** Average numeric metrics across multiple results */
