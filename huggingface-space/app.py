@@ -454,9 +454,9 @@ async def enhance_audio(
     lowpass: Optional[str] = Form("false"),
     lowpass_freq: Optional[str] = Form("16000"),
     speech_eq: Optional[str] = Form("true"),
-    speech_eq_boost_db: Optional[str] = Form("3"),
+    speech_eq_boost_db: Optional[str] = Form("1.5"),
     noise_gate: Optional[str] = Form("true"),
-    noise_gate_threshold_db: Optional[str] = Form("-40"),
+    noise_gate_threshold_db: Optional[str] = Form("-45"),
     target_lufs: Optional[str] = Form("-23"),
     output_format: Optional[str] = Form("wav"),
 ):
