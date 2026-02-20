@@ -450,6 +450,11 @@ export const AudioTestFlow = ({
                     RNNoise
                   </Badge>
                 )}
+                {editedProfile.enableKoala && (
+                  <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                    Koala
+                  </Badge>
+                )}
                 {editedProfile.enableNoiseGate && (
                   <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
                     Noise Gate
@@ -521,12 +526,19 @@ export const AudioTestFlow = ({
                   </div>
 
                   {/* Toggles */}
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-xs text-muted-foreground">RNNoise</span>
                       <Switch
                         checked={editedProfile.enableRnnoise}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v } : p)}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v, ...(v ? { enableKoala: false } : {}) } : p)}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Koala</span>
+                      <Switch
+                        checked={editedProfile.enableKoala}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableKoala: v, ...(v ? { enableRnnoise: false } : {}) } : p)}
                       />
                     </div>
                     <div className="flex flex-col items-center gap-1">

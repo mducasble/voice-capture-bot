@@ -10,6 +10,7 @@ export interface AudioProfile {
   highpassFreq: number;   // 40 – 150 Hz (0 = disabled)
   lowpassFreq: number;    // 8000 – 22000 Hz (0 = disabled)
   enableRnnoise: boolean;
+  enableKoala: boolean;
   enableNoiseGate: boolean;
   enableEchoCancellation: boolean;
   enableNoiseSuppression: boolean;
@@ -105,6 +106,7 @@ export function computeAudioProfile(metrics: TestMetrics): AudioProfile {
     highpassFreq,
     lowpassFreq,
     enableRnnoise,
+    enableKoala: false, // Koala is always opt-in (manual toggle)
     enableNoiseGate,
     enableEchoCancellation,
     enableNoiseSuppression,
@@ -120,6 +122,7 @@ export const DEFAULT_PROFILE: AudioProfile = {
   highpassFreq: 0,
   lowpassFreq: 0,
   enableRnnoise: false,
+  enableKoala: false,
   enableNoiseGate: false,
   enableEchoCancellation: false,
   enableNoiseSuppression: false,
@@ -162,6 +165,14 @@ export function getProfileDescriptions(profile: AudioProfile): { label: string; 
     detail: profile.enableRnnoise 
       ? "Supressão de ruído de fundo via rede neural" 
       : "SNR suficiente, sem necessidade",
+  });
+
+  items.push({
+    label: "Koala",
+    value: profile.enableKoala ? "Ativado" : "Desativado",
+    detail: profile.enableKoala 
+      ? "Supressão de ruído avançada via Picovoice Koala (pós-processamento)" 
+      : "Koala desativado",
   });
 
   items.push({
