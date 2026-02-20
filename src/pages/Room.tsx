@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
+import { useWebRTC } from "@/hooks/useWebRTC";
 import type { AudioProfile } from "@/lib/audioProfile";
 
 interface Room {
@@ -57,6 +58,39 @@ const Room = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const remoteAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+
+  // WebRTC peer-to-peer audio
+  const { remoteStreams } = useWebRTC({
+    roomId,
+    participantId: currentParticipant?.id,
+    localStream: mediaStreamRef.current,
+    participants,
+  });
+
+  // Play remote audio streams
+  useEffect(() => {
+    remoteStreams.forEach((stream, peerId) => {
+      let audioEl = remoteAudioRefs.current.get(peerId);
+      if (!audioEl) {
+        audioEl = new Audio();
+        audioEl.autoplay = true;
+        remoteAudioRefs.current.set(peerId, audioEl);
+      }
+      if (audioEl.srcObject !== stream) {
+        audioEl.srcObject = stream;
+        audioEl.play().catch(e => console.warn("[WebRTC] Audio play failed:", e));
+      }
+    });
+
+    // Clean up removed peers
+    remoteAudioRefs.current.forEach((audioEl, peerId) => {
+      if (!remoteStreams.has(peerId)) {
+        audioEl.srcObject = null;
+        remoteAudioRefs.current.delete(peerId);
+      }
+    });
+  }, [remoteStreams]);
 
   // Enumerate audio input devices
   useEffect(() => {
@@ -693,7 +727,12 @@ const Room = () => {
                       <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">⏳ Testando</Badge>
                     )}
                   </div>
-                  <Mic className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-1">
+                    <Mic className="h-4 w-4 text-muted-foreground" />
+                    {p.id !== currentParticipant.id && remoteStreams.has(p.id) && (
+                      <Volume2 className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
