@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useReviewQueue, type ReviewRecording } from "@/hooks/useReviewQueue";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { ReviewWaveform } from "@/components/review/ReviewWaveform";
@@ -201,13 +202,34 @@ export default function Review() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">
-              Revisão de Transcrições
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {currentIndex + 1} de {recordings.length}
-            </p>
+          <div className="flex items-center gap-2">
+            <Select
+              value={recording?.id ?? ""}
+              onValueChange={(id) => {
+                const idx = recordings.findIndex((r) => r.id === id);
+                if (idx >= 0) {
+                  player.pause();
+                  setCurrentIndex(idx);
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 w-[280px] text-xs">
+                <SelectValue placeholder="Selecione uma gravação" />
+              </SelectTrigger>
+              <SelectContent>
+                {recordings.map((rec, i) => (
+                  <SelectItem key={rec.id} value={rec.id} className="text-xs">
+                    <span className="tabular-nums mr-1">{i + 1}.</span>
+                    {rec.discord_username ?? "Anônimo"} —{" "}
+                    {rec.duration_seconds ? `${Math.floor(rec.duration_seconds / 60)}:${String(Math.floor(rec.duration_seconds % 60)).padStart(2, "0")}` : "?"}
+                    {rec.language ? ` (${rec.language})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {currentIndex + 1}/{recordings.length}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
