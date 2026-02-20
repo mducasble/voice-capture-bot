@@ -442,6 +442,7 @@ export function ChunkTimeline({
           words={words}
           onWordsChange={onWordsChange}
           onSeek={onSeek}
+          audioUrl={audioUrl}
         />
       )}
     </div>
