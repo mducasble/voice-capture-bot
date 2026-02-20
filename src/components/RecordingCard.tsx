@@ -420,9 +420,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
 
               const buildMetrics = (meta: Record<string, unknown> | null, snrDb: number | null | undefined): MetricDef[] => {
                 const metrics: MetricDef[] = [];
-                if (snrDb !== null && snrDb !== undefined) {
-                  const level = snrDb >= 25 ? 'good' : snrDb >= 15 ? 'fair' : 'bad';
-                  metrics.push({ label: 'SNR', value: `${snrDb} dB`, level });
+                // SNR: prefer explicit param, fallback to meta.snr_db (from HF API)
+                const snr = snrDb ?? (meta?.snr_db as number | null | undefined);
+                if (snr !== null && snr !== undefined) {
+                  const level = snr >= 25 ? 'good' : snr >= 15 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SNR', value: `${snr} dB`, level });
                 }
                 if ((meta?.rms_dbfs as number) != null) {
                   const v = meta!.rms_dbfs as number;

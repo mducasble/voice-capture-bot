@@ -118,6 +118,51 @@ def get_utmos():
 # Metric computation helpers
 # ---------------------------------------------------------------------------
 
+def compute_snr_vad(audio: np.ndarray, sr: int) -> Optional[float]:
+    """Estimate SNR using simple VAD (energy-based) similar to process-audio Edge Function."""
+    try:
+        # Frame-level RMS (20ms frames)
+        frame_len = int(sr * 0.02)
+        if len(audio) < frame_len:
+            return None
+        num_frames = len(audio) // frame_len
+        frames = audio[:num_frames * frame_len].reshape(num_frames, frame_len)
+        frame_rms = np.sqrt(np.mean(frames ** 2, axis=1))
+        frame_db = 20 * np.log10(frame_rms + 1e-12)
+
+        # Adaptive threshold: noise floor + 15dB
+        sorted_db = np.sort(frame_db)
+        noise_floor = np.mean(sorted_db[:max(1, len(sorted_db) // 10)])  # bottom 10%
+        threshold = noise_floor + 15
+
+        speech_mask = frame_db > threshold
+        if not np.any(speech_mask) or not np.any(~speech_mask):
+            return None
+
+        speech_rms = np.sqrt(np.mean(frames[speech_mask] ** 2))
+        noise_rms = np.sqrt(np.mean(frames[~speech_mask] ** 2))
+
+        if noise_rms < 1e-12:
+            return None
+
+        snr = 20 * np.log10(speech_rms / noise_rms)
+        return round(float(snr), 1)
+    except Exception as e:
+        print(f"SNR estimation error: {e}")
+        return None
+
+
+def compute_rms_dbfs(audio: np.ndarray) -> Optional[float]:
+    """Compute RMS level in dBFS."""
+    try:
+        rms = np.sqrt(np.mean(audio ** 2))
+        if rms < 1e-12:
+            return None
+        return round(float(20 * np.log10(rms)), 1)
+    except Exception as e:
+        print(f"RMS error: {e}")
+        return None
+
 def compute_srmr(audio: np.ndarray, sr: int) -> Optional[float]:
     try:
         srmr_fn = get_srmr()
@@ -408,6 +453,8 @@ async def analyze_audio(
         wvmos_val = compute_wvmos(wav_path)
         utmos_val = compute_utmos(audio, sr)
         mic_sr = estimate_mic_sample_rate(audio, sr)
+        snr_val = compute_snr_vad(audio, sr)
+        rms_val = compute_rms_dbfs(audio)
 
         vqscore_val = compute_vqscore_composite(
             srmr_val,
@@ -426,6 +473,8 @@ async def analyze_audio(
             "utmos": utmos_val,
             "mic_sr": mic_sr,
             "file_sr": sr,
+            "snr_db": snr_val,
+            "rms_dbfs": rms_val,
         }
 
     except Exception as e:
