@@ -41,11 +41,37 @@ function parseWavHeader(bytes: Uint8Array): { sampleRate: number; channels: numb
   return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
 }
 
+function writeStr(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+}
+
+/** Build a WAV blob from raw PCM data chunks */
+function buildWav(chunks: Uint8Array[], totalFrames: number, sampleRate: number, channels: number, bitsPerSample: number): Blob {
+  const bytesPerFrame = channels * (bitsPerSample / 8);
+  const newDataSize = totalFrames * bytesPerFrame;
+  const wavHeader = new ArrayBuffer(44);
+  const hv = new DataView(wavHeader);
+
+  writeStr(hv, 0, 'RIFF');
+  hv.setUint32(4, 36 + newDataSize, true);
+  writeStr(hv, 8, 'WAVE');
+  writeStr(hv, 12, 'fmt ');
+  hv.setUint32(16, 16, true);
+  hv.setUint16(20, 1, true);
+  hv.setUint16(22, channels, true);
+  hv.setUint32(24, sampleRate, true);
+  hv.setUint32(28, sampleRate * bytesPerFrame, true);
+  hv.setUint16(32, bytesPerFrame, true);
+  hv.setUint16(34, bitsPerSample, true);
+  writeStr(hv, 36, 'data');
+  hv.setUint32(40, newDataSize, true);
+
+  return new Blob([new Uint8Array(wavHeader), ...chunks], { type: 'audio/wav' });
+}
+
 /**
- * Extract 10s samples from each 1-minute segment of the audio.
- * For each minute, we take 10s starting at the 25s mark (middle of the segment).
- * If the audio is shorter than SEGMENT_SECONDS, we take up to SAMPLE_SECONDS from the middle.
- * Returns a new WAV blob with the concatenated samples.
+ * Mode "sampled": Extract 10s samples from each 1-minute segment.
+ * Returns a single WAV blob with concatenated samples.
  */
 function extractSampledWav(audioBytes: Uint8Array, header: { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number }): Blob {
   const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
@@ -55,16 +81,13 @@ function extractSampledWav(audioBytes: Uint8Array, header: { sampleRate: number;
 
   const segmentFrames = sampleRate * SEGMENT_SECONDS;
   const sampleFrames = sampleRate * SAMPLE_SECONDS;
-  // Start sampling at 25s into each segment (centered in the minute)
   const sampleOffsetFrames = sampleRate * 25;
 
   const extractedChunks: Uint8Array[] = [];
   let totalExtractedFrames = 0;
 
   if (totalDuration <= SAMPLE_SECONDS) {
-    // Audio is shorter than sample size — send it all
-    const chunk = audioBytes.slice(dataOffset, dataOffset + dataSize);
-    extractedChunks.push(chunk);
+    extractedChunks.push(audioBytes.slice(dataOffset, dataOffset + dataSize));
     totalExtractedFrames = totalFrames;
     console.log(`Audio is ${totalDuration.toFixed(1)}s — sending full audio`);
   } else {
@@ -76,18 +99,14 @@ function extractSampledWav(audioBytes: Uint8Array, header: { sampleRate: number;
       const segEndFrame = Math.min(segStartFrame + segmentFrames, totalFrames);
       const segLength = segEndFrame - segStartFrame;
 
-      // Determine sample start within this segment
       let extractStart: number;
       const framesToExtract = Math.min(sampleFrames, segLength);
 
       if (segLength <= sampleFrames) {
-        // Segment is shorter than sample size — take it all
         extractStart = segStartFrame;
       } else if (segLength > sampleOffsetFrames + sampleFrames) {
-        // Normal case — sample from 25s mark
         extractStart = segStartFrame + sampleOffsetFrames;
       } else {
-        // Segment too short for 25s offset — center the sample
         extractStart = segStartFrame + Math.floor((segLength - framesToExtract) / 2);
       }
 
@@ -100,37 +119,79 @@ function extractSampledWav(audioBytes: Uint8Array, header: { sampleRate: number;
     }
   }
 
-  // Build new WAV with extracted samples
-  const newDataSize = totalExtractedFrames * bytesPerFrame;
-  const wavHeader = new ArrayBuffer(44);
-  const hv = new DataView(wavHeader);
-
-  // RIFF header
-  writeStr(hv, 0, 'RIFF');
-  hv.setUint32(4, 36 + newDataSize, true);
-  writeStr(hv, 8, 'WAVE');
-  // fmt chunk
-  writeStr(hv, 12, 'fmt ');
-  hv.setUint32(16, 16, true);
-  hv.setUint16(20, 1, true); // PCM
-  hv.setUint16(22, channels, true);
-  hv.setUint32(24, sampleRate, true);
-  hv.setUint32(28, sampleRate * bytesPerFrame, true);
-  hv.setUint16(32, bytesPerFrame, true);
-  hv.setUint16(34, bitsPerSample, true);
-  // data chunk
-  writeStr(hv, 36, 'data');
-  hv.setUint32(40, newDataSize, true);
-
-  const parts = [new Uint8Array(wavHeader), ...extractedChunks];
-  const totalSize = 44 + parts.slice(1).reduce((s, c) => s + c.length, 0);
-  console.log(`Sampled WAV: ${totalExtractedFrames} frames, ${(totalExtractedFrames / sampleRate).toFixed(1)}s, ${(totalSize / 1024).toFixed(0)}KB (original ${(audioBytes.length / 1024).toFixed(0)}KB)`);
-
-  return new Blob(parts, { type: 'audio/wav' });
+  const wav = buildWav(extractedChunks, totalExtractedFrames, sampleRate, channels, bitsPerSample);
+  console.log(`Sampled WAV: ${totalExtractedFrames} frames, ${(totalExtractedFrames / sampleRate).toFixed(1)}s, ${(wav.size / 1024).toFixed(0)}KB`);
+  return wav;
 }
 
-function writeStr(view: DataView, offset: number, str: string) {
-  for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+/**
+ * Mode "full_segments": Split audio into 1-minute WAV segments.
+ * Returns an array of WAV blobs.
+ */
+function splitIntoSegments(audioBytes: Uint8Array, header: { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number }): Blob[] {
+  const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
+  const bytesPerFrame = channels * (bitsPerSample / 8);
+  const totalFrames = Math.floor(dataSize / bytesPerFrame);
+  const segmentFrames = sampleRate * SEGMENT_SECONDS;
+  const numSegments = Math.ceil(totalFrames / segmentFrames);
+
+  console.log(`Splitting ${(totalFrames / sampleRate).toFixed(1)}s audio into ${numSegments} segments of up to ${SEGMENT_SECONDS}s`);
+
+  const segments: Blob[] = [];
+  for (let seg = 0; seg < numSegments; seg++) {
+    const startFrame = seg * segmentFrames;
+    const endFrame = Math.min(startFrame + segmentFrames, totalFrames);
+    const framesInSegment = endFrame - startFrame;
+
+    const byteStart = dataOffset + startFrame * bytesPerFrame;
+    const byteEnd = Math.min(dataOffset + endFrame * bytesPerFrame, audioBytes.length);
+    const chunk = audioBytes.slice(byteStart, byteEnd);
+
+    segments.push(buildWav([chunk], framesInSegment, sampleRate, channels, bitsPerSample));
+  }
+
+  return segments;
+}
+
+/** Send a single audio blob to the metrics API and return the result */
+async function callMetricsApi(audioBlob: Blob, filename: string, apiUrl: string, apiSecret?: string): Promise<Record<string, number | null>> {
+  const formData = new FormData();
+  formData.append('file', audioBlob, filename);
+
+  const headers: Record<string, string> = {};
+  if (apiSecret) {
+    headers['Authorization'] = `Bearer ${apiSecret}`;
+  }
+
+  const apiResponse = await fetch(`${apiUrl}/analyze`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!apiResponse.ok) {
+    const errText = await apiResponse.text();
+    console.error('Metrics API error:', apiResponse.status, errText);
+    throw new Error(`Metrics API error: ${apiResponse.status}`);
+  }
+
+  return await apiResponse.json();
+}
+
+/** Average numeric metrics across multiple results */
+function averageMetrics(results: Record<string, number | null>[]): Record<string, number | null> {
+  if (results.length === 0) return {};
+  if (results.length === 1) return results[0];
+
+  const keys = Object.keys(results[0]);
+  const averaged: Record<string, number | null> = {};
+
+  for (const key of keys) {
+    const values = results.map(r => r[key]).filter((v): v is number => v !== null && v !== undefined);
+    averaged[key] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  }
+
+  return averaged;
 }
 
 serve(async (req) => {
@@ -139,7 +200,7 @@ serve(async (req) => {
   }
 
   try {
-    const { recording_id, file_url, snr_db, rms_dbfs } = await req.json();
+    const { recording_id, file_url, mode = 'sampled' } = await req.json();
 
     if (!recording_id || !file_url) {
       return new Response(
@@ -150,7 +211,8 @@ serve(async (req) => {
 
     const METRICS_API_URL = Deno.env.get('METRICS_API_URL');
     const METRICS_API_SECRET = Deno.env.get('METRICS_API_SECRET');
-    console.log(`METRICS_API_URL value: "${METRICS_API_URL}"`);
+    console.log(`Mode: ${mode}, METRICS_API_URL: "${METRICS_API_URL}"`);
+
     if (!METRICS_API_URL) {
       return new Response(
         JSON.stringify({ error: 'METRICS_API_URL not configured' }),
@@ -168,50 +230,47 @@ serve(async (req) => {
     const audioBytes = new Uint8Array(await audioResp.arrayBuffer());
     const isMP3 = file_url.toLowerCase().includes('.mp3');
 
-    // For WAV files, extract 10s/min samples; for MP3, send as-is (already compressed)
-    let audioBlob: Blob;
-    let filename: string;
+    let metrics: Record<string, number | null>;
+    let metricsMode: string;
 
-    if (!isMP3) {
-      const header = parseWavHeader(audioBytes);
-      if (header) {
-        audioBlob = extractSampledWav(audioBytes, header);
-        filename = 'audio.wav';
-        console.log(`WAV sampling complete for recording ${recording_id}`);
-      } else {
-        console.warn('Could not parse WAV header, sending full file');
-        audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
-        filename = 'audio.wav';
-      }
+    if (isMP3) {
+      // MP3: send as-is regardless of mode
+      console.log(`MP3 file — sending full ${(audioBytes.length / 1024).toFixed(0)}KB`);
+      const audioBlob = new Blob([audioBytes], { type: 'audio/mpeg' });
+      metrics = await callMetricsApi(audioBlob, 'audio.mp3', METRICS_API_URL, METRICS_API_SECRET);
+      metricsMode = 'full_mp3';
     } else {
-      // MP3 files are already small; send as-is
-      audioBlob = new Blob([audioBytes], { type: 'audio/mpeg' });
-      filename = 'audio.mp3';
+      const header = parseWavHeader(audioBytes);
+
+      if (!header) {
+        console.warn('Could not parse WAV header, sending full file');
+        const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
+        metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+        metricsMode = 'full_unparsed';
+      } else if (mode === 'full_segments') {
+        // Full segments mode: split into 1-min segments, analyze each, average results
+        const segments = splitIntoSegments(audioBytes, header);
+        console.log(`Sending ${segments.length} segments to metrics API for recording ${recording_id}`);
+
+        const results: Record<string, number | null>[] = [];
+        for (let i = 0; i < segments.length; i++) {
+          console.log(`Analyzing segment ${i + 1}/${segments.length} (${(segments[i].size / 1024).toFixed(0)}KB)`);
+          const result = await callMetricsApi(segments[i], `segment_${i}.wav`, METRICS_API_URL, METRICS_API_SECRET);
+          results.push(result);
+        }
+
+        metrics = averageMetrics(results);
+        metricsMode = `full_segments_${segments.length}x${SEGMENT_SECONDS}s`;
+        console.log(`Averaged metrics from ${results.length} segments`);
+      } else {
+        // Sampled mode (default): 10s per minute
+        const sampledWav = extractSampledWav(audioBytes, header);
+        console.log(`Sending sampled ${(sampledWav.size / 1024).toFixed(0)}KB to metrics API`);
+        metrics = await callMetricsApi(sampledWav, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+        metricsMode = `sampled_${SAMPLE_SECONDS}s_per_${SEGMENT_SECONDS}s`;
+      }
     }
 
-    // Send to external metrics API
-    console.log(`Sending ${(audioBlob.size / 1024).toFixed(0)}KB to metrics API for recording ${recording_id}`);
-    const formData = new FormData();
-    formData.append('file', audioBlob, filename);
-
-    const headers: Record<string, string> = {};
-    if (METRICS_API_SECRET) {
-      headers['Authorization'] = `Bearer ${METRICS_API_SECRET}`;
-    }
-
-    const apiResponse = await fetch(`${METRICS_API_URL}/analyze`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
-    if (!apiResponse.ok) {
-      const errText = await apiResponse.text();
-      console.error('Metrics API error:', apiResponse.status, errText);
-      throw new Error(`Metrics API error: ${apiResponse.status}`);
-    }
-
-    const metrics = await apiResponse.json();
     console.log(`Metrics received for recording ${recording_id}:`, JSON.stringify(metrics));
 
     // Update recording metadata
@@ -239,7 +298,7 @@ serve(async (req) => {
       file_sr: metrics.file_sr ?? null,
       metrics_source: 'huggingface-space',
       metrics_estimated_at: new Date().toISOString(),
-      metrics_sampling: `${SAMPLE_SECONDS}s per ${SEGMENT_SECONDS}s`,
+      metrics_mode: metricsMode,
     };
 
     await supabase
@@ -247,10 +306,10 @@ serve(async (req) => {
       .update({ metadata })
       .eq('id', recording_id);
 
-    console.log(`Metrics saved for recording ${recording_id}`);
+    console.log(`Metrics saved for recording ${recording_id} (mode: ${metricsMode})`);
 
     return new Response(
-      JSON.stringify({ success: true, recording_id, metrics }),
+      JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
