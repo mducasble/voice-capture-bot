@@ -2,12 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export function useReanalyzeAudio() {
+type AnalysisMode = "sampled" | "full_segments";
+
+export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (recordingId: string) => {
-      // Get the recording's file URL
       const { data: recording, error: fetchError } = await supabase
         .from("voice_recordings")
         .select("file_url, mp3_file_url")
@@ -23,11 +24,11 @@ export function useReanalyzeAudio() {
         throw new Error("URL do áudio não encontrada");
       }
 
-      // Call estimate-audio-metrics edge function
       const { data, error } = await supabase.functions.invoke("estimate-audio-metrics", {
         body: {
           recording_id: recordingId,
           file_url: audioUrl,
+          mode,
         },
       });
 
@@ -38,7 +39,10 @@ export function useReanalyzeAudio() {
       return data;
     },
     onSuccess: () => {
-      toast.success("Análise de métricas reenviada com sucesso!");
+      const label = mode === "full_segments" 
+        ? "Análise completa (segmentos de 1min)" 
+        : "Análise amostrada (10s/min)";
+      toast.success(`${label} reenviada com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error) => {

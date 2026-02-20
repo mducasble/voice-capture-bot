@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3 } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -61,7 +61,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const stopGemini = useStopGemini();
   const elevenLabsTest = useElevenLabsTestTranscription();
   const regenerateJson = useRegenerateJson();
-  const reanalyzeAudio = useReanalyzeAudio();
+  const reanalyzeSampled = useReanalyzeAudio("sampled");
+  const reanalyzeFull = useReanalyzeAudio("full_segments");
 
   // Check if transcription is incomplete (stopped midway)
   const incompleteInfo = getIncompleteTranscriptionInfo(recording);
@@ -849,19 +850,34 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <FlaskConical className="h-4 w-4" />
                   )}
                 </Button>
-                {/* Re-analyze audio metrics button */}
+                {/* Re-analyze audio metrics (sampled 10s/min) */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => reanalyzeAudio.mutate(recording.id)}
-                  disabled={reanalyzeAudio.isPending}
+                  onClick={() => reanalyzeSampled.mutate(recording.id)}
+                  disabled={reanalyzeSampled.isPending || reanalyzeFull.isPending}
                   className="text-orange-500 hover:text-orange-500 hover:bg-orange-500/10"
-                  title="Reenviar áudio para análise de métricas (HuggingFace)"
+                  title="Análise amostrada (10s por minuto)"
                 >
-                  {reanalyzeAudio.isPending ? (
+                  {reanalyzeSampled.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <BarChart3 className="h-4 w-4" />
+                  )}
+                </Button>
+                {/* Re-analyze audio metrics (full segments 1min) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => reanalyzeFull.mutate(recording.id)}
+                  disabled={reanalyzeFull.isPending || reanalyzeSampled.isPending}
+                  className="text-amber-600 hover:text-amber-600 hover:bg-amber-600/10"
+                  title="Análise completa (segmentos de 1 minuto)"
+                >
+                  {reanalyzeFull.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ScanLine className="h-4 w-4" />
                   )}
                 </Button>
                 {/* Reprocess button - always available, only disabled during local mutation */}
