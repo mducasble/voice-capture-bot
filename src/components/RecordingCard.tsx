@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine, ClipboardCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -855,6 +856,20 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     ) : (
                       <RefreshCw className="h-4 w-4" />
                     )}
+                  </Button>
+                )}
+                {/* Review transcription button - when transcription is completed */}
+                {(recording.transcription_elevenlabs_status === 'completed' || recording.transcription_status === 'completed') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-indigo-500 hover:text-indigo-500 hover:bg-indigo-500/10"
+                    title="Revisar transcrição"
+                  >
+                    <Link to={`/review?id=${recording.id}`}>
+                      <ClipboardCheck className="h-4 w-4" />
+                    </Link>
                   </Button>
                 )}
                 {/* Test ElevenLabs (4 minutes) - for validation */}
