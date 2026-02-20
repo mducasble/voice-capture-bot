@@ -297,6 +297,11 @@ def compute_vqscore_composite(
 # API Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "Audio Quality Metrics API"}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
