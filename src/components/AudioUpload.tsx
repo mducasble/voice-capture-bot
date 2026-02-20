@@ -9,9 +9,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface AudioUploadProps {
   onUploadComplete?: () => void;
+  transcriptionOnly?: boolean;
 }
 
-export function AudioUpload({ onUploadComplete }: AudioUploadProps) {
+export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: AudioUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -104,6 +105,7 @@ export function AudioUpload({ onUploadComplete }: AudioUploadProps) {
           file_url: fileUrl,
           file_size_bytes: selectedFile.size,
           original_filename: selectedFile.name,
+          transcription_only: transcriptionOnly,
         },
       });
 
