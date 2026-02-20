@@ -75,6 +75,89 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     }
   }, []);
 
+  /**
+   * Apply Koala noise suppression as post-processing.
+   * Koala operates at 16kHz Int16, so we resample 48k→16k, process, then 16k→48k.
+   */
+  const applyKoala = useCallback(async (buffer: Float32Array): Promise<Float32Array> => {
+    try {
+      const { Koala } = await import("@picovoice/koala-web");
+      
+      // Fetch access key from edge function
+      const keyResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-picovoice-key`,
+        { headers: { "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` } }
+      );
+      if (!keyResponse.ok) throw new Error("Failed to get Picovoice key");
+      const { accessKey } = await keyResponse.json();
+      
+      // Resample 48kHz → 16kHz (factor of 3)
+      const downsampledLength = Math.floor(buffer.length / 3);
+      const downsampled = new Int16Array(downsampledLength);
+      for (let i = 0; i < downsampledLength; i++) {
+        const s = Math.max(-1, Math.min(1, buffer[i * 3]));
+        downsampled[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      
+      console.log("[AudioEnhancer] Koala: resampled to 16kHz, processing...");
+      
+      // Collect enhanced frames via callback
+      const enhancedChunks: Int16Array[] = [];
+      const processCallback = (enhancedPcm: Int16Array) => {
+        enhancedChunks.push(new Int16Array(enhancedPcm));
+      };
+      
+      const koala = await Koala.create(
+        accessKey,
+        processCallback,
+        { publicPath: "/koala_params.pv" }
+      );
+      const frameLength = koala.frameLength;
+      
+      let offset = 0;
+      while (offset + frameLength <= downsampled.length) {
+        const frame = downsampled.slice(offset, offset + frameLength);
+        await koala.process(frame);
+        offset += frameLength;
+      }
+      // Process remaining samples with zero-padding
+      if (offset < downsampled.length) {
+        const lastFrame = new Int16Array(frameLength);
+        lastFrame.set(downsampled.subarray(offset));
+        await koala.process(lastFrame);
+      }
+      
+      await koala.release();
+      
+      // Merge enhanced chunks
+      const totalEnhanced = enhancedChunks.reduce((a, c) => a + c.length, 0);
+      const enhanced16k = new Int16Array(totalEnhanced);
+      let eOffset = 0;
+      for (const chunk of enhancedChunks) {
+        enhanced16k.set(chunk, eOffset);
+        eOffset += chunk.length;
+      }
+      
+      // Resample 16kHz → 48kHz (linear interpolation)
+      const upsampledLength = Math.min(buffer.length, enhanced16k.length * 3);
+      const result = new Float32Array(buffer.length);
+      for (let i = 0; i < upsampledLength; i++) {
+        const srcIdx = i / 3;
+        const srcFloor = Math.floor(srcIdx);
+        const srcCeil = Math.min(srcFloor + 1, enhanced16k.length - 1);
+        const frac = srcIdx - srcFloor;
+        const interpolated = enhanced16k[srcFloor] * (1 - frac) + enhanced16k[srcCeil] * frac;
+        result[i] = interpolated / (interpolated < 0 ? 0x8000 : 0x7FFF);
+      }
+      
+      console.log("[AudioEnhancer] Koala post-processing complete");
+      return result;
+    } catch (err) {
+      console.error("[AudioEnhancer] Failed to apply Koala:", err);
+      return buffer;
+    }
+  }, []);
+
   const startRecording = useCallback(async (stream: MediaStream) => {
     chunksRef.current = [];
 
@@ -195,9 +278,13 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
       offset += chunk.length;
     }
 
-    // Apply RNNoise as post-processing if enabled
+    // Apply noise suppression as post-processing if enabled
     const p = profileRef.current;
-    if (p?.enableRnnoise) {
+    if (p?.enableKoala) {
+      const denoised = await applyKoala(mergedBuffer);
+      mergedBuffer = new Float32Array(new ArrayBuffer(denoised.length * 4));
+      mergedBuffer.set(denoised);
+    } else if (p?.enableRnnoise) {
       const denoised = await applyRnnoise(mergedBuffer);
       mergedBuffer = new Float32Array(new ArrayBuffer(denoised.length * 4));
       mergedBuffer.set(denoised);
@@ -214,7 +301,7 @@ export const useWavRecorder = (options: WavRecorderOptions = {}) => {
     setState({ isRecording: false, duration: 0 });
 
     return wavBlob;
-  }, [sampleRate, channels, applyRnnoise]);
+  }, [sampleRate, channels, applyRnnoise, applyKoala]);
 
   return {
     ...state,
