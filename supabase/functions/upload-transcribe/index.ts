@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { filename, file_url, file_size_bytes, original_filename } = await req.json();
+    const { filename, file_url, file_size_bytes, original_filename, transcription_only } = await req.json();
 
     if (!filename || !file_url) {
       return new Response(
@@ -48,10 +48,11 @@ serve(async (req) => {
         channels: 2,
         format,
         status: "completed",
+        quality_status: transcription_only ? "transcription-only" : "pending",
         transcription_status: "pending",
         transcription_elevenlabs_status: "pending",
         metadata: {
-          source: "manual_upload",
+          source: transcription_only ? "transcription_only_upload" : "manual_upload",
           original_filename,
         },
       })
