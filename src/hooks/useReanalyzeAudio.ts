@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type AnalysisMode = "sampled" | "full_segments";
+type AnalysisTarget = "original" | "enhanced";
 
-export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
+export function useReanalyzeAudio(mode: AnalysisMode = "sampled", target: AnalysisTarget = "original") {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -19,10 +20,19 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
         throw new Error("Gravação não encontrada");
       }
 
-      // Prioriza arquivo melhorado se existir
-      const meta = recording.metadata as Record<string, unknown> | null;
-      const enhancedUrl = meta?.enhanced_file_url as string | undefined;
-      const audioUrl = enhancedUrl || recording.mp3_file_url || recording.file_url;
+      let audioUrl: string | null;
+
+      if (target === "enhanced") {
+        const meta = recording.metadata as Record<string, unknown> | null;
+        const enhancedUrl = meta?.enhanced_file_url as string | undefined;
+        if (!enhancedUrl) {
+          throw new Error("Arquivo melhorado não encontrado. Execute o enhancement primeiro.");
+        }
+        audioUrl = enhancedUrl;
+      } else {
+        audioUrl = recording.mp3_file_url || recording.file_url;
+      }
+
       if (!audioUrl) {
         throw new Error("URL do áudio não encontrada");
       }
@@ -32,6 +42,7 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
           recording_id: recordingId,
           file_url: audioUrl,
           mode,
+          target,
         },
       });
 
@@ -42,10 +53,11 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled") {
       return data;
     },
     onSuccess: () => {
-      const label = mode === "full_segments" 
+      const targetLabel = target === "enhanced" ? " (Enhanced)" : "";
+      const modeLabel = mode === "full_segments" 
         ? "Análise completa (segmentos de 1min)" 
         : "Análise amostrada (10s/min)";
-      toast.success(`${label} reenviada com sucesso!`);
+      toast.success(`${modeLabel}${targetLabel} reenviada com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error) => {

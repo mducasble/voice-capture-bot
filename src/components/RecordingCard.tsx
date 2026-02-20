@@ -65,6 +65,8 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const regenerateJson = useRegenerateJson();
   const reanalyzeSampled = useReanalyzeAudio("sampled");
   const reanalyzeFull = useReanalyzeAudio("full_segments");
+  const reanalyzeEnhancedSampled = useReanalyzeAudio("sampled", "enhanced");
+  const reanalyzeEnhancedFull = useReanalyzeAudio("full_segments", "enhanced");
   const enhanceAudio = useEnhanceAudio();
 
   // Check if transcription is incomplete (stopped midway)
@@ -407,138 +409,200 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             <ChunkGenerationProgress recording={recording} />
 
             {/* Waveform Visualizer Section */}
-            {recording.file_url && recording.status === 'completed' && (
-              <Collapsible open={isWaveformOpen} onOpenChange={setIsWaveformOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
-                    <span className="flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      Audio Quality Analysis
-                    </span>
-                    {isWaveformOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2 space-y-3">
-                  {/* Metrics Table */}
-                  {(() => {
-                    const meta = recording.metadata as {
-                      rms_dbfs?: number; mos_score?: number; srmr?: number;
-                      sigmos_disc?: number; sigmos_ovrl?: number; sigmos_reverb?: number;
-                      vqscore?: number; wvmos?: number; utmos?: number;
-                      mic_sr?: number; file_sr?: number;
-                    } | null;
+            {recording.file_url && recording.status === 'completed' && (() => {
+              const getColor = (level: 'good' | 'fair' | 'bad') => {
+                if (level === 'good') return 'bg-green-500/20 text-green-400 border-green-500/30';
+                if (level === 'fair') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                return 'bg-red-500/20 text-red-400 border-red-500/30';
+              };
 
-                    const getColor = (level: 'good' | 'fair' | 'bad') => {
-                      if (level === 'good') return 'bg-green-500/20 text-green-400 border-green-500/30';
-                      if (level === 'fair') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-                      return 'bg-red-500/20 text-red-400 border-red-500/30';
-                    };
+              type MetricDef = { label: string; value: string; level: 'good' | 'fair' | 'bad' };
 
-                    type MetricDef = { label: string; value: string; level: 'good' | 'fair' | 'bad' };
-                    const metrics: MetricDef[] = [];
+              const buildMetrics = (meta: Record<string, unknown> | null, snrDb: number | null | undefined): MetricDef[] => {
+                const metrics: MetricDef[] = [];
+                if (snrDb !== null && snrDb !== undefined) {
+                  const level = snrDb >= 25 ? 'good' : snrDb >= 15 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SNR', value: `${snrDb} dB`, level });
+                }
+                if ((meta?.rms_dbfs as number) != null) {
+                  const v = meta!.rms_dbfs as number;
+                  const level = (v >= -26 && v <= -20) ? 'good' : 'bad';
+                  metrics.push({ label: 'RMS', value: `${v.toFixed(1)} dBFS`, level });
+                }
+                if ((meta?.srmr as number) != null) {
+                  const v = meta!.srmr as number;
+                  const level = v >= 6 ? 'good' : v >= 10 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SRMR', value: `${v.toFixed(2)} dB`, level });
+                }
+                if ((meta?.wvmos as number) != null) {
+                  const v = meta!.wvmos as number;
+                  const level = v >= 1.5 ? 'good' : v >= 2.5 ? 'fair' : 'bad';
+                  metrics.push({ label: 'WVMOS', value: v.toFixed(2), level });
+                }
+                if ((meta?.sigmos_ovrl as number) != null) {
+                  const v = meta!.sigmos_ovrl as number;
+                  const level = v >= 2.8 ? 'good' : v >= 2.5 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SigMOS Ovrl', value: v.toFixed(2), level });
+                }
+                if ((meta?.sigmos_disc as number) != null) {
+                  const v = meta!.sigmos_disc as number;
+                  const level = v >= 3.5 ? 'good' : v >= 2.5 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SigMOS Disc', value: v.toFixed(2), level });
+                }
+                if ((meta?.sigmos_reverb as number) != null) {
+                  const v = meta!.sigmos_reverb as number;
+                  const level = v >= 3.5 ? 'good' : v >= 2.5 ? 'fair' : 'bad';
+                  metrics.push({ label: 'SigMOS Reverb', value: v.toFixed(2), level });
+                }
+                if ((meta?.vqscore as number) != null) {
+                  const v = meta!.vqscore as number;
+                  const level = v >= 0.65 ? 'good' : v >= 60 ? 'fair' : 'bad';
+                  metrics.push({ label: 'VQScore', value: v.toFixed(1), level });
+                }
+                if ((meta?.mos_score as number) != null) {
+                  const v = meta!.mos_score as number;
+                  const level = v >= 3.5 ? 'good' : v >= 2.5 ? 'fair' : 'bad';
+                  metrics.push({ label: 'MOS', value: v.toFixed(2), level });
+                }
+                if ((meta?.file_sr as number) != null) {
+                  const v = meta!.file_sr as number;
+                  metrics.push({ label: 'Device SR', value: `${(v / 1000).toFixed(1)} kHz`, level: 'good' });
+                }
+                if ((meta?.mic_sr as number) != null) {
+                  const v = meta!.mic_sr as number;
+                  const level = v >= 44100 ? 'good' : v >= 16000 ? 'fair' : 'bad';
+                  metrics.push({ label: 'Eff. BW', value: `${(v / 1000).toFixed(1)} kHz`, level });
+                }
+                return metrics;
+              };
 
-                    if (recording.snr_db !== null && recording.snr_db !== undefined) {
-                      const level = recording.snr_db >= 25 ? 'good' : recording.snr_db >= 15 ? 'fair' : 'bad';
-                      metrics.push({ label: 'SNR', value: `${recording.snr_db} dB`, level });
-                    }
-                    if (meta?.rms_dbfs != null) {
-                      const level = (meta.rms_dbfs >= -26 && meta.rms_dbfs <= -20) ? 'good' : 'bad';
-                      metrics.push({ label: 'RMS', value: `${meta.rms_dbfs.toFixed(1)} dBFS`, level });
-                    }
-                    if (meta?.srmr != null) {
-                      const level = meta.srmr >= 6 ? 'good' : meta.srmr >= 10 ? 'fair' : 'bad';
-                      metrics.push({ label: 'SRMR', value: `${meta.srmr.toFixed(2)} dB`, level });
-                    }
-                    if (meta?.wvmos != null) {
-                      const level = meta.wvmos >= 1.5 ? 'good' : meta.wvmos >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'WVMOS', value: meta.wvmos.toFixed(2), level });
-                    }
-                    // UTMOS: stored but hidden from UI
-                    if (meta?.sigmos_ovrl != null) {
-                      const level = meta.sigmos_ovrl >= 2.8 ? 'good' : meta.sigmos_ovrl >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'SigMOS Ovrl', value: meta.sigmos_ovrl.toFixed(2), level });
-                    }
-                    if (meta?.sigmos_disc != null) {
-                      const level = meta.sigmos_disc >= 3.5 ? 'good' : meta.sigmos_disc >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'SigMOS Disc', value: meta.sigmos_disc.toFixed(2), level });
-                    }
-                    if (meta?.sigmos_reverb != null) {
-                      const level = meta.sigmos_reverb >= 3.5 ? 'good' : meta.sigmos_reverb >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'SigMOS Reverb', value: meta.sigmos_reverb.toFixed(2), level });
-                    }
-                    if (meta?.vqscore != null) {
-                      const level = meta.vqscore >= 0.65 ? 'good' : meta.vqscore >= 60 ? 'fair' : 'bad';
-                      metrics.push({ label: 'VQScore', value: meta.vqscore.toFixed(1), level });
-                    }
-                    if (meta?.mos_score != null) {
-                      const level = meta.mos_score >= 3.5 ? 'good' : meta.mos_score >= 2.5 ? 'fair' : 'bad';
-                      metrics.push({ label: 'MOS', value: meta.mos_score.toFixed(2), level });
-                    }
-                    if (meta?.file_sr != null) {
-                      metrics.push({ label: 'Device SR', value: `${(meta.file_sr / 1000).toFixed(1)} kHz`, level: 'good' });
-                    }
-                    if (meta?.mic_sr != null) {
-                      const level = meta.mic_sr >= 44100 ? 'good' : meta.mic_sr >= 16000 ? 'fair' : 'bad';
-                      metrics.push({ label: 'Eff. BW', value: `${(meta.mic_sr / 1000).toFixed(1)} kHz`, level });
-                    }
+              const renderMetricsTable = (metrics: MetricDef[], modeLabel: string | null, estimatedAt: string | null) => (
+                <div className="space-y-1">
+                  <div className="overflow-x-auto rounded-lg border border-border/50">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr>
+                          {metrics.map((m) => (
+                            <th key={m.label} className={`px-2 py-1.5 font-medium border-b border-border/50 text-center ${getColor(m.level)}`}>
+                              {m.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          {metrics.map((m) => (
+                            <td key={m.label} className="px-2 py-2 text-center text-foreground font-mono text-xs">
+                              {m.value}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  {modeLabel && estimatedAt && (
+                    <p className="text-[10px] text-muted-foreground text-right px-1">
+                      {modeLabel} • {new Date(estimatedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              );
 
-                    if (metrics.length === 0) return null;
+              const meta = recording.metadata as Record<string, unknown> | null;
+              const originalMetrics = buildMetrics(meta, recording.snr_db);
+              const enhancedMeta = meta?.enhanced_metrics as Record<string, unknown> | null;
+              const enhancedMetrics = enhancedMeta ? buildMetrics(enhancedMeta, null) : [];
 
-                    const metaModeInfo = recording.metadata as {
-                      metrics_mode?: string;
-                      metrics_estimated_at?: string;
-                    } | null;
+              const getModeLabel = (m: Record<string, unknown> | null) => {
+                const mode = m?.metrics_mode as string | undefined;
+                if (!mode) return null;
+                if (mode.startsWith('full_segments')) return '🔬 Análise Completa';
+                if (mode.startsWith('sampled')) return '📊 Análise Amostrada';
+                if (mode.startsWith('full_mp3')) return '🎵 MP3 Completo';
+                return mode;
+              };
 
-                    const modeLabel = metaModeInfo?.metrics_mode
-                      ? metaModeInfo.metrics_mode.startsWith('full_segments')
-                        ? '🔬 Análise Completa'
-                        : metaModeInfo.metrics_mode.startsWith('sampled')
-                          ? '📊 Análise Amostrada'
-                          : metaModeInfo.metrics_mode.startsWith('full_mp3')
-                            ? '🎵 MP3 Completo'
-                            : metaModeInfo.metrics_mode
-                      : null;
-
-                    return (
-                      <div className="space-y-1">
-                        <div className="overflow-x-auto rounded-lg border border-border/50">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr>
-                                {metrics.map((m) => (
-                                  <th key={m.label} className={`px-2 py-1.5 font-medium border-b border-border/50 text-center ${getColor(m.level)}`}>
-                                    {m.label}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr>
-                                {metrics.map((m) => (
-                                  <td key={m.label} className="px-2 py-2 text-center text-foreground font-mono text-xs">
-                                    {m.value}
-                                  </td>
-                                ))}
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                        {modeLabel && metaModeInfo?.metrics_estimated_at && (
-                          <p className="text-[10px] text-muted-foreground text-right px-1">
-                            {modeLabel} • {new Date(metaModeInfo.metrics_estimated_at).toLocaleString()}
-                          </p>
+              return (
+                <>
+                  {/* Original Audio Quality Analysis */}
+                  {originalMetrics.length > 0 && (
+                    <Collapsible open={isWaveformOpen} onOpenChange={setIsWaveformOpen}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                          <span className="flex items-center gap-2">
+                            <Activity className="h-4 w-4" />
+                            Audio Quality Analysis
+                          </span>
+                          {isWaveformOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-3">
+                        {renderMetricsTable(
+                          originalMetrics,
+                          getModeLabel(meta),
+                          meta?.metrics_estimated_at as string | null
                         )}
-                      </div>
-                    );
-                  })()}
-                  <WaveformVisualizer 
-                    audioUrl={recording.file_url} 
-                    snrDb={recording.snr_db}
-                    mosScore={(recording.metadata as { mos_score?: number })?.mos_score}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+                        <WaveformVisualizer 
+                          audioUrl={recording.file_url!} 
+                          snrDb={recording.snr_db}
+                          mosScore={(meta?.mos_score as number) ?? undefined}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Enhanced Audio Quality Analysis */}
+                  {enhancedMetrics.length > 0 && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between text-violet-400 hover:text-violet-400">
+                          <span className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Audio Quality Analysis (Enhanced)
+                          </span>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-3">
+                        {renderMetricsTable(
+                          enhancedMetrics,
+                          getModeLabel(enhancedMeta),
+                          enhancedMeta?.metrics_estimated_at as string | null
+                        )}
+                        {(meta?.enhanced_file_url as string) && (
+                          <WaveformVisualizer 
+                            audioUrl={meta!.enhanced_file_url as string} 
+                            snrDb={null}
+                          />
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Show original waveform even without metrics */}
+                  {originalMetrics.length === 0 && (
+                    <Collapsible open={isWaveformOpen} onOpenChange={setIsWaveformOpen}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                          <span className="flex items-center gap-2">
+                            <Activity className="h-4 w-4" />
+                            Audio Quality Analysis
+                          </span>
+                          {isWaveformOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-3">
+                        <WaveformVisualizer 
+                          audioUrl={recording.file_url!} 
+                          snrDb={recording.snr_db}
+                          mosScore={(meta?.mos_score as number) ?? undefined}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Transcription Section - Gemini */}
             {(recording.transcription || recording.transcription_status === 'processing') && (
@@ -946,7 +1010,26 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <ScanLine className="h-4 w-4" />
                   )}
                 </Button>
-                {/* Reprocess button - always available, only disabled during local mutation */}
+                {/* Re-analyze ENHANCED audio metrics (sampled) */}
+                {(recording.metadata as Record<string, unknown>)?.enhanced_file_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => reanalyzeEnhancedSampled.mutate(recording.id)}
+                    disabled={reanalyzeEnhancedSampled.isPending || reanalyzeEnhancedFull.isPending}
+                    className="text-violet-400 hover:text-violet-400 hover:bg-violet-400/10"
+                    title="Análise amostrada do áudio melhorado"
+                  >
+                    {reanalyzeEnhancedSampled.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span className="relative">
+                        <BarChart3 className="h-4 w-4" />
+                        <Sparkles className="h-2.5 w-2.5 absolute -top-1 -right-1.5" />
+                      </span>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
