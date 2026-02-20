@@ -117,13 +117,12 @@ const Room = () => {
 
   // Helper to get audio constraints with selected device
   const getAudioConstraints = useCallback(() => {
-    const useConstraints = audioProfile?.enableConstraints ?? false;
     return {
       audio: {
         deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-        echoCancellation: useConstraints,
-        noiseSuppression: useConstraints,
-        autoGainControl: useConstraints,
+        echoCancellation: audioProfile?.enableEchoCancellation ?? false,
+        noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
+        autoGainControl: audioProfile?.enableAutoGainControl ?? false,
         sampleRate: 48000,
       }
     };
@@ -139,13 +138,12 @@ const Room = () => {
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(t => t.stop());
       }
-      const useConstraints = audioProfile?.enableConstraints ?? false;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: useConstraints,
-          noiseSuppression: useConstraints,
-          autoGainControl: useConstraints,
+          echoCancellation: audioProfile?.enableEchoCancellation ?? false,
+          noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
+          autoGainControl: audioProfile?.enableAutoGainControl ?? false,
           sampleRate: 48000,
         }
       });
@@ -172,9 +170,9 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          echoCancellation: profile.enableConstraints,
-          noiseSuppression: profile.enableConstraints,
-          autoGainControl: profile.enableConstraints,
+          echoCancellation: profile.enableEchoCancellation,
+          noiseSuppression: profile.enableNoiseSuppression,
+          autoGainControl: profile.enableAutoGainControl,
           sampleRate: 48000,
         }
       });

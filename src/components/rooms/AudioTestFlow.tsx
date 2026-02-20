@@ -455,9 +455,19 @@ export const AudioTestFlow = ({
                     Noise Gate
                   </Badge>
                 )}
-                {editedProfile.enableConstraints && (
+                {editedProfile.enableEchoCancellation && (
                   <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                    Constraints
+                    Echo
+                  </Badge>
+                )}
+                {editedProfile.enableNoiseSuppression && (
+                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                    NoiseSup
+                  </Badge>
+                )}
+                {editedProfile.enableAutoGainControl && (
+                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                    AGC
                   </Badge>
                 )}
               </div>
@@ -511,7 +521,7 @@ export const AudioTestFlow = ({
                   </div>
 
                   {/* Toggles */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-5 gap-2">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-xs text-muted-foreground">RNNoise</span>
                       <Switch
@@ -527,10 +537,24 @@ export const AudioTestFlow = ({
                       />
                     </div>
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Constraints</span>
+                      <span className="text-xs text-muted-foreground">Echo</span>
                       <Switch
-                        checked={editedProfile.enableConstraints}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableConstraints: v } : p)}
+                        checked={editedProfile.enableEchoCancellation}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableEchoCancellation: v } : p)}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">NoiseSup</span>
+                      <Switch
+                        checked={editedProfile.enableNoiseSuppression}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseSuppression: v } : p)}
+                      />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">AGC</span>
+                      <Switch
+                        checked={editedProfile.enableAutoGainControl}
+                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableAutoGainControl: v } : p)}
                       />
                     </div>
                   </div>
