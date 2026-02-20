@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine, ClipboardCheck } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine, ClipboardCheck, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -16,6 +16,7 @@ import { useResumeElevenLabsTranscription, getIncompleteTranscriptionInfo } from
 import { useClearTranscription } from "@/hooks/useClearTranscription";
 import { useStopGemini } from "@/hooks/useStopGemini";
 import { useReanalyzeAudio } from "@/hooks/useReanalyzeAudio";
+import { useEnhanceAudio } from "@/hooks/useEnhanceAudio";
 import { useElevenLabsTestTranscription } from "@/hooks/useElevenLabsTestTranscription";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { SpeakerTranscript } from "@/components/SpeakerTranscript";
@@ -64,6 +65,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const regenerateJson = useRegenerateJson();
   const reanalyzeSampled = useReanalyzeAudio("sampled");
   const reanalyzeFull = useReanalyzeAudio("full_segments");
+  const enhanceAudio = useEnhanceAudio();
 
   // Check if transcription is incomplete (stopped midway)
   const incompleteInfo = getIncompleteTranscriptionInfo(recording);
@@ -897,6 +899,23 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <FlaskConical className="h-4 w-4" />
                   )}
                 </Button>
+                {/* Enhance audio button */}
+                {recording.file_url && recording.status === 'completed' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => enhanceAudio.mutate({ recordingId: recording.id, fileUrl: recording.file_url! })}
+                    disabled={enhanceAudio.isPending}
+                    className="text-violet-500 hover:text-violet-500 hover:bg-violet-500/10"
+                    title="Melhorar áudio (normalização, filtros, EQ)"
+                  >
+                    {enhanceAudio.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 {/* Re-analyze audio metrics (sampled 10s/min) */}
                 <Button
                   variant="ghost"
@@ -986,6 +1005,21 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     <a href={recording.file_url} download>
                       <FileAudio className="h-4 w-4 mr-1" />
                       WAV
+                    </a>
+                  </Button>
+                )}
+                {/* Download Enhanced WAV */}
+                {(recording.metadata as { enhanced_file_url?: string })?.enhanced_file_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-violet-500 hover:text-violet-500 hover:bg-violet-500/10"
+                    title="Download WAV (melhorado)"
+                  >
+                    <a href={(recording.metadata as { enhanced_file_url: string }).enhanced_file_url} download>
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Enhanced
                     </a>
                   </Button>
                 )}
