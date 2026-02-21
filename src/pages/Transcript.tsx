@@ -70,9 +70,9 @@ const Transcript = () => {
               <FileText className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Transcrição Avulsa</h1>
+              <h1 className="text-xl font-bold text-foreground">Standalone Transcription</h1>
               <p className="text-sm text-muted-foreground">
-                Upload e transcrição de áudios isolados
+                Upload and transcribe individual audio files
               </p>
             </div>
           </div>
@@ -88,10 +88,10 @@ const Transcript = () => {
         {/* Recordings List */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-foreground">Transcrições</h3>
+            <h3 className="text-xl font-semibold text-foreground">Transcriptions</h3>
             {recordings.length > 0 && (
               <span className="text-sm text-muted-foreground">
-                {recordings.length} gravação{recordings.length !== 1 ? "ões" : ""}
+                {recordings.length} recording{recordings.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
@@ -106,7 +106,7 @@ const Transcript = () => {
 
           {error && (
             <div className="text-center py-12 text-destructive">
-              Falha ao carregar gravações.
+              Failed to load recordings.
             </div>
           )}
 
@@ -117,10 +117,10 @@ const Transcript = () => {
               </div>
               <div>
                 <h4 className="text-lg font-medium text-foreground">
-                  Nenhuma transcrição ainda
+                  No transcriptions yet
                 </h4>
                 <p className="text-muted-foreground max-w-md mx-auto mt-2">
-                  Faça upload de um arquivo de áudio acima para iniciar a transcrição.
+                  Upload an audio file above to start transcribing.
                 </p>
               </div>
             </div>
