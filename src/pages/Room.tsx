@@ -404,10 +404,9 @@ const Room = () => {
 
     setIsMixedUploading(true);
     setMixedUploadProgress(0);
+    const filename = `room_${room.session_id}_mixed_${Date.now()}.wav`;
 
     try {
-      const filename = `room_${room.session_id}_mixed_${Date.now()}.wav`;
-
       setMixedUploadProgress(10);
       const formData = new FormData();
       formData.append("audio", wavBlob, filename);
@@ -439,7 +438,22 @@ const Room = () => {
       toast.success("Áudio mixado enviado!");
     } catch (error) {
       console.error("Mixed upload error:", error);
-      toast.error("Erro ao enviar áudio mixado");
+      toast.error("Erro ao enviar áudio mixado. Salvando localmente...");
+      // Fallback: save locally so the recording isn't lost
+      try {
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Arquivo salvo localmente como fallback!");
+      } catch (dlErr) {
+        console.error("Local save also failed:", dlErr);
+        toast.error("Não foi possível salvar localmente");
+      }
     } finally {
       setIsMixedUploading(false);
     }
