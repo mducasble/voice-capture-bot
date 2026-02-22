@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useMixedRecorder } from "@/hooks/useMixedRecorder";
 import type { AudioProfile } from "@/lib/audioProfile";
 
 interface Room {
@@ -60,6 +62,11 @@ const Room = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const remoteAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const [isMixedUploading, setIsMixedUploading] = useState(false);
+  const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
+
+  // Mixed recorder for creator
+  const mixedRecorder = useMixedRecorder();
 
   // WebRTC peer-to-peer audio
   const { remoteStreams } = useWebRTC({
@@ -92,6 +99,16 @@ const Room = () => {
       }
     });
   }, [remoteStreams]);
+
+  // Add new remote streams to mixed recorder mid-recording
+  useEffect(() => {
+    if (!mixedRecorder.isRecording) return;
+    remoteStreams.forEach((stream) => {
+      mixedRecorder.addRemoteStream(stream);
+    });
+    // We only want to react to new streams appearing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteStreams.size]);
 
   // Enumerate audio input devices
   useEffect(() => {
@@ -364,6 +381,11 @@ const Room = () => {
   const handleStartRecording = async () => {
     if (!room || !roomId) return;
 
+    // Start mixed recording if creator has a local stream
+    if (currentParticipant?.is_creator && mediaStreamRef.current) {
+      await mixedRecorder.startRecording(mediaStreamRef.current, remoteStreams);
+    }
+
     await supabase
       .from("rooms")
       .update({ 
@@ -376,9 +398,64 @@ const Room = () => {
     toast.success("Gravação iniciada!");
   };
 
+  // Upload mixed recording
+  const uploadMixedRecording = async (wavBlob: Blob) => {
+    if (!room || !wavBlob || wavBlob.size === 0) return;
+
+    setIsMixedUploading(true);
+    setMixedUploadProgress(0);
+
+    try {
+      const filename = `room_${room.session_id}_mixed_${Date.now()}.wav`;
+
+      setMixedUploadProgress(10);
+      const formData = new FormData();
+      formData.append("audio", wavBlob, filename);
+      formData.append("filename", filename);
+      formData.append("session_id", room.session_id);
+      formData.append("participant_id", currentParticipant?.id || "mixed");
+      formData.append("participant_name", "Mixed");
+      formData.append("recording_type", "mixed");
+      formData.append("format", "wav");
+
+      setMixedUploadProgress(30);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Upload failed: ${errText}`);
+      }
+
+      setMixedUploadProgress(100);
+      toast.success("Áudio mixado enviado!");
+    } catch (error) {
+      console.error("Mixed upload error:", error);
+      toast.error("Erro ao enviar áudio mixado");
+    } finally {
+      setIsMixedUploading(false);
+    }
+  };
+
   // Stop recording (creator only)
   const handleStopRecording = async () => {
     if (!room || !roomId) return;
+
+    // Stop mixed recording and upload
+    if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
+      const mixedBlob = await mixedRecorder.stopRecording();
+      if (mixedBlob) {
+        uploadMixedRecording(mixedBlob);
+      }
+    }
 
     await supabase
       .from("rooms")
@@ -643,10 +720,25 @@ const Room = () => {
                         </Button>
                       )}
                     </div>
+                    {/* Mixed upload progress */}
+                    {isMixedUploading && (
+                      <div className="space-y-1 px-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Enviando áudio mixado...</span>
+                          <span>{mixedUploadProgress}%</span>
+                        </div>
+                        <Progress value={mixedUploadProgress} className="h-1" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
                       {audioProfile && (
                         <Badge variant="outline" className="text-xs border-primary/50 text-primary">
                           🎛️ Perfil Adaptativo
+                        </Badge>
+                      )}
+                      {room.is_recording && (
+                        <Badge variant="outline" className="text-xs border-accent/50 text-accent">
+                          🎚️ Mix: {1 + remoteStreams.size} streams
                         </Badge>
                       )}
                     </div>
