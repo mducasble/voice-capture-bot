@@ -48,6 +48,7 @@ export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }
     setIsLoading(true);
     setError(null);
 
+    let audioContext: AudioContext | null = null;
     try {
       const response = await fetch(url, { 
         mode: 'cors',
@@ -57,15 +58,25 @@ export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+
+      // Skip analysis for very large files (>100MB) to avoid browser OOM
+      const contentLength = response.headers.get('content-length');
+      if (contentLength && parseInt(contentLength, 10) > 100 * 1024 * 1024) {
+        console.warn("Audio file too large for in-browser analysis, skipping");
+        setWaveformData(null);
+        setIsLoading(false);
+        return;
+      }
       
       const arrayBuffer = await response.arrayBuffer();
       
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       const channelData = audioBuffer.getChannelData(0);
       const duration = audioBuffer.duration;
       
       await audioContext.close();
+      audioContext = null;
       
       const numBars = 200;
       const samplesPerBar = Math.floor(channelData.length / numBars);
@@ -134,7 +145,10 @@ export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }
         duration
       });
     } catch (err) {
-      console.error("Audio analysis unavailable (CORS):", err);
+      console.error("Audio analysis unavailable:", err);
+      if (audioContext) {
+        try { await audioContext.close(); } catch { /* ignore */ }
+      }
       setWaveformData(null);
     } finally {
       setIsLoading(false);
