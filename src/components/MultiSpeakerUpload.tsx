@@ -167,6 +167,21 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
 
   const canSubmit = speakerFiles.length >= 2 && speakerFiles.every((sf) => sf.speakerName.trim());
 
+  // Get audio duration using Web Audio API
+  const getAudioDuration = async (file: File | Blob): Promise<number | null> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const duration = audioBuffer.duration;
+      await audioContext.close();
+      return duration;
+    } catch (e) {
+      console.warn("Could not decode audio for duration:", e);
+      return null;
+    }
+  };
+
   const handleUpload = async () => {
     if (!canSubmit) return;
 
@@ -189,6 +204,9 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         const filename = `multi_${timestamp}_${sf.speakerName.replace(/\s+/g, "_")}.${ext}`;
         const storagePath = `uploads/${sessionId}/${filename}`;
 
+        // Calculate duration
+        const duration = await getAudioDuration(sf.file);
+
         const { error: uploadError } = await supabase.storage
           .from("voice-recordings")
           .upload(storagePath, sf.file);
@@ -207,6 +225,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
             filename,
             file_url: urlData.publicUrl,
             file_size_bytes: sf.file.size,
+            duration_seconds: duration,
             session_id: sessionId,
             recording_type: "individual",
             discord_user_id: `manual_${sf.id}`,
@@ -237,15 +256,18 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
       setUploadProgress(55);
       let mixedBlob: Blob;
       let mixedFileSize: number;
+      let mixedDuration: number | null = null;
 
       if (mixedFile) {
         setCurrentStep("Enviando arquivo combinado...");
         mixedBlob = mixedFile;
         mixedFileSize = mixedFile.size;
+        mixedDuration = await getAudioDuration(mixedFile);
       } else if (autoMix) {
         setCurrentStep("Combinando áudios automaticamente...");
         mixedBlob = await mixAudioFiles(speakerFiles.map((sf) => sf.file));
         mixedFileSize = mixedBlob.size;
+        mixedDuration = await getAudioDuration(mixedBlob);
       } else {
         // No mixed file - create metadata-only record (legacy behavior)
         mixedBlob = null as unknown as Blob;
@@ -282,6 +304,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           filename: mixedFilename,
           file_url: mixedFileUrl,
           file_size_bytes: mixedFileSize || null,
+          duration_seconds: mixedDuration,
           session_id: sessionId,
           recording_type: "mixed",
           discord_user_id: "manual_upload",

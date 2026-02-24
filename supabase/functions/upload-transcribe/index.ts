@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { filename, file_url, file_size_bytes, original_filename, transcription_only } = await req.json();
+    const { filename, file_url, file_size_bytes, original_filename, transcription_only, duration_seconds } = await req.json();
 
     if (!filename || !file_url) {
       return new Response(
@@ -43,6 +43,7 @@ serve(async (req) => {
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
+        duration_seconds: duration_seconds || null,
         sample_rate: 48000,
         bit_depth: 16,
         channels: 2,
