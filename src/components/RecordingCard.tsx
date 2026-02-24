@@ -250,6 +250,26 @@ export function RecordingCard({ recording }: RecordingCardProps) {
     setIsPlaying(!isPlaying);
   };
 
+  // Calculate duration from file metadata when duration_seconds is missing
+  const getEffectiveDuration = (): number | null => {
+    if (recording.duration_seconds && recording.duration_seconds > 0) {
+      return recording.duration_seconds;
+    }
+    // Estimate from WAV file: size / (sample_rate * channels * bytes_per_sample)
+    if (recording.file_size_bytes && recording.sample_rate && recording.channels && recording.bit_depth) {
+      const bytesPerSample = recording.bit_depth / 8;
+      const bytesPerSecond = recording.sample_rate * recording.channels * bytesPerSample;
+      if (bytesPerSecond > 0) {
+        // Subtract ~44 bytes WAV header
+        const dataBytes = Math.max(0, recording.file_size_bytes - 44);
+        return dataBytes / bytesPerSecond;
+      }
+    }
+    return null;
+  };
+
+  const effectiveDuration = getEffectiveDuration();
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -395,7 +415,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
             <div className="flex flex-wrap gap-4 text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                {formatDuration(recording.duration_seconds)}
+                {formatDuration(effectiveDuration)}
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <HardDrive className="h-4 w-4" />
