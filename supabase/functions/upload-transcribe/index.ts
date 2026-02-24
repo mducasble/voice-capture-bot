@@ -12,7 +12,18 @@ serve(async (req) => {
   }
 
   try {
-    const { filename, file_url, file_size_bytes, original_filename, transcription_only, duration_seconds } = await req.json();
+    const {
+      filename,
+      file_url,
+      file_size_bytes,
+      original_filename,
+      transcription_only,
+      duration_seconds,
+      sample_rate,
+      bit_depth,
+      channels,
+      format: request_format,
+    } = await req.json();
 
     if (!filename || !file_url) {
       return new Response(
@@ -26,9 +37,28 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Determine audio format from filename
+    // Determine audio format and normalize optional metadata
     const ext = filename.split(".").pop()?.toLowerCase() || "wav";
-    const format = ext === "mp3" ? "mp3" : ext === "m4a" ? "m4a" : ext === "ogg" ? "ogg" : "wav";
+    const derivedFormat = ext === "mp3" ? "mp3" : ext === "m4a" ? "m4a" : ext === "ogg" ? "ogg" : "wav";
+    const normalizedFormat = typeof request_format === "string" && request_format.trim().length > 0
+      ? request_format.toLowerCase()
+      : derivedFormat;
+    const normalizedDuration =
+      typeof duration_seconds === "number" && Number.isFinite(duration_seconds) && duration_seconds > 0
+        ? duration_seconds
+        : null;
+    const normalizedSampleRate =
+      typeof sample_rate === "number" && Number.isFinite(sample_rate) && sample_rate > 0
+        ? sample_rate
+        : 48000;
+    const normalizedBitDepth =
+      typeof bit_depth === "number" && Number.isFinite(bit_depth) && bit_depth > 0
+        ? bit_depth
+        : 16;
+    const normalizedChannels =
+      typeof channels === "number" && Number.isFinite(channels) && channels > 0
+        ? channels
+        : 2;
 
     // Create recording entry
     const { data: recording, error: insertError } = await supabase
@@ -43,11 +73,11 @@ serve(async (req) => {
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
-        duration_seconds: duration_seconds || null,
-        sample_rate: 48000,
-        bit_depth: 16,
-        channels: 2,
-        format,
+        duration_seconds: normalizedDuration,
+        sample_rate: normalizedSampleRate,
+        bit_depth: normalizedBitDepth,
+        channels: normalizedChannels,
+        format: normalizedFormat,
         status: "completed",
         quality_status: transcription_only ? "transcription-only" : "pending",
         transcription_status: "pending",
