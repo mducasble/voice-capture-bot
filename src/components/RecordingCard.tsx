@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isSpeakerTranscriptOpen, setIsSpeakerTranscriptOpen] = useState(false);
   const [isWaveformOpen, setIsWaveformOpen] = useState(false);
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
+  const [metadataDuration, setMetadataDuration] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
@@ -250,17 +251,56 @@ export function RecordingCard({ recording }: RecordingCardProps) {
     setIsPlaying(!isPlaying);
   };
 
+  useEffect(() => {
+    if (!recording.file_url) {
+      setMetadataDuration(null);
+      return;
+    }
+
+    let canceled = false;
+    const metadataAudio = document.createElement("audio");
+    metadataAudio.preload = "metadata";
+
+    metadataAudio.onloadedmetadata = () => {
+      if (canceled) return;
+      const value = Number(metadataAudio.duration);
+      setMetadataDuration(Number.isFinite(value) && value > 0 ? value : null);
+    };
+
+    metadataAudio.onerror = () => {
+      if (!canceled) setMetadataDuration(null);
+    };
+
+    metadataAudio.src = recording.file_url;
+
+    return () => {
+      canceled = true;
+      metadataAudio.removeAttribute("src");
+      metadataAudio.load();
+    };
+  }, [recording.file_url]);
+
   // Calculate duration from file metadata when duration_seconds is missing
   const getEffectiveDuration = (): number | null => {
-    if (recording.duration_seconds && recording.duration_seconds > 0) {
-      return recording.duration_seconds;
+    const explicitDuration = Number(recording.duration_seconds);
+    if (Number.isFinite(explicitDuration) && explicitDuration > 0) {
+      return explicitDuration;
     }
-    // Estimate from WAV file: size / (sample_rate * channels * bytes_per_sample)
+
+    if (metadataDuration && metadataDuration > 0) {
+      return metadataDuration;
+    }
+
+    const isWav = (recording.format || "").toLowerCase() === "wav";
+    if (!isWav) {
+      return null;
+    }
+
+    // Estimate only for PCM WAV: size / (sample_rate * channels * bytes_per_sample)
     if (recording.file_size_bytes && recording.sample_rate && recording.channels && recording.bit_depth) {
       const bytesPerSample = recording.bit_depth / 8;
       const bytesPerSecond = recording.sample_rate * recording.channels * bytesPerSample;
       if (bytesPerSecond > 0) {
-        // Subtract ~44 bytes WAV header
         const dataBytes = Math.max(0, recording.file_size_bytes - 44);
         return dataBytes / bytesPerSecond;
       }

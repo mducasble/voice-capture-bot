@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { getAudioMetadata, type AudioMetadata } from "@/lib/audioMetadata";
 
 interface SpeakerFile {
   id: string;
@@ -167,20 +168,6 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
 
   const canSubmit = speakerFiles.length >= 2 && speakerFiles.every((sf) => sf.speakerName.trim());
 
-  // Get audio duration using Web Audio API
-  const getAudioDuration = async (file: File | Blob): Promise<number | null> => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const audioContext = new AudioContext();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      const duration = audioBuffer.duration;
-      await audioContext.close();
-      return duration;
-    } catch (e) {
-      console.warn("Could not decode audio for duration:", e);
-      return null;
-    }
-  };
 
   const handleUpload = async () => {
     if (!canSubmit) return;
@@ -204,8 +191,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         const filename = `multi_${timestamp}_${sf.speakerName.replace(/\s+/g, "_")}.${ext}`;
         const storagePath = `uploads/${sessionId}/${filename}`;
 
-        // Calculate duration
-        const duration = await getAudioDuration(sf.file);
+        const audioMetadata = await getAudioMetadata(sf.file, sf.file.name);
 
         const { error: uploadError } = await supabase.storage
           .from("voice-recordings")
@@ -225,7 +211,11 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
             filename,
             file_url: urlData.publicUrl,
             file_size_bytes: sf.file.size,
-            duration_seconds: duration,
+            duration_seconds: audioMetadata.durationSeconds,
+            sample_rate: audioMetadata.sampleRate ?? 48000,
+            bit_depth: audioMetadata.bitDepth ?? 16,
+            channels: audioMetadata.channels ?? 2,
+            format: audioMetadata.format ?? ext.toLowerCase(),
             session_id: sessionId,
             recording_type: "individual",
             discord_user_id: `manual_${sf.id}`,
@@ -256,18 +246,18 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
       setUploadProgress(55);
       let mixedBlob: Blob;
       let mixedFileSize: number;
-      let mixedDuration: number | null = null;
+      let mixedMetadata: AudioMetadata | null = null;
 
       if (mixedFile) {
         setCurrentStep("Enviando arquivo combinado...");
         mixedBlob = mixedFile;
         mixedFileSize = mixedFile.size;
-        mixedDuration = await getAudioDuration(mixedFile);
+        mixedMetadata = await getAudioMetadata(mixedFile, mixedFile.name);
       } else if (autoMix) {
         setCurrentStep("Combinando áudios automaticamente...");
         mixedBlob = await mixAudioFiles(speakerFiles.map((sf) => sf.file));
         mixedFileSize = mixedBlob.size;
-        mixedDuration = await getAudioDuration(mixedBlob);
+        mixedMetadata = await getAudioMetadata(mixedBlob, "session_auto_mix.wav");
       } else {
         // No mixed file - create metadata-only record (legacy behavior)
         mixedBlob = null as unknown as Blob;
@@ -304,7 +294,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           filename: mixedFilename,
           file_url: mixedFileUrl,
           file_size_bytes: mixedFileSize || null,
-          duration_seconds: mixedDuration,
+          duration_seconds: mixedMetadata?.durationSeconds ?? null,
           session_id: sessionId,
           recording_type: "mixed",
           discord_user_id: "manual_upload",
@@ -316,9 +306,10 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           status: "completed",
           transcription_status: "pending",
           transcription_elevenlabs_status: "pending",
-          sample_rate: mixedBlob ? 48000 : 44100,
-          bit_depth: 16,
-          channels: mixedBlob ? 1 : 2,
+          sample_rate: mixedMetadata?.sampleRate ?? (mixedBlob ? 48000 : 44100),
+          bit_depth: mixedMetadata?.bitDepth ?? 16,
+          channels: mixedMetadata?.channels ?? (mixedBlob ? 1 : 2),
+          format: mixedMetadata?.format ?? "wav",
           metadata: {
             source: "manual_multi_speaker",
             mixed_source: mixedFile ? "user_uploaded" : autoMix ? "auto_generated" : "none",
