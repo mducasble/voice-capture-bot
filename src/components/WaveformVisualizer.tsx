@@ -59,9 +59,10 @@ export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }
         throw new Error(`HTTP ${response.status}`);
       }
 
-      // Skip analysis for very large files (>100MB) to avoid browser OOM
+      // Skip analysis for large files to avoid browser OOM crashes
+      const MAX_BYTES = 30 * 1024 * 1024; // 30MB limit
       const contentLength = response.headers.get('content-length');
-      if (contentLength && parseInt(contentLength, 10) > 100 * 1024 * 1024) {
+      if (contentLength && parseInt(contentLength, 10) > MAX_BYTES) {
         console.warn("Audio file too large for in-browser analysis, skipping");
         setWaveformData(null);
         setIsLoading(false);
@@ -69,6 +70,14 @@ export function WaveformVisualizer({ audioUrl, snrDb, mosScore, className = "" }
       }
       
       const arrayBuffer = await response.arrayBuffer();
+
+      // Double-check actual size (content-length may be absent)
+      if (arrayBuffer.byteLength > MAX_BYTES) {
+        console.warn(`Audio buffer ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)}MB exceeds limit, skipping`);
+        setWaveformData(null);
+        setIsLoading(false);
+        return;
+      }
       
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
