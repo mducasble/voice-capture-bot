@@ -63,6 +63,21 @@ export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: Aud
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
+  // Get audio duration using Web Audio API
+  const getAudioDuration = async (file: File): Promise<number | null> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const duration = audioBuffer.duration;
+      await audioContext.close();
+      return duration;
+    } catch (e) {
+      console.warn("Could not decode audio for duration:", e);
+      return null;
+    }
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -70,6 +85,9 @@ export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: Aud
     setUploadProgress(10);
 
     try {
+      // Calculate duration from file
+      const duration = await getAudioDuration(selectedFile);
+
       // Generate unique filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const ext = selectedFile.name.split(".").pop() || "wav";
@@ -106,6 +124,7 @@ export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: Aud
           file_size_bytes: selectedFile.size,
           original_filename: selectedFile.name,
           transcription_only: transcriptionOnly,
+          duration_seconds: duration,
         },
       });
 
