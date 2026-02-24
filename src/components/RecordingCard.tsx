@@ -184,9 +184,11 @@ export function RecordingCard({ recording }: RecordingCardProps) {
       const letterCode = (n: number) => String.fromCharCode(65 + n);
       
       const formatTs = (s: number) => {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
+        const hours = Math.floor(s / 3600);
+        const mins = Math.floor((s % 3600) / 60);
+        const secs = Math.floor(s % 60);
+        const ms = Math.round((s % 1) * 1000);
+        return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
       };
       const wordSegments = metadata.elevenlabs_words
         .filter(w => w.text?.trim())
