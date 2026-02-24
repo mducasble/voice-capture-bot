@@ -170,20 +170,39 @@ serve(async (req) => {
             );
           }
 
-          // Schedule a delayed re-invocation to start transcription after chunks are generated
-          const retryPromise = (async () => {
-            // Wait for process-audio to generate chunks (typically ~60s for large files)
-            await new Promise(r => setTimeout(r, 90_000));
-            console.log(`Re-invoking transcribe-elevenlabs for ${recording_id} after chunk generation delay`);
-            await supabase.functions.invoke("transcribe-elevenlabs", {
-              body: { recording_id, mode: "chunks" },
-            });
-          })();
+          // Poll every 30s until chunks are ready, then start transcription
+          const MAX_POLLS = 20; // 20 × 30s = 10 minutes max wait
+          const POLL_INTERVAL_MS = 30_000;
+
+          const pollAndTranscribe = async () => {
+            for (let attempt = 1; attempt <= MAX_POLLS; attempt++) {
+              await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+              console.log(`[poll ${attempt}/${MAX_POLLS}] Checking chunks for ${recording_id}...`);
+
+              try {
+                const tempState = await buildInitialChunkState(supabase, recording_id);
+                if (tempState && tempState.chunkNames.length > 0) {
+                  console.log(`Chunks ready for ${recording_id} (${tempState.chunkNames.length} chunks). Starting transcription.`);
+                  await supabase.functions.invoke("transcribe-elevenlabs", {
+                    body: { recording_id, mode: "chunks" },
+                  });
+                  return;
+                }
+              } catch {
+                console.log(`[poll ${attempt}] No chunks yet for ${recording_id}`);
+              }
+            }
+            console.error(`Timeout waiting for chunks for ${recording_id} after ${MAX_POLLS} polls`);
+            await supabase
+              .from("voice_recordings")
+              .update({ transcription_elevenlabs_status: "failed" })
+              .eq("id", recording_id);
+          };
 
           // @ts-ignore EdgeRuntime available
           if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
             // @ts-ignore
-            EdgeRuntime.waitUntil(retryPromise);
+            EdgeRuntime.waitUntil(pollAndTranscribe());
           }
 
           return json(
