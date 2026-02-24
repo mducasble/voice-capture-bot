@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
-import { Upload, Loader2, FileAudio, X, Plus, Users, Mic } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Upload, Loader2, FileAudio, X, Plus, Users, Mic, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,10 +23,13 @@ interface MultiSpeakerUploadProps {
 
 export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps) {
   const [speakerFiles, setSpeakerFiles] = useState<SpeakerFile[]>([]);
+  const [mixedFile, setMixedFile] = useState<File | null>(null);
+  const [autoMix, setAutoMix] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mixedFileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const isValidAudioFile = (file: File) => {
@@ -46,9 +51,21 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         description: "Formatos suportados: WAV, MP3, M4A, OGG, MKV",
       });
     }
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleMixedFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && isValidAudioFile(file)) {
+      setMixedFile(file);
+      setAutoMix(false);
+    } else if (file) {
+      toast.error("Arquivo inválido");
+    }
+    if (mixedFileInputRef.current) {
+      mixedFileInputRef.current.value = "";
     }
   };
 
@@ -69,6 +86,85 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
+  /**
+   * Mix individual audio files into a single combined WAV using Web Audio API.
+   * Decodes all files, mixes them sample-by-sample, and encodes to 48kHz 16-bit mono WAV.
+   */
+  const mixAudioFiles = useCallback(async (files: File[]): Promise<Blob> => {
+    const audioContext = new AudioContext({ sampleRate: 48000 });
+
+    // Decode all files
+    const buffers = await Promise.all(
+      files.map(async (file) => {
+        const arrayBuffer = await file.arrayBuffer();
+        return audioContext.decodeAudioData(arrayBuffer);
+      })
+    );
+
+    // Find the longest duration
+    const maxLength = Math.max(...buffers.map((b) => b.length));
+
+    // Mix all buffers into a single mono channel
+    const mixed = new Float32Array(maxLength);
+    for (const buffer of buffers) {
+      const channels = buffer.numberOfChannels;
+      for (let ch = 0; ch < channels; ch++) {
+        const channelData = buffer.getChannelData(ch);
+        for (let i = 0; i < channelData.length; i++) {
+          mixed[i] += channelData[i] / channels;
+        }
+      }
+    }
+
+    // Normalize to prevent clipping
+    const streamCount = buffers.length;
+    const gain = Math.min(1, 1.5 / Math.sqrt(streamCount));
+    for (let i = 0; i < mixed.length; i++) {
+      mixed[i] = Math.max(-1, Math.min(1, mixed[i] * gain));
+    }
+
+    // Convert to 16-bit PCM WAV
+    const pcm = new Int16Array(mixed.length);
+    for (let i = 0; i < mixed.length; i++) {
+      const s = mixed[i];
+      pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+
+    const sampleRate = 48000;
+    const numChannels = 1;
+    const byteRate = sampleRate * numChannels * 2;
+    const blockAlign = numChannels * 2;
+    const dataSize = pcm.length * 2;
+    const bufferSize = 44 + dataSize;
+    const wavBuffer = new ArrayBuffer(bufferSize);
+    const view = new DataView(wavBuffer);
+
+    const writeStr = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, "data");
+    view.setUint32(40, dataSize, true);
+
+    for (let i = 0; i < pcm.length; i++) {
+      view.setInt16(44 + i * 2, pcm[i], true);
+    }
+
+    await audioContext.close();
+    return new Blob([wavBuffer], { type: "audio/wav" });
+  }, []);
+
   const canSubmit = speakerFiles.length >= 2 && speakerFiles.every((sf) => sf.speakerName.trim());
 
   const handleUpload = async () => {
@@ -82,10 +178,10 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const uploadedRecordings: { id: string; speakerName: string }[] = [];
 
-      // Upload each file and register as individual recording
+      // Upload each individual file
       for (let i = 0; i < speakerFiles.length; i++) {
         const sf = speakerFiles[i];
-        const progress = Math.round(((i + 0.5) / speakerFiles.length) * 70);
+        const progress = Math.round(((i + 0.5) / speakerFiles.length) * 50);
         setUploadProgress(progress);
         setCurrentStep(`Enviando ${sf.speakerName}...`);
 
@@ -93,7 +189,6 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         const filename = `multi_${timestamp}_${sf.speakerName.replace(/\s+/g, "_")}.${ext}`;
         const storagePath = `uploads/${sessionId}/${filename}`;
 
-        // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from("voice-recordings")
           .upload(storagePath, sf.file);
@@ -102,12 +197,10 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           throw new Error(`Upload falhou para ${sf.speakerName}: ${uploadError.message}`);
         }
 
-        // Get public URL
         const { data: urlData } = supabase.storage
           .from("voice-recordings")
           .getPublicUrl(storagePath);
 
-        // Register as individual recording
         const { data: recording, error: insertError } = await supabase
           .from("voice_recordings")
           .insert({
@@ -140,14 +233,55 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         uploadedRecordings.push({ id: recording.id, speakerName: sf.speakerName });
       }
 
-      setUploadProgress(75);
-      setCurrentStep("Criando registro principal...");
+      // Handle mixed file: user-provided or auto-generated
+      setUploadProgress(55);
+      let mixedBlob: Blob;
+      let mixedFileSize: number;
 
-      // Create the "mixed" recording that will hold the aggregated transcription
-      const { data: mixedRecording, error: mixedError } = await supabase
+      if (mixedFile) {
+        setCurrentStep("Enviando arquivo combinado...");
+        mixedBlob = mixedFile;
+        mixedFileSize = mixedFile.size;
+      } else if (autoMix) {
+        setCurrentStep("Combinando áudios automaticamente...");
+        mixedBlob = await mixAudioFiles(speakerFiles.map((sf) => sf.file));
+        mixedFileSize = mixedBlob.size;
+      } else {
+        // No mixed file - create metadata-only record (legacy behavior)
+        mixedBlob = null as unknown as Blob;
+        mixedFileSize = 0;
+      }
+
+      setUploadProgress(65);
+      setCurrentStep("Registrando sessão...");
+
+      const mixedFilename = `session_${timestamp}.wav`;
+      let mixedFileUrl: string | null = null;
+
+      if (mixedBlob) {
+        const mixedStoragePath = `uploads/${sessionId}/${mixedFilename}`;
+        const { error: mixUploadError } = await supabase.storage
+          .from("voice-recordings")
+          .upload(mixedStoragePath, mixedBlob);
+
+        if (mixUploadError) {
+          throw new Error(`Upload do áudio combinado falhou: ${mixUploadError.message}`);
+        }
+
+        const { data: mixedUrlData } = supabase.storage
+          .from("voice-recordings")
+          .getPublicUrl(mixedStoragePath);
+
+        mixedFileUrl = mixedUrlData.publicUrl;
+      }
+
+      // Create the mixed recording record
+      const { error: mixedError } = await supabase
         .from("voice_recordings")
         .insert({
-          filename: `session_${timestamp}.wav`,
+          filename: mixedFilename,
+          file_url: mixedFileUrl,
+          file_size_bytes: mixedFileSize || null,
           session_id: sessionId,
           recording_type: "mixed",
           discord_user_id: "manual_upload",
@@ -159,8 +293,12 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           status: "completed",
           transcription_status: "pending",
           transcription_elevenlabs_status: "pending",
+          sample_rate: mixedBlob ? 48000 : 44100,
+          bit_depth: 16,
+          channels: mixedBlob ? 1 : 2,
           metadata: {
             source: "manual_multi_speaker",
+            mixed_source: mixedFile ? "user_uploaded" : autoMix ? "auto_generated" : "none",
             speakers: speakerFiles.map((sf) => ({
               username: sf.speakerName,
               user_id: `manual_${sf.id}`,
@@ -176,10 +314,10 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         throw new Error(`Criação da sessão falhou: ${mixedError.message}`);
       }
 
-      setUploadProgress(85);
+      setUploadProgress(80);
       setCurrentStep("Iniciando processamento de áudio...");
 
-      // Trigger process-audio for each individual recording to generate chunks
+      // Trigger process-audio for each individual recording
       for (const rec of uploadedRecordings) {
         const { data: recData } = await supabase
           .from("voice_recordings")
@@ -197,12 +335,14 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
       setUploadProgress(100);
       setCurrentStep("Concluído!");
 
+      const mixMethod = mixedFile ? "upload manual" : autoMix ? "auto-combinado" : "sem arquivo";
       toast.success("Arquivos enviados com sucesso!", {
-        description: `${speakerFiles.length} speakers registrados. Use "Agregar Transcrições" após o processamento.`,
+        description: `${speakerFiles.length} speakers registrados. Mixed track: ${mixMethod}.`,
       });
 
-      // Reset state
       setSpeakerFiles([]);
+      setMixedFile(null);
+      setAutoMix(true);
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
       onUploadComplete?.();
     } catch (error) {
@@ -219,9 +359,9 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
 
   const clearAll = () => {
     setSpeakerFiles([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    setMixedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (mixedFileInputRef.current) mixedFileInputRef.current.value = "";
   };
 
   return (
@@ -296,6 +436,14 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           className="hidden"
         />
 
+        <input
+          ref={mixedFileInputRef}
+          type="file"
+          accept="audio/*,video/x-matroska,.wav,.mp3,.m4a,.ogg,.mkv"
+          onChange={handleMixedFileSelect}
+          className="hidden"
+        />
+
         {!isUploading && (
           <Button
             variant="outline"
@@ -305,6 +453,61 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Speaker
           </Button>
+        )}
+
+        {/* Mixed track options - show when at least 2 speakers added */}
+        {speakerFiles.length >= 2 && !isUploading && (
+          <div className="space-y-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Music className="h-4 w-4 text-primary" />
+                Áudio Combinado (Mixed Track)
+              </Label>
+            </div>
+
+            {mixedFile ? (
+              <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
+                <FileAudio className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-sm truncate flex-1">{mixedFile.name}</span>
+                <Badge variant="outline" className="text-xs">
+                  {formatFileSize(mixedFile.size)}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => {
+                    setMixedFile(null);
+                    setAutoMix(true);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="auto-mix"
+                    checked={autoMix}
+                    onCheckedChange={setAutoMix}
+                  />
+                  <Label htmlFor="auto-mix" className="text-xs text-muted-foreground cursor-pointer">
+                    Combinar automaticamente os áudios individuais
+                  </Label>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => mixedFileInputRef.current?.click()}
+                >
+                  <Upload className="h-3 w-3 mr-1" />
+                  Ou enviar arquivo combinado manualmente
+                </Button>
+              </div>
+            )}
+          </div>
         )}
 
         {isUploading && (
