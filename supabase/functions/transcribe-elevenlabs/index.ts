@@ -170,6 +170,22 @@ serve(async (req) => {
             );
           }
 
+          // Schedule a delayed re-invocation to start transcription after chunks are generated
+          const retryPromise = (async () => {
+            // Wait for process-audio to generate chunks (typically ~60s for large files)
+            await new Promise(r => setTimeout(r, 90_000));
+            console.log(`Re-invoking transcribe-elevenlabs for ${recording_id} after chunk generation delay`);
+            await supabase.functions.invoke("transcribe-elevenlabs", {
+              body: { recording_id, mode: "chunks" },
+            });
+          })();
+
+          // @ts-ignore EdgeRuntime available
+          if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+            // @ts-ignore
+            EdgeRuntime.waitUntil(retryPromise);
+          }
+
           return json(
             {
               success: true,
