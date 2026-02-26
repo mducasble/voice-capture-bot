@@ -46,7 +46,7 @@ interface SectionDraft {
   name: string;
   description: string;
   prompt_text: string;
-  target_recordings: number;
+  target_hours: number;
 }
 
 export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProps) {
@@ -66,7 +66,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   const [clientId, setClientId] = useState<string>("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [targetRecordings, setTargetRecordings] = useState<number>(0);
+  const [targetHours, setTargetHours] = useState<number>(0);
   const [isActive, setIsActive] = useState(true);
 
   // Audio specs
@@ -95,7 +95,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setClientId(campaign.client_id || "");
       setStartDate(campaign.start_date || "");
       setEndDate(campaign.end_date || "");
-      setTargetRecordings(campaign.target_recordings || 0);
+      setTargetHours(campaign.target_hours || 0);
       setIsActive(campaign.is_active ?? true);
       setSampleRate(campaign.audio_sample_rate || 48000);
       setBitDepth(campaign.audio_bit_depth || 16);
@@ -112,7 +112,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
           name: s.name,
           description: s.description || "",
           prompt_text: s.prompt_text || "",
-          target_recordings: s.target_recordings || 0,
+          target_hours: s.target_hours || 0,
         })) || []
       );
     } else if (!campaignId) {
@@ -122,7 +122,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setClientId("");
       setStartDate("");
       setEndDate("");
-      setTargetRecordings(0);
+      setTargetHours(0);
       setIsActive(true);
       setSampleRate(48000);
       setBitDepth(16);
@@ -150,7 +150,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         client_id: clientId || null,
         start_date: startDate || null,
         end_date: endDate || null,
-        target_recordings: targetRecordings || null,
+        target_hours: targetHours || null,
         is_active: isActive,
         audio_sample_rate: sampleRate,
         audio_bit_depth: bitDepth,
@@ -231,7 +231,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   const addSection = () => {
     setSections((prev) => [
       ...prev,
-      { name: "", description: "", prompt_text: "", target_recordings: 0 },
+      { name: "", description: "", prompt_text: "", target_hours: 0 },
     ]);
   };
 
@@ -355,14 +355,18 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="target">Meta de Gravações</Label>
+                  <Label htmlFor="target">Meta de Horas</Label>
                   <Input
                     id="target"
                     type="number"
-                    value={targetRecordings || ""}
-                    onChange={(e) => setTargetRecordings(parseInt(e.target.value) || 0)}
-                    placeholder="0"
+                    step="0.5"
+                    value={targetHours || ""}
+                    onChange={(e) => setTargetHours(parseFloat(e.target.value) || 0)}
+                    placeholder="Ex: 100"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Total de horas de áudio a serem coletadas
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -565,9 +569,10 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
 
                         <Input
                           type="number"
-                          value={section.target_recordings || ""}
-                          onChange={(e) => updateSection(index, "target_recordings", parseInt(e.target.value) || 0)}
-                          placeholder="Meta de gravações para esta seção"
+                          step="0.5"
+                          value={section.target_hours || ""}
+                          onChange={(e) => updateSection(index, "target_hours", parseFloat(e.target.value) || 0)}
+                          placeholder="Meta de horas para esta seção"
                         />
                       </div>
                     ))}

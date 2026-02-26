@@ -126,10 +126,10 @@ export default function Campaigns() {
                   )}
 
                   {/* Target */}
-                  {campaign.target_recordings && (
+                  {campaign.target_hours && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Target className="h-3 w-3" />
-                      Meta: {campaign.target_recordings.toLocaleString()} gravações
+                      Meta: {campaign.target_hours} horas
                     </div>
                   )}
 
