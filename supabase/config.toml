@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.test-room-audio]
 verify_jwt = false
+
+[functions.list-campaigns]
+verify_jwt = false
+
+[functions.upload-campaign-audio]
+verify_jwt = false
