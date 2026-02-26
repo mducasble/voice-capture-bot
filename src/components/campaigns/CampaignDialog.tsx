@@ -272,7 +272,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               <TabsTrigger value="sections">Seções</TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 mt-4">
+            <ScrollArea className="flex-1 mt-4 max-h-[55vh]">
               {/* General Tab */}
               <TabsContent value="general" className="space-y-4 pr-4">
                 <div className="space-y-2">
