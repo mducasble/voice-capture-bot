@@ -38,7 +38,7 @@ export interface CampaignSection {
   name: string;
   description: string | null;
   prompt_text: string | null;
-  target_recordings: number | null;
+  target_hours: number | null;
   sort_order: number | null;
   is_active: boolean | null;
   created_at: string;
@@ -52,7 +52,7 @@ export interface Campaign {
   client_id: string | null;
   start_date: string | null;
   end_date: string | null;
-  target_recordings: number | null;
+  target_hours: number | null;
   is_active: boolean | null;
   audio_sample_rate: number | null;
   audio_bit_depth: number | null;
@@ -255,7 +255,7 @@ export function useCreateCampaign() {
           client_id: campaign.client_id,
           start_date: campaign.start_date,
           end_date: campaign.end_date,
-          target_recordings: campaign.target_recordings,
+          target_hours: campaign.target_hours,
           is_active: campaign.is_active ?? true,
           audio_sample_rate: campaign.audio_sample_rate,
           audio_bit_depth: campaign.audio_bit_depth,
@@ -306,7 +306,7 @@ export function useCreateCampaign() {
               name: section.name,
               description: section.description,
               prompt_text: section.prompt_text,
-              target_recordings: section.target_recordings,
+              target_hours: section.target_hours,
               sort_order: index,
               is_active: true,
             }))
@@ -349,7 +349,7 @@ export function useUpdateCampaign() {
           client_id: campaign.client_id,
           start_date: campaign.start_date,
           end_date: campaign.end_date,
-          target_recordings: campaign.target_recordings,
+          target_hours: campaign.target_hours,
           is_active: campaign.is_active,
           audio_sample_rate: campaign.audio_sample_rate,
           audio_bit_depth: campaign.audio_bit_depth,
@@ -402,7 +402,7 @@ export function useUpdateCampaign() {
               name: section.name,
               description: section.description,
               prompt_text: section.prompt_text,
-              target_recordings: section.target_recordings,
+              target_hours: section.target_hours,
               sort_order: index,
               is_active: true,
             }))

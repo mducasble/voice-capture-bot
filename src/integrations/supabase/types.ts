@@ -96,7 +96,7 @@ export type Database = {
           name: string
           prompt_text: string | null
           sort_order: number | null
-          target_recordings: number | null
+          target_hours: number | null
           updated_at: string
         }
         Insert: {
@@ -108,7 +108,7 @@ export type Database = {
           name: string
           prompt_text?: string | null
           sort_order?: number | null
-          target_recordings?: number | null
+          target_hours?: number | null
           updated_at?: string
         }
         Update: {
@@ -120,7 +120,7 @@ export type Database = {
           name?: string
           prompt_text?: string | null
           sort_order?: number | null
-          target_recordings?: number | null
+          target_hours?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -150,7 +150,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           start_date: string | null
-          target_recordings: number | null
+          target_hours: number | null
           updated_at: string
         }
         Insert: {
@@ -169,7 +169,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           start_date?: string | null
-          target_recordings?: number | null
+          target_hours?: number | null
           updated_at?: string
         }
         Update: {
@@ -188,7 +188,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           start_date?: string | null
-          target_recordings?: number | null
+          target_hours?: number | null
           updated_at?: string
         }
         Relationships: [
