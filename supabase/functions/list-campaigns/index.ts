@@ -17,13 +17,7 @@ serve(async (req) => {
     const botApiKey = req.headers.get("x-bot-api-key");
     const expectedApiKey = Deno.env.get("BOT_API_KEY");
 
-    console.log("DEBUG auth check:", {
-      receivedKeyLength: botApiKey?.length ?? 0,
-      receivedKeyPrefix: botApiKey?.slice(0, 8) ?? "(none)",
-      expectedKeyLength: expectedApiKey?.length ?? 0,
-      expectedKeyPrefix: expectedApiKey?.slice(0, 8) ?? "(none)",
-      match: botApiKey === expectedApiKey,
-    });
+    // Debug removed - auth working
 
     if (!botApiKey || botApiKey !== expectedApiKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
