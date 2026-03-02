@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Users, User, Clock, HardDrive, Hash, ChevronDown, ChevronUp, Calendar, Layers } from "lucide-react";
+import { Users, User, Clock, HardDrive, Hash, ChevronDown, ChevronUp, Calendar, Layers, Pencil } from "lucide-react";
 import { RecordingCard } from "@/components/RecordingCard";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { Recording } from "@/hooks/useRecordings";
 
 interface SessionGroupProps {
@@ -14,6 +18,7 @@ interface SessionGroupProps {
 
 export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const queryClient = useQueryClient();
 
   // Separate mixed and individual recordings
   const mixedRecording = recordings.find(r => r.recording_type === 'mixed');
@@ -24,6 +29,14 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
   const channelName = firstRecording?.discord_channel_name || "Unknown Channel";
   const guildName = firstRecording?.discord_guild_name || "Unknown Server";
   const createdAt = firstRecording?.created_at;
+
+  // Tema: use metadata.tema from mixedRecording or firstRecording, fallback to channelName
+  const temaSource = mixedRecording || firstRecording;
+  const savedTema = (temaSource?.metadata as Record<string, unknown>)?.tema as string | undefined;
+
+  const [isEditingTema, setIsEditingTema] = useState(false);
+  const [temaValue, setTemaValue] = useState(savedTema || channelName);
+  const temaInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate totals
   const totalDuration = recordings.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
@@ -45,6 +58,29 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
+
+  const handleSaveTema = useCallback(async () => {
+    setIsEditingTema(false);
+    const trimmed = temaValue.trim() || channelName;
+    setTemaValue(trimmed);
+    const targetId = temaSource?.id;
+    if (!targetId) return;
+    try {
+      const { data } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', targetId)
+        .single();
+      const currentMeta = (data?.metadata as Record<string, unknown>) || {};
+      await supabase
+        .from('voice_recordings')
+        .update({ metadata: { ...currentMeta, tema: trimmed } })
+        .eq('id', targetId);
+      queryClient.invalidateQueries({ queryKey: ['recordings'] });
+    } catch {
+      toast.error('Erro ao salvar tema');
+    }
+  }, [temaValue, channelName, temaSource?.id, queryClient]);
 
   // If there's no session_id, it's a standalone recording
   if (!sessionId || recordings.length === 1) {
@@ -70,7 +106,38 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{channelName}</span>
+                    {isEditingTema ? (
+                      <Input
+                        ref={temaInputRef}
+                        value={temaValue}
+                        onChange={(e) => setTemaValue(e.target.value)}
+                        onBlur={handleSaveTema}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter') handleSaveTema();
+                          if (e.key === 'Escape') {
+                            setIsEditingTema(false);
+                            setTemaValue(savedTema || channelName);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-7 text-sm font-medium max-w-xs"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="font-medium text-foreground flex items-center gap-1.5 cursor-pointer group"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsEditingTema(true);
+                          setTimeout(() => temaInputRef.current?.select(), 50);
+                        }}
+                        title="Clique para editar o tema"
+                      >
+                        {temaValue}
+                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    )}
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                       Session
                     </Badge>
