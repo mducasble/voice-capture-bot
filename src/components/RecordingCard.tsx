@@ -1210,6 +1210,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       words={elWords}
                       language={recording.language || 'UNK'}
                       filename={`transcript-${recording.discord_channel_name || recording.id}.json`}
+                      recordingId={recording.id}
                     >
                       <Button
                         variant="ghost"
