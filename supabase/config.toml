@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.upload-campaign-audio]
 verify_jwt = false
+
+[functions.detect-emotions]
+verify_jwt = false
