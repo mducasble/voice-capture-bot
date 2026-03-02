@@ -427,6 +427,12 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     {recording.language.toUpperCase()}
                   </Badge>
                 )}
+                {/* Topic Badge */}
+                {recording.topic && (
+                  <Badge variant="outline" className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30">
+                    {recording.topic.emoji || '💬'} {recording.topic.name}
+                  </Badge>
+                )}
                 {/* Transcription Status Badge */}
                 {getTranscriptionStatusBadge()}
                 {/* Quality Badges */}
