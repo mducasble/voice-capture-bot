@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +27,7 @@ interface TranscriptJsonDialogProps {
   words: WordData[];
   language?: string;
   filename: string;
+  recordingId?: string;
   children: React.ReactNode;
 }
 
@@ -34,6 +35,7 @@ export function TranscriptJsonDialog({
   words,
   language = "UNK",
   filename,
+  recordingId,
   children,
 }: TranscriptJsonDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,6 +45,26 @@ export function TranscriptJsonDialog({
   const [isEnriching, setIsEnriching] = useState(false);
 
   const baseTurns = useMemo(() => buildSpeakerTurns(words, language), [words, language]);
+
+  // Load saved emotions from metadata when dialog opens
+  useEffect(() => {
+    if (!isOpen || !recordingId) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('voice_recordings')
+          .select('metadata')
+          .eq('id', recordingId)
+          .single();
+        const saved = (data?.metadata as Record<string, unknown>)?.transcript_emotions as string[] | undefined;
+        if (saved && Array.isArray(saved) && saved.length > 0) {
+          setEnrichedEmotions(saved);
+        }
+      } catch {
+        // ignore load errors
+      }
+    })();
+  }, [isOpen, recordingId]);
 
   // Apply enriched emotions if available
   const turns: SpeakerTurnSegment[] = useMemo(() => {
@@ -61,6 +83,25 @@ export function TranscriptJsonDialog({
     const wrapper = { transcriptJson: turns };
     return JSON.stringify(wrapper, null, 2);
   }, [turns]);
+
+  const saveEmotionsToMetadata = useCallback(async (emotions: string[]) => {
+    if (!recordingId) return;
+    try {
+      // Fetch current metadata to merge
+      const { data } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', recordingId)
+        .single();
+      const currentMeta = (data?.metadata as Record<string, unknown>) || {};
+      await supabase
+        .from('voice_recordings')
+        .update({ metadata: { ...currentMeta, transcript_emotions: emotions } })
+        .eq('id', recordingId);
+    } catch (err) {
+      console.error("Failed to save emotions:", err);
+    }
+  }, [recordingId]);
 
   const handleEnrichEmotions = useCallback(async () => {
     setIsEnriching(true);
@@ -83,6 +124,7 @@ export function TranscriptJsonDialog({
 
       if (data?.emotions && Array.isArray(data.emotions)) {
         setEnrichedEmotions(data.emotions);
+        await saveEmotionsToMetadata(data.emotions);
         toast.success(`Emoções detectadas para ${data.emotions.length} turnos`);
       }
     } catch (err) {
@@ -91,7 +133,7 @@ export function TranscriptJsonDialog({
     } finally {
       setIsEnriching(false);
     }
-  }, [baseTurns]);
+  }, [baseTurns, saveEmotionsToMetadata]);
 
   const handleCopy = async () => {
     try {
@@ -122,7 +164,7 @@ export function TranscriptJsonDialog({
   }, [turns]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setEnrichedEmotions(null); setShowAll(false); } }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setShowAll(false); setEnrichedEmotions(null); } }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
