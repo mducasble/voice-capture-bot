@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine, ClipboardCheck, Sparkles } from "lucide-react";
+import { Play, Pause, Clock, HardDrive, Mic2, Hash, AlertTriangle, CheckCircle2, FileText, Loader2, ChevronDown, ChevronUp, Globe, Trash2, FileAudio, FileVolume2, RotateCcw, AudioLines, File, Users, User, Activity, UsersRound, Download, PlayCircle, Eraser, FlaskConical, RefreshCw, FileJson, StopCircle, BarChart3, ScanLine, ClipboardCheck, Sparkles, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRegenerateJson } from "@/hooks/useRegenerateJson";
 import type { Recording } from "@/hooks/useRecordings";
@@ -25,6 +25,10 @@ import { ChunkGenerationProgress } from "@/components/ChunkGenerationProgress";
 import { JsonPreviewDialog } from "@/components/JsonPreviewDialog";
 import { TranscriptJsonDialog } from "@/components/TranscriptJsonDialog";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +59,13 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const [isWaveformOpen, setIsWaveformOpen] = useState(false);
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
   const [metadataDuration, setMetadataDuration] = useState<number | null>(null);
+  const [isEditingTema, setIsEditingTema] = useState(false);
+  const [temaValue, setTemaValue] = useState(() => {
+    return (recording.metadata as Record<string, unknown>)?.tema as string || recording.discord_channel_name || '';
+  });
+  const temaInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const queryClient = useQueryClient();
   const deleteRecording = useDeleteRecording();
   const reprocessRecording = useReprocessRecording();
   const elevenLabsTranscription = useElevenLabsTranscription();
@@ -70,6 +80,27 @@ export function RecordingCard({ recording }: RecordingCardProps) {
   const reanalyzeEnhancedSampled = useReanalyzeAudio("sampled", "enhanced");
   const reanalyzeEnhancedFull = useReanalyzeAudio("full_segments", "enhanced");
   const enhanceAudio = useEnhanceAudio();
+
+  const handleSaveTema = useCallback(async () => {
+    setIsEditingTema(false);
+    const trimmed = temaValue.trim() || recording.discord_channel_name || 'Sem tema';
+    setTemaValue(trimmed);
+    try {
+      const { data } = await supabase
+        .from('voice_recordings')
+        .select('metadata')
+        .eq('id', recording.id)
+        .single();
+      const currentMeta = (data?.metadata as Record<string, unknown>) || {};
+      await supabase
+        .from('voice_recordings')
+        .update({ metadata: { ...currentMeta, tema: trimmed } })
+        .eq('id', recording.id);
+      queryClient.invalidateQueries({ queryKey: ['recordings'] });
+    } catch {
+      toast.error('Erro ao salvar tema');
+    }
+  }, [temaValue, recording.id, recording.discord_channel_name, queryClient]);
 
   // Check if transcription is incomplete (stopped midway)
   const incompleteInfo = getIncompleteTranscriptionInfo(recording);
@@ -389,14 +420,33 @@ export function RecordingCard({ recording }: RecordingCardProps) {
           <div className="flex-1 p-4 space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-medium text-foreground flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  {recording.discord_channel_name || "Unknown Channel"}
-                  <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
-                    {recording.id.split('-')[0]}
-                  </code>
-                </h3>
+              <div className="flex-1 min-w-0">
+                {isEditingTema ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      ref={temaInputRef}
+                      value={temaValue}
+                      onChange={(e) => setTemaValue(e.target.value)}
+                      onBlur={handleSaveTema}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTema(); if (e.key === 'Escape') { setIsEditingTema(false); setTemaValue((recording.metadata as Record<string, unknown>)?.tema as string || recording.discord_channel_name || ''); } }}
+                      className="h-7 text-sm font-medium max-w-xs"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <h3
+                    className="font-medium text-foreground flex items-center gap-2 cursor-pointer group"
+                    onClick={() => { setIsEditingTema(true); setTimeout(() => temaInputRef.current?.select(), 50); }}
+                    title="Clique para editar o tema"
+                  >
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{temaValue}</span>
+                    <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                      {recording.id.split('-')[0]}
+                    </code>
+                  </h3>
+                )}
                 <p className="text-sm text-muted-foreground">
                   {recording.discord_guild_name || "Unknown Server"} • by {recording.discord_username || "Unknown"}
                 </p>
@@ -425,12 +475,6 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                   <Badge variant="outline" className="flex items-center gap-1">
                     <Globe className="h-3 w-3" />
                     {recording.language.toUpperCase()}
-                  </Badge>
-                )}
-                {/* Topic Badge */}
-                {recording.topic && (
-                  <Badge variant="outline" className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30">
-                    {recording.topic.emoji || '💬'} {recording.topic.name}
                   </Badge>
                 )}
                 {/* Transcription Status Badge */}
