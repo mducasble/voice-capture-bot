@@ -23,6 +23,7 @@ import { SpeakerTranscript } from "@/components/SpeakerTranscript";
 import { SpeakerAggregationProgress } from "@/components/SpeakerAggregationProgress";
 import { ChunkGenerationProgress } from "@/components/ChunkGenerationProgress";
 import { JsonPreviewDialog } from "@/components/JsonPreviewDialog";
+import { TranscriptJsonDialog } from "@/components/TranscriptJsonDialog";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 import {
   AlertDialog,
@@ -1194,13 +1195,34 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                       variant="ghost"
                       size="sm"
                       className="text-accent hover:text-accent hover:bg-accent/10"
-                      title="Preview e download da transcrição JSON"
+                      title="Preview e download da transcrição JSON (word-level)"
                     >
                       <Download className="h-4 w-4 mr-1" />
                       JSON
                     </Button>
                   </JsonPreviewDialog>
                 )}
+                {(() => {
+                  const elWords = (recording.metadata as Record<string, unknown>)?.elevenlabs_words as Array<{ text: string; start: number; end: number; speaker?: string }> | undefined;
+                  if (!elWords || elWords.length === 0) return null;
+                  return (
+                    <TranscriptJsonDialog
+                      words={elWords}
+                      language={recording.language || 'UNK'}
+                      filename={`transcript-${recording.discord_channel_name || recording.id}.json`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-accent hover:text-accent hover:bg-accent/10"
+                        title="Transcript JSON agrupado por turno de speaker"
+                      >
+                        <FileJson className="h-4 w-4 mr-1" />
+                        Transcript
+                      </Button>
+                    </TranscriptJsonDialog>
+                  );
+                })()}
               </div>
             </div>
           </div>
