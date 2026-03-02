@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,11 +9,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download, Copy, Check, FileJson, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Copy, Check, FileJson, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { buildSpeakerTurns, type SpeakerTurnSegment } from "@/lib/speakerTurnExport";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WordData {
   text: string;
@@ -38,8 +39,19 @@ export function TranscriptJsonDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [enrichedEmotions, setEnrichedEmotions] = useState<string[] | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
 
-  const turns = useMemo(() => buildSpeakerTurns(words, language), [words, language]);
+  const baseTurns = useMemo(() => buildSpeakerTurns(words, language), [words, language]);
+
+  // Apply enriched emotions if available
+  const turns: SpeakerTurnSegment[] = useMemo(() => {
+    if (!enrichedEmotions) return baseTurns;
+    return baseTurns.map((t, i) => ({
+      ...t,
+      emotion: enrichedEmotions[i] || t.emotion,
+    }));
+  }, [baseTurns, enrichedEmotions]);
 
   const previewTurns = useMemo(() => {
     return showAll ? turns : turns.slice(0, 5);
@@ -49,6 +61,37 @@ export function TranscriptJsonDialog({
     const wrapper = { transcriptJson: turns };
     return JSON.stringify(wrapper, null, 2);
   }, [turns]);
+
+  const handleEnrichEmotions = useCallback(async () => {
+    setIsEnriching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("detect-emotions", {
+        body: { turns: baseTurns.map(t => ({ speaker: t.speaker, text: t.text })) },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        if (data.error.includes("Rate limit")) {
+          toast.error("Rate limit atingido. Tente novamente em alguns segundos.");
+        } else if (data.error.includes("Credits")) {
+          toast.error("Créditos esgotados. Adicione fundos para continuar.");
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
+
+      if (data?.emotions && Array.isArray(data.emotions)) {
+        setEnrichedEmotions(data.emotions);
+        toast.success(`Emoções detectadas para ${data.emotions.length} turnos`);
+      }
+    } catch (err) {
+      console.error("Emotion detection error:", err);
+      toast.error("Erro ao detectar emoções");
+    } finally {
+      setIsEnriching(false);
+    }
+  }, [baseTurns]);
 
   const handleCopy = async () => {
     try {
@@ -79,7 +122,7 @@ export function TranscriptJsonDialog({
   }, [turns]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setEnrichedEmotions(null); setShowAll(false); } }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
@@ -92,6 +135,29 @@ export function TranscriptJsonDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Enrich emotions button */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEnrichEmotions}
+            disabled={isEnriching}
+            className="gap-1.5"
+          >
+            {isEnriching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {enrichedEmotions ? "Re-detectar Emoções" : "Detectar Emoções (IA)"}
+          </Button>
+          {enrichedEmotions && (
+            <Badge variant="secondary" className="text-xs bg-accent/20 text-accent">
+              ✓ Emoções enriquecidas
+            </Badge>
+          )}
+        </div>
+
         <ScrollArea className="flex-1 min-h-0 max-h-[40vh]">
           <div className="space-y-2">
             {previewTurns.map((turn, index) => (
@@ -103,14 +169,17 @@ export function TranscriptJsonDialog({
                   <span className="text-accent font-semibold">{turn.speaker}</span>
                   <span>•</span>
                   <span>{turn.start} → {turn.end}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-1.5 py-0 ${turn.emotion !== 'neutral' ? 'bg-accent/15 text-accent border-accent/30' : ''}`}
+                  >
                     {turn.emotion}
                   </Badge>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                     {turn.language}
                   </Badge>
                   {turn.end_of_speech && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-400">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400">
                       end_of_speech
                     </Badge>
                   )}
