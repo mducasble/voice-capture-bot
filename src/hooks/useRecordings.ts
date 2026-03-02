@@ -48,6 +48,8 @@ interface Recording {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  topic_id: string | null;
+  topic?: { name: string; emoji: string | null } | null;
 }
 
 export type { Recording, GeminiChunkState, ElevenLabsChunkState };
@@ -58,7 +60,7 @@ export function useRecordings(guildId?: string, userId?: string) {
     queryFn: async (): Promise<Recording[]> => {
       let query = supabase
         .from("voice_recordings")
-        .select("*, elevenlabs_chunk_state, gemini_chunk_state")
+        .select("*, elevenlabs_chunk_state, gemini_chunk_state, recording_topics(name, emoji)")
         .neq("quality_status", "transcription-only")
         .order("created_at", { ascending: false });
 
@@ -81,6 +83,7 @@ export function useRecordings(guildId?: string, userId?: string) {
         ...row,
         elevenlabs_chunk_state: row.elevenlabs_chunk_state as ElevenLabsChunkState | null,
         gemini_chunk_state: row.gemini_chunk_state as GeminiChunkState | null,
+        topic: row.recording_topics as { name: string; emoji: string | null } | null,
       })) as Recording[];
     },
     refetchInterval: (query) => {
