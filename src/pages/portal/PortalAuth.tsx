@@ -56,6 +56,17 @@ export default function PortalAuth() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/portal",
+    });
+    if (result?.error) {
+      toast.error(result.error.message || "Erro ao entrar com Google");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={`portal-auth-page min-h-screen relative overflow-hidden ${lightMode ? "portal-light" : ""}`}>
       {/* Grid background */}
