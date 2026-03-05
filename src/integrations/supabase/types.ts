@@ -1046,24 +1046,48 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
+          country: string | null
           created_at: string
+          desired_opportunities: string[] | null
+          email_contact: string | null
           full_name: string | null
           id: string
+          spoken_languages: string[] | null
+          telegram: string | null
           updated_at: string
+          wallet_id: string | null
+          whatsapp: string | null
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
+          desired_opportunities?: string[] | null
+          email_contact?: string | null
           full_name?: string | null
           id: string
+          spoken_languages?: string[] | null
+          telegram?: string | null
           updated_at?: string
+          wallet_id?: string | null
+          whatsapp?: string | null
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
+          desired_opportunities?: string[] | null
+          email_contact?: string | null
           full_name?: string | null
           id?: string
+          spoken_languages?: string[] | null
+          telegram?: string | null
           updated_at?: string
+          wallet_id?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
