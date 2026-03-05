@@ -352,7 +352,7 @@ export default function PortalAuth() {
                         ) : (
                           <KGenButton
                             variant="outline"
-                            size="lg"
+                            size="sm"
                             icon={<ClockIcon className="w-4 h-4" />}
                             scrambleText="Waiting List"
                             className="w-[80%] opacity-60"
