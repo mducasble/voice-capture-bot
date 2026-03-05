@@ -156,6 +156,7 @@ export interface Campaign {
   language_variants?: LanguageVariant[];
   task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig | null;
+  referral_config?: ReferralConfig | null;
   quality_flow?: QualityFlow | null;
   administrative_rules?: AdministrativeRules | null;
   // Legacy relations (kept for backward compat)
