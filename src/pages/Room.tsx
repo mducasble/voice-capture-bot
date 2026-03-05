@@ -804,11 +804,15 @@ const Room = () => {
             );
           })()}
 
-          {/* Duration info (before recording starts) */}
+          {/* Countdown timer (before recording - shows total time) */}
           {room.duration_minutes && !room.is_recording && room.status !== "completed" && (
-            <div className="flex items-center justify-center gap-2 p-3 font-mono text-sm" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-              <Timer className="h-4 w-4" />
-              <span>Duração da conversa: <strong style={{ color: "var(--portal-text)" }}>{room.duration_minutes} minutos</strong></span>
+            <div className="p-4 text-center space-y-1" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                Tempo de conversa
+              </span>
+              <p className="font-mono text-5xl font-black tabular-nums" style={{ color: "var(--portal-accent)" }}>
+                {room.duration_minutes.toString().padStart(2, "0")}:00
+              </p>
             </div>
           )}
 
