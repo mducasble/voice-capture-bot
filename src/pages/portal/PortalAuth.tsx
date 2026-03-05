@@ -5,14 +5,16 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon } from "lucide-react";
+import { Loader2, Sun, Moon, Building2 } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
+
+type AuthMode = "login" | "signup" | "vendor";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
   const [lang, setLang] = useState("pt");
   const [langOpen, setLangOpen] = useState(false);
@@ -23,7 +25,6 @@ export default function PortalAuth() {
     { code: "en", flag: "https://flagcdn.com/w80/us.png", label: "English" },
   ];
 
-  // Listen for auth state changes (handles OAuth redirect return)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
@@ -31,7 +32,6 @@ export default function PortalAuth() {
       }
     });
 
-    // Check if already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
@@ -47,6 +47,11 @@ export default function PortalAuth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+
+  const [vendorEmail, setVendorEmail] = useState("");
+  const [vendorPassword, setVendorPassword] = useState("");
+  const [vendorName, setVendorName] = useState("");
+  const [vendorCompany, setVendorCompany] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +87,48 @@ export default function PortalAuth() {
     }
   };
 
+  const handleVendorSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    // 1. Create the user account
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: vendorEmail,
+      password: vendorPassword,
+      options: {
+        data: { full_name: vendorName },
+        emailRedirectTo: window.location.origin + "/",
+      },
+    });
+    
+    if (signUpError) {
+      toast.error(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Create vendor application (will work after email confirmation via trigger/profile)
+    if (signUpData.user) {
+      const { error: appError } = await supabase
+        .from("vendor_applications")
+        .insert({
+          user_id: signUpData.user.id,
+          company_name: vendorCompany || null,
+          status: "pending",
+        });
+
+      if (appError) {
+        console.warn("Vendor application insert deferred:", appError.message);
+      }
+    }
+
+    setLoading(false);
+    toast.success(
+      "Cadastro de Vendor enviado! Verifique seu e-mail e aguarde a aprovação do administrador.",
+      { duration: 6000 }
+    );
+  };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -93,12 +140,16 @@ export default function PortalAuth() {
     }
   };
 
+  const tabs: { key: AuthMode; label: string }[] = [
+    { key: "login", label: "Entrar" },
+    { key: "signup", label: "Cadastrar" },
+    { key: "vendor", label: "Vendor" },
+  ];
+
   return (
     <div className={`portal-auth-page min-h-screen relative overflow-hidden ${lightMode ? "portal-light" : ""}`}>
-      {/* Grid background */}
       <div className="absolute inset-0 portal-grid-bg" />
 
-      {/* Theme toggle */}
       <button
         type="button"
         onClick={() => setLightMode(v => !v)}
@@ -112,12 +163,10 @@ export default function PortalAuth() {
         {lightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
       </button>
 
-      {/* Decorative corner squares */}
       <div className="absolute top-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
       <div className="absolute bottom-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
       <div className="absolute bottom-8 right-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
 
-      {/* Main layout */}
       <div className="relative z-10 min-h-screen flex">
         {/* Left panel — branding */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12" style={{ borderRight: "1px solid var(--portal-border)" }}>
@@ -206,38 +255,29 @@ export default function PortalAuth() {
               </div>
             </div>
 
-
-            {/* Mode switcher */}
+            {/* Mode switcher — 3 tabs */}
             <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
-              <button
-                type="button"
-                onClick={() => setMode("login")}
-                className="flex-1 py-3 font-mono text-sm uppercase tracking-widest transition-all"
-                style={{
-                  background: mode === "login" ? "var(--portal-accent)" : "transparent",
-                  color: mode === "login" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                  fontWeight: mode === "login" ? 700 : 400,
-                }}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("signup")}
-                className="flex-1 py-3 font-mono text-sm uppercase tracking-widest transition-all"
-                style={{
-                  background: mode === "signup" ? "var(--portal-accent)" : "transparent",
-                  color: mode === "signup" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                  fontWeight: mode === "signup" ? 700 : 400,
-                  borderLeft: "1px solid var(--portal-border)",
-                }}
-              >
-                Cadastrar
-              </button>
+              {tabs.map((tab, i) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setMode(tab.key)}
+                  className="flex-1 py-3 font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                  style={{
+                    background: mode === tab.key ? "var(--portal-accent)" : "transparent",
+                    color: mode === tab.key ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                    fontWeight: mode === tab.key ? 700 : 400,
+                    borderLeft: i > 0 ? "1px solid var(--portal-border)" : "none",
+                  }}
+                >
+                  {tab.key === "vendor" && <Building2 className="w-3.5 h-3.5" />}
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
             <div className="mt-8">
-              {mode === "login" ? (
+              {mode === "login" && (
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="login-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
@@ -276,7 +316,9 @@ export default function PortalAuth() {
                     icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
                   />
                 </form>
-              ) : (
+              )}
+
+              {mode === "signup" && (
                 <form onSubmit={handleSignup} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
@@ -327,6 +369,77 @@ export default function PortalAuth() {
                     disabled={loading}
                     scrambleText={loading ? "CRIANDO..." : "CRIAR CONTA"}
                     icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
+                  />
+                </form>
+              )}
+
+              {mode === "vendor" && (
+                <form onSubmit={handleVendorSignup} className="space-y-5">
+                  <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
+                    <Building2 className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                    Conta Vendor: acesso a campanhas exclusivas e upload em lote. Requer aprovação do administrador.
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      Nome completo
+                    </Label>
+                    <Input
+                      id="vendor-name"
+                      required
+                      value={vendorName}
+                      onChange={e => setVendorName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="portal-brutalist-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor-company" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      Empresa / Organização (opcional)
+                    </Label>
+                    <Input
+                      id="vendor-company"
+                      value={vendorCompany}
+                      onChange={e => setVendorCompany(e.target.value)}
+                      placeholder="Nome da empresa"
+                      className="portal-brutalist-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      E-mail
+                    </Label>
+                    <Input
+                      id="vendor-email"
+                      type="email"
+                      required
+                      value={vendorEmail}
+                      onChange={e => setVendorEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="portal-brutalist-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      Senha
+                    </Label>
+                    <Input
+                      id="vendor-password"
+                      type="password"
+                      required
+                      minLength={6}
+                      value={vendorPassword}
+                      onChange={e => setVendorPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="portal-brutalist-input"
+                    />
+                  </div>
+                  <KGenButton
+                    type="submit"
+                    className="w-full"
+                    size="default"
+                    disabled={loading}
+                    scrambleText={loading ? "ENVIANDO..." : "SOLICITAR CONTA VENDOR"}
+                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
                   />
                 </form>
               )}
