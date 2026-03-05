@@ -33,7 +33,6 @@ export default function PortalLayout() {
     { to: "/", icon: FolderOpen, label: "OPORTUNIDADES", exact: true },
     { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
     { to: "/earnings", icon: DollarSign, label: "MEUS GANHOS" },
-    { to: "/profile", icon: User, label: "PERFIL" },
   ];
 
   return (
