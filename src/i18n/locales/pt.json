@@ -29,7 +29,9 @@
     "perHour": "hora",
     "perUnit": "un",
     "darkMode": "Modo escuro",
-    "lightMode": "Modo claro"
+    "lightMode": "Modo claro",
+    "or": "ou",
+    "vendorDesc": "Seja um vendor e tenha acesso a mais slots de campanha e outras funcionalidades da plataforma."
   },
   "dashboard": {
     "badge": "Oportunidades",

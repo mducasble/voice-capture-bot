@@ -12,11 +12,13 @@ import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import LanguageSelector from "@/components/portal/LanguageSelector";
+import { useTranslation } from "react-i18next";
 
 type AuthMode = "login" | "signup" | "vendor";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
@@ -119,7 +121,7 @@ export default function PortalAuth() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Verifique seu e-mail para confirmar o cadastro.");
+      toast.success(t("auth.checkEmail"));
     }
   };
 
@@ -159,10 +161,7 @@ export default function PortalAuth() {
     }
 
     setLoading(false);
-    toast.success(
-      "Cadastro de Vendor enviado! Verifique seu e-mail e aguarde a aprovação do administrador.",
-      { duration: 6000 }
-    );
+    toast.success(t("auth.vendorSuccess"), { duration: 6000 });
   };
 
   const handleGoogleSignIn = async () => {
@@ -171,15 +170,15 @@ export default function PortalAuth() {
       redirect_uri: window.location.origin + "/",
     });
     if (result?.error) {
-      toast.error(result.error.message || "Erro ao entrar com Google");
+      toast.error(result.error.message || t("common.error"));
       setLoading(false);
     }
   };
 
   const tabs: { key: AuthMode; label: string }[] = [
-    { key: "login", label: "Entrar" },
-    { key: "signup", label: "Cadastrar" },
-    { key: "vendor", label: "Vendor" },
+    { key: "login", label: t("auth.login") },
+    { key: "signup", label: t("auth.signup") },
+    { key: "vendor", label: t("auth.vendor") },
   ];
 
   return (
@@ -197,7 +196,7 @@ export default function PortalAuth() {
             borderColor: "var(--portal-border)",
             color: "var(--portal-text-muted)",
           }}
-          title={lightMode ? "Modo escuro" : "Modo claro"}
+          title={lightMode ? t("auth.darkMode") : t("auth.lightMode")}
         >
           {lightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
@@ -231,7 +230,7 @@ export default function PortalAuth() {
                 <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
               </h1>
               <p className="font-mono text-sm max-w-md leading-relaxed mt-4" style={{ color: "var(--portal-text-muted)" }}>
-                Plataforma de coleta e preparação de dados para IA.
+                {t("auth.platform")}
               </p>
             </div>
 
@@ -248,14 +247,14 @@ export default function PortalAuth() {
             <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                Oportunidades Abertas
+                {t("auth.openOpportunities")}
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {(!publicCampaigns || publicCampaigns.length === 0) && (
                 <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
-                  Nenhuma oportunidade disponível no momento.
+                  {t("auth.noOpportunities")}
                 </p>
               )}
 
@@ -301,7 +300,7 @@ export default function PortalAuth() {
                               {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}
                             </span>
                             <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
-                              /{reward.payout_model === "per_accepted_hour" ? "hora" : "un"}
+                              /{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}
                             </span>
                           </>
                         ) : (
@@ -334,21 +333,21 @@ export default function PortalAuth() {
                             variant="dark"
                             size="sm"
                             icon={<ArrowRight className="w-4 h-4" />}
-                            scrambleText="Participar"
+                            scrambleText={t("auth.participate")}
                             className="w-[80%]"
                           >
-                            Participar
+                            {t("auth.participate")}
                           </KGenButton>
                         ) : (
                           <KGenButton
                             variant="outline"
                             size="sm"
                             icon={<ClockIcon className="w-4 h-4" />}
-                            scrambleText="Waiting List"
+                            scrambleText={t("auth.waitingList")}
                             className="w-[80%] opacity-60"
                             disabled
                           >
-                            Waiting List
+                            {t("auth.waitingList")}
                           </KGenButton>
                         )}
                       </div>
@@ -403,21 +402,21 @@ export default function PortalAuth() {
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="login-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      E-mail
-                    </Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      required
-                      value={loginEmail}
-                      onChange={e => setLoginEmail(e.target.value)}
-                      placeholder="seu@email.com"
+                      {t("auth.email")}
+                     </Label>
+                     <Input
+                       id="login-email"
+                       type="email"
+                       required
+                       value={loginEmail}
+                       onChange={e => setLoginEmail(e.target.value)}
+                       placeholder="you@email.com"
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Senha
+                      {t("auth.password")}
                     </Label>
                     <Input
                       id="login-password"
@@ -434,7 +433,7 @@ export default function PortalAuth() {
                     className="w-full"
                     size="default"
                     disabled={loading}
-                    scrambleText={loading ? "ENTRANDO..." : "ENTRAR"}
+                    scrambleText={loading ? t("common.loading") : t("auth.loginButton")}
                     icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
                   />
                 </form>
@@ -444,43 +443,43 @@ export default function PortalAuth() {
                 <form onSubmit={handleSignup} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Nome completo
-                    </Label>
-                    <Input
-                      id="signup-name"
-                      required
-                      value={signupName}
-                      onChange={e => setSignupName(e.target.value)}
-                      placeholder="Seu nome"
+                      {t("auth.name")}
+                     </Label>
+                     <Input
+                       id="signup-name"
+                       required
+                       value={signupName}
+                       onChange={e => setSignupName(e.target.value)}
+                       placeholder={t("auth.name")}
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      E-mail
-                    </Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      required
-                      value={signupEmail}
-                      onChange={e => setSignupEmail(e.target.value)}
-                      placeholder="seu@email.com"
+                      {t("auth.email")}
+                     </Label>
+                     <Input
+                       id="signup-email"
+                       type="email"
+                       required
+                       value={signupEmail}
+                       onChange={e => setSignupEmail(e.target.value)}
+                       placeholder="you@email.com"
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Senha
-                    </Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      required
-                      minLength={6}
-                      value={signupPassword}
-                      onChange={e => setSignupPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
+                      {t("auth.password")}
+                     </Label>
+                     <Input
+                       id="signup-password"
+                       type="password"
+                       required
+                       minLength={6}
+                       value={signupPassword}
+                       onChange={e => setSignupPassword(e.target.value)}
+                       placeholder="••••••••"
                       className="portal-brutalist-input"
                     />
                   </div>
@@ -489,7 +488,7 @@ export default function PortalAuth() {
                     className="w-full"
                     size="default"
                     disabled={loading}
-                    scrambleText={loading ? "CRIANDO..." : "CRIAR CONTA"}
+                    scrambleText={loading ? t("common.loading") : t("auth.signupButton")}
                     icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
                   />
                 </form>
@@ -497,60 +496,60 @@ export default function PortalAuth() {
 
               {mode === "vendor" && (
                 <form onSubmit={handleVendorSignup} className="space-y-5">
-                  <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
-                    Seja um vendor e tenha acesso a mais slots de campanha e outras funcionalidades da plataforma.
-                  </div>
+                   <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
+                     {t("auth.vendorDesc")}
+                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Nome completo
-                    </Label>
-                    <Input
-                      id="vendor-name"
-                      required
-                      value={vendorName}
-                      onChange={e => setVendorName(e.target.value)}
-                      placeholder="Seu nome"
+                      {t("auth.name")}
+                     </Label>
+                     <Input
+                       id="vendor-name"
+                       required
+                       value={vendorName}
+                       onChange={e => setVendorName(e.target.value)}
+                       placeholder={t("auth.name")}
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-company" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Empresa / Organização (opcional)
-                    </Label>
-                    <Input
-                      id="vendor-company"
-                      value={vendorCompany}
-                      onChange={e => setVendorCompany(e.target.value)}
-                      placeholder="Nome da empresa"
+                      {t("auth.company")}
+                     </Label>
+                     <Input
+                       id="vendor-company"
+                       value={vendorCompany}
+                       onChange={e => setVendorCompany(e.target.value)}
+                       placeholder={t("auth.company")}
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      E-mail
-                    </Label>
-                    <Input
-                      id="vendor-email"
-                      type="email"
-                      required
-                      value={vendorEmail}
-                      onChange={e => setVendorEmail(e.target.value)}
-                      placeholder="seu@email.com"
+                      {t("auth.email")}
+                     </Label>
+                     <Input
+                       id="vendor-email"
+                       type="email"
+                       required
+                       value={vendorEmail}
+                       onChange={e => setVendorEmail(e.target.value)}
+                       placeholder="you@email.com"
                       className="portal-brutalist-input"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Senha
-                    </Label>
-                    <Input
-                      id="vendor-password"
-                      type="password"
-                      required
-                      minLength={6}
-                      value={vendorPassword}
-                      onChange={e => setVendorPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
+                      {t("auth.password")}
+                     </Label>
+                     <Input
+                       id="vendor-password"
+                       type="password"
+                       required
+                       minLength={6}
+                       value={vendorPassword}
+                       onChange={e => setVendorPassword(e.target.value)}
+                       placeholder="••••••••"
                       className="portal-brutalist-input"
                     />
                   </div>
@@ -559,7 +558,7 @@ export default function PortalAuth() {
                     className="w-full"
                     size="default"
                     disabled={loading}
-                    scrambleText={loading ? "ENVIANDO..." : "SOLICITAR CONTA VENDOR"}
+                    scrambleText={loading ? t("common.loading") : t("auth.vendorButton")}
                     icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
                   />
                 </form>
@@ -568,7 +567,7 @@ export default function PortalAuth() {
               {/* Divider */}
               <div className="flex items-center gap-3 mt-6 mb-4">
                 <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
-                <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>ou</span>
+                <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.or")}</span>
                 <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
               </div>
 
@@ -580,7 +579,7 @@ export default function PortalAuth() {
                 variant="white"
                 className="w-full"
                 size="default"
-                scrambleText="CONTINUAR COM GOOGLE"
+                scrambleText={t("auth.googleButton")}
                 icon={
                   <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
                     <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
