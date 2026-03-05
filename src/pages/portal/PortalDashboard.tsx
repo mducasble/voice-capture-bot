@@ -1,11 +1,14 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell } from "lucide-react";
+import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
