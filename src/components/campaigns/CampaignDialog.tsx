@@ -29,6 +29,7 @@ interface CampaignDialogProps {
   open: boolean;
   onClose: () => void;
   campaignId: string | null;
+  duplicateFromId?: string | null;
 }
 
 // Convert catalog default JSONB validation to ValidationRule[]
@@ -63,8 +64,8 @@ function createDefaultTaskSet(taskType: string, catalog: any[]): CampaignTaskSet
   };
 }
 
-export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProps) {
-  const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? undefined);
+export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: CampaignDialogProps) {
+  const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? duplicateFromId ?? undefined);
   const { data: clients } = useClients();
   const { data: catalog } = useTaskTypeCatalog();
   const createCampaign = useCreateCampaign();
@@ -126,7 +127,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   // Load campaign
   useEffect(() => {
     if (campaign) {
-      setName(campaign.name);
+      const isDuplicating = !campaignId && !!duplicateFromId;
+      setName(isDuplicating ? `${campaign.name} (Cópia)` : campaign.name);
       setDescription(campaign.description || "");
       setClientId(campaign.client_id || "");
       setStartDate(campaign.start_date || "");

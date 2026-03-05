@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers } from "lucide-react";
+import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,15 +21,25 @@ export default function Campaigns() {
   const { data: campaigns, isLoading, error } = useCampaigns();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<string | null>(null);
+  const [duplicatingCampaign, setDuplicatingCampaign] = useState<string | null>(null);
 
   const handleEdit = (campaignId: string) => {
     setEditingCampaign(campaignId);
+    setDuplicatingCampaign(null);
+    setDialogOpen(true);
+  };
+
+  const handleDuplicate = (e: React.MouseEvent, campaignId: string) => {
+    e.stopPropagation();
+    setEditingCampaign(null);
+    setDuplicatingCampaign(campaignId);
     setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingCampaign(null);
+    setDuplicatingCampaign(null);
   };
 
   return (
@@ -138,14 +148,19 @@ export default function Campaigns() {
                       </div>
                     )}
 
-                    {/* Task sets summary */}
-                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2 flex flex-wrap gap-2">
-                      <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {enabledTaskSets.length} tarefa(s)</span>
-                      {enabledTaskSets.slice(0, 2).map(ts => (
-                        <Badge key={ts.task_set_id} variant="outline" className="text-[10px]">
-                          {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
-                        </Badge>
-                      ))}
+                    {/* Task sets summary + duplicate */}
+                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2 flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {enabledTaskSets.length} tarefa(s)</span>
+                        {enabledTaskSets.slice(0, 2).map(ts => (
+                          <Badge key={ts.task_set_id} variant="outline" className="text-[10px]">
+                            {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
+                          </Badge>
+                        ))}
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar campanha" onClick={(e) => handleDuplicate(e, campaign.id)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -154,7 +169,7 @@ export default function Campaigns() {
           </div>
         )}
 
-        <CampaignDialog open={dialogOpen} onClose={handleCloseDialog} campaignId={editingCampaign} />
+        <CampaignDialog open={dialogOpen} onClose={handleCloseDialog} campaignId={editingCampaign} duplicateFromId={duplicatingCampaign} />
       </div>
     </div>
   );
