@@ -92,7 +92,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
   }
 
   return (
-    <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+    <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full text-left p-5 flex items-center justify-between gap-4 transition-colors"
@@ -223,7 +223,7 @@ export default function PortalMyCampaigns() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" style={{ background: "var(--portal-input-bg)" }} />)}
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" style={{ background: "var(--portal-card-bg)" }} />)}
       </div>
     );
   }

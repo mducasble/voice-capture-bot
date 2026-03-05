@@ -66,7 +66,7 @@ export default function PortalCampaignTask() {
   };
 
   if (isLoading) {
-    return <Skeleton className="h-64" style={{ background: "var(--portal-input-bg)" }} />;
+    return <Skeleton className="h-64" style={{ background: "var(--portal-card-bg)" }} />;
   }
 
   if (!campaign) {
@@ -113,7 +113,7 @@ export default function PortalCampaignTask() {
               <button
                 onClick={() => setMode("room")}
                 className="p-6 text-left transition-colors group"
-                style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2" style={{ background: "var(--portal-accent)" }}>
@@ -132,7 +132,7 @@ export default function PortalCampaignTask() {
               <button
                 onClick={() => setMode("upload")}
                 className="p-6 text-left transition-colors group"
-                style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2" style={{ background: "var(--portal-accent)" }}>

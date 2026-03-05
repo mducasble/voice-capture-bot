@@ -195,7 +195,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
         <button
           onClick={() => fileInputRef.current?.click()}
           className="w-full p-8 flex flex-col items-center gap-3 transition-colors"
-          style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-input-bg)" }}
+          style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-card-bg)" }}
         >
           <Mic className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
           <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
@@ -205,7 +205,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
       ) : (
         <div className="space-y-2">
           {speakerFiles.map((sf, idx) => (
-            <div key={sf.id} className="flex items-center gap-3 p-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+            <div key={sf.id} className="flex items-center gap-3 p-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <span className="font-mono text-xs font-bold w-6 text-center" style={{ color: "var(--portal-accent)" }}>{idx + 1}</span>
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
 
       {/* Mixed track options */}
       {speakerFiles.length >= 2 && !isUploading && (
-        <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+        <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
           <div className="flex items-center gap-2">
             <Music className="h-3.5 w-3.5" style={{ color: "var(--portal-accent)" }} />
             <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Áudio Combinado</span>

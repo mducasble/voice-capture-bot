@@ -569,7 +569,7 @@ const Room = () => {
               </p>
             </div>
 
-            <div className="space-y-4 p-6" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+            <div className="space-y-4 p-6" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {audioDevices.length > 1 && (
                 <div className="space-y-2">
                   <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
@@ -812,7 +812,7 @@ const Room = () => {
 
             {/* Recording Controls (Creator only) */}
             {currentParticipant.is_creator && (
-              <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 <div className="flex items-center justify-center">
                   {!room.is_recording ? (
                     <KGenButton
@@ -857,7 +857,7 @@ const Room = () => {
             )}
 
             {/* Participants */}
-            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
                   Participantes ({participants.length})
@@ -895,7 +895,7 @@ const Room = () => {
             </div>
 
             {/* My Audio */}
-            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Seu Áudio</span>
                 <button
@@ -951,7 +951,7 @@ const Room = () => {
                 const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
                 const isLow = remaining <= 60;
                 return (
-                  <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                  <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       Tempo restante
                     </span>
@@ -966,7 +966,7 @@ const Room = () => {
               }
               if (!room.is_recording && room.status !== "completed") {
                 return (
-                  <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                  <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       Tempo de conversa
                     </span>
@@ -981,7 +981,7 @@ const Room = () => {
 
             {/* Topic display */}
             {room.topic && (
-              <div className="p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <div className="p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
                   Tema da Conversa
                 </span>
@@ -992,7 +992,7 @@ const Room = () => {
             )}
 
             {/* Script / Talking Points placeholder */}
-            <div className="p-4 flex-1" style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-input-bg)", minHeight: "200px" }}>
+            <div className="p-4 flex-1" style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-card-bg)", minHeight: "200px" }}>
               <span className="font-mono text-[10px] uppercase tracking-widest block mb-3" style={{ color: "var(--portal-text-muted)" }}>
                 Roteiro / Pontos de Conversa
               </span>
