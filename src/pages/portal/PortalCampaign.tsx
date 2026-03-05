@@ -197,17 +197,38 @@ export default function PortalCampaign() {
             Configurar Sala
           </h3>
 
-          {/* Topic */}
+          {/* Topic - select from campaign sections */}
           <div className="space-y-2">
             <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
               <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
             </label>
-            <input
-              className="portal-brutalist-input w-full"
-              placeholder="Ex: Rotina matinal, Receita de bolo, Viagem dos sonhos..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
+            {campaign.sections && campaign.sections.length > 0 ? (
+              <div className="space-y-2">
+                {campaign.sections.filter(s => s.is_active !== false).map(section => (
+                  <button
+                    key={section.id}
+                    onClick={() => setTopic(section.name)}
+                    className="w-full text-left p-3 font-mono text-sm transition-colors"
+                    style={{
+                      border: `1px solid ${topic === section.name ? "var(--portal-accent)" : "var(--portal-border)"}`,
+                      background: topic === section.name ? "var(--portal-accent)" : "var(--portal-input-bg)",
+                      color: topic === section.name ? "var(--portal-accent-text)" : "var(--portal-text)",
+                    }}
+                  >
+                    <span className="font-bold uppercase">{section.name}</span>
+                    {section.description && (
+                      <span className="block text-xs mt-1" style={{ color: topic === section.name ? "var(--portal-accent-text)" : "var(--portal-text-muted)", opacity: topic === section.name ? 0.8 : 1 }}>
+                        {section.description}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                Nenhuma seção cadastrada nesta campanha.
+              </p>
+            )}
           </div>
 
           {/* Duration */}
