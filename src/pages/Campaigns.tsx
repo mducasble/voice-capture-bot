@@ -178,6 +178,15 @@ export default function Campaigns() {
         )}
 
         <CampaignDialog open={dialogOpen} onClose={handleCloseDialog} campaignId={editingCampaign} duplicateFromId={duplicatingCampaign} />
+
+        {waitlistCampaign && (
+          <CampaignWaitlistDialog
+            open={!!waitlistCampaign}
+            onClose={() => setWaitlistCampaign(null)}
+            campaignId={waitlistCampaign.id}
+            campaignName={waitlistCampaign.name}
+          />
+        )}
       </div>
     </div>
   );
