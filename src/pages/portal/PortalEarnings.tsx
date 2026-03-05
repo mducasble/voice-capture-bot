@@ -79,19 +79,25 @@ export default function PortalEarnings() {
           ))}
         </div>
 
-        <div
-          className="flex items-center justify-between p-4"
-          style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}
-        >
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-            <span className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-              Total Acumulado
-            </span>
-          </div>
-          <span className="font-mono text-lg font-black" style={{ color: "var(--portal-accent)" }}>
-            $0.00
-          </span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { label: "Total Acumulado", value: "$0.00" },
+            { label: "Disponível p/ Saque", value: "$0.00" },
+            { label: "Total Sacado", value: "$0.00" },
+          ].map(item => (
+            <div
+              key={item.label}
+              className="flex flex-col items-center justify-center p-4"
+              style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}
+            >
+              <span className="font-mono text-lg font-black" style={{ color: "var(--portal-accent)" }}>
+                {item.value}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
