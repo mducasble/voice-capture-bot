@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   Client,
   Campaign,
+  CampaignSection,
   GeographicScope,
   LanguageVariant,
   RewardConfig,
