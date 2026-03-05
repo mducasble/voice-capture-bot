@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Rascunho", variant: "outline" },
+  waiting_list: { label: "Waiting List", variant: "secondary" },
   active: { label: "Ativa", variant: "default" },
   paused: { label: "Pausada", variant: "secondary" },
   completed: { label: "Concluída", variant: "secondary" },

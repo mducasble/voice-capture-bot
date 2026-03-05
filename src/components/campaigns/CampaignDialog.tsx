@@ -560,6 +560,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="draft">Rascunho</SelectItem>
+                        <SelectItem value="waiting_list">Waiting List</SelectItem>
                         <SelectItem value="active">Ativa</SelectItem>
                         <SelectItem value="paused">Pausada</SelectItem>
                         <SelectItem value="completed">Concluída</SelectItem>
