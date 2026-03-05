@@ -5,7 +5,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, Building2 } from "lucide-react";
+import { Loader2, Sun, Moon } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 
@@ -17,7 +17,6 @@ export default function PortalAuth() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
   const [lang, setLang] = useState("pt");
-  const [langOpen, setLangOpen] = useState(false);
 
   const languages = [
     { code: "pt", flag: "https://flagcdn.com/w80/br.png", label: "Português" },
@@ -150,18 +149,36 @@ export default function PortalAuth() {
     <div className={`portal-auth-page min-h-screen relative overflow-hidden ${lightMode ? "portal-light" : ""}`}>
       <div className="absolute inset-0 portal-grid-bg" />
 
-      <button
-        type="button"
-        onClick={() => setLightMode(v => !v)}
-        className="absolute top-6 right-6 z-20 w-10 h-10 flex items-center justify-center border transition-colors"
-        style={{
-          borderColor: "var(--portal-border)",
-          color: "var(--portal-text-muted)",
-        }}
-        title={lightMode ? "Modo escuro" : "Modo claro"}
-      >
-        {lightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-      </button>
+      {/* Top bar: language flags + theme toggle */}
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+        {languages.map(l => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => setLang(l.code)}
+            className="w-10 h-10 flex items-center justify-center cursor-pointer overflow-hidden transition-all"
+            style={{
+              border: lang === l.code ? "2px solid var(--portal-accent)" : "1px solid var(--portal-border)",
+              background: "var(--portal-input-bg)",
+            }}
+            title={l.label}
+          >
+            <img src={l.flag} alt={l.label} className="w-7 h-auto" />
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setLightMode(v => !v)}
+          className="w-10 h-10 flex items-center justify-center border transition-colors"
+          style={{
+            borderColor: "var(--portal-border)",
+            color: "var(--portal-text-muted)",
+          }}
+          title={lightMode ? "Modo escuro" : "Modo claro"}
+        >
+          {lightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+        </button>
+      </div>
 
       <div className="absolute top-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
       <div className="absolute bottom-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
@@ -217,43 +234,7 @@ export default function PortalAuth() {
               </div>
             </div>
 
-            {/* Language selector */}
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setLangOpen(v => !v)}
-                  className="w-[72px] h-[72px] flex items-center justify-center transition-all cursor-pointer overflow-hidden"
-                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
-                  title={languages.find(l => l.code === lang)?.label}
-                >
-                  <img
-                    src={languages.find(l => l.code === lang)?.flag}
-                    alt={languages.find(l => l.code === lang)?.label}
-                    className="w-12 h-auto"
-                  />
-                </button>
-                {langOpen && (
-                  <div
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex gap-1 z-50 p-1"
-                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
-                  >
-                    {languages.filter(l => l.code !== lang).map(l => (
-                      <button
-                        key={l.code}
-                        type="button"
-                        onClick={() => { setLang(l.code); setLangOpen(false); }}
-                        className="w-14 h-14 flex items-center justify-center cursor-pointer overflow-hidden transition-opacity hover:opacity-80"
-                        style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
-                        title={l.label}
-                      >
-                        <img src={l.flag} alt={l.label} className="w-10 h-auto" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+
 
             {/* Mode switcher — 3 tabs */}
             <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
@@ -270,7 +251,6 @@ export default function PortalAuth() {
                     borderLeft: i > 0 ? "1px solid var(--portal-border)" : "none",
                   }}
                 >
-                  {tab.key === "vendor" && <Building2 className="w-3.5 h-3.5" />}
                   {tab.label}
                 </button>
               ))}
