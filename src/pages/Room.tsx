@@ -319,11 +319,13 @@ const Room = () => {
   }, [room?.is_recording, room?.recording_started_at]);
 
   // Handle joining room (for non-creators or creator first time)
-  const handleJoin = async (asCreator = false) => {
-    if (!asCreator && !joinName.trim()) {
+  const handleJoin = async (asCreator = false, anonymous = false) => {
+    if (!asCreator && !anonymous && !joinName.trim()) {
       toast.error("Digite seu nome");
       return;
     }
+    if (!roomId) return;
+    const participantName = anonymous ? "Anônimo" : joinName.trim();
     if (!roomId) return;
 
     setIsJoining(true);
@@ -356,7 +358,7 @@ const Room = () => {
         .from("room_participants")
         .insert({
           room_id: roomId,
-          name: joinName.trim(),
+          name: participantName,
           is_creator: false,
         })
         .select()
