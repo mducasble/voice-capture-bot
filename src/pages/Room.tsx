@@ -28,6 +28,8 @@ interface Room {
   noise_gate_enabled: boolean;
   recording_started_at: string | null;
   created_at: string;
+  topic: string | null;
+  duration_minutes: number | null;
 }
 
 interface Participant {
