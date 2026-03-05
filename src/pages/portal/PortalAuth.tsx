@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import kgenLogo from "@/assets/kgen-logo.svg";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export default function PortalAuth() {
         {/* Logo / Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl portal-glass-icon mb-5">
-            <Sparkles className="h-8 w-8 text-primary" />
+            <img src={kgenLogo} alt="KGeN Logo" className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             KGeN AI Quests
