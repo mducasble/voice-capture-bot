@@ -132,7 +132,7 @@ export default function PortalAuth() {
               <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
             </h1>
             <p className="font-mono text-sm max-w-md leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-              Plataforma profissional de gravação e aprimoramento de áudio para campanhas de dados de voz.
+              Plataforma de coleta e preparação de dados para IA.
             </p>
           </div>
 
