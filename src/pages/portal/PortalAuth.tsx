@@ -340,21 +340,26 @@ export default function PortalAuth() {
 
                       <div className="px-3 py-3 flex justify-center">
                         {c.isOpen ? (
-                          <span
-                            className="inline-flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest font-bold px-3 py-3 w-[80%]"
-                            style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                          <KGenButton
+                            variant="dark"
+                            size="lg"
+                            icon={<ArrowRight className="w-4 h-4" />}
+                            scrambleText="Participar"
+                            className="w-[80%]"
                           >
-                            <ArrowRight className="w-4 h-4" />
                             Participar
-                          </span>
+                          </KGenButton>
                         ) : (
-                          <span
-                            className="inline-flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest font-bold px-3 py-3 w-[80%]"
-                            style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                          <KGenButton
+                            variant="outline"
+                            size="lg"
+                            icon={<ClockIcon className="w-4 h-4" />}
+                            scrambleText="Waiting List"
+                            className="w-[80%] opacity-60"
+                            disabled
                           >
-                            <ClockIcon className="w-4 h-4" />
                             Waiting List
-                          </span>
+                          </KGenButton>
                         )}
                       </div>
                     </div>
