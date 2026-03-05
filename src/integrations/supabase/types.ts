@@ -1053,6 +1053,7 @@ export type Database = {
           email_contact: string | null
           full_name: string | null
           id: string
+          referral_code: string | null
           spoken_languages: string[] | null
           telegram: string | null
           updated_at: string
@@ -1068,6 +1069,7 @@ export type Database = {
           email_contact?: string | null
           full_name?: string | null
           id: string
+          referral_code?: string | null
           spoken_languages?: string[] | null
           telegram?: string | null
           updated_at?: string
@@ -1083,6 +1085,7 @@ export type Database = {
           email_contact?: string | null
           full_name?: string | null
           id?: string
+          referral_code?: string | null
           spoken_languages?: string[] | null
           telegram?: string | null
           updated_at?: string
@@ -1124,6 +1127,42 @@ export type Database = {
           name_en?: string
           sort_order?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          level_1: string | null
+          level_2: string | null
+          level_3: string | null
+          level_4: string | null
+          level_5: string | null
+          referred_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_1?: string | null
+          level_2?: string | null
+          level_3?: string | null
+          level_4?: string | null
+          level_5?: string | null
+          referred_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_1?: string | null
+          level_2?: string | null
+          level_3?: string | null
+          level_4?: string | null
+          level_5?: string | null
+          referred_by?: string
+          user_id?: string
         }
         Relationships: []
       }
