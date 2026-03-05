@@ -2,15 +2,17 @@ import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check } from "lucide-react";
 import { useState } from "react";
-import { useAuth as useAuthForReferral } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import kgenLogo from "@/assets/kgen-logo.svg";
+import { useTranslation } from "react-i18next";
+import LanguageSelector from "./LanguageSelector";
 
 export default function PortalLayout() {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
@@ -30,9 +32,9 @@ export default function PortalLayout() {
   }
 
   const navItems = [
-    { to: "/", icon: FolderOpen, label: "OPORTUNIDADES", exact: true },
-    { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
-    { to: "/earnings", icon: DollarSign, label: "MEUS GANHOS" },
+    { to: "/", icon: FolderOpen, label: t("nav.opportunities"), exact: true },
+    { to: "/my-campaigns", icon: Layers, label: t("nav.myCampaigns") },
+    { to: "/earnings", icon: DollarSign, label: t("nav.myEarnings") },
   ];
 
   return (
@@ -74,12 +76,13 @@ export default function PortalLayout() {
             </nav>
 
             <div className="flex items-center gap-3">
+              <LanguageSelector variant="compact" />
               <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} />
               <button
                 onClick={signOut}
                 className="p-2 transition-colors"
                 style={{ color: "var(--portal-text-muted)" }}
-                title="Sair"
+                title={t("nav.logout")}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -149,6 +152,7 @@ function UserProfileLink({ userId, userName }: { userId: string; userName: strin
 
 function CopyReferralButton({ userId }: { userId: string }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
@@ -169,7 +173,7 @@ function CopyReferralButton({ userId }: { userId: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(`${window.location.origin}/invite/${code}`);
     setCopied(true);
-    toast.success("Link pessoal copiado!");
+    toast.success(t("nav.copied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -194,10 +198,10 @@ function CopyReferralButton({ userId }: { userId: string }) {
           e.currentTarget.style.color = "var(--portal-accent)";
         }
       }}
-      title="Copiar link pessoal"
+      title={t("nav.myLink")}
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      <span className="hidden sm:inline">{copied ? "Copiado!" : "Meu Link"}</span>
+      <span className="hidden sm:inline">{copied ? t("nav.copied") : t("nav.myLink")}</span>
     </button>
   );
 }
