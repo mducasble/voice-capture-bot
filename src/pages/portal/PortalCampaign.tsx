@@ -4,9 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, Radio, Clock, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer } from "lucide-react";
 import { useState } from "react";
 import KGenButton from "@/components/portal/KGenButton";
+
+const DURATION_OPTIONS = [5, 10, 15, 20, 30, 45, 60];
 
 export default function PortalCampaign() {
   const { id } = useParams<{ id: string }>();
@@ -14,9 +16,15 @@ export default function PortalCampaign() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState<number>(10);
 
   const handleCreateRoom = async () => {
     if (!user || !campaign) return;
+    if (!topic.trim()) {
+      toast.error("Digite o tema da conversa");
+      return;
+    }
     setCreating(true);
     try {
       const userName = user.user_metadata?.full_name || user.email || "Usuário";
@@ -26,6 +34,8 @@ export default function PortalCampaign() {
           creator_name: userName,
           room_name: `${campaign.name} - ${userName}`,
           status: "waiting",
+          topic: topic.trim(),
+          duration_minutes: durationMinutes,
         })
         .select()
         .single();
@@ -181,11 +191,54 @@ export default function PortalCampaign() {
           </div>
         )}
 
+        {/* Room creation form */}
+        <div className="p-6 space-y-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+          <h3 className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+            Configurar Sala
+          </h3>
+
+          {/* Topic */}
+          <div className="space-y-2">
+            <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+              <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
+            </label>
+            <input
+              className="portal-brutalist-input w-full"
+              placeholder="Ex: Rotina matinal, Receita de bolo, Viagem dos sonhos..."
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+          </div>
+
+          {/* Duration */}
+          <div className="space-y-2">
+            <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+              <Timer className="h-3.5 w-3.5" /> Duração da Conversa
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {DURATION_OPTIONS.map(min => (
+                <button
+                  key={min}
+                  onClick={() => setDurationMinutes(min)}
+                  className="font-mono text-xs px-4 py-2 transition-colors"
+                  style={{
+                    border: `1px solid ${durationMinutes === min ? "var(--portal-accent)" : "var(--portal-border)"}`,
+                    background: durationMinutes === min ? "var(--portal-accent)" : "transparent",
+                    color: durationMinutes === min ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                  }}
+                >
+                  {min} min
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="p-6">
           <KGenButton
             onClick={handleCreateRoom}
-            disabled={creating}
+            disabled={creating || !topic.trim()}
             className="w-full"
             size="default"
             scrambleText={creating ? "CRIANDO SALA..." : "CRIAR SALA DE GRAVAÇÃO"}
