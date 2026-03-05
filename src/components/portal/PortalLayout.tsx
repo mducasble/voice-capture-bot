@@ -50,7 +50,7 @@ export default function PortalLayout() {
               </span>
             </Link>
 
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-3">
               {navItems.map(item => {
                 const isActive = item.exact
                   ? location.pathname === item.to
