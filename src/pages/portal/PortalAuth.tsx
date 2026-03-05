@@ -6,13 +6,14 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon } from "lucide-react";
+import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import LanguageSelector from "@/components/portal/LanguageSelector";
 import { useTranslation } from "react-i18next";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 type AuthMode = "login" | "signup" | "vendor";
 
@@ -22,7 +23,9 @@ export default function PortalAuth() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
-
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogMode, setAuthDialogMode] = useState<"login" | "signup">("login");
+  const [selectedCampaignName, setSelectedCampaignName] = useState("");
   // Lightweight public campaigns query (no auth needed)
   const { data: publicCampaigns } = useQuery({
     queryKey: ["public-campaigns-preview"],
@@ -342,7 +345,9 @@ export default function PortalAuth() {
                             className="w-[80%]"
                             onClick={() => {
                               sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`);
-                              document.getElementById("login-email")?.focus();
+                              setSelectedCampaignName(c.name);
+                              setAuthDialogMode("signup");
+                              setAuthDialogOpen(true);
                             }}
                           >
                             {t("auth.participate")}
@@ -356,7 +361,9 @@ export default function PortalAuth() {
                             className="w-[80%]"
                             onClick={() => {
                               sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`);
-                              document.getElementById("login-email")?.focus();
+                              setSelectedCampaignName(c.name);
+                              setAuthDialogMode("signup");
+                              setAuthDialogOpen(true);
                             }}
                           >
                             {t("auth.waitingList")}
