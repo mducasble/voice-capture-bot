@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useUserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
 
 function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
@@ -123,6 +124,7 @@ export default function PortalDashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { country: userCountry } = useUserCountry();
 
   const { data: userWaitlistIds } = useQuery({
     queryKey: ["user-waitlist", user?.id],
@@ -161,7 +163,7 @@ export default function PortalDashboard() {
     }
   };
 
-  const allVisible = campaigns?.filter(c => c.is_active) || [];
+  const allVisible = campaigns?.filter(c => c.is_active && isCampaignVisibleForCountry(c.geographic_scope, userCountry)) || [];
   
   const readyNow = allVisible
     .filter(c => !isWaitlist(c))
