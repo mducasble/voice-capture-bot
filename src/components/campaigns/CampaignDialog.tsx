@@ -608,6 +608,41 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : (
           <Tabs defaultValue="general" className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {/* Translation bar for duplication */}
+            {!campaignId && duplicateFromId && (
+              <div className="flex items-center gap-2 p-3 mb-2 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+                <Languages className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs text-muted-foreground shrink-0">Traduzir para:</span>
+                <Select value={translateTargetLang} onValueChange={setTranslateTargetLang}>
+                  <SelectTrigger className="h-7 w-40 text-xs">
+                    <SelectValue placeholder="Idioma..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pt-BR">Português (BR)</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="fr">Français</SelectItem>
+                    <SelectItem value="de">Deutsch</SelectItem>
+                    <SelectItem value="it">Italiano</SelectItem>
+                    <SelectItem value="ja">日本語</SelectItem>
+                    <SelectItem value="ko">한국어</SelectItem>
+                    <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="hi">हिन्दी</SelectItem>
+                    <SelectItem value="ar">العربية</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={handleTranslate}
+                  disabled={isTranslating || !translateTargetLang}
+                >
+                  {isTranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                  {isTranslating ? "Traduzindo..." : "Traduzir"}
+                </Button>
+              </div>
+            )}
             <TabsList className="grid grid-cols-4 w-full md:grid-cols-7">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
