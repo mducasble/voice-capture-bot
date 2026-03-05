@@ -4,9 +4,25 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FolderOpen, ArrowRight, FileAudio, Clock } from "lucide-react";
-import KGenButton from "@/components/portal/KGenButton";
 
-// ... keep existing code (PortalMyCampaigns component start, hooks, loading/empty states)
+export default function PortalMyCampaigns() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: participations, isLoading } = useQuery({
+    queryKey: ["my_campaigns", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("campaign_participants")
+        .select("campaign_id, joined_at, status, campaigns:campaign_id(id, name, description, campaign_status, start_date, end_date)")
+        .eq("user_id", user.id)
+        .order("joined_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
 
   const campaignIds = participations?.map((p: any) => p.campaign_id) || [];
 
@@ -33,8 +49,6 @@ import KGenButton from "@/components/portal/KGenButton";
     enabled: campaignIds.length > 0,
   });
 
-  // ... keep existing code (loading and empty states)
-
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     const m = Math.floor(seconds / 60);
@@ -42,6 +56,32 @@ import KGenButton from "@/components/portal/KGenButton";
     const h = Math.floor(m / 60);
     return `${h}h ${m % 60}min`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" style={{ background: "var(--portal-input-bg)" }} />)}
+      </div>
+    );
+  }
+
+  if (!participations || participations.length === 0) {
+    return (
+      <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
+        <FolderOpen className="h-8 w-8 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
+        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+          Você ainda não participa de nenhuma campanha.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="font-mono text-xs uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
+          style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+        >
+          Explorar Campanhas
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
