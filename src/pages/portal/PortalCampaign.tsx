@@ -13,6 +13,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import { useTranslation } from "react-i18next";
 
 
 
