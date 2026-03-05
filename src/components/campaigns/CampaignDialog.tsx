@@ -419,7 +419,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{campaignId ? "Editar Campanha" : "Nova Campanha"}</DialogTitle>
           <DialogDescription>Configure todos os parâmetros da campanha</DialogDescription>
@@ -428,7 +428,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         {loadingCampaign && campaignId ? (
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : (
-          <Tabs defaultValue="general" className="flex-1 overflow-hidden flex flex-col">
+          <Tabs defaultValue="general" className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <TabsList className="grid grid-cols-3 w-full md:grid-cols-6">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
