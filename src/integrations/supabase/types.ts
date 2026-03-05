@@ -14,6 +14,223 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_administrative_rules: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          max_hours_per_partner_per_user: number | null
+          max_hours_per_user: number | null
+          max_participants_per_session: number | null
+          max_sessions_per_user: number | null
+          min_acceptance_rate: number | null
+          min_acceptance_rate_unit: string | null
+          min_participants_per_session: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          max_hours_per_partner_per_user?: number | null
+          max_hours_per_user?: number | null
+          max_participants_per_session?: number | null
+          max_sessions_per_user?: number | null
+          min_acceptance_rate?: number | null
+          min_acceptance_rate_unit?: string | null
+          min_participants_per_session?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          max_hours_per_partner_per_user?: number | null
+          max_hours_per_user?: number | null
+          max_participants_per_session?: number | null
+          max_sessions_per_user?: number | null
+          min_acceptance_rate?: number | null
+          min_acceptance_rate_unit?: string | null
+          min_participants_per_session?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_administrative_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_audio_validation: {
+        Row: {
+          allowed_values: Json | null
+          campaign_id: string
+          created_at: string
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+        }
+        Insert: {
+          allowed_values?: Json | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+        }
+        Update: {
+          allowed_values?: Json | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_audio_validation_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_content_validation: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_content_validation_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_geographic_scope: {
+        Row: {
+          campaign_id: string
+          cities: string[] | null
+          continents: string[] | null
+          countries: string[] | null
+          created_at: string
+          id: string
+          regions: string[] | null
+          restriction_mode: string | null
+          states: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          cities?: string[] | null
+          continents?: string[] | null
+          countries?: string[] | null
+          created_at?: string
+          id?: string
+          regions?: string[] | null
+          restriction_mode?: string | null
+          states?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          cities?: string[] | null
+          continents?: string[] | null
+          countries?: string[] | null
+          created_at?: string
+          id?: string
+          regions?: string[] | null
+          restriction_mode?: string | null
+          states?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_geographic_scope_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_language_variants: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          label: string
+          notes: string | null
+          variant_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          label: string
+          notes?: string | null
+          variant_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          label?: string
+          notes?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_language_variants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_languages: {
         Row: {
           campaign_id: string
@@ -50,6 +267,47 @@ export type Database = {
           },
         ]
       }
+      campaign_quality_flow: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          rejection_reasons: string[] | null
+          review_mode: string | null
+          sampling_rate_unit: string | null
+          sampling_rate_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          rejection_reasons?: string[] | null
+          review_mode?: string | null
+          sampling_rate_unit?: string | null
+          sampling_rate_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          rejection_reasons?: string[] | null
+          review_mode?: string | null
+          sampling_rate_unit?: string | null
+          sampling_rate_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_quality_flow_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_regions: {
         Row: {
           campaign_id: string
@@ -82,6 +340,50 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_reward_config: {
+        Row: {
+          base_rate: number | null
+          bonus_condition: string | null
+          bonus_rate: number | null
+          campaign_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          payout_model: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_rate?: number | null
+          bonus_condition?: string | null
+          bonus_rate?: number | null
+          campaign_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          payout_model?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_rate?: number | null
+          bonus_condition?: string | null
+          bonus_rate?: number | null
+          campaign_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          payout_model?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_reward_config_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -133,6 +435,53 @@ export type Database = {
           },
         ]
       }
+      campaign_task_config: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          instructions_summary: string | null
+          instructions_title: string | null
+          prompt_do: string[] | null
+          prompt_dont: string[] | null
+          prompt_topic: string | null
+          task_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          prompt_topic?: string | null
+          task_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          prompt_topic?: string | null
+          task_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_task_config_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           audio_bit_depth: number | null
@@ -142,16 +491,23 @@ export type Database = {
           audio_min_duration_seconds: number | null
           audio_min_snr_db: number | null
           audio_sample_rate: number | null
+          campaign_status: string | null
+          campaign_type: string | null
           client_id: string | null
           created_at: string
           description: string | null
+          duration_unit: string | null
+          duration_value: number | null
           end_date: string | null
           id: string
           is_active: boolean | null
           name: string
+          partner_id: string | null
           start_date: string | null
           target_hours: number | null
+          timezone: string | null
           updated_at: string
+          visibility_is_public: boolean | null
         }
         Insert: {
           audio_bit_depth?: number | null
@@ -161,16 +517,23 @@ export type Database = {
           audio_min_duration_seconds?: number | null
           audio_min_snr_db?: number | null
           audio_sample_rate?: number | null
+          campaign_status?: string | null
+          campaign_type?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
+          duration_unit?: string | null
+          duration_value?: number | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          partner_id?: string | null
           start_date?: string | null
           target_hours?: number | null
+          timezone?: string | null
           updated_at?: string
+          visibility_is_public?: boolean | null
         }
         Update: {
           audio_bit_depth?: number | null
@@ -180,16 +543,23 @@ export type Database = {
           audio_min_duration_seconds?: number | null
           audio_min_snr_db?: number | null
           audio_sample_rate?: number | null
+          campaign_status?: string | null
+          campaign_type?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
+          duration_unit?: string | null
+          duration_value?: number | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          partner_id?: string | null
           start_date?: string | null
           target_hours?: number | null
+          timezone?: string | null
           updated_at?: string
+          visibility_is_public?: boolean | null
         }
         Relationships: [
           {
