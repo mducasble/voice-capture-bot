@@ -40,19 +40,25 @@ export default function PortalAuth() {
       if (!campaigns || campaigns.length === 0) return [];
 
       const ids = campaigns.map(c => c.id);
-      const [taskSetsRes, rewardRes, langVarRes] = await Promise.all([
+      const [taskSetsRes, rewardRes, langVarRes, geoRes] = await Promise.all([
         supabase.from("campaign_task_sets").select("campaign_id, task_type, enabled").in("campaign_id", ids),
         supabase.from("campaign_reward_config").select("campaign_id, currency, base_rate, payout_model").in("campaign_id", ids),
         supabase.from("campaign_language_variants").select("campaign_id, label").in("campaign_id", ids),
+        supabase.from("campaign_geographic_scope").select("campaign_id, restriction_mode, countries").in("campaign_id", ids),
       ]);
 
-      return campaigns.map(c => ({
-        ...c,
-        task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
-        reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
-        languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
-        isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
-      }));
+      const browserCountry = detectBrowserCountry();
+
+      return campaigns
+        .map(c => ({
+          ...c,
+          task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
+          reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
+          languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
+          geo_scope: (geoRes.data || []).find(g => g.campaign_id === c.id) || null,
+          isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
+        }))
+        .filter(c => isCampaignVisibleForCountry(c.geo_scope, browserCountry));
     },
     staleTime: 60_000,
   });
