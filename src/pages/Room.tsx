@@ -714,7 +714,6 @@ const Room = () => {
     }
 
   // Room view
-  return (
   if (isPortal) {
     // Portal-themed room view
     return (
