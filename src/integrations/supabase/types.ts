@@ -64,6 +64,56 @@ export type Database = {
           },
         ]
       }
+      campaign_annotation_validation: {
+        Row: {
+          allowed_values: Json | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+          task_set_id: string
+          validation_scope: string
+        }
+        Insert: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+          task_set_id: string
+          validation_scope?: string
+        }
+        Update: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+          task_set_id?: string
+          validation_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_annotation_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_audio_validation: {
         Row: {
           allowed_values: Json | null
@@ -75,6 +125,7 @@ export type Database = {
           min_value: number | null
           rule_key: string
           target_value: number | null
+          task_set_id: string | null
         }
         Insert: {
           allowed_values?: Json | null
@@ -86,6 +137,7 @@ export type Database = {
           min_value?: number | null
           rule_key: string
           target_value?: number | null
+          task_set_id?: string | null
         }
         Update: {
           allowed_values?: Json | null
@@ -97,6 +149,7 @@ export type Database = {
           min_value?: number | null
           rule_key?: string
           target_value?: number | null
+          task_set_id?: string | null
         }
         Relationships: [
           {
@@ -104,6 +157,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_audio_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -117,6 +177,7 @@ export type Database = {
           max_value: number | null
           min_value: number | null
           rule_key: string
+          task_set_id: string | null
         }
         Insert: {
           campaign_id: string
@@ -126,6 +187,7 @@ export type Database = {
           max_value?: number | null
           min_value?: number | null
           rule_key: string
+          task_set_id?: string | null
         }
         Update: {
           campaign_id?: string
@@ -135,6 +197,7 @@ export type Database = {
           max_value?: number | null
           min_value?: number | null
           rule_key?: string
+          task_set_id?: string | null
         }
         Relationships: [
           {
@@ -142,6 +205,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_content_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -189,6 +259,56 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: true
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_image_validation: {
+        Row: {
+          allowed_values: Json | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+          task_set_id: string
+          validation_scope: string
+        }
+        Insert: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+          task_set_id: string
+          validation_scope?: string
+        }
+        Update: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+          task_set_id?: string
+          validation_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_image_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -344,6 +464,56 @@ export type Database = {
           },
         ]
       }
+      campaign_review_validation: {
+        Row: {
+          allowed_values: Json | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+          task_set_id: string
+          validation_scope: string
+        }
+        Insert: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+          task_set_id: string
+          validation_scope?: string
+        }
+        Update: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+          task_set_id?: string
+          validation_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_review_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_reward_config: {
         Row: {
           base_rate: number | null
@@ -482,6 +652,172 @@ export type Database = {
           },
         ]
       }
+      campaign_task_sets: {
+        Row: {
+          admin_rules: Json | null
+          campaign_id: string
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          instructions_summary: string | null
+          instructions_title: string | null
+          prompt_do: string[] | null
+          prompt_dont: string[] | null
+          prompt_topic: string | null
+          task_set_id: string
+          task_type: string
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          admin_rules?: Json | null
+          campaign_id: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          prompt_topic?: string | null
+          task_set_id: string
+          task_type: string
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          admin_rules?: Json | null
+          campaign_id?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          prompt_topic?: string | null
+          task_set_id?: string
+          task_type?: string
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_task_sets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_task_sets_task_type_fkey"
+            columns: ["task_type"]
+            isOneToOne: false
+            referencedRelation: "task_type_catalog"
+            referencedColumns: ["task_type"]
+          },
+        ]
+      }
+      campaign_text_validation: {
+        Row: {
+          allowed_values: Json | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+          task_set_id: string
+          validation_scope: string
+        }
+        Insert: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+          task_set_id: string
+          validation_scope?: string
+        }
+        Update: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+          task_set_id?: string
+          validation_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_text_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_video_validation: {
+        Row: {
+          allowed_values: Json | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_critical: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_key: string
+          target_value: number | null
+          task_set_id: string
+          validation_scope: string
+        }
+        Insert: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key: string
+          target_value?: number | null
+          task_set_id: string
+          validation_scope?: string
+        }
+        Update: {
+          allowed_values?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_critical?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_key?: string
+          target_value?: number | null
+          task_set_id?: string
+          validation_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_video_validation_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           audio_bit_depth: number | null
@@ -501,8 +837,10 @@ export type Database = {
           end_date: string | null
           id: string
           is_active: boolean | null
+          language_primary: string | null
           name: string
           partner_id: string | null
+          schema_version: string | null
           start_date: string | null
           target_hours: number | null
           timezone: string | null
@@ -527,8 +865,10 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean | null
+          language_primary?: string | null
           name: string
           partner_id?: string | null
+          schema_version?: string | null
           start_date?: string | null
           target_hours?: number | null
           timezone?: string | null
@@ -553,8 +893,10 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean | null
+          language_primary?: string | null
           name?: string
           partner_id?: string | null
+          schema_version?: string | null
           start_date?: string | null
           target_hours?: number | null
           timezone?: string | null
@@ -816,6 +1158,51 @@ export type Database = {
           status?: string
           topic?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      task_type_catalog: {
+        Row: {
+          category: string
+          created_at: string | null
+          default_admin_rules: Json | null
+          default_content_validation: Json | null
+          default_tech_validation: Json | null
+          is_active: boolean | null
+          primary_unit: string
+          secondary_unit: string | null
+          sort_order: number | null
+          task_type: string
+          ui_label: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          default_admin_rules?: Json | null
+          default_content_validation?: Json | null
+          default_tech_validation?: Json | null
+          is_active?: boolean | null
+          primary_unit?: string
+          secondary_unit?: string | null
+          sort_order?: number | null
+          task_type: string
+          ui_label: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          default_admin_rules?: Json | null
+          default_content_validation?: Json | null
+          default_tech_validation?: Json | null
+          is_active?: boolean | null
+          primary_unit?: string
+          secondary_unit?: string | null
+          sort_order?: number | null
+          task_type?: string
+          ui_label?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
