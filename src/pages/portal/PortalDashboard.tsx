@@ -1,6 +1,6 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -8,17 +8,68 @@ import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { useState } from "react";
 
 function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
 }
 
-function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?: boolean }) {
+function CampaignCard({ campaign, isOnWaitlist, user, onWaitlistToggle }: { campaign: any; isOnWaitlist?: boolean; user: any; onWaitlistToggle: (campaignId: string) => void }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [joining, setJoining] = useState(false);
   const enabledTaskSets = campaign.task_sets?.filter((ts: any) => ts.enabled) || [];
   const waitlist = isWaitlist(campaign);
+
+  const handleClick = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (waitlist) {
+      onWaitlistToggle(campaign.id);
+      return;
+    }
+
+    // Active campaign: auto-join if needed and go directly to task
+    setJoining(true);
+    try {
+      // Check if already participant
+      const { data: existing } = await supabase
+        .from("campaign_participants")
+        .select("id")
+        .eq("campaign_id", campaign.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!existing) {
+        const { error } = await supabase
+          .from("campaign_participants")
+          .insert({ campaign_id: campaign.id, user_id: user.id });
+        if (error && !error.message.includes("duplicate")) throw error;
+        queryClient.invalidateQueries({ queryKey: ["campaign_participant", campaign.id, user.id] });
+      }
+      navigate(`/campaign/${campaign.id}/task`);
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const buttonLabel = waitlist
+    ? (isOnWaitlist ? t("dashboard.alreadyOnWaitlist") : t("dashboard.waitingList"))
+    : t("dashboard.start");
+
+  const buttonIcon = waitlist
+    ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />)
+    : <ArrowRight className="h-4 w-4" />;
+
   return (
     <div className="group transition-colors" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
       {enabledTaskSets.length > 0 && (
@@ -54,9 +105,14 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
         )}
       </div>
       <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
-        <Link to={`/campaign/${campaign.id}`}>
-          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? (isOnWaitlist ? t("dashboard.alreadyOnWaitlist") : t("dashboard.waitingList")) : t("dashboard.start")} icon={waitlist ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />) : <ArrowRight className="h-4 w-4" />} />
-        </Link>
+        <KGenButton
+          className="w-full"
+          size="sm"
+          onClick={handleClick}
+          disabled={joining}
+          scrambleText={joining ? t("common.loading") : buttonLabel}
+          icon={buttonIcon}
+        />
       </div>
     </div>
   );
@@ -66,6 +122,7 @@ export default function PortalDashboard() {
   const { data: campaigns, isLoading } = useCampaigns();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const { data: userWaitlistIds } = useQuery({
     queryKey: ["user-waitlist", user?.id],
@@ -78,6 +135,31 @@ export default function PortalDashboard() {
     },
     enabled: !!user?.id,
   });
+
+  const handleWaitlistToggle = async (campaignId: string) => {
+    if (!user) return;
+    const isOn = userWaitlistIds?.has(campaignId);
+    try {
+      if (isOn) {
+        const { error } = await supabase
+          .from("campaign_waitlist")
+          .delete()
+          .eq("campaign_id", campaignId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        toast.success(t("dashboard.leftWaitlist") || "Você saiu da lista de espera.");
+      } else {
+        const { error } = await supabase
+          .from("campaign_waitlist")
+          .insert({ campaign_id: campaignId, user_id: user.id });
+        if (error) throw error;
+        toast.success(t("dashboard.joinedWaitlist") || "Você entrou na lista de espera!");
+      }
+      queryClient.invalidateQueries({ queryKey: ["user-waitlist", user.id] });
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    }
+  };
 
   const allVisible = campaigns?.filter(c => c.is_active) || [];
   
@@ -123,16 +205,16 @@ export default function PortalDashboard() {
         </div>
       )}
 
-      {/* Active campaigns */}
+      {/* Active campaigns — listed FIRST */}
       {readyNow.length > 0 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-            {readyNow.map(c => <CampaignCard key={c.id} campaign={c} />)}
+            {readyNow.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
           </div>
         </div>
       )}
 
-      {/* Waiting list campaigns */}
+      {/* Waiting list campaigns — listed SECOND */}
       {waitlistCampaigns.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -140,7 +222,7 @@ export default function PortalDashboard() {
             <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.comingSoon")}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-            {waitlistCampaigns.map(c => <CampaignCard key={c.id} campaign={c} isOnWaitlist={userWaitlistIds?.has(c.id)} />)}
+            {waitlistCampaigns.map(c => <CampaignCard key={c.id} campaign={c} isOnWaitlist={userWaitlistIds?.has(c.id)} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
           </div>
         </div>
       )}
