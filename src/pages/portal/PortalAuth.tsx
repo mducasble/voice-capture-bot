@@ -17,9 +17,9 @@ export default function PortalAuth() {
   const [lang, setLang] = useState("pt");
 
   const languages = [
-    { code: "pt", flag: "🇧🇷", label: "Português" },
-    { code: "es", flag: "🇪🇸", label: "Español" },
-    { code: "en", flag: "🇺🇸", label: "English" },
+    { code: "pt", flag: "https://flagcdn.com/w80/br.png", label: "Português" },
+    { code: "es", flag: "https://flagcdn.com/w80/es.png", label: "Español" },
+    { code: "en", flag: "https://flagcdn.com/w80/us.png", label: "English" },
   ];
 
   // Listen for auth state changes (handles OAuth redirect return)
