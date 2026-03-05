@@ -125,7 +125,12 @@ export default function PortalDashboard() {
               {/* Card footer */}
               <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
                 <Link to={`/campaign/${campaign.id}`}>
-                  <KGenButton className="w-full" size="sm" scrambleText="INICIAR" icon={<ArrowRight className="h-4 w-4" />} />
+                  <KGenButton
+                    className="w-full"
+                    size="sm"
+                    scrambleText={isWaitlistCampaign ? "WAITING LIST" : "INICIAR"}
+                    icon={isWaitlistCampaign ? <Bell className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                  />
                 </Link>
               </div>
             </div>
