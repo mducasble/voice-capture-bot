@@ -186,7 +186,7 @@ export default function PortalAuth() {
                 </button>
                 {langOpen && (
                   <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-1 flex gap-1 z-50 p-1"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex gap-1 z-50 p-1"
                     style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
                   >
                     {languages.filter(l => l.code !== lang).map(l => (
