@@ -771,6 +771,84 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                 </div>
               </TabsContent>
 
+              {/* REFERRAL CONFIG */}
+              <TabsContent value="referral" className="space-y-4 pr-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Switch checked={referralOverride} onCheckedChange={setReferralOverride} />
+                  <Label>Usar configuração específica para esta campanha</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {referralOverride
+                    ? "Esta campanha usará os valores abaixo ao invés do padrão global."
+                    : "Esta campanha usa a configuração global de referral (10%, cascata 60/40, 5 níveis)."}
+                </p>
+                {referralOverride && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Pool de Referral (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          value={referralConfig.pool_percent}
+                          onChange={e => setReferralConfig(p => ({ ...p, pool_percent: parseFloat(e.target.value) || 0 }))}
+                        />
+                        <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Proporção de Cascata</Label>
+                        <Input
+                          type="number"
+                          step="0.05"
+                          min="0"
+                          max="1"
+                          value={referralConfig.cascade_keep_ratio}
+                          onChange={e => setReferralConfig(p => ({ ...p, cascade_keep_ratio: parseFloat(e.target.value) || 0 }))}
+                        />
+                        <p className="text-xs text-muted-foreground">Ex: 0.60 = nível atual fica com 60%, passa 40%</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Máx Níveis</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={referralConfig.max_levels}
+                          onChange={e => setReferralConfig(p => ({ ...p, max_levels: parseInt(e.target.value) || 5 }))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="border rounded-lg p-3 space-y-1">
+                      <Label className="text-xs font-semibold">Simulação (atividade de $100)</Label>
+                      {(() => {
+                        const pool = referralConfig.pool_percent;
+                        const ratio = referralConfig.cascade_keep_ratio;
+                        const levels = referralConfig.max_levels;
+                        let remaining = pool;
+                        const distribution: { level: number; value: number }[] = [];
+                        for (let i = 1; i <= levels; i++) {
+                          if (i === levels) {
+                            distribution.push({ level: i, value: remaining });
+                          } else {
+                            const take = remaining * ratio;
+                            distribution.push({ level: i, value: take });
+                            remaining -= take;
+                          }
+                        }
+                        return distribution.map(d => (
+                          <div key={d.level} className="flex justify-between text-xs">
+                            <span>Nível {d.level}</span>
+                            <span className="font-mono">${d.value.toFixed(3)} ({(d.value).toFixed(2)}%)</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
               {/* QUALITY FLOW */}
               <TabsContent value="quality" className="space-y-4 pr-4">
                 <div className="grid grid-cols-2 gap-4">
