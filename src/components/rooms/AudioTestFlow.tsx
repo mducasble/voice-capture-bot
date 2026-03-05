@@ -11,6 +11,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
 import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
+import KGenButton from "@/components/portal/KGenButton";
 
 interface MetricResult {
   value: number | null;
@@ -42,6 +43,7 @@ interface AudioTestFlowProps {
   onTestComplete: () => void;
   onProfileRecommended?: (profile: AudioProfile) => void;
   currentProfile?: AudioProfile | null;
+  isPortal?: boolean;
 }
 
 const TEST_DURATION = 10;
@@ -56,6 +58,7 @@ export const AudioTestFlow = ({
   onTestComplete,
   onProfileRecommended,
   currentProfile,
+  isPortal = false,
 }: AudioTestFlowProps) => {
   const [phase, setPhase] = useState<"idle" | "recording" | "analyzing" | "results">(
     initialResults ? "results" : "idle"
