@@ -147,7 +147,7 @@ export default function PortalCampaign() {
   }
 
   const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
-  const allTopics = enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
+  
   const geo = campaign.geographic_scope;
   const langVariants = campaign.language_variants || [];
   const rewardCurrency = campaign.reward_config?.currency;
