@@ -319,11 +319,13 @@ const Room = () => {
   }, [room?.is_recording, room?.recording_started_at]);
 
   // Handle joining room (for non-creators or creator first time)
-  const handleJoin = async (asCreator = false) => {
-    if (!asCreator && !joinName.trim()) {
+  const handleJoin = async (asCreator = false, anonymous = false) => {
+    if (!asCreator && !anonymous && !joinName.trim()) {
       toast.error("Digite seu nome");
       return;
     }
+    if (!roomId) return;
+    const participantName = anonymous ? "Anônimo" : joinName.trim();
     if (!roomId) return;
 
     setIsJoining(true);
@@ -356,7 +358,7 @@ const Room = () => {
         .from("room_participants")
         .insert({
           room_id: roomId,
-          name: joinName.trim(),
+          name: participantName,
           is_creator: false,
         })
         .select()
@@ -624,6 +626,26 @@ const Room = () => {
                 disabled={isJoining || !joinName.trim()}
                 scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR COMO PARTICIPANTE"}
               />
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full" style={{ borderTop: "1px solid var(--portal-border)" }} />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-3 font-mono text-[10px] uppercase tracking-widest" style={{ background: "var(--portal-input-bg)", color: "var(--portal-text-muted)" }}>
+                    ou
+                  </span>
+                </div>
+              </div>
+
+              <KGenButton
+                variant="outline"
+                className="w-full"
+                onClick={() => handleJoin(false, true)}
+                disabled={isJoining}
+                scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR ANÔNIMO"}
+              />
+
               <p className="font-mono text-[10px] text-center" style={{ color: "var(--portal-text-muted)" }}>
                 Será solicitada permissão para acessar seu microfone
               </p>
