@@ -209,8 +209,90 @@ export default function PortalAuth() {
       <div className="absolute bottom-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
       <div className="absolute bottom-8 right-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
 
-      <div className="relative z-10 min-h-screen flex">
-        {/* Left panel — split into branding (left) + opportunities (right) */}
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+        {/* Branding section — visible on all sizes */}
+        <div className="lg:hidden px-6 pt-10 pb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <img src={kgenLogo} alt="KGeN Logo" className="w-12 h-12" />
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+                <span className="font-mono text-xs tracking-[0.2em] uppercase" style={{ color: "var(--portal-accent)" }}>AI Quests</span>
+              </div>
+            </div>
+          </div>
+          <h1 className="font-mono text-3xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
+            Join. Complete. <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
+          </h1>
+          <p className="font-mono text-xs leading-relaxed mt-3" style={{ color: "var(--portal-text-muted)" }}>
+            {t("auth.platform")}
+          </p>
+        </div>
+
+        {/* Mobile opportunities */}
+        <div className="lg:hidden px-6 pb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+            <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+              {t("auth.openOpportunities")}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {(!publicCampaigns || publicCampaigns.length === 0) && (
+              <p className="font-mono text-xs py-4 text-center" style={{ color: "var(--portal-text-muted)" }}>
+                {t("auth.noOpportunities")}
+              </p>
+            )}
+            {[...(publicCampaigns || [])].sort((a, b) => {
+              if (a.isOpen && !b.isOpen) return -1;
+              if (!a.isOpen && b.isOpen) return 1;
+              return 0;
+            }).map(c => {
+              const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
+              const reward = c.reward;
+              return (
+                <div key={c.id} className="overflow-hidden" style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}>
+                  <div className="flex">
+                    <div className="flex-[4] flex flex-col">
+                      {taskLabels.length > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                          <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
+                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>{taskLabels.join(" · ")}</span>
+                        </div>
+                      )}
+                      <div className="px-3 py-2">
+                        <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{c.name}</h3>
+                      </div>
+                    </div>
+                    <div className="flex-[1] flex flex-col items-center justify-center p-2" style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}>
+                      {reward?.base_rate ? (
+                        <>
+                          <span className="font-mono text-lg font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>{reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}</span>
+                          <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>/{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}</span>
+                        </>
+                      ) : (
+                        <span className="font-mono text-[10px] uppercase font-bold" style={{ color: "var(--portal-accent-text)" }}>—</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 flex justify-center" style={{ borderTop: "1px solid var(--portal-border)" }}>
+                    {c.isOpen ? (
+                      <KGenButton variant="dark" size="sm" icon={<ArrowRight className="w-4 h-4" />} scrambleText={t("auth.participate")} className="w-full"
+                        onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
+                      >{t("auth.participate")}</KGenButton>
+                    ) : (
+                      <KGenButton variant="outline" size="sm" icon={<ClockIcon className="w-4 h-4" />} scrambleText={t("auth.waitingList")} className="w-full"
+                        onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
+                      >{t("auth.waitingList")}</KGenButton>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Desktop left panel — split into branding (left) + opportunities (right) */}
         <div className="hidden lg:flex lg:w-2/3 flex-row" style={{ borderRight: "1px solid var(--portal-border)" }}>
           {/* Branding column */}
           <div className="w-[70%] flex flex-col justify-between p-10" style={{ borderRight: "1px solid var(--portal-border)" }}>
@@ -381,18 +463,6 @@ export default function PortalAuth() {
         {/* Right panel — auth form */}
         <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
           <div className="w-full max-w-md">
-            {/* Mobile logo */}
-            <div className="lg:hidden flex items-center gap-3 mb-10">
-              <img src={kgenLogo} alt="KGeN Logo" className="w-14 h-14" />
-              <div>
-                <h2 className="font-mono text-lg font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-                  KGeN AI Quests
-                </h2>
-                <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                  Recording Platform
-                </p>
-              </div>
-            </div>
 
 
 

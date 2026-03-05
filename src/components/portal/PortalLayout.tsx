@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import kgenLogo from "@/assets/kgen-logo.svg";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "./LanguageSelector";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 export default function PortalLayout() {
   const { user, loading, signOut } = useAuth();
@@ -43,52 +45,7 @@ export default function PortalLayout() {
 
       <div className="relative z-10">
         {/* Header */}
-        <header className="sticky top-0 z-50 backdrop-blur-md" style={{ borderBottom: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
-              <img src={kgenLogo} alt="KGeN" className="w-9 h-9" />
-              <span className="font-mono text-sm font-black uppercase tracking-wider" style={{ color: "var(--portal-text)" }}>
-                KGeN
-              </span>
-            </Link>
-
-            <nav className="flex items-center gap-3">
-              {navItems.map(item => {
-                const isActive = item.exact
-                  ? location.pathname === item.to
-                  : location.pathname.startsWith(item.to);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className="flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest transition-all"
-                    style={{
-                      color: isActive ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                      background: isActive ? "var(--portal-accent)" : "transparent",
-                    }}
-                  >
-                    <item.icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <CopyReferralButton userId={user.id} />
-            </nav>
-
-            <div className="flex items-center gap-3">
-              <LanguageSelector variant="compact" />
-              <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} />
-              <button
-                onClick={signOut}
-                className="p-2 transition-colors"
-                style={{ color: "var(--portal-text-muted)" }}
-                title={t("nav.logout")}
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </header>
+        <PortalHeader navItems={navItems} user={user} signOut={signOut} />
 
         {/* Main content */}
         <main className="max-w-7xl mx-auto px-6 py-8">
