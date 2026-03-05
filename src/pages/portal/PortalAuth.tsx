@@ -69,7 +69,7 @@ export default function PortalAuth() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <img src={kgenLogo} alt="KGeN Logo" className="h-32 w-32 rounded-xl mb-5" />
+          <img src={kgenLogo} alt="KGeN Logo" className="h-32 w-32 mb-5" />
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             KGeN AI Quests
           </h1>
