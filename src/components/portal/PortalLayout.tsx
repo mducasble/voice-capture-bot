@@ -33,7 +33,6 @@ export default function PortalLayout() {
     { to: "/", icon: FolderOpen, label: "OPORTUNIDADES", exact: true },
     { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
     { to: "/earnings", icon: DollarSign, label: "MEUS GANHOS" },
-    { to: "/profile", icon: User, label: "PERFIL" },
   ];
 
   return (
@@ -71,14 +70,18 @@ export default function PortalLayout() {
                   </Link>
                 );
               })}
+              <CopyReferralButton userId={user.id} />
             </nav>
 
             <div className="flex items-center gap-3">
-              <CopyReferralButton userId={user.id} />
-              <div className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 font-mono text-xs transition-colors hover:opacity-80"
+                style={{ color: "var(--portal-text-muted)" }}
+              >
                 <User className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{user.user_metadata?.full_name || user.email}</span>
-              </div>
+              </Link>
               <button
                 onClick={signOut}
                 className="p-2 transition-colors"
@@ -134,6 +137,18 @@ function CopyReferralButton({ userId }: { userId: string }) {
         border: "1px solid var(--portal-accent)",
         color: copied ? "var(--portal-accent-text)" : "var(--portal-accent)",
         background: copied ? "var(--portal-accent)" : "transparent",
+      }}
+      onMouseEnter={(e) => {
+        if (!copied) {
+          e.currentTarget.style.background = "var(--portal-accent)";
+          e.currentTarget.style.color = "var(--portal-accent-text)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!copied) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "var(--portal-accent)";
+        }
       }}
       title="Copiar link pessoal"
     >
