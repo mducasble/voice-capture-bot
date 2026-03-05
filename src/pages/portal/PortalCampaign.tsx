@@ -368,64 +368,113 @@ export default function PortalCampaign() {
           </Section>
         )}
 
-        {/* Room creation form */}
-        <div className="p-6 space-y-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-          <h3 className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-            Configurar Sala
-          </h3>
-
-          {/* Topic */}
-          <div className="space-y-2">
-            <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-              <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
-            </label>
-            <select
-              className="portal-brutalist-input w-full"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            >
-              <option value="">Selecione um tema...</option>
-              {allTopics.map((t, i) => (
-                <option key={i} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Duration */}
-          <div className="space-y-2">
-            <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-              <Timer className="h-3.5 w-3.5" /> Duração da Conversa
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {DURATION_OPTIONS.map(min => (
-                <button
-                  key={min}
-                  onClick={() => setDurationMinutes(min)}
-                  className="font-mono text-xs px-4 py-2 transition-colors"
-                  style={{
-                    border: `1px solid ${durationMinutes === min ? "var(--portal-accent)" : "var(--portal-border)"}`,
-                    background: durationMinutes === min ? "var(--portal-accent)" : "transparent",
-                    color: durationMinutes === min ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                  }}
-                >
-                  {min} min
-                </button>
-              ))}
+        {/* Action section — depends on campaign type and timing */}
+        {isBeforeStartDate ? (
+          /* Campaign hasn't started — show waitlist */
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-2 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <CalendarClock className="h-4 w-4 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
+              <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                Esta campanha inicia em{" "}
+                <span className="font-bold" style={{ color: "var(--portal-text)" }}>
+                  {new Date(campaign.start_date!).toLocaleDateString("pt-BR")}
+                </span>
+              </p>
             </div>
+            {isOnWaitlist ? (
+              <KGenButton
+                onClick={handleLeaveWaitlist}
+                disabled={creating}
+                className="w-full"
+                size="default"
+                scrambleText={creating ? "SAINDO..." : "SAIR DA LISTA DE ESPERA"}
+                icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+              />
+            ) : (
+              <KGenButton
+                onClick={handleJoinWaitlist}
+                disabled={creating || !user}
+                className="w-full"
+                size="default"
+                scrambleText={creating ? "ENTRANDO..." : "ENTRAR NA LISTA DE ESPERA"}
+                icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+              />
+            )}
           </div>
-        </div>
+        ) : isAudioVideoCampaign ? (
+          /* Audio/video campaign — show room creation form */
+          <>
+            <div className="p-6 space-y-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+              <h3 className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                Configurar Sala
+              </h3>
 
-        {/* Actions */}
-        <div className="p-6">
-          <KGenButton
-            onClick={handleCreateRoom}
-            disabled={creating || !topic.trim()}
-            className="w-full"
-            size="default"
-            scrambleText={creating ? "CRIANDO SALA..." : "CRIAR SALA DE GRAVAÇÃO"}
-            icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
-          />
-        </div>
+              {/* Topic */}
+              <div className="space-y-2">
+                <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                  <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
+                </label>
+                <select
+                  className="portal-brutalist-input w-full"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                >
+                  <option value="">Selecione um tema...</option>
+                  {allTopics.map((t, i) => (
+                    <option key={i} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Duration */}
+              <div className="space-y-2">
+                <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                  <Timer className="h-3.5 w-3.5" /> Duração da Conversa
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DURATION_OPTIONS.map(min => (
+                    <button
+                      key={min}
+                      onClick={() => setDurationMinutes(min)}
+                      className="font-mono text-xs px-4 py-2 transition-colors"
+                      style={{
+                        border: `1px solid ${durationMinutes === min ? "var(--portal-accent)" : "var(--portal-border)"}`,
+                        background: durationMinutes === min ? "var(--portal-accent)" : "transparent",
+                        color: durationMinutes === min ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                      }}
+                    >
+                      {min} min
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Room creation action */}
+            <div className="p-6">
+              <KGenButton
+                onClick={handleCreateRoom}
+                disabled={creating || !topic.trim()}
+                className="w-full"
+                size="default"
+                scrambleText={creating ? "CRIANDO SALA..." : "CRIAR SALA DE GRAVAÇÃO"}
+                icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
+              />
+            </div>
+          </>
+        ) : (
+          /* Other campaign types — show participate button */
+          <div className="p-6">
+            <KGenButton
+              onClick={handleParticipate}
+              disabled={creating || !user}
+              className="w-full"
+              size="default"
+              scrambleText={creating ? "ENTRANDO..." : "PARTICIPAR"}
+              icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
