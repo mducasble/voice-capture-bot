@@ -27,14 +27,14 @@ export default function PortalAuth() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate("/portal");
+        navigate("/");
       }
     });
 
     // Check if already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/portal");
+        navigate("/");
       }
     });
 
@@ -59,7 +59,7 @@ export default function PortalAuth() {
     if (error) {
       toast.error(error.message);
     } else {
-      navigate("/portal");
+      navigate("/");
     }
   };
 
@@ -71,7 +71,7 @@ export default function PortalAuth() {
       password: signupPassword,
       options: {
         data: { full_name: signupName },
-        emailRedirectTo: window.location.origin + "/portal",
+        emailRedirectTo: window.location.origin + "/",
       },
     });
     setLoading(false);
@@ -85,7 +85,7 @@ export default function PortalAuth() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/portal",
+      redirect_uri: window.location.origin + "/",
     });
     if (result?.error) {
       toast.error(result.error.message || "Erro ao entrar com Google");

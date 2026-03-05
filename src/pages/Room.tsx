@@ -47,7 +47,7 @@ const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const isPortal = location.pathname.startsWith("/portal");
+  const isPortal = !location.pathname.startsWith("/admin");
   
   const [room, setRoom] = useState<Room | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -221,7 +221,7 @@ const Room = () => {
 
       if (error || !data) {
         toast.error("Sala não encontrada");
-        navigate(isPortal ? "/portal" : "/rooms");
+        navigate(isPortal ? "/" : "/admin/rooms");
         return;
       }
 
@@ -529,7 +529,7 @@ const Room = () => {
       setLocalStream(null);
     }
 
-    navigate(isPortal ? "/portal" : "/rooms");
+    navigate(isPortal ? "/" : "/admin/rooms");
   };
 
   if (!room) {

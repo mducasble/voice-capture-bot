@@ -47,7 +47,7 @@ export default function PortalCampaign() {
 
       if (error) throw error;
       sessionStorage.setItem(`room_creator_${room.id}`, "true");
-      navigate(`/portal/room/${room.id}?campaign=${campaign.id}`);
+      navigate(`/room/${room.id}?campaign=${campaign.id}`);
     } catch (err: any) {
       toast.error("Erro ao criar sala: " + err.message);
     } finally {
@@ -64,7 +64,7 @@ export default function PortalCampaign() {
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
         <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>Campanha não encontrada.</p>
         <button
-          onClick={() => navigate("/portal")}
+          onClick={() => navigate("/")}
           className="font-mono text-xs uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
           style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
         >
@@ -96,7 +96,7 @@ export default function PortalCampaign() {
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* Back button */}
       <button
-        onClick={() => navigate("/portal")}
+        onClick={() => navigate("/")}
         className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest transition-colors"
         style={{ color: "var(--portal-text-muted)" }}
       >
