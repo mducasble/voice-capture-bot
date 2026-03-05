@@ -1,4 +1,4 @@
-import { useRef, useCallback, type ButtonHTMLAttributes } from "react";
+import { useRef, useCallback, useState, useEffect, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -78,28 +78,61 @@ const KGenButton = ({
   ...props
 }: KGenButtonProps) => {
   const spanRef = useRef<HTMLSpanElement>(null);
+  const shineRef = useRef<HTMLSpanElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const { scramble: doScramble, stop } = useScramble();
-  const widthLocked = useRef(false);
+  const [hovered, setHovered] = useState(false);
   const label = typeof children === "string" ? children : "";
 
-  const lockWidth = useCallback((el: HTMLButtonElement | null) => {
-    if (!el) return;
-    if (!widthLocked.current) {
+  // Lock width on mount
+  useEffect(() => {
+    if (btnRef.current) {
+      const w = btnRef.current.getBoundingClientRect().width;
+      btnRef.current.style.minWidth = `${w}px`;
+    }
+  }, [children]);
+
+  const handleMouseEnter = useCallback(() => {
+    setHovered(true);
+    if (enableScramble && label && spanRef.current) {
+      doScramble(spanRef.current, label);
+    }
+    // Shine animation
+    if (shineRef.current) {
+      const el = shineRef.current;
+      el.style.transition = "none";
+      el.style.transform = "translateX(-120%)";
+      el.style.opacity = "0";
       requestAnimationFrame(() => {
-        const w = el.getBoundingClientRect().width;
-        el.style.minWidth = `${w}px`;
-        widthLocked.current = true;
+        requestAnimationFrame(() => {
+          el.style.transition = "transform .55s cubic-bezier(.2,.8,.2,1), opacity .18s ease";
+          el.style.transform = "translateX(120%)";
+          el.style.opacity = "1";
+        });
       });
     }
-  }, []);
+  }, [enableScramble, label, doScramble]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHovered(false);
+    if (enableScramble && label && spanRef.current) {
+      stop(spanRef.current, label);
+    }
+    if (shineRef.current) {
+      const el = shineRef.current;
+      el.style.transition = "none";
+      el.style.transform = "translateX(-120%)";
+      el.style.opacity = "0";
+    }
+  }, [enableScramble, label, stop]);
 
   const v = variantStyles[variant];
 
   return (
     <button
-      ref={lockWidth}
-      onMouseEnter={() => enableScramble && label && spanRef.current && doScramble(spanRef.current, label)}
-      onMouseLeave={() => enableScramble && label && spanRef.current && stop(spanRef.current, label)}
+      ref={btnRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
         "group relative inline-flex items-center justify-center",
         "uppercase tracking-wider select-none whitespace-nowrap font-display !font-black",
@@ -118,32 +151,15 @@ const KGenButton = ({
       {...props}
     >
       <span
+        ref={shineRef}
         aria-hidden
-        className="absolute inset-[-2px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+        className="absolute inset-[-2px] pointer-events-none"
         style={{
           clipPath: CLIP_PATH,
           borderRadius: "inherit",
           background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.30) 18%, transparent 38%)",
-          animation: "none",
-        }}
-        ref={(el) => {
-          if (!el) return;
-          const parent = el.parentElement;
-          if (!parent) return;
-          parent.addEventListener("mouseenter", () => {
-            el.style.transition = "transform .55s cubic-bezier(.2,.8,.2,1), opacity .18s ease";
-            el.style.transform = "translateX(-120%)";
-            el.style.opacity = "0";
-            requestAnimationFrame(() => {
-              el.style.transform = "translateX(120%)";
-              el.style.opacity = "1";
-            });
-          });
-          parent.addEventListener("mouseleave", () => {
-            el.style.transition = "none";
-            el.style.transform = "translateX(-120%)";
-            el.style.opacity = "0";
-          });
+          transform: "translateX(-120%)",
+          opacity: 0,
         }}
       />
       <span ref={spanRef}>{children}</span>
