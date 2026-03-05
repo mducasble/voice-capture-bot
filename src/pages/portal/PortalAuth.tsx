@@ -83,16 +83,18 @@ export default function PortalAuth() {
         {/* Glass Card */}
         <div className="portal-glass-card rounded-2xl p-6">
           <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2 bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-1">
+            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1" style={{ background: 'hsl(168 28% 10% / 0.5)', borderColor: 'hsl(88 100% 51% / 0.1)' }}>
               <TabsTrigger
                 value="login"
-                className="rounded-lg data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground transition-all"
+                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
+                style={{ ['--tw-bg-opacity' as string]: 1 }}
+                data-active-style="true"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
-                className="rounded-lg data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground transition-all"
+                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
               >
                 Cadastrar
               </TabsTrigger>
