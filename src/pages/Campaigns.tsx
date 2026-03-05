@@ -24,6 +24,7 @@ export default function Campaigns() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<string | null>(null);
   const [duplicatingCampaign, setDuplicatingCampaign] = useState<string | null>(null);
+  const [waitlistCampaign, setWaitlistCampaign] = useState<{ id: string; name: string } | null>(null);
 
   const handleEdit = (campaignId: string) => {
     setEditingCampaign(campaignId);
