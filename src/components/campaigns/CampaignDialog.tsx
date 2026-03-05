@@ -18,7 +18,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
