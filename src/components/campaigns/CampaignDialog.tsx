@@ -99,6 +99,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   // Task sets
   const [taskSets, setTaskSets] = useState<CampaignTaskSet[]>([]);
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
+  const [sections, setSections] = useState<CampaignSection[]>([]);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
