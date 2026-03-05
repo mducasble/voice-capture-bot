@@ -61,14 +61,12 @@ export default function PortalDashboard() {
             >
               {/* Task type label at top */}
               {enabledTaskSets.length > 0 && (
-                <div className="px-5 pt-3 pb-0">
-                  <span
-                    className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-1 px-2 py-0.5"
-                    style={{ color: "var(--portal-text-muted)", border: "1px solid var(--portal-border)" }}
-                  >
-                    <Layers className="h-2.5 w-2.5" />
-                    {enabledTaskSets.map(ts => TASK_TYPE_LABELS[ts.task_type] || ts.task_type).join(" · ")}
-                  </span>
+                <div
+                  className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-1 px-4 py-2"
+                  style={{ color: "var(--portal-text-muted)", borderBottom: "1px solid var(--portal-border)" }}
+                >
+                  <Layers className="h-2.5 w-2.5" />
+                  {enabledTaskSets.map(ts => TASK_TYPE_LABELS[ts.task_type] || ts.task_type).join(" · ")}
                 </div>
               )}
 
