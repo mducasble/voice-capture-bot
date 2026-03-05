@@ -16,7 +16,7 @@ import type {
 } from "@/lib/campaignTypes";
 import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
+export type { Client, Campaign, CampaignSection, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
 
 // --- Task Type Catalog ---
 export function useTaskTypeCatalog() {
