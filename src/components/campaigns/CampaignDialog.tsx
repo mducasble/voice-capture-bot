@@ -303,7 +303,102 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
     );
   };
 
-  const renderTaskSetCard = (ts: CampaignTaskSet, index: number) => {
+  // Helper to get/set nested admin_rules values
+  const getAdminVal = (rules: Record<string, any>, path: string): any => {
+    const parts = path.split(".");
+    let cur: any = rules;
+    for (const p of parts) { cur = cur?.[p]; }
+    return cur ?? "";
+  };
+
+  const setAdminVal = (tsIndex: number, path: string, value: any) => {
+    setTaskSets(prev => prev.map((ts, i) => {
+      if (i !== tsIndex) return ts;
+      const rules = JSON.parse(JSON.stringify(ts.admin_rules || {}));
+      const parts = path.split(".");
+      let cur = rules;
+      for (let j = 0; j < parts.length - 1; j++) {
+        if (!cur[parts[j]]) cur[parts[j]] = {};
+        cur = cur[parts[j]];
+      }
+      cur[parts[parts.length - 1]] = value === "" ? 0 : Number(value) || value;
+      return { ...ts, admin_rules: rules };
+    }));
+  };
+
+  const adminField = (tsIndex: number, rules: Record<string, any>, path: string, label: string, placeholder?: string) => (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        step="any"
+        value={getAdminVal(rules, path) || ""}
+        onChange={e => setAdminVal(tsIndex, path, e.target.value)}
+        placeholder={placeholder || "0 = sem limite"}
+        className="h-7 text-xs"
+      />
+    </div>
+  );
+
+  const renderAdminRules = (ts: CampaignTaskSet, index: number) => {
+    const rules = ts.admin_rules || {};
+    const taskType = ts.task_type;
+
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {/* Common: acceptance rate */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Taxa Mín. Aceitação (%)</Label>
+          <Input
+            type="number"
+            step="any"
+            value={getAdminVal(rules, "minimum_acceptance_rate.value") || ""}
+            onChange={e => setAdminVal(index, "minimum_acceptance_rate.value", e.target.value)}
+            placeholder="0"
+            className="h-7 text-xs"
+          />
+        </div>
+
+        {/* Per-type fields */}
+        {(taskType === "audio_capture_solo" || taskType === "audio_capture_group") && (
+          <>
+            {adminField(index, rules, "max_hours_per_user", "Máx Horas/Usuário")}
+            {taskType === "audio_capture_group" && adminField(index, rules, "max_hours_per_partner_per_user", "Máx Horas/Parceiro/Usuário")}
+            {adminField(index, rules, "additional_limits.max_sessions_per_user", "Máx Sessões/Usuário")}
+            {taskType === "audio_capture_group" && (
+              <>
+                {adminField(index, rules, "additional_limits.min_participants_per_session", "Mín Participantes/Sessão")}
+                {adminField(index, rules, "additional_limits.max_participants_per_session", "Máx Participantes/Sessão")}
+              </>
+            )}
+          </>
+        )}
+
+        {taskType === "image_submission" && (
+          <>
+            {adminField(index, rules, "max_images_per_user", "Máx Imagens/Usuário")}
+            {adminField(index, rules, "additional_limits.max_images_per_day", "Máx Imagens/Dia")}
+          </>
+        )}
+
+        {taskType === "video_submission" && (
+          <>
+            {adminField(index, rules, "max_hours_per_user", "Máx Horas/Usuário")}
+            {adminField(index, rules, "max_partners_per_user", "Máx Parceiros/Usuário")}
+            {adminField(index, rules, "additional_limits.max_videos_per_user", "Máx Vídeos/Usuário")}
+          </>
+        )}
+
+        {taskType === "data_labeling" && adminField(index, rules, "max_tasks_per_user", "Máx Tarefas/Usuário")}
+
+        {taskType === "transcription" && adminField(index, rules, "max_minutes_per_user", "Máx Minutos/Usuário")}
+
+        {(taskType === "prompt_review" || taskType === "image_review") && adminField(index, rules, "max_reviews_per_user", "Máx Revisões/Usuário")}
+      </div>
+    );
+  };
+
+
     const isExpanded = expandedTaskSet === index;
     const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
 
