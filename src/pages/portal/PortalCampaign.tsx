@@ -16,8 +16,6 @@ import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
-const AUDIO_VIDEO_CATEGORIES = ["audio", "video"];
-
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
   return useQuery({
     queryKey: ["campaign_waitlist", campaignId, userId],
@@ -48,15 +46,24 @@ export default function PortalCampaign() {
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
-  // Determine if this campaign has audio/video tasks (needs room creation)
-  const isAudioVideoCampaign = useMemo(() => {
-    if (!campaign?.task_sets) return false;
-    const enabledSets = campaign.task_sets.filter(ts => ts.enabled);
-    return enabledSets.some(ts => {
-      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "";
-      return AUDIO_VIDEO_CATEGORIES.includes(category);
-    });
-  }, [campaign]);
+  // Check if user already participates
+  const { data: participationEntry } = useQuery({
+    queryKey: ["campaign_participant", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user?.id) return null;
+      const { data, error } = await supabase
+        .from("campaign_participants")
+        .select("id")
+        .eq("campaign_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user?.id,
+  });
+
+  const isParticipant = !!participationEntry;
 
   // Check if campaign hasn't started yet
   const isBeforeStartDate = useMemo(() => {
@@ -135,9 +142,21 @@ export default function PortalCampaign() {
 
   const handleParticipate = async () => {
     if (!user || !campaign) return;
-    // For non-audio/video campaigns, navigate to a generic participation flow
-    // For now, just show a toast — this can be extended later
-    toast.info("Funcionalidade de participação em breve!");
+    setCreating(true);
+    try {
+      if (!isParticipant) {
+        const { error } = await supabase
+          .from("campaign_participants")
+          .insert({ campaign_id: campaign.id, user_id: user.id });
+        if (error && !error.message.includes("duplicate")) throw error;
+        queryClient.invalidateQueries({ queryKey: ["campaign_participant", campaign.id, user.id] });
+      }
+      navigate(`/campaign/${campaign.id}/task`);
+    } catch (err: any) {
+      toast.error("Erro ao participar: " + err.message);
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (isLoading) {
