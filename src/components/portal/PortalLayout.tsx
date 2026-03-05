@@ -22,6 +22,10 @@ export default function PortalLayout() {
   }
 
   if (!user) {
+    const intended = location.pathname + location.search + location.hash;
+    if (intended && intended !== "/" && intended !== "/auth") {
+      sessionStorage.setItem("redirect_after_login", intended);
+    }
     return <Navigate to="/auth" replace />;
   }
 

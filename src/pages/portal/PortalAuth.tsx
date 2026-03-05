@@ -64,13 +64,17 @@ export default function PortalAuth() {
         if (event === "SIGNED_IN") {
           await processReferralOnSignup(session.user.id);
         }
-        navigate("/");
+        const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
+        sessionStorage.removeItem("redirect_after_login");
+        navigate(redirectTo);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/");
+        const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
+        sessionStorage.removeItem("redirect_after_login");
+        navigate(redirectTo);
       }
     });
 
@@ -100,7 +104,9 @@ export default function PortalAuth() {
     if (error) {
       toast.error(error.message);
     } else {
-      navigate("/");
+      const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
+      sessionStorage.removeItem("redirect_after_login");
+      navigate(redirectTo);
     }
   };
 
@@ -112,7 +118,7 @@ export default function PortalAuth() {
       password: signupPassword,
       options: {
         data: { full_name: signupName },
-        emailRedirectTo: window.location.origin + "/",
+        emailRedirectTo: window.location.origin + (sessionStorage.getItem("redirect_after_login") || "/"),
       },
     });
     setLoading(false);
