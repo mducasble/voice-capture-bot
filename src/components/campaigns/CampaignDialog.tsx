@@ -162,6 +162,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setGeoScope({ restriction_mode: "include", continents: [], countries: [], regions: [], states: [], cities: [] });
       setLangVariants([]);
       setTaskSets([]);
+      setSections([]);
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
