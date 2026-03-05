@@ -5,18 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer,
+  ArrowLeft, Clock, FileText, Loader2,
   Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
   Users, BookOpen, Bell, CalendarClock,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
-import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
+import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 
-const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
-const AUDIO_VIDEO_CATEGORIES = ["audio", "video"];
 
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
   return useQuery({
@@ -43,20 +41,27 @@ export default function PortalCampaign() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [topic, setTopic] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<number>(10);
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
-  // Determine if this campaign has audio/video tasks (needs room creation)
-  const isAudioVideoCampaign = useMemo(() => {
-    if (!campaign?.task_sets) return false;
-    const enabledSets = campaign.task_sets.filter(ts => ts.enabled);
-    return enabledSets.some(ts => {
-      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "";
-      return AUDIO_VIDEO_CATEGORIES.includes(category);
-    });
-  }, [campaign]);
+  // Check if user already participates
+  const { data: participationEntry } = useQuery({
+    queryKey: ["campaign_participant", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user?.id) return null;
+      const { data, error } = await supabase
+        .from("campaign_participants")
+        .select("id")
+        .eq("campaign_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user?.id,
+  });
+
+  const isParticipant = !!participationEntry;
 
   // Check if campaign hasn't started yet
   const isBeforeStartDate = useMemo(() => {
@@ -66,36 +71,6 @@ export default function PortalCampaign() {
 
   const isOnWaitlist = !!waitlistEntry;
 
-  const handleCreateRoom = async () => {
-    if (!user || !campaign) return;
-    if (!topic.trim()) {
-      toast.error("Digite o tema da conversa");
-      return;
-    }
-    setCreating(true);
-    try {
-      const userName = user.user_metadata?.full_name || user.email || "Usuário";
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          creator_name: userName,
-          room_name: `${campaign.name} - ${userName}`,
-          status: "waiting",
-          topic: topic.trim(),
-          duration_minutes: durationMinutes,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      sessionStorage.setItem(`room_creator_${room.id}`, "true");
-      navigate(`/room/${room.id}?campaign=${campaign.id}`);
-    } catch (err: any) {
-      toast.error("Erro ao criar sala: " + err.message);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleJoinWaitlist = async () => {
     if (!user || !campaign) return;
@@ -135,9 +110,21 @@ export default function PortalCampaign() {
 
   const handleParticipate = async () => {
     if (!user || !campaign) return;
-    // For non-audio/video campaigns, navigate to a generic participation flow
-    // For now, just show a toast — this can be extended later
-    toast.info("Funcionalidade de participação em breve!");
+    setCreating(true);
+    try {
+      if (!isParticipant) {
+        const { error } = await supabase
+          .from("campaign_participants")
+          .insert({ campaign_id: campaign.id, user_id: user.id });
+        if (error && !error.message.includes("duplicate")) throw error;
+        queryClient.invalidateQueries({ queryKey: ["campaign_participant", campaign.id, user.id] });
+      }
+      navigate(`/campaign/${campaign.id}/task`);
+    } catch (err: any) {
+      toast.error("Erro ao participar: " + err.message);
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (isLoading) {
@@ -160,7 +147,7 @@ export default function PortalCampaign() {
   }
 
   const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
-  const allTopics = enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
+  
   const geo = campaign.geographic_scope;
   const langVariants = campaign.language_variants || [];
   const rewardCurrency = campaign.reward_config?.currency;
@@ -368,7 +355,7 @@ export default function PortalCampaign() {
           </Section>
         )}
 
-        {/* Action section — depends on campaign type and timing */}
+        {/* Action section */}
         {isBeforeStartDate ? (
           /* Campaign hasn't started — show waitlist */
           <div className="p-6 space-y-4">
@@ -401,76 +388,15 @@ export default function PortalCampaign() {
               />
             )}
           </div>
-        ) : isAudioVideoCampaign ? (
-          /* Audio/video campaign — show room creation form */
-          <>
-            <div className="p-6 space-y-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <h3 className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                Configurar Sala
-              </h3>
-
-              {/* Topic */}
-              <div className="space-y-2">
-                <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                  <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
-                </label>
-                <select
-                  className="portal-brutalist-input w-full"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                >
-                  <option value="">Selecione um tema...</option>
-                  {allTopics.map((t, i) => (
-                    <option key={i} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Duration */}
-              <div className="space-y-2">
-                <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                  <Timer className="h-3.5 w-3.5" /> Duração da Conversa
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {DURATION_OPTIONS.map(min => (
-                    <button
-                      key={min}
-                      onClick={() => setDurationMinutes(min)}
-                      className="font-mono text-xs px-4 py-2 transition-colors"
-                      style={{
-                        border: `1px solid ${durationMinutes === min ? "var(--portal-accent)" : "var(--portal-border)"}`,
-                        background: durationMinutes === min ? "var(--portal-accent)" : "transparent",
-                        color: durationMinutes === min ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                      }}
-                    >
-                      {min} min
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Room creation action */}
-            <div className="p-6">
-              <KGenButton
-                onClick={handleCreateRoom}
-                disabled={creating || !topic.trim()}
-                className="w-full"
-                size="default"
-                scrambleText={creating ? "CRIANDO SALA..." : "CRIAR SALA DE GRAVAÇÃO"}
-                icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
-              />
-            </div>
-          </>
         ) : (
-          /* Other campaign types — show participate button */
+          /* Campaign active — show participate / continue */
           <div className="p-6">
             <KGenButton
-              onClick={handleParticipate}
+              onClick={isParticipant ? () => navigate(`/campaign/${campaign.id}/task`) : handleParticipate}
               disabled={creating || !user}
               className="w-full"
               size="default"
-              scrambleText={creating ? "ENTRANDO..." : "PARTICIPAR"}
+              scrambleText={creating ? "ENTRANDO..." : isParticipant ? "CONTINUAR TAREFAS" : "PARTICIPAR"}
               icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
             />
           </div>

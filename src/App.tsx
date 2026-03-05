@@ -18,6 +18,7 @@ const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
 const PortalLayout = lazy(() => import("./components/portal/PortalLayout"));
 const PortalDashboard = lazy(() => import("./pages/portal/PortalDashboard"));
 const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
+const PortalCampaignTask = lazy(() => import("./pages/portal/PortalCampaignTask"));
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
               <Route path="campaign/:id" element={<PortalCampaign />} />
+              <Route path="campaign/:id/task" element={<PortalCampaignTask />} />
               <Route path="room/:roomId" element={<Room />} />
             </Route>
 
