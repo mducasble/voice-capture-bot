@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2 } from "lucide-react";
+import KGenButton from "@/components/portal/KGenButton";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
