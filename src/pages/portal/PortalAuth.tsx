@@ -14,6 +14,13 @@ export default function PortalAuth() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [lightMode, setLightMode] = useState(false);
+  const [lang, setLang] = useState("pt");
+
+  const languages = [
+    { code: "pt", flag: "🇧🇷", label: "Português" },
+    { code: "es", flag: "🇪🇸", label: "Español" },
+    { code: "en", flag: "🇺🇸", label: "English" },
+  ];
 
   // Listen for auth state changes (handles OAuth redirect return)
   useEffect(() => {
@@ -158,6 +165,27 @@ export default function PortalAuth() {
                   Recording Platform
                 </p>
               </div>
+            </div>
+
+            {/* Language selector */}
+            <div className="flex mb-4" style={{ border: "1px solid var(--portal-border)" }}>
+              {languages.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => setLang(l.code)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 font-mono text-xs uppercase tracking-wider transition-all"
+                  style={{
+                    background: lang === l.code ? "var(--portal-accent)" : "transparent",
+                    color: lang === l.code ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                    fontWeight: lang === l.code ? 700 : 400,
+                    borderLeft: l.code !== "pt" ? "1px solid var(--portal-border)" : undefined,
+                  }}
+                >
+                  <span className="text-base">{l.flag}</span>
+                  <span>{l.label}</span>
+                </button>
+              ))}
             </div>
 
             {/* Mode switcher */}
