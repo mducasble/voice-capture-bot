@@ -18,7 +18,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
@@ -111,6 +111,12 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
     rejection_reasons: [...DEFAULT_REJECTION_REASONS],
   });
 
+  // Referral config (per-campaign override, null = use global default)
+  const [referralOverride, setReferralOverride] = useState(false);
+  const [referralConfig, setReferralConfig] = useState<ReferralConfig>({
+    pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5,
+  });
+
   // UI state
   const [newClientName, setNewClientName] = useState("");
   const [showNewClient, setShowNewClient] = useState(false);
@@ -138,6 +144,13 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
+      if (campaign.referral_config) {
+        setReferralOverride(true);
+        setReferralConfig(campaign.referral_config);
+      } else {
+        setReferralOverride(false);
+        setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+      }
     } else if (!campaignId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
       setTargetHours(0); setIsActive(true); setCampaignStatus("draft");
@@ -149,6 +162,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setTaskSets([]);
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
+      setReferralOverride(false);
+      setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
   }, [campaign, campaignId]);
 
