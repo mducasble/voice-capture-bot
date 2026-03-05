@@ -79,7 +79,7 @@ export default function PortalDashboard() {
                     {campaign.name}
                   </h3>
                   {campaign.client && (
-                    <span className="font-mono text-xs uppercase tracking-widest px-2 py-1" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                    <span className="font-mono text-xs font-extrabold uppercase tracking-widest px-2 py-1" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
                       {campaign.client.name}
                     </span>
                   )}
