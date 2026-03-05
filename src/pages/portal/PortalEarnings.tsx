@@ -82,6 +82,12 @@ export default function PortalEarnings() {
                   <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Referral</p>
                 </div>
               </div>
+              <div className="flex items-center gap-1.5 px-2 py-1.5" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.2)" }}>
+                <AlertCircle className="h-3 w-3" style={{ color: "hsl(40 80% 50%)" }} />
+                <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "hsl(40 80% 50%)" }}>
+                  0 pendentes de aprovação
+                </p>
+              </div>
               <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
                 0 tarefas · Total: $0.00
               </p>
