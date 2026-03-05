@@ -221,7 +221,7 @@ export default function PortalAuth() {
         {/* Left panel — split into branding (left) + opportunities (right) */}
         <div className="hidden lg:flex lg:w-2/3 flex-row" style={{ borderRight: "1px solid var(--portal-border)" }}>
           {/* Branding column */}
-          <div className="w-1/2 flex flex-col justify-between p-10" style={{ borderRight: "1px solid var(--portal-border)" }}>
+          <div className="w-[70%] flex flex-col justify-between p-10" style={{ borderRight: "1px solid var(--portal-border)" }}>
             <div>
               <img src={kgenLogo} alt="KGeN Logo" className="w-16 h-16 mb-6" />
               <div className="flex items-center gap-2 mb-3">
@@ -254,7 +254,7 @@ export default function PortalAuth() {
           </div>
 
           {/* Opportunities column */}
-          <div className="w-1/2 flex flex-col">
+          <div className="w-[30%] flex flex-col">
             <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
