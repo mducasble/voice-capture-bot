@@ -92,15 +92,15 @@ export default function PortalDashboard() {
                 )}
               </div>
 
-              {campaign.languages && campaign.languages.length > 0 && (
+              {campaign.language_variants && campaign.language_variants.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {campaign.languages.map(lang => (
+                  {campaign.language_variants.map(v => (
                     <span
-                      key={lang.id}
+                      key={v.variant_id}
                       className="font-mono text-[10px] px-2 py-0.5"
                       style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
                     >
-                      {lang.emoji} {lang.name}
+                      {v.label}
                     </span>
                   ))}
                 </div>

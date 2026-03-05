@@ -153,40 +153,31 @@ export default function PortalCampaign() {
           </div>
         )}
 
-        {/* Sections */}
-        {campaign.sections && campaign.sections.length > 0 && (
+        {/* Task Config */}
+        {campaign.task_config && (
           <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
             <h3 className="font-mono text-xs uppercase tracking-widest mb-4" style={{ color: "var(--portal-text-muted)" }}>
-              Seções da Campanha
+              Instruções da Tarefa
             </h3>
-            <div className="space-y-2">
-              {campaign.sections.map(section => (
-                <div key={section.id} className="p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-                  <div className="flex items-center justify-between">
-                    <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                      {section.name}
-                    </p>
-                    {section.target_hours && (
-                      <span className="font-mono text-[10px] px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                        {section.target_hours}h
-                      </span>
-                    )}
-                  </div>
-                  {section.description && (
-                    <p className="font-mono text-xs mt-1" style={{ color: "var(--portal-text-muted)" }}>
-                      {section.description}
-                    </p>
-                  )}
-                  {section.prompt_text && (
-                    <div className="mt-2 p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
-                      <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
-                      <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                        {section.prompt_text}
-                      </span>
-                    </div>
-                  )}
+            <div className="p-4 space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              {campaign.task_config.instructions_title && (
+                <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                  {campaign.task_config.instructions_title}
+                </p>
+              )}
+              {campaign.task_config.instructions_summary && (
+                <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                  {campaign.task_config.instructions_summary}
+                </p>
+              )}
+              {campaign.task_config.prompt_topic && (
+                <div className="mt-2 p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
+                  <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
+                  <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                    Tema: {campaign.task_config.prompt_topic}
+                  </span>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -208,11 +199,11 @@ export default function PortalCampaign() {
               onChange={(e) => setTopic(e.target.value)}
             >
               <option value="">Selecione um tema...</option>
-              {campaign.sections?.filter(s => s.is_active !== false).map(section => (
-                <option key={section.id} value={section.name}>
-                  {section.name}
+              {campaign.task_config?.prompt_topic && (
+                <option value={campaign.task_config.prompt_topic}>
+                  {campaign.task_config.prompt_topic}
                 </option>
-              ))}
+              )}
             </select>
           </div>
 

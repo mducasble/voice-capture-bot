@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2 } from "lucide-react";
+import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,13 @@ import { useCampaigns } from "@/hooks/useCampaigns";
 import { CampaignDialog } from "@/components/campaigns/CampaignDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  draft: { label: "Rascunho", variant: "outline" },
+  active: { label: "Ativa", variant: "default" },
+  paused: { label: "Pausada", variant: "secondary" },
+  completed: { label: "Concluída", variant: "secondary" },
+};
 
 export default function Campaigns() {
   const { data: campaigns, isLoading, error } = useCampaigns();
@@ -27,170 +34,126 @@ export default function Campaigns() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Link to="/"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
             <div>
               <h1 className="text-3xl font-bold">Campanhas</h1>
-              <p className="text-muted-foreground">
-                Gerencie campanhas de coleta de áudio
-              </p>
+              <p className="text-muted-foreground">Gerencie campanhas de coleta de áudio</p>
             </div>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Campanha
+            <Plus className="h-4 w-4 mr-2" /> Nova Campanha
           </Button>
         </div>
 
-        {/* Campaign List */}
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-6 bg-muted rounded w-3/4"></div>
-                  <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </CardContent>
+                <CardHeader><div className="h-6 bg-muted rounded w-3/4" /><div className="h-4 bg-muted rounded w-1/2 mt-2" /></CardHeader>
+                <CardContent><div className="h-4 bg-muted rounded w-full mb-2" /><div className="h-4 bg-muted rounded w-2/3" /></CardContent>
               </Card>
             ))}
           </div>
         ) : error ? (
           <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive">Erro ao carregar campanhas</p>
-            </CardContent>
+            <CardContent className="pt-6"><p className="text-destructive">Erro ao carregar campanhas</p></CardContent>
           </Card>
         ) : campaigns?.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="pt-6 text-center">
               <Mic2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Nenhuma campanha</h3>
-              <p className="text-muted-foreground mb-4">
-                Crie sua primeira campanha para começar a coletar gravações.
-              </p>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Campanha
-              </Button>
+              <p className="text-muted-foreground mb-4">Crie sua primeira campanha para começar.</p>
+              <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> Criar Campanha</Button>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {campaigns?.map((campaign) => (
-              <Card
-                key={campaign.id}
-                className="cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => handleEdit(campaign.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                      {campaign.client && (
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Building2 className="h-3 w-3" />
-                          {campaign.client.name}
-                        </CardDescription>
+            {campaigns?.map(campaign => {
+              const status = STATUS_MAP[campaign.campaign_status || "draft"] || STATUS_MAP.draft;
+              return (
+                <Card key={campaign.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleEdit(campaign.id)}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                        {campaign.client && (
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Building2 className="h-3 w-3" /> {campaign.client.name}
+                          </CardDescription>
+                        )}
+                      </div>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {campaign.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{campaign.description}</p>
+                    )}
+
+                    {(campaign.start_date || campaign.end_date) && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {campaign.start_date && format(new Date(campaign.start_date), "dd MMM", { locale: ptBR })}
+                        {campaign.start_date && campaign.end_date && " - "}
+                        {campaign.end_date && format(new Date(campaign.end_date), "dd MMM yyyy", { locale: ptBR })}
+                      </div>
+                    )}
+
+                    {campaign.target_hours && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Target className="h-3 w-3" /> Meta: {campaign.target_hours}h
+                      </div>
+                    )}
+
+                    {/* Geographic scope */}
+                    {campaign.geographic_scope && (campaign.geographic_scope.countries?.length > 0 || campaign.geographic_scope.states?.length > 0) && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        {campaign.geographic_scope.countries?.join(", ")}
+                        {campaign.geographic_scope.states?.length > 0 && ` (${campaign.geographic_scope.states.slice(0, 3).join(", ")}${campaign.geographic_scope.states.length > 3 ? "..." : ""})`}
+                      </div>
+                    )}
+
+                    {/* Language variants */}
+                    {campaign.language_variants && campaign.language_variants.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Globe className="h-3 w-3" />
+                        <div className="flex flex-wrap gap-1">
+                          {campaign.language_variants.slice(0, 2).map(v => (
+                            <Badge key={v.variant_id} variant="outline" className="text-xs">{v.label}</Badge>
+                          ))}
+                          {campaign.language_variants.length > 2 && <Badge variant="outline" className="text-xs">+{campaign.language_variants.length - 2}</Badge>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reward */}
+                    {campaign.reward_config && campaign.reward_config.base_rate && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <DollarSign className="h-3 w-3" />
+                        {campaign.reward_config.currency} {campaign.reward_config.base_rate}/h
+                        {campaign.reward_config.bonus_rate ? ` + ${campaign.reward_config.bonus_rate} bônus` : ""}
+                      </div>
+                    )}
+
+                    {/* Task type + audio rules count */}
+                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2 flex gap-3">
+                      {campaign.campaign_type && <span>{campaign.campaign_type.replace(/_/g, " ")}</span>}
+                      {campaign.audio_validation && campaign.audio_validation.length > 0 && (
+                        <span>{campaign.audio_validation.filter(r => r.is_critical).length} regras críticas</span>
                       )}
                     </div>
-                    <Badge variant={campaign.is_active ? "default" : "secondary"}>
-                      {campaign.is_active ? "Ativa" : "Inativa"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {campaign.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {campaign.description}
-                    </p>
-                  )}
-
-                  {/* Date range */}
-                  {(campaign.start_date || campaign.end_date) && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {campaign.start_date && format(new Date(campaign.start_date), "dd MMM", { locale: ptBR })}
-                      {campaign.start_date && campaign.end_date && " - "}
-                      {campaign.end_date && format(new Date(campaign.end_date), "dd MMM yyyy", { locale: ptBR })}
-                    </div>
-                  )}
-
-                  {/* Target */}
-                  {campaign.target_hours && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Target className="h-3 w-3" />
-                      Meta: {campaign.target_hours} horas
-                    </div>
-                  )}
-
-                  {/* Languages */}
-                  {campaign.languages && campaign.languages.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {campaign.languages.slice(0, 3).map((lang) => (
-                        <Badge key={lang.id} variant="outline" className="text-xs">
-                          {lang.emoji} {lang.code.toUpperCase()}
-                        </Badge>
-                      ))}
-                      {campaign.languages.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{campaign.languages.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Regions */}
-                  {campaign.regions && campaign.regions.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {campaign.regions.slice(0, 2).map((region) => (
-                        <Badge key={region.id} variant="secondary" className="text-xs">
-                          {region.code}
-                        </Badge>
-                      ))}
-                      {campaign.regions.length > 2 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{campaign.regions.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Sections count */}
-                  {campaign.sections && campaign.sections.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      {campaign.sections.length} seções de gravação
-                    </div>
-                  )}
-
-                  {/* Audio specs summary */}
-                  <div className="text-xs text-muted-foreground border-t pt-2 mt-2">
-                    {campaign.audio_sample_rate && `${campaign.audio_sample_rate / 1000}kHz`}
-                    {campaign.audio_bit_depth && ` • ${campaign.audio_bit_depth}bit`}
-                    {campaign.audio_channels && ` • ${campaign.audio_channels === 1 ? "Mono" : "Stereo"}`}
-                    {campaign.audio_format && ` • ${campaign.audio_format.toUpperCase()}`}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
-        {/* Campaign Dialog */}
-        <CampaignDialog
-          open={dialogOpen}
-          onClose={handleCloseDialog}
-          campaignId={editingCampaign}
-        />
+        <CampaignDialog open={dialogOpen} onClose={handleCloseDialog} campaignId={editingCampaign} />
       </div>
     </div>
   );

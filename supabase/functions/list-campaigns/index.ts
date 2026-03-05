@@ -13,11 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    // Validate bot API key
     const botApiKey = req.headers.get("x-bot-api-key");
     const expectedApiKey = Deno.env.get("BOT_API_KEY");
-
-    // Debug removed - auth working
 
     if (!botApiKey || botApiKey !== expectedApiKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -31,43 +28,37 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Fetch active campaigns
     const { data: campaigns, error: campError } = await supabase
       .from("campaigns")
-      .select(`
-        *,
-        client:clients(*)
-      `)
+      .select(`*, client:clients(*)`)
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (campError) throw campError;
 
-    // Enrich each campaign with languages, regions, sections
     const enriched = await Promise.all(
       (campaigns || []).map(async (c: any) => {
-        const [langRes, regRes, secRes] = await Promise.all([
-          supabase
-            .from("campaign_languages")
-            .select("language:languages(*)")
-            .eq("campaign_id", c.id),
-          supabase
-            .from("campaign_regions")
-            .select("region:regions(*)")
-            .eq("campaign_id", c.id),
-          supabase
-            .from("campaign_sections")
-            .select("*")
-            .eq("campaign_id", c.id)
-            .eq("is_active", true)
-            .order("sort_order"),
+        const [geoRes, langRes, taskRes, adminRes, audioRes, contentRes, rewardRes, qualityRes] = await Promise.all([
+          supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", c.id).maybeSingle(),
+          supabase.from("campaign_language_variants").select("*").eq("campaign_id", c.id),
+          supabase.from("campaign_task_config").select("*").eq("campaign_id", c.id).maybeSingle(),
+          supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", c.id).maybeSingle(),
+          supabase.from("campaign_audio_validation").select("*").eq("campaign_id", c.id),
+          supabase.from("campaign_content_validation").select("*").eq("campaign_id", c.id),
+          supabase.from("campaign_reward_config").select("*").eq("campaign_id", c.id).maybeSingle(),
+          supabase.from("campaign_quality_flow").select("*").eq("campaign_id", c.id).maybeSingle(),
         ]);
 
         return {
           ...c,
-          languages: langRes.data?.map((l: any) => l.language) || [],
-          regions: regRes.data?.map((r: any) => r.region) || [],
-          sections: secRes.data || [],
+          geographic_scope: geoRes.data || null,
+          language_variants: langRes.data || [],
+          task_config: taskRes.data || null,
+          administrative_rules: adminRes.data || null,
+          audio_validation: audioRes.data || [],
+          content_validation: contentRes.data || [],
+          reward_config: rewardRes.data || null,
+          quality_flow: qualityRes.data || null,
         };
       })
     );
