@@ -63,10 +63,12 @@ export default function PortalCampaign() {
 
   const isParticipant = !!participationEntry;
 
-  // Check if campaign hasn't started yet
+  // Check if campaign hasn't started yet (by date or by status)
   const isBeforeStartDate = useMemo(() => {
+    if (campaign?.campaign_status === "waiting_list") return true;
     if (!campaign?.start_date) return false;
-    return new Date(campaign.start_date) > new Date();
+    const startDate = new Date(campaign.start_date + "T00:00:00");
+    return startDate > new Date();
   }, [campaign]);
 
   const isOnWaitlist = !!waitlistEntry;
