@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Radio, LogOut, User, Loader2 } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2 } from "lucide-react";
 import kgenLogo from "@/assets/kgen-logo.svg";
 
 export default function PortalLayout() {
@@ -22,7 +22,7 @@ export default function PortalLayout() {
 
   const navItems = [
     { to: "/", icon: FolderOpen, label: "CAMPANHAS", exact: true },
-    { to: "/rooms", icon: Radio, label: "MINHAS SALAS" },
+    { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
   ];
 
   return (
