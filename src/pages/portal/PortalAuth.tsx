@@ -623,7 +623,7 @@ export default function PortalAuth() {
       {/* Auth Dialog triggered by campaign buttons */}
       <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
         <DialogContent
-          className="max-w-md p-0 overflow-hidden border-0"
+          className={`max-w-md p-0 overflow-hidden border-0 portal-auth-page ${lightMode ? "portal-light" : ""}`}
           style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}
         >
           <DialogTitle className="sr-only">{t("auth.login")}</DialogTitle>
