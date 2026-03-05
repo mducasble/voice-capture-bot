@@ -14,7 +14,7 @@ function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
 }
 
-function CampaignCard({ campaign }: { campaign: any }) {
+function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?: boolean }) {
   const enabledTaskSets = campaign.task_sets?.filter((ts: any) => ts.enabled) || [];
   const waitlist = isWaitlist(campaign);
   return (
