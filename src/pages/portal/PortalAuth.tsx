@@ -69,7 +69,7 @@ export default function PortalAuth() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <img src={kgenLogo} alt="KGeN Logo" className="w-64 h-64 mb-5 mx-auto block" />
+          <img src={kgenLogo} alt="KGeN Logo" className="w-48 h-48 mb-5 mx-auto block" />
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             KGeN AI Quests
           </h1>
@@ -81,18 +81,16 @@ export default function PortalAuth() {
         {/* Glass Card */}
         <div className="portal-glass-card rounded-2xl p-6">
           <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1" style={{ background: 'hsl(168 28% 10% / 0.5)', borderColor: 'hsl(88 100% 51% / 0.1)' }}>
+            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1" style={{ background: 'hsl(168 28% 10% / 0.5)' }}>
               <TabsTrigger
                 value="login"
-                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
-                style={{ ['--tw-bg-opacity' as string]: 1 }}
-                data-active-style="true"
+                className="rounded-lg data-[state=active]:bg-[hsl(88,100%,51%)] data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
-                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
+                className="rounded-lg data-[state=active]:bg-[hsl(88,100%,51%)] data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
               >
                 Cadastrar
               </TabsTrigger>
