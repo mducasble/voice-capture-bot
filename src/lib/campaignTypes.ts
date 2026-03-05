@@ -41,6 +41,14 @@ export interface RewardConfig {
   bonus_condition: string | null;
 }
 
+export interface ReferralConfig {
+  id?: string;
+  campaign_id?: string | null;
+  pool_percent: number;
+  cascade_keep_ratio: number;
+  max_levels: number;
+}
+
 export interface QualityFlow {
   id?: string;
   campaign_id?: string;
@@ -148,6 +156,7 @@ export interface Campaign {
   language_variants?: LanguageVariant[];
   task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig | null;
+  referral_config?: ReferralConfig | null;
   quality_flow?: QualityFlow | null;
   administrative_rules?: AdministrativeRules | null;
   // Legacy relations (kept for backward compat)

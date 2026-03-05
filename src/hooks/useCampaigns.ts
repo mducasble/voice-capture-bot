@@ -6,6 +6,7 @@ import type {
   GeographicScope,
   LanguageVariant,
   RewardConfig,
+  ReferralConfig,
   QualityFlow,
   CampaignTaskSet,
   ValidationRule,
@@ -14,7 +15,7 @@ import type {
 } from "@/lib/campaignTypes";
 import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
+export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
 
 // --- Task Type Catalog ---
 export function useTaskTypeCatalog() {
@@ -85,13 +86,14 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
 
 // --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
     supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
     supabase.from("campaign_reward_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_quality_flow").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
+    (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
 
   // Enrich task sets with validation rules
@@ -112,6 +114,7 @@ async function fetchCampaignRelations(campaignId: string) {
     language_variants: langRes.data || [],
     task_sets: taskSets,
     reward_config: rewardRes.data || null,
+    referral_config: referralRes.data || null,
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
   };
@@ -162,6 +165,7 @@ export interface SaveCampaignPayload {
   language_variants?: LanguageVariant[];
   task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig;
+  referral_config?: ReferralConfig;
   quality_flow?: QualityFlow;
 }
 
@@ -333,6 +337,17 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       sampling_rate_value: payload.quality_flow.sampling_rate_value,
       sampling_rate_unit: payload.quality_flow.sampling_rate_unit,
       rejection_reasons: payload.quality_flow.rejection_reasons,
+    });
+  }
+
+  // Referral config (per-campaign override)
+  await (supabase as any).from("referral_config").delete().eq("campaign_id", campaignId);
+  if (payload.referral_config) {
+    await (supabase as any).from("referral_config").insert({
+      campaign_id: campaignId,
+      pool_percent: payload.referral_config.pool_percent,
+      cascade_keep_ratio: payload.referral_config.cascade_keep_ratio,
+      max_levels: payload.referral_config.max_levels,
     });
   }
 }

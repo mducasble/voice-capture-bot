@@ -18,7 +18,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
@@ -111,6 +111,12 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
     rejection_reasons: [...DEFAULT_REJECTION_REASONS],
   });
 
+  // Referral config (per-campaign override, null = use global default)
+  const [referralOverride, setReferralOverride] = useState(false);
+  const [referralConfig, setReferralConfig] = useState<ReferralConfig>({
+    pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5,
+  });
+
   // UI state
   const [newClientName, setNewClientName] = useState("");
   const [showNewClient, setShowNewClient] = useState(false);
@@ -138,6 +144,13 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
+      if (campaign.referral_config) {
+        setReferralOverride(true);
+        setReferralConfig(campaign.referral_config);
+      } else {
+        setReferralOverride(false);
+        setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+      }
     } else if (!campaignId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
       setTargetHours(0); setIsActive(true); setCampaignStatus("draft");
@@ -149,6 +162,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setTaskSets([]);
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
+      setReferralOverride(false);
+      setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
   }, [campaign, campaignId]);
 
@@ -172,6 +187,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         language_variants: langVariants,
         task_sets: taskSets,
         reward_config: reward,
+        referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
       };
       if (campaignId) {
@@ -514,12 +530,13 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : (
           <Tabs defaultValue="general" className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <TabsList className="grid grid-cols-3 w-full md:grid-cols-6">
+            <TabsList className="grid grid-cols-4 w-full md:grid-cols-7">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
               <TabsTrigger value="lang">Idiomas</TabsTrigger>
               <TabsTrigger value="tasks">Tarefas</TabsTrigger>
               <TabsTrigger value="reward">Reward</TabsTrigger>
+              <TabsTrigger value="referral">Referral</TabsTrigger>
               <TabsTrigger value="quality">Qualidade</TabsTrigger>
             </TabsList>
 
@@ -752,6 +769,84 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                   <Label>Condição de Bônus</Label>
                   <Input value={reward.bonus_condition || ""} onChange={e => setReward(p => ({ ...p, bonus_condition: e.target.value }))} placeholder="Ex: acceptance_rate >= 90" />
                 </div>
+              </TabsContent>
+
+              {/* REFERRAL CONFIG */}
+              <TabsContent value="referral" className="space-y-4 pr-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Switch checked={referralOverride} onCheckedChange={setReferralOverride} />
+                  <Label>Usar configuração específica para esta campanha</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {referralOverride
+                    ? "Esta campanha usará os valores abaixo ao invés do padrão global."
+                    : "Esta campanha usa a configuração global de referral (10%, cascata 60/40, 5 níveis)."}
+                </p>
+                {referralOverride && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Pool de Referral (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          value={referralConfig.pool_percent}
+                          onChange={e => setReferralConfig(p => ({ ...p, pool_percent: parseFloat(e.target.value) || 0 }))}
+                        />
+                        <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Proporção de Cascata</Label>
+                        <Input
+                          type="number"
+                          step="0.05"
+                          min="0"
+                          max="1"
+                          value={referralConfig.cascade_keep_ratio}
+                          onChange={e => setReferralConfig(p => ({ ...p, cascade_keep_ratio: parseFloat(e.target.value) || 0 }))}
+                        />
+                        <p className="text-xs text-muted-foreground">Ex: 0.60 = nível atual fica com 60%, passa 40%</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Máx Níveis</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={referralConfig.max_levels}
+                          onChange={e => setReferralConfig(p => ({ ...p, max_levels: parseInt(e.target.value) || 5 }))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="border rounded-lg p-3 space-y-1">
+                      <Label className="text-xs font-semibold">Simulação (atividade de $100)</Label>
+                      {(() => {
+                        const pool = referralConfig.pool_percent;
+                        const ratio = referralConfig.cascade_keep_ratio;
+                        const levels = referralConfig.max_levels;
+                        let remaining = pool;
+                        const distribution: { level: number; value: number }[] = [];
+                        for (let i = 1; i <= levels; i++) {
+                          if (i === levels) {
+                            distribution.push({ level: i, value: remaining });
+                          } else {
+                            const take = remaining * ratio;
+                            distribution.push({ level: i, value: take });
+                            remaining -= take;
+                          }
+                        }
+                        return distribution.map(d => (
+                          <div key={d.level} className="flex justify-between text-xs">
+                            <span>Nível {d.level}</span>
+                            <span className="font-mono">${d.value.toFixed(3)} ({(d.value).toFixed(2)}%)</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               {/* QUALITY FLOW */}

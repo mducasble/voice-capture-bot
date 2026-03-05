@@ -61,20 +61,30 @@ export default function PortalEarnings() {
           {ACTIVITY_TYPES.map(activity => (
             <div
               key={activity.key}
-              className="flex items-center gap-3 p-4"
+              className="p-4 space-y-3"
               style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
             >
-              <div className="p-2" style={{ background: "hsl(0 0% 15%)" }}>
-                <activity.icon className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-              </div>
-              <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <div className="p-2" style={{ background: "hsl(0 0% 15%)" }}>
+                  <activity.icon className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+                </div>
                 <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>
                   {activity.label}
                 </p>
-                <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                  0 tarefas · $0.00
-                </p>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                  <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>$0.00</p>
+                  <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Direto</p>
+                </div>
+                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                  <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>$0.00</p>
+                  <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Referral</p>
+                </div>
+              </div>
+              <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
+                0 tarefas · Total: $0.00
+              </p>
             </div>
           ))}
         </div>
