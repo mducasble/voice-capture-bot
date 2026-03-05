@@ -170,6 +170,7 @@ export interface Campaign {
   referral_config?: ReferralConfig | null;
   quality_flow?: QualityFlow | null;
   administrative_rules?: AdministrativeRules | null;
+  sections?: CampaignSection[];
   // Legacy relations (kept for backward compat)
   task_config?: any | null;
   audio_validation?: ValidationRule[];
