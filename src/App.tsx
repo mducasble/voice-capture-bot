@@ -29,21 +29,21 @@ const App = () => (
       <BrowserRouter>
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
           <Routes>
-            {/* Admin routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/rooms" element={<Rooms />} />
-            <Route path="/room/:roomId" element={<Room />} />
-            <Route path="/review" element={<Review />} />
-            <Route path="/transcription" element={<Transcript />} />
-
-            {/* Portal routes */}
-            <Route path="/portal/auth" element={<PortalAuth />} />
-            <Route path="/portal" element={<PortalLayout />}>
+            {/* Portal routes (public-facing, root) */}
+            <Route path="/auth" element={<PortalAuth />} />
+            <Route path="/" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
               <Route path="campaign/:id" element={<PortalCampaign />} />
               <Route path="room/:roomId" element={<Room />} />
             </Route>
+
+            {/* Admin routes */}
+            <Route path="/admin" element={<Index />} />
+            <Route path="/admin/campaigns" element={<Campaigns />} />
+            <Route path="/admin/rooms" element={<Rooms />} />
+            <Route path="/admin/room/:roomId" element={<Room />} />
+            <Route path="/admin/review" element={<Review />} />
+            <Route path="/admin/transcription" element={<Transcript />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -74,25 +74,25 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="default" asChild>
-              <Link to="/rooms" className="flex items-center gap-2">
+              <Link to="/admin/rooms" className="flex items-center gap-2">
                 <Radio className="h-4 w-4" />
                 Salas de Áudio
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/campaigns" className="flex items-center gap-2">
+              <Link to="/admin/campaigns" className="flex items-center gap-2">
                 <FolderOpen className="h-4 w-4" />
                 Campanhas
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/review" className="flex items-center gap-2">
+              <Link to="/admin/review" className="flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
                 Revisão
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/transcription" className="flex items-center gap-2">
+              <Link to="/admin/transcription" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Transcrição
               </Link>

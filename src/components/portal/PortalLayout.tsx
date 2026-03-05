@@ -17,12 +17,12 @@ export default function PortalLayout() {
   }
 
   if (!user) {
-    return <Navigate to="/portal/auth" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   const navItems = [
-    { to: "/portal", icon: FolderOpen, label: "CAMPANHAS", exact: true },
-    { to: "/portal/rooms", icon: Radio, label: "MINHAS SALAS" },
+    { to: "/", icon: FolderOpen, label: "CAMPANHAS", exact: true },
+    { to: "/rooms", icon: Radio, label: "MINHAS SALAS" },
   ];
 
   return (
@@ -33,7 +33,7 @@ export default function PortalLayout() {
         {/* Header */}
         <header className="sticky top-0 z-50 backdrop-blur-md" style={{ borderBottom: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
           <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <Link to="/portal" className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-3">
               <img src={kgenLogo} alt="KGeN" className="w-9 h-9" />
               <span className="font-mono text-sm font-black uppercase tracking-wider" style={{ color: "var(--portal-text)" }}>
                 KGeN
