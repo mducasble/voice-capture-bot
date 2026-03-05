@@ -231,6 +231,75 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     } catch { toast({ title: "Erro ao criar cliente", variant: "destructive" }); }
   };
 
+  const handleTranslate = async () => {
+    if (!translateTargetLang.trim()) {
+      toast({ title: "Selecione o idioma de destino", variant: "destructive" });
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const textsPayload = {
+        name: name.replace(" (Cópia)", ""),
+        description: description || "",
+        task_sets: taskSets.map(ts => ({
+          instructions_title: ts.instructions_title || "",
+          instructions_summary: ts.instructions_summary || "",
+          prompt_topic: ts.prompt_topic || "",
+          prompt_do: ts.prompt_do || [],
+          prompt_dont: ts.prompt_dont || [],
+        })),
+        sections: sections.map(s => ({
+          name: s.name || "",
+          description: s.description || "",
+          prompt_text: s.prompt_text || "",
+        })),
+        rejection_reasons: quality.rejection_reasons || [],
+      };
+
+      const { data, error } = await supabase.functions.invoke("translate-campaign", {
+        body: { texts: textsPayload, target_language: translateTargetLang },
+      });
+
+      if (error) throw error;
+      const t = data.translated;
+
+      setName(t.name + " (Cópia)");
+      setDescription(t.description || "");
+      setLanguagePrimary(translateTargetLang);
+
+      if (t.task_sets?.length) {
+        setTaskSets(prev => prev.map((ts, i) => ({
+          ...ts,
+          instructions_title: t.task_sets[i]?.instructions_title ?? ts.instructions_title,
+          instructions_summary: t.task_sets[i]?.instructions_summary ?? ts.instructions_summary,
+          prompt_topic: t.task_sets[i]?.prompt_topic ?? ts.prompt_topic,
+          prompt_do: t.task_sets[i]?.prompt_do ?? ts.prompt_do,
+          prompt_dont: t.task_sets[i]?.prompt_dont ?? ts.prompt_dont,
+        })));
+      }
+
+      if (t.sections?.length) {
+        setSections(prev => prev.map((s, i) => ({
+          ...s,
+          name: t.sections[i]?.name ?? s.name,
+          description: t.sections[i]?.description ?? s.description,
+          prompt_text: t.sections[i]?.prompt_text ?? s.prompt_text,
+        })));
+      }
+
+      if (t.rejection_reasons?.length) {
+        setQuality(prev => ({ ...prev, rejection_reasons: t.rejection_reasons }));
+      }
+
+      toast({ title: "Conteúdo traduzido com sucesso!" });
+    } catch (err: any) {
+      console.error("Translation error:", err);
+      toast({ title: "Erro na tradução", description: err.message, variant: "destructive" });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const addGeoItem = (field: keyof GeographicScope, value: string) => {
     if (!value.trim()) return;
     setGeoScope(prev => ({ ...prev, [field]: [...(prev[field] as string[]), value.trim()] }));
