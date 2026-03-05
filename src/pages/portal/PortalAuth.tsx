@@ -63,7 +63,7 @@ export default function PortalAuth() {
           <div className="mx-auto p-3 rounded-xl bg-primary/10 w-fit">
             <Mic2 className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Voice Recorder Portal</CardTitle>
+          <CardTitle className="text-2xl">KGeN AI Quests Platform</CardTitle>
           <CardDescription>Grave áudio profissional para campanhas</CardDescription>
         </CardHeader>
         <CardContent>
