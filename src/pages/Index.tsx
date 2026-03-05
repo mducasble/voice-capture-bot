@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink, FolderOpen, FileCheck, FileText } from "lucide-react";
+import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink, FolderOpen, FileCheck, FileText, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
@@ -89,6 +89,12 @@ const Index = () => {
               <Link to="/admin/review" className="flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
                 Revisão
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/review-queue" className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4" />
+                Fila de Revisão
               </Link>
             </Button>
             <Button variant="outline" asChild>
