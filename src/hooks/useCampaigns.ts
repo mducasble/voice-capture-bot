@@ -344,6 +344,22 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
     });
   }
 
+  // Sections (temas/assuntos)
+  await supabase.from("campaign_sections").delete().eq("campaign_id", campaignId);
+  if (payload.sections && payload.sections.length > 0) {
+    await supabase.from("campaign_sections").insert(
+      payload.sections.map((s, i) => ({
+        campaign_id: campaignId,
+        name: s.name,
+        description: s.description,
+        prompt_text: s.prompt_text,
+        target_hours: s.target_hours,
+        sort_order: i,
+        is_active: s.is_active,
+      }))
+    );
+  }
+
   // Referral config (per-campaign override)
   await (supabase as any).from("referral_config").delete().eq("campaign_id", campaignId);
   if (payload.referral_config) {
