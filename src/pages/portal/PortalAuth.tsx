@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import KGenButton from "@/components/portal/KGenButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -122,10 +122,10 @@ export default function PortalAuth() {
                     className="portal-input"
                   />
                 </div>
-                <Button type="submit" className="w-full portal-button h-11 text-sm font-medium" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
-                </Button>
+                <KGenButton type="submit" className="w-full" size="sm" disabled={loading} scramble={!loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {loading ? "ENTRANDO..." : "ENTRAR"}
+                </KGenButton>
               </form>
             </TabsContent>
 
@@ -167,10 +167,10 @@ export default function PortalAuth() {
                     className="portal-input"
                   />
                 </div>
-                <Button type="submit" className="w-full portal-button h-11 text-sm font-medium" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar conta
-                </Button>
+                <KGenButton type="submit" className="w-full" size="sm" disabled={loading} scramble={!loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {loading ? "CRIANDO..." : "CRIAR CONTA"}
+                </KGenButton>
               </form>
             </TabsContent>
           </Tabs>
