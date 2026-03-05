@@ -342,7 +342,7 @@ export default function PortalAuth() {
                         {c.isOpen ? (
                           <KGenButton
                             variant="dark"
-                            size="lg"
+                            size="sm"
                             icon={<ArrowRight className="w-4 h-4" />}
                             scrambleText="Participar"
                             className="w-[80%]"
@@ -352,7 +352,7 @@ export default function PortalAuth() {
                         ) : (
                           <KGenButton
                             variant="outline"
-                            size="lg"
+                            size="sm"
                             icon={<ClockIcon className="w-4 h-4" />}
                             scrambleText="Waiting List"
                             className="w-[80%] opacity-60"
