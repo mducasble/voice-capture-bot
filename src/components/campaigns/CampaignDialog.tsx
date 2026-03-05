@@ -382,20 +382,10 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               </div>
             </div>
 
-            {/* Admin rules (JSON editor) */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Regras Administrativas (JSON)</Label>
-              <Textarea
-                value={JSON.stringify(ts.admin_rules, null, 2)}
-                onChange={e => {
-                  try {
-                    const parsed = JSON.parse(e.target.value);
-                    updateTaskSet(index, { admin_rules: parsed });
-                  } catch { /* ignore parse errors while typing */ }
-                }}
-                rows={4}
-                className="font-mono text-xs"
-              />
+            {/* Admin rules (structured) */}
+            <div className="space-y-3">
+              <Label className="text-xs font-semibold">Regras Administrativas</Label>
+              {renderAdminRules(ts, index)}
             </div>
 
             {/* Technical Validation */}
