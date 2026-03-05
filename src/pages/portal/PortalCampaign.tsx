@@ -16,14 +16,55 @@ import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
+const AUDIO_VIDEO_CATEGORIES = ["audio", "video"];
+
+function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: ["campaign_waitlist", campaignId, userId],
+    queryFn: async () => {
+      if (!campaignId || !userId) return null;
+      const { data, error } = await supabase
+        .from("campaign_waitlist")
+        .select("id")
+        .eq("campaign_id", campaignId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId && !!userId,
+  });
+}
+
 export default function PortalCampaign() {
   const { id } = useParams<{ id: string }>();
   const { data: campaign, isLoading } = useCampaign(id);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [topic, setTopic] = useState("");
   const [durationMinutes, setDurationMinutes] = useState<number>(10);
+
+  const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
+
+  // Determine if this campaign has audio/video tasks (needs room creation)
+  const isAudioVideoCampaign = useMemo(() => {
+    if (!campaign?.task_sets) return false;
+    const enabledSets = campaign.task_sets.filter(ts => ts.enabled);
+    return enabledSets.some(ts => {
+      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "";
+      return AUDIO_VIDEO_CATEGORIES.includes(category);
+    });
+  }, [campaign]);
+
+  // Check if campaign hasn't started yet
+  const isBeforeStartDate = useMemo(() => {
+    if (!campaign?.start_date) return false;
+    return new Date(campaign.start_date) > new Date();
+  }, [campaign]);
+
+  const isOnWaitlist = !!waitlistEntry;
 
   const handleCreateRoom = async () => {
     if (!user || !campaign) return;
@@ -54,6 +95,49 @@ export default function PortalCampaign() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!user || !campaign) return;
+    setCreating(true);
+    try {
+      const { error } = await supabase
+        .from("campaign_waitlist")
+        .insert({ campaign_id: campaign.id, user_id: user.id });
+      if (error) throw error;
+      toast.success("Você entrou na lista de espera!");
+      queryClient.invalidateQueries({ queryKey: ["campaign_waitlist", campaign.id, user.id] });
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    if (!user || !campaign) return;
+    setCreating(true);
+    try {
+      const { error } = await supabase
+        .from("campaign_waitlist")
+        .delete()
+        .eq("campaign_id", campaign.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      toast.success("Você saiu da lista de espera.");
+      queryClient.invalidateQueries({ queryKey: ["campaign_waitlist", campaign.id, user.id] });
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleParticipate = async () => {
+    if (!user || !campaign) return;
+    // For non-audio/video campaigns, navigate to a generic participation flow
+    // For now, just show a toast — this can be extended later
+    toast.info("Funcionalidade de participação em breve!");
   };
 
   if (isLoading) {
