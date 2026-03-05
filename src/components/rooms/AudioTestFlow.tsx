@@ -395,8 +395,13 @@ export const AudioTestFlow = ({
     const profileApplied = currentProfile != null && editedProfile != null;
     const descriptions = editedProfile ? getProfileDescriptions(editedProfile) : [];
 
+    const Wrapper = isPortal ? "div" : Card;
+    const wrapperProps = isPortal
+      ? { style: { border: `2px solid ${passed ? "var(--portal-accent)" : "hsl(45 93% 47%)"}`, background: "var(--portal-input-bg)" } }
+      : { className: `border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}` };
+
     return (
-      <Card className={`border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}`}>
+      <Wrapper {...wrapperProps as any}>
         <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowResultDetails(v => !v)}>
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -648,6 +653,15 @@ export const AudioTestFlow = ({
 
               {/* Apply button */}
               <div className="flex gap-2">
+              {isPortal ? (
+                <KGenButton
+                  size="sm"
+                  className="flex-1"
+                  onClick={applyProfile}
+                  scrambleText={profileApplied ? "ATUALIZAR CONFIGURAÇÃO" : "APLICAR CONFIGURAÇÃO"}
+                  icon={<Settings2 className="h-4 w-4" />}
+                />
+              ) : (
                 <Button
                   size="sm"
                   className="flex-1"
@@ -656,6 +670,7 @@ export const AudioTestFlow = ({
                   <Settings2 className="h-4 w-4 mr-1.5" />
                   {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
                 </Button>
+              )}
               </div>
             </div>
           )}
@@ -684,7 +699,7 @@ export const AudioTestFlow = ({
             </Button>
           </CardContent>
         )}
-      </Card>
+      </Wrapper>
     );
   }
 
