@@ -138,6 +138,18 @@ function CopyReferralButton({ userId }: { userId: string }) {
         color: copied ? "var(--portal-accent-text)" : "var(--portal-accent)",
         background: copied ? "var(--portal-accent)" : "transparent",
       }}
+      onMouseEnter={(e) => {
+        if (!copied) {
+          e.currentTarget.style.background = "var(--portal-accent)";
+          e.currentTarget.style.color = "var(--portal-accent-text)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!copied) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "var(--portal-accent)";
+        }
+      }}
       title="Copiar link pessoal"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
