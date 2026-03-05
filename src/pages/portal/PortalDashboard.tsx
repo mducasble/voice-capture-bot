@@ -1,12 +1,10 @@
 import { useCampaigns } from "@/hooks/useCampaigns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, Mic2, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import KGenButton from "@/components/portal/KGenButton";
 
 export default function PortalDashboard() {
   const { data: campaigns, isLoading } = useCampaigns();
@@ -14,46 +12,72 @@ export default function PortalDashboard() {
   const activeCampaigns = campaigns?.filter(c => c.is_active) || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Campanhas Disponíveis</h1>
-        <p className="text-muted-foreground mt-1">Selecione uma campanha para começar a gravar</p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
+          <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+            Campanhas
+          </span>
+        </div>
+        <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+          Campanhas Disponíveis
+        </h1>
+        <p className="font-mono text-sm mt-2" style={{ color: "var(--portal-text-muted)" }}>
+          Selecione uma campanha para começar a gravar
+        </p>
       </div>
 
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-48 rounded-lg" />
+            <Skeleton key={i} className="h-48" style={{ background: "var(--portal-input-bg)" }} />
           ))}
         </div>
       )}
 
       {!isLoading && activeCampaigns.length === 0 && (
-        <Card className="glass-card text-center py-12">
-          <CardContent>
-            <Mic2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium">Nenhuma campanha disponível</h3>
-            <p className="text-muted-foreground mt-1">Aguarde novas campanhas serem publicadas.</p>
-          </CardContent>
-        </Card>
+        <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
+          <Mic2 className="h-12 w-12 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
+          <h3 className="font-mono text-lg font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+            Nenhuma campanha disponível
+          </h3>
+          <p className="font-mono text-sm mt-1" style={{ color: "var(--portal-text-muted)" }}>
+            Aguarde novas campanhas serem publicadas.
+          </p>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeCampaigns.map(campaign => (
-          <Card key={campaign.id} className="glass-card hover:border-primary/50 transition-colors group">
-            <CardHeader className="pb-3">
+          <div
+            key={campaign.id}
+            className="group transition-colors"
+            style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+          >
+            {/* Card header */}
+            <div className="p-5 space-y-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="flex items-start justify-between">
-                <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                <h3 className="font-mono text-base font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+                  {campaign.name}
+                </h3>
                 {campaign.client && (
-                  <Badge variant="secondary" className="text-xs">{campaign.client.name}</Badge>
+                  <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-1" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                    {campaign.client.name}
+                  </span>
                 )}
               </div>
               {campaign.description && (
-                <CardDescription className="line-clamp-2">{campaign.description}</CardDescription>
+                <p className="font-mono text-xs line-clamp-2" style={{ color: "var(--portal-text-muted)" }}>
+                  {campaign.description}
+                </p>
               )}
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            </div>
+
+            {/* Card body */}
+            <div className="p-5 space-y-3">
+              <div className="flex flex-wrap gap-3 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                 {campaign.start_date && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -71,33 +95,38 @@ export default function PortalDashboard() {
               {campaign.languages && campaign.languages.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {campaign.languages.map(lang => (
-                    <Badge key={lang.id} variant="outline" className="text-xs">
+                    <span
+                      key={lang.id}
+                      className="font-mono text-[10px] px-2 py-0.5"
+                      style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                    >
                       {lang.emoji} {lang.name}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
 
-              <div className="flex gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline" className="text-xs">
-                  {campaign.audio_sample_rate || 48000}Hz
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {campaign.audio_bit_depth || 16}bit
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {campaign.audio_format || "WAV"}
-                </Badge>
+              <div className="flex gap-1 font-mono text-[10px]">
+                {[
+                  `${campaign.audio_sample_rate || 48000}Hz`,
+                  `${campaign.audio_bit_depth || 16}bit`,
+                  (campaign.audio_format || "WAV").toUpperCase(),
+                ].map(spec => (
+                  <span
+                    key={spec}
+                    className="px-2 py-0.5"
+                    style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                  >
+                    {spec}
+                  </span>
+                ))}
               </div>
 
-              <Button asChild className="w-full group-hover:bg-primary" size="sm">
-                <Link to={`/portal/campaign/${campaign.id}`} className="flex items-center gap-2">
-                  Iniciar Gravação
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+              <Link to={`/portal/campaign/${campaign.id}`}>
+                <KGenButton className="w-full mt-2" size="sm" scrambleText="INICIAR GRAVAÇÃO" icon={<ArrowRight className="h-4 w-4" />} />
+              </Link>
+            </div>
+          </div>
         ))}
       </div>
     </div>
