@@ -53,7 +53,7 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
       </div>
       <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
         <Link to={`/campaign/${campaign.id}`}>
-          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? "WAITING LIST" : "INICIAR"} icon={waitlist ? <Bell className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} />
+          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? (isOnWaitlist ? "JÁ NA WAITING LIST" : "WAITING LIST") : "INICIAR"} icon={waitlist ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />) : <ArrowRight className="h-4 w-4" />} />
         </Link>
       </div>
     </div>
