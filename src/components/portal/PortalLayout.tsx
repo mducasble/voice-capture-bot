@@ -96,6 +96,57 @@ export default function PortalLayout() {
   );
 }
 
+function UserProfileLink({ userId, userName }: { userId: string; userName: string }) {
+  const { data: profile } = useQuery({
+    queryKey: ["profile", userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", userId)
+        .single();
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const avatarUrl = (profile as any)?.avatar_url;
+  const isOnProfile = useLocation().pathname === "/profile";
+
+  return (
+    <Link
+      to="/profile"
+      className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest font-bold transition-all"
+      style={{
+        color: isOnProfile ? "var(--portal-accent)" : "var(--portal-text-muted)",
+      }}
+      onMouseEnter={(e) => {
+        if (!isOnProfile) e.currentTarget.style.color = "var(--portal-accent)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isOnProfile) e.currentTarget.style.color = "var(--portal-text-muted)";
+      }}
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt="Avatar"
+          className="w-6 h-6 rounded-full object-cover"
+          style={{ border: "1.5px solid var(--portal-accent)" }}
+        />
+      ) : (
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center"
+          style={{ background: "hsl(0 0% 20%)", border: "1.5px solid var(--portal-border)" }}
+        >
+          <User className="h-3 w-3" style={{ color: "var(--portal-text-muted)" }} />
+        </div>
+      )}
+      <span className="hidden sm:inline">{userName}</span>
+    </Link>
+  );
+}
+
 function CopyReferralButton({ userId }: { userId: string }) {
   const [copied, setCopied] = useState(false);
 
