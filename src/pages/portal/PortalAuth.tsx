@@ -330,7 +330,7 @@ export default function PortalAuth() {
                             <span
                               key={i}
                               className="font-mono text-xs font-bold px-2 py-0.5"
-                              style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                              style={{ background: "hsl(0 0% 25%)", color: "hsl(0 0% 80%)", border: "1px solid var(--portal-border)" }}
                             >
                               {l.label}
                             </span>
