@@ -14,6 +14,13 @@ export default function PortalAuth() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [lightMode, setLightMode] = useState(false);
+  const [lang, setLang] = useState("pt");
+
+  const languages = [
+    { code: "pt", flag: "🇧🇷", label: "Português" },
+    { code: "es", flag: "🇪🇸", label: "Español" },
+    { code: "en", flag: "🇺🇸", label: "English" },
+  ];
 
   // Listen for auth state changes (handles OAuth redirect return)
   useEffect(() => {
