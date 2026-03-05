@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy } from "lucide-react";
+import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { CampaignDialog } from "@/components/campaigns/CampaignDialog";
+import { CampaignWaitlistDialog } from "@/components/campaigns/CampaignWaitlistDialog";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
