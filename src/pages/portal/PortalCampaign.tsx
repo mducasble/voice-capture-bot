@@ -42,6 +42,7 @@ export default function PortalCampaign() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const { t } = useTranslation();
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
