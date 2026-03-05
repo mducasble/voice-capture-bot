@@ -44,6 +44,8 @@ interface Participant {
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isPortal = location.pathname.startsWith("/portal");
   
   const [room, setRoom] = useState<Room | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
