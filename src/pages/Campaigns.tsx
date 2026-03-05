@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy } from "lucide-react";
+import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { CampaignDialog } from "@/components/campaigns/CampaignDialog";
+import { CampaignWaitlistDialog } from "@/components/campaigns/CampaignWaitlistDialog";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +24,7 @@ export default function Campaigns() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<string | null>(null);
   const [duplicatingCampaign, setDuplicatingCampaign] = useState<string | null>(null);
+  const [waitlistCampaign, setWaitlistCampaign] = useState<{ id: string; name: string } | null>(null);
 
   const handleEdit = (campaignId: string) => {
     setEditingCampaign(campaignId);
@@ -159,9 +161,14 @@ export default function Campaigns() {
                           </Badge>
                         ))}
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar campanha" onClick={(e) => handleDuplicate(e, campaign.id)}>
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Waiting list" onClick={(e) => { e.stopPropagation(); setWaitlistCampaign({ id: campaign.id, name: campaign.name }); }}>
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar campanha" onClick={(e) => handleDuplicate(e, campaign.id)}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -171,6 +178,15 @@ export default function Campaigns() {
         )}
 
         <CampaignDialog open={dialogOpen} onClose={handleCloseDialog} campaignId={editingCampaign} duplicateFromId={duplicatingCampaign} />
+
+        {waitlistCampaign && (
+          <CampaignWaitlistDialog
+            open={!!waitlistCampaign}
+            onClose={() => setWaitlistCampaign(null)}
+            campaignId={waitlistCampaign.id}
+            campaignName={waitlistCampaign.name}
+          />
+        )}
       </div>
     </div>
   );
