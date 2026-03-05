@@ -167,8 +167,8 @@ export default function PortalAuth() {
               </div>
             </div>
 
-            {/* Language selector — single flag button with dropdown */}
-            <div className="relative mb-4 inline-block">
+            {/* Language selector */}
+            <div className="flex justify-center mb-4">
               <button
                 type="button"
                 onClick={() => {
@@ -176,13 +176,18 @@ export default function PortalAuth() {
                   const nextIdx = (currentIdx + 1) % languages.length;
                   setLang(languages[nextIdx].code);
                 }}
-                className="w-12 h-12 flex items-center justify-center text-2xl transition-all cursor-pointer"
+                className="w-[72px] h-[72px] flex items-center justify-center transition-all cursor-pointer overflow-hidden"
                 style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
                 title={languages.find(l => l.code === lang)?.label}
               >
-                {languages.find(l => l.code === lang)?.flag}
+                <img
+                  src={languages.find(l => l.code === lang)?.flag}
+                  alt={languages.find(l => l.code === lang)?.label}
+                  className="w-12 h-auto"
+                />
               </button>
             </div>
+
 
             {/* Mode switcher */}
             <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
