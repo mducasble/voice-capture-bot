@@ -6,10 +6,10 @@ export async function processReferralOnSignup(newUserId: string) {
 
   try {
     // Find referrer by code
-    const { data: referrer } = await supabase
+    const { data: referrer } = await (supabase as any)
       .from("profiles")
       .select("id")
-      .eq("referral_code" as any, referralCode)
+      .eq("referral_code", referralCode)
       .single();
 
     if (!referrer || referrer.id === newUserId) {
@@ -18,8 +18,8 @@ export async function processReferralOnSignup(newUserId: string) {
     }
 
     // Get referrer's own referral chain (if they were referred too)
-    const { data: referrerChain } = await supabase
-      .from("referrals" as any)
+    const { data: referrerChain } = await (supabase as any)
+      .from("referrals")
       .select("level_1, level_2, level_3, level_4")
       .eq("user_id", referrer.id)
       .single();
@@ -33,7 +33,7 @@ export async function processReferralOnSignup(newUserId: string) {
       level_5: referrerChain?.level_4 || null,
     };
 
-    await supabase.from("referrals" as any).insert({
+    await (supabase as any).from("referrals").insert({
       user_id: newUserId,
       referred_by: referrer.id,
       ...levels,

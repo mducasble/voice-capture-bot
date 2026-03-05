@@ -22,6 +22,7 @@ const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
 const PortalCampaignTask = lazy(() => import("./pages/portal/PortalCampaignTask"));
 const PortalMyCampaigns = lazy(() => import("./pages/portal/PortalMyCampaigns"));
 const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
+const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Routes>
             {/* Portal routes (public-facing, root) */}
             <Route path="/auth" element={<PortalAuth />} />
+            <Route path="/invite/:code" element={<InvitePage />} />
             <Route path="/" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
               <Route path="campaign/:id" element={<PortalCampaign />} />
