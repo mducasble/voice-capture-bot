@@ -6,13 +6,14 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon } from "lucide-react";
+import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import LanguageSelector from "@/components/portal/LanguageSelector";
 import { useTranslation } from "react-i18next";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 type AuthMode = "login" | "signup" | "vendor";
 
@@ -22,7 +23,9 @@ export default function PortalAuth() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
-
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogMode, setAuthDialogMode] = useState<"login" | "signup">("login");
+  const [selectedCampaignName, setSelectedCampaignName] = useState("");
   // Lightweight public campaigns query (no auth needed)
   const { data: publicCampaigns } = useQuery({
     queryKey: ["public-campaigns-preview"],
@@ -342,7 +345,9 @@ export default function PortalAuth() {
                             className="w-[80%]"
                             onClick={() => {
                               sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`);
-                              document.getElementById("login-email")?.focus();
+                              setSelectedCampaignName(c.name);
+                              setAuthDialogMode("signup");
+                              setAuthDialogOpen(true);
                             }}
                           >
                             {t("auth.participate")}
@@ -356,7 +361,9 @@ export default function PortalAuth() {
                             className="w-[80%]"
                             onClick={() => {
                               sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`);
-                              document.getElementById("login-email")?.focus();
+                              setSelectedCampaignName(c.name);
+                              setAuthDialogMode("signup");
+                              setAuthDialogOpen(true);
                             }}
                           >
                             {t("auth.waitingList")}
@@ -612,6 +619,99 @@ export default function PortalAuth() {
           </div>
         </div>
       </div>
+
+      {/* Auth Dialog triggered by campaign buttons */}
+      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+        <DialogContent
+          className="max-w-md p-0 overflow-hidden border-0"
+          style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}
+        >
+          <DialogTitle className="sr-only">{t("auth.login")}</DialogTitle>
+          <div className="p-6 space-y-5">
+            {/* Campaign context */}
+            <div className="p-3 flex items-center gap-2" style={{ border: "1px solid var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+              <span className="font-mono text-xs font-bold uppercase" style={{ color: "var(--portal-accent)" }}>
+                {selectedCampaignName}
+              </span>
+            </div>
+
+            {/* Login/Signup tabs */}
+            <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
+              {(["login", "signup"] as const).map((tab, i) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setAuthDialogMode(tab)}
+                  className="flex-1 py-3 font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center"
+                  style={{
+                    background: authDialogMode === tab ? "var(--portal-accent)" : "transparent",
+                    color: authDialogMode === tab ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                    fontWeight: authDialogMode === tab ? 700 : 400,
+                    borderLeft: i > 0 ? "1px solid var(--portal-border)" : "none",
+                  }}
+                >
+                  {tab === "login" ? t("auth.login") : t("auth.signup")}
+                </button>
+              ))}
+            </div>
+
+            {authDialogMode === "login" ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
+                  <Input type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.password")}</Label>
+                  <Input type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" className="portal-brutalist-input" />
+                </div>
+                <KGenButton type="submit" className="w-full" size="default" disabled={loading} scrambleText={loading ? t("common.loading") : t("auth.loginButton")} icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} />
+              </form>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.name")}</Label>
+                  <Input required value={signupName} onChange={e => setSignupName(e.target.value)} placeholder={t("auth.name")} className="portal-brutalist-input" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
+                  <Input type="email" required value={signupEmail} onChange={e => setSignupEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.password")}</Label>
+                  <Input type="password" required minLength={6} value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="••••••••" className="portal-brutalist-input" />
+                </div>
+                <KGenButton type="submit" className="w-full" size="default" disabled={loading} scrambleText={loading ? t("common.loading") : t("auth.signupButton")} icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} />
+              </form>
+            )}
+
+            {/* Divider + Google */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+              <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.or")}</span>
+              <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+            </div>
+            <KGenButton
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              variant="white"
+              className="w-full"
+              size="default"
+              scrambleText={t("auth.googleButton")}
+              icon={
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+              }
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
