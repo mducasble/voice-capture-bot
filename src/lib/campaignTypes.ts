@@ -41,6 +41,14 @@ export interface RewardConfig {
   bonus_condition: string | null;
 }
 
+export interface ReferralConfig {
+  id?: string;
+  campaign_id?: string | null;
+  pool_percent: number;
+  cascade_keep_ratio: number;
+  max_levels: number;
+}
+
 export interface QualityFlow {
   id?: string;
   campaign_id?: string;
