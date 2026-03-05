@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign } from "lucide-react";
+import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { CampaignDialog } from "@/components/campaigns/CampaignDialog";
+import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -39,7 +40,7 @@ export default function Campaigns() {
             <Link to="/"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
             <div>
               <h1 className="text-3xl font-bold">Campanhas</h1>
-              <p className="text-muted-foreground">Gerencie campanhas de coleta de áudio</p>
+              <p className="text-muted-foreground">Gerencie campanhas de coleta de dados</p>
             </div>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
@@ -73,6 +74,7 @@ export default function Campaigns() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {campaigns?.map(campaign => {
               const status = STATUS_MAP[campaign.campaign_status || "draft"] || STATUS_MAP.draft;
+              const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
               return (
                 <Card key={campaign.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleEdit(campaign.id)}>
                   <CardHeader>
@@ -108,7 +110,6 @@ export default function Campaigns() {
                       </div>
                     )}
 
-                    {/* Geographic scope */}
                     {campaign.geographic_scope && (campaign.geographic_scope.countries?.length > 0 || campaign.geographic_scope.states?.length > 0) && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <MapPin className="h-3 w-3" />
@@ -117,7 +118,6 @@ export default function Campaigns() {
                       </div>
                     )}
 
-                    {/* Language variants */}
                     {campaign.language_variants && campaign.language_variants.length > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Globe className="h-3 w-3" />
@@ -130,21 +130,22 @@ export default function Campaigns() {
                       </div>
                     )}
 
-                    {/* Reward */}
                     {campaign.reward_config && campaign.reward_config.base_rate && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <DollarSign className="h-3 w-3" />
-                        {campaign.reward_config.currency} {campaign.reward_config.base_rate}/h
+                        {campaign.reward_config.currency} {campaign.reward_config.base_rate}/{campaign.reward_config.payout_model?.replace("per_accepted_", "")}
                         {campaign.reward_config.bonus_rate ? ` + ${campaign.reward_config.bonus_rate} bônus` : ""}
                       </div>
                     )}
 
-                    {/* Task type + audio rules count */}
-                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2 flex gap-3">
-                      {campaign.campaign_type && <span>{campaign.campaign_type.replace(/_/g, " ")}</span>}
-                      {campaign.audio_validation && campaign.audio_validation.length > 0 && (
-                        <span>{campaign.audio_validation.filter(r => r.is_critical).length} regras críticas</span>
-                      )}
+                    {/* Task sets summary */}
+                    <div className="text-xs text-muted-foreground border-t pt-2 mt-2 flex flex-wrap gap-2">
+                      <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {enabledTaskSets.length} tarefa(s)</span>
+                      {enabledTaskSets.slice(0, 2).map(ts => (
+                        <Badge key={ts.task_set_id} variant="outline" className="text-[10px]">
+                          {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
+                        </Badge>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>

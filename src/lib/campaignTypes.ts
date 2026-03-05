@@ -1,4 +1,4 @@
-// Campaign system types matching the new relational schema
+// Campaign system types — v2 with task_type_catalog + campaign_task_sets
 
 export interface Client {
   id: string;
@@ -31,49 +31,6 @@ export interface LanguageVariant {
   is_primary: boolean;
 }
 
-export interface TaskConfig {
-  id?: string;
-  campaign_id?: string;
-  task_type: string;
-  instructions_title: string | null;
-  instructions_summary: string | null;
-  prompt_topic: string | null;
-  prompt_do: string[];
-  prompt_dont: string[];
-}
-
-export interface AdministrativeRules {
-  id?: string;
-  campaign_id?: string;
-  max_hours_per_user: number | null;
-  max_hours_per_partner_per_user: number | null;
-  min_acceptance_rate: number | null;
-  min_acceptance_rate_unit: string;
-  max_sessions_per_user: number | null;
-  min_participants_per_session: number | null;
-  max_participants_per_session: number | null;
-}
-
-export interface AudioValidationRule {
-  id?: string;
-  campaign_id?: string;
-  rule_key: string;
-  min_value: number | null;
-  max_value: number | null;
-  target_value: number | null;
-  allowed_values: any | null;
-  is_critical: boolean;
-}
-
-export interface ContentValidationRule {
-  id?: string;
-  campaign_id?: string;
-  rule_key: string;
-  min_value: number | null;
-  max_value: number | null;
-  is_critical: boolean;
-}
-
 export interface RewardConfig {
   id?: string;
   campaign_id?: string;
@@ -93,6 +50,58 @@ export interface QualityFlow {
   rejection_reasons: string[];
 }
 
+// --- Task Type Catalog ---
+
+export interface TaskTypeCatalog {
+  task_type: string;
+  category: string;
+  ui_label: string;
+  primary_unit: string;
+  secondary_unit: string | null;
+  default_admin_rules: Record<string, any>;
+  default_tech_validation: Record<string, any>;
+  default_content_validation: Record<string, any>;
+  is_active: boolean;
+  sort_order: number;
+}
+
+// --- Campaign Task Sets ---
+
+export interface CampaignTaskSet {
+  id?: string;
+  campaign_id?: string;
+  task_set_id: string;
+  task_type: string;
+  enabled: boolean;
+  weight: number;
+  instructions_title: string | null;
+  instructions_summary: string | null;
+  prompt_topic: string | null;
+  prompt_do: string[];
+  prompt_dont: string[];
+  admin_rules: Record<string, any>;
+  // Loaded relations per category
+  tech_validation?: ValidationRule[];
+  content_validation?: ValidationRule[];
+}
+
+// Generic validation rule used across all category tables
+export interface ValidationRule {
+  id?: string;
+  task_set_id?: string;
+  campaign_id?: string; // legacy (audio/content tables)
+  validation_scope?: string; // 'technical' | 'content' (new tables)
+  rule_key: string;
+  min_value: number | null;
+  max_value: number | null;
+  target_value?: number | null;
+  allowed_values?: any | null;
+  config?: Record<string, any> | null;
+  is_critical: boolean;
+}
+
+// --- Campaign ---
+
 export interface Campaign {
   id: string;
   name: string;
@@ -109,9 +118,11 @@ export interface Campaign {
   timezone: string | null;
   visibility_is_public: boolean | null;
   partner_id: string | null;
+  schema_version: string | null;
+  language_primary: string | null;
   created_at: string;
   updated_at: string;
-  // Old columns (kept for backward compat)
+  // Legacy columns
   audio_sample_rate: number | null;
   audio_bit_depth: number | null;
   audio_channels: number | null;
@@ -123,39 +134,44 @@ export interface Campaign {
   client?: Client | null;
   geographic_scope?: GeographicScope | null;
   language_variants?: LanguageVariant[];
-  task_config?: TaskConfig | null;
-  administrative_rules?: AdministrativeRules | null;
-  audio_validation?: AudioValidationRule[];
-  content_validation?: ContentValidationRule[];
+  task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig | null;
   quality_flow?: QualityFlow | null;
+  // Legacy relations (kept for backward compat)
+  task_config?: any | null;
+  administrative_rules?: any | null;
+  audio_validation?: ValidationRule[];
+  content_validation?: ValidationRule[];
 }
 
-// Default audio validation rules template
-export const DEFAULT_AUDIO_RULES: AudioValidationRule[] = [
-  { rule_key: "audio_sampling_rate", target_value: 48000, allowed_values: [16000, 24000, 44100, 48000], is_critical: true, min_value: null, max_value: null },
-  { rule_key: "mic_sampling_rate", min_value: 44100, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "rms_level", min_value: -26, max_value: -18, is_critical: true, target_value: null, allowed_values: null },
-  { rule_key: "signal_to_noise_ratio", min_value: 25, is_critical: true, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "srmr", min_value: 6.0, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "sigmos_disc", min_value: 3.5, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "vqscore", min_value: 3.5, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "wvmos", min_value: 3.5, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "sigmos_overall", min_value: 3.5, is_critical: false, max_value: null, target_value: null, allowed_values: null },
-  { rule_key: "sigmos_reverb", max_value: 2.5, is_critical: false, min_value: null, target_value: null, allowed_values: null },
-  { rule_key: "clipping_ratio", max_value: 0.01, is_critical: true, min_value: null, target_value: null, allowed_values: null },
-  { rule_key: "silence_ratio", max_value: 0.25, is_critical: false, min_value: null, target_value: null, allowed_values: null },
+// Category → validation table name mapping
+export const CATEGORY_VALIDATION_TABLE: Record<string, string> = {
+  audio: "campaign_audio_validation",
+  image: "campaign_image_validation",
+  video: "campaign_video_validation",
+  annotation: "campaign_annotation_validation",
+  text: "campaign_text_validation",
+  review: "campaign_review_validation",
+};
+
+// Audio-specific validation tables (legacy)
+export const AUDIO_CONTENT_TABLE = "campaign_content_validation";
+
+// Default rejection reasons catalog
+export const DEFAULT_REJECTION_REASONS = [
+  "low_snr",
+  "rms_out_of_range",
+  "metadata_missing",
+  "prompt_non_compliance",
+  "topic_not_covered",
+  "invalid_format",
+  "resolution_out_of_range",
+  "duration_out_of_range",
 ];
 
-export const DEFAULT_CONTENT_RULES: ContentValidationRule[] = [
-  { rule_key: "topic_coverage_ratio", min_value: 0.6, is_critical: true, max_value: null },
-  { rule_key: "personal_reference_ratio", min_value: 0.15, is_critical: false, max_value: null },
-  { rule_key: "named_entity_mentions", max_value: 5, is_critical: false, min_value: null },
-  { rule_key: "speaker_balance_ratio", min_value: 0.35, max_value: 0.65, is_critical: false },
-  { rule_key: "repetition_ratio", max_value: 0.2, is_critical: false, min_value: null },
-];
-
+// Rule labels for display
 export const RULE_LABELS: Record<string, string> = {
+  // Audio tech
   audio_sampling_rate: "Sample Rate (Hz)",
   mic_sampling_rate: "Mic Sample Rate (Hz)",
   rms_level: "Nível RMS (dB)",
@@ -168,9 +184,70 @@ export const RULE_LABELS: Record<string, string> = {
   sigmos_reverb: "SigMOS Reverb",
   clipping_ratio: "Clipping Ratio",
   silence_ratio: "Silence Ratio",
+  // Audio content
   topic_coverage_ratio: "Cobertura do Tema",
   personal_reference_ratio: "Referências Pessoais",
   named_entity_mentions: "Menções a Entidades",
   speaker_balance_ratio: "Equilíbrio de Falantes",
   repetition_ratio: "Repetição",
+  // Image
+  original_metadata_required: "Metadata Original",
+  minimum_resolution: "Resolução Mínima",
+  maximum_resolution: "Resolução Máxima",
+  allowed_formats: "Formatos Permitidos",
+  aspect_ratio: "Aspect Ratio",
+  blur_detection_score: "Detecção de Blur",
+  prompt_compliance: "Compliance do Prompt",
+  nsfw_filter: "Filtro NSFW",
+  logo_detection: "Detecção de Logo",
+  // Video
+  video_duration: "Duração do Vídeo",
+  frame_rate: "Frame Rate",
+  bitrate: "Bitrate",
+  audio_track_required: "Faixa de Áudio Obrigatória",
+  // Annotation
+  labeling_schema_version: "Versão do Schema",
+  required_fields_present: "Campos Obrigatórios",
+  annotation_accuracy: "Acurácia da Anotação",
+  inter_annotator_agreement: "Concordância Inter-Anotador",
+  // Transcription
+  timestamp_required: "Timestamp Obrigatório",
+  timestamp_granularity: "Granularidade do Timestamp",
+  format: "Formato",
+  word_accuracy_rate: "Taxa de Acurácia de Palavras",
+  punctuation_accuracy: "Acurácia de Pontuação",
+  speaker_identification: "Identificação de Falante",
+  // Review
+  prompt_format_valid: "Formato do Prompt Válido",
+  language_match_required: "Match de Idioma",
+  prompt_quality_score: "Score de Qualidade",
+  prompt_safety_check: "Verificação de Segurança",
+  bias_detection: "Detecção de Viés",
+  image_integrity: "Integridade da Imagem",
+  metadata_required: "Metadata Obrigatória",
+  image_label_accuracy: "Acurácia dos Labels",
+  prompt_alignment: "Alinhamento do Prompt",
+};
+
+// Task type labels
+export const TASK_TYPE_LABELS: Record<string, string> = {
+  audio_capture_solo: "Captura de Áudio (Solo)",
+  audio_capture_group: "Captura de Áudio (Grupo)",
+  image_submission: "Envio de Imagens e Fotos",
+  video_submission: "Envio ou Gravação de Vídeos",
+  data_labeling: "Data Labelling",
+  transcription: "Transcrição",
+  prompt_review: "Revisão de Prompt",
+  image_review: "Revisão de Imagem",
+};
+
+export const TASK_TYPE_CATEGORIES: Record<string, string> = {
+  audio_capture_solo: "audio",
+  audio_capture_group: "audio",
+  image_submission: "image",
+  video_submission: "video",
+  data_labeling: "annotation",
+  transcription: "text",
+  prompt_review: "review",
+  image_review: "review",
 };
