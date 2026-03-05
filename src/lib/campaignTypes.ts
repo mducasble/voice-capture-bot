@@ -102,6 +102,18 @@ export interface ValidationRule {
 
 // --- Campaign ---
 
+export interface AdministrativeRules {
+  id?: string;
+  campaign_id?: string;
+  max_hours_per_user: number | null;
+  max_hours_per_partner_per_user: number | null;
+  min_acceptance_rate: number | null;
+  min_acceptance_rate_unit: string | null;
+  max_sessions_per_user: number | null;
+  min_participants_per_session: number | null;
+  max_participants_per_session: number | null;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -137,9 +149,9 @@ export interface Campaign {
   task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig | null;
   quality_flow?: QualityFlow | null;
+  administrative_rules?: AdministrativeRules | null;
   // Legacy relations (kept for backward compat)
   task_config?: any | null;
-  administrative_rules?: any | null;
   audio_validation?: ValidationRule[];
   content_validation?: ValidationRule[];
 }

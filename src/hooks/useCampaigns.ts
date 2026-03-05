@@ -10,10 +10,11 @@ import type {
   CampaignTaskSet,
   ValidationRule,
   TaskTypeCatalog,
+  AdministrativeRules,
 } from "@/lib/campaignTypes";
 import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog };
+export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
 
 // --- Task Type Catalog ---
 export function useTaskTypeCatalog() {
