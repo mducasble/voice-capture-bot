@@ -550,6 +550,89 @@ const Room = () => {
 
     // Join screen
     if (!currentParticipant) {
+      if (isPortal) {
+        return (
+          <div className="max-w-md mx-auto space-y-6">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center w-16 h-16 mb-2" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                <Radio className="h-8 w-8" />
+              </div>
+              <h2 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+                {room.room_name || `Sala de ${room.creator_name}`}
+              </h2>
+              <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                Criada por {room.creator_name} • {participants.length} participante(s)
+              </p>
+            </div>
+
+            <div className="space-y-4 p-6" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              {audioDevices.length > 1 && (
+                <div className="space-y-2">
+                  <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                    <Mic className="h-3.5 w-3.5" /> Dispositivo de Áudio
+                  </label>
+                  <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
+                    <SelectTrigger className="portal-brutalist-input h-11">
+                      <SelectValue placeholder="Selecione o microfone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {audioDevices.map((device) => (
+                        <SelectItem key={device.deviceId} value={device.deviceId}>
+                          {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {isLikelyCreator && (
+                <>
+                  <KGenButton
+                    className="w-full"
+                    onClick={() => handleJoin(true)}
+                    disabled={isJoining}
+                    scrambleText={isJoining ? "CONECTANDO..." : `ENTRAR COMO ${room.creator_name.toUpperCase()}`}
+                  />
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full" style={{ borderTop: "1px solid var(--portal-border)" }} />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="px-3 font-mono text-[10px] uppercase tracking-widest" style={{ background: "var(--portal-input-bg)", color: "var(--portal-text-muted)" }}>
+                        ou entre como participante
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2">
+                <label className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Seu Nome</label>
+                <input
+                  className="portal-brutalist-input w-full"
+                  placeholder="Digite seu nome para entrar"
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin(false)}
+                />
+              </div>
+              <KGenButton
+                variant="dark"
+                className="w-full"
+                onClick={() => handleJoin(false)}
+                disabled={isJoining || !joinName.trim()}
+                scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR COMO PARTICIPANTE"}
+              />
+              <p className="font-mono text-[10px] text-center" style={{ color: "var(--portal-text-muted)" }}>
+                Será solicitada permissão para acessar seu microfone
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // Original non-portal join screen
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
@@ -563,7 +646,6 @@ const Room = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Audio device selector */}
               {audioDevices.length > 1 && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
@@ -584,7 +666,6 @@ const Room = () => {
                 </div>
               )}
 
-              {/* Creator quick join button - only visible to the original creator */}
               {isLikelyCreator && (
                 <>
                   <Button 
@@ -595,7 +676,6 @@ const Room = () => {
                   >
                     {isJoining ? "Conectando..." : `Entrar como ${room.creator_name} (Criador)`}
                   </Button>
-                  
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t" />
@@ -607,31 +687,31 @@ const Room = () => {
                 </>
               )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Seu Nome</label>
-              <Input
-                placeholder="Digite seu nome para entrar"
-                value={joinName}
-                onChange={(e) => setJoinName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin(false)}
-              />
-            </div>
-            <Button 
-              className="w-full" 
-              variant="outline"
-              onClick={() => handleJoin(false)}
-              disabled={isJoining || !joinName.trim()}
-            >
-              {isJoining ? "Conectando..." : "Entrar como Participante"}
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              Será solicitada permissão para acessar seu microfone
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Seu Nome</label>
+                <Input
+                  placeholder="Digite seu nome para entrar"
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin(false)}
+                />
+              </div>
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => handleJoin(false)}
+                disabled={isJoining || !joinName.trim()}
+              >
+                {isJoining ? "Conectando..." : "Entrar como Participante"}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Será solicitada permissão para acessar seu microfone
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
 
   // Room view
   return (
