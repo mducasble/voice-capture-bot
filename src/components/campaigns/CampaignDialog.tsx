@@ -29,6 +29,7 @@ interface CampaignDialogProps {
   open: boolean;
   onClose: () => void;
   campaignId: string | null;
+  duplicateFromId?: string | null;
 }
 
 // Convert catalog default JSONB validation to ValidationRule[]
@@ -63,8 +64,8 @@ function createDefaultTaskSet(taskType: string, catalog: any[]): CampaignTaskSet
   };
 }
 
-export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProps) {
-  const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? undefined);
+export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: CampaignDialogProps) {
+  const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? duplicateFromId ?? undefined);
   const { data: clients } = useClients();
   const { data: catalog } = useTaskTypeCatalog();
   const createCampaign = useCreateCampaign();
@@ -126,7 +127,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   // Load campaign
   useEffect(() => {
     if (campaign) {
-      setName(campaign.name);
+      const isDuplicating = !campaignId && !!duplicateFromId;
+      setName(isDuplicating ? `${campaign.name} (Cópia)` : campaign.name);
       setDescription(campaign.description || "");
       setClientId(campaign.client_id || "");
       setStartDate(campaign.start_date || "");
@@ -153,7 +155,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         setReferralOverride(false);
         setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
       }
-    } else if (!campaignId) {
+    } else if (!campaignId && !duplicateFromId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
       setTargetHours(0); setIsActive(true); setCampaignStatus("draft");
       setDurationUnit("days"); setDurationValue(undefined);
@@ -168,7 +170,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setReferralOverride(false);
       setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
-  }, [campaign, campaignId]);
+  }, [campaign, campaignId, duplicateFromId]);
 
   const handleSave = async () => {
     if (!name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
