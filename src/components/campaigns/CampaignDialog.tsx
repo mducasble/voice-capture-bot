@@ -124,6 +124,8 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [newClientName, setNewClientName] = useState("");
   const [showNewClient, setShowNewClient] = useState(false);
   const [tempGeoField, setTempGeoField] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateTargetLang, setTranslateTargetLang] = useState("");
 
   // Load campaign
   useEffect(() => {
