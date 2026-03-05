@@ -62,11 +62,11 @@ function SessionRow({ rec }: { rec: RecordingRow }) {
         </span>
       </div>
       {rec.duration_seconds != null && (
-        <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--portal-text-muted)" }}>
+        <span className="font-mono text-xs shrink-0" style={{ color: "var(--portal-text-muted)" }}>
           {formatDuration(rec.duration_seconds)}
         </span>
       )}
-      <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--portal-text-muted)" }}>
+      <span className="font-mono text-xs shrink-0" style={{ color: "var(--portal-text-muted)" }}>
         {new Date(rec.created_at).toLocaleDateString("pt-BR")}
       </span>
     </div>
@@ -111,14 +111,14 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
               Desde {new Date(participation.joined_at).toLocaleDateString("pt-BR")}
             </span>
             {sessions.length > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
-                <FileAudio className="h-3 w-3" />
+              <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
+                <FileAudio className="h-3.5 w-3.5" />
                 {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}
               </span>
             )}
             {totalDuration > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
-                <Clock className="h-3 w-3" />
+              <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
+                <Clock className="h-3.5 w-3.5" />
                 {formatDuration(totalDuration)}
               </span>
             )}
@@ -232,12 +232,12 @@ export default function PortalMyCampaigns() {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
         <FolderOpen className="h-8 w-8 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
-        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+        <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
           Você ainda não participa de nenhuma campanha.
         </p>
         <button
           onClick={() => navigate("/")}
-          className="font-mono text-xs uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
+          className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
           style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
         >
           Explorar Campanhas
