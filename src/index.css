@@ -132,7 +132,7 @@
     --portal-grid: hsl(0 0% 16% / 0.5);
     --portal-border: #2a2a2a;
     --portal-input-bg: hsl(0 0% 5%);
-    --portal-card-bg: hsl(0 0% 0% / 0.05);
+    --portal-card-bg: hsl(0 0% 0% / 0.2);
     --portal-input-border: hsl(0 0% 16%);
     --portal-input-color: hsl(0 0% 92%);
     --portal-input-placeholder: hsl(0 0% 35%);
@@ -150,7 +150,7 @@
     --portal-grid: hsl(0 0% 78% / 0.6);
     --portal-border: hsl(0 0% 78%);
     --portal-input-bg: hsl(0 0% 100%);
-    --portal-card-bg: hsl(0 0% 0% / 0.05);
+    --portal-card-bg: hsl(0 0% 0% / 0.2);
     --portal-input-border: hsl(0 0% 78%);
     --portal-input-color: hsl(0 0% 10%);
     --portal-input-placeholder: hsl(0 0% 55%);
