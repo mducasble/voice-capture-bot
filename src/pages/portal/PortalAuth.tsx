@@ -15,6 +15,7 @@ export default function PortalAuth() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [lightMode, setLightMode] = useState(false);
   const [lang, setLang] = useState("pt");
+  const [langOpen, setLangOpen] = useState(false);
 
   const languages = [
     { code: "pt", flag: "https://flagcdn.com/w80/br.png", label: "Português" },
