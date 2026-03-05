@@ -125,7 +125,7 @@ export default function PortalDashboard() {
                   </div>
                 )}
 
-                <Link to={`/portal/campaign/${campaign.id}`}>
+                <Link to={`/campaign/${campaign.id}`}>
                   <KGenButton className="w-full mt-2" size="sm" scrambleText="INICIAR" icon={<ArrowRight className="h-4 w-4" />} />
                 </Link>
               </div>
