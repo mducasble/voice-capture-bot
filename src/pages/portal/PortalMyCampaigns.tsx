@@ -153,7 +153,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
                       <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
                         Sessão{" "}
-                        <span className="px-1.5 py-0.5 rounded-sm" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
+                        <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
                           {sessionId.slice(0, 8)}
                         </span>
                         {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
