@@ -58,6 +58,17 @@ export interface QualityFlow {
   rejection_reasons: string[];
 }
 
+export interface CampaignSection {
+  id?: string;
+  campaign_id?: string;
+  name: string;
+  description: string | null;
+  prompt_text: string | null;
+  target_hours: number | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
 // --- Task Type Catalog ---
 
 export interface TaskTypeCatalog {
