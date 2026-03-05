@@ -626,6 +626,26 @@ const Room = () => {
                 disabled={isJoining || !joinName.trim()}
                 scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR COMO PARTICIPANTE"}
               />
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full" style={{ borderTop: "1px solid var(--portal-border)" }} />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-3 font-mono text-[10px] uppercase tracking-widest" style={{ background: "var(--portal-input-bg)", color: "var(--portal-text-muted)" }}>
+                    ou
+                  </span>
+                </div>
+              </div>
+
+              <KGenButton
+                variant="outline"
+                className="w-full"
+                onClick={() => handleJoin(false, true)}
+                disabled={isJoining}
+                scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR ANÔNIMO"}
+              />
+
               <p className="font-mono text-[10px] text-center" style={{ color: "var(--portal-text-muted)" }}>
                 Será solicitada permissão para acessar seu microfone
               </p>
