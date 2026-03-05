@@ -59,8 +59,21 @@ export default function PortalDashboard() {
               className="group transition-colors"
               style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
             >
+              {/* Task type label at top */}
+              {enabledTaskSets.length > 0 && (
+                <div className="px-5 pt-3 pb-0">
+                  <span
+                    className="font-mono text-[10px] uppercase tracking-widest font-bold flex items-center gap-1"
+                    style={{ color: "var(--portal-text-muted)" }}
+                  >
+                    <Layers className="h-2.5 w-2.5" />
+                    {enabledTaskSets.map(ts => TASK_TYPE_LABELS[ts.task_type] || ts.task_type).join(" · ")}
+                  </span>
+                </div>
+              )}
+
               {/* Card header */}
-              <div className="p-5 space-y-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+              <div className="p-5 pt-2 space-y-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                 <div className="flex items-start justify-between">
                   <h3 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
                     {campaign.name}
@@ -101,25 +114,9 @@ export default function PortalDashboard() {
                       <span
                         key={v.variant_id}
                         className="font-mono text-xs px-2 py-0.5"
-                        style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                        style={{ background: "hsl(0 0% 15%)", border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
                       >
                         {v.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Task types */}
-                {enabledTaskSets.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {enabledTaskSets.slice(0, 3).map(ts => (
-                      <span
-                        key={ts.task_set_id}
-                        className="font-mono text-xs px-2 py-0.5 flex items-center gap-1"
-                        style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-                      >
-                        <Layers className="h-2.5 w-2.5" />
-                        {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
                       </span>
                     ))}
                   </div>
