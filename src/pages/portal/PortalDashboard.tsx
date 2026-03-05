@@ -19,14 +19,14 @@ export default function PortalDashboard() {
         <div className="flex items-center gap-3 mb-2">
           <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
           <span className="font-mono text-sm tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-            Campanhas
+            Oportunidades
           </span>
         </div>
         <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-          Campanhas Disponíveis
+          Oportunidades Disponíveis
         </h1>
         <p className="font-mono text-base mt-2" style={{ color: "var(--portal-text-muted)" }}>
-          Selecione uma campanha para começar
+          Selecione uma oportunidade para começar
         </p>
       </div>
 
