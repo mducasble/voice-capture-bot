@@ -31,7 +31,7 @@ export default function PortalAuth() {
         .from("campaigns")
         .select("id, name, language_primary, campaign_status, start_date, is_active, visibility_is_public")
         .eq("is_active", true)
-        .order("created_at", { ascending: false })
+        .order("start_date", { ascending: true, nullsFirst: true })
         .limit(8);
 
       if (!campaigns || campaigns.length === 0) return [];
@@ -258,7 +258,12 @@ export default function PortalAuth() {
                 </p>
               )}
 
-              {publicCampaigns?.map(c => {
+              {[...(publicCampaigns || [])].sort((a, b) => {
+                // Open campaigns first, then waitlist
+                if (a.isOpen && !b.isOpen) return -1;
+                if (!a.isOpen && b.isOpen) return 1;
+                return 0;
+              }).map(c => {
                 const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
                 const reward = c.reward;
                 return (
@@ -344,8 +349,7 @@ export default function PortalAuth() {
                             size="sm"
                             icon={<ClockIcon className="w-4 h-4" />}
                             scrambleText={t("auth.waitingList")}
-                            className="w-[80%] opacity-60"
-                            disabled
+                            className="w-[80%]"
                           >
                             {t("auth.waitingList")}
                           </KGenButton>
