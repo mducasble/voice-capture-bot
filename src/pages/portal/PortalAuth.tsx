@@ -275,58 +275,85 @@ export default function PortalAuth() {
                 return (
                   <div
                     key={c.id}
-                    className="p-3 transition-colors"
-                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
+                    className="flex overflow-hidden transition-colors"
+                    style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}
                   >
-                    {taskLabels.length > 0 && (
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
-                        <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                          {taskLabels.join(" · ")}
-                        </span>
-                      </div>
-                    )}
-
-                    <h3 className="font-mono text-sm font-bold uppercase tracking-tight mb-1.5" style={{ color: "var(--portal-text)" }}>
-                      {c.name}
-                    </h3>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {c.languages.map((l: any, i: number) => (
-                          <span
-                            key={i}
-                            className="font-mono text-[10px] px-1.5 py-0.5"
-                            style={{ background: "hsl(0 0% 15%)", border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-                          >
-                            {l.label}
+                    {/* Left 75% — content */}
+                    <div className="flex-[3] flex flex-col">
+                      {/* Task type header — full width with outline */}
+                      {taskLabels.length > 0 && (
+                        <div
+                          className="flex items-center gap-1.5 px-3 py-2"
+                          style={{ borderBottom: "1px solid var(--portal-border)" }}
+                        >
+                          <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
+                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                            {taskLabels.join(" · ")}
                           </span>
-                        ))}
+                        </div>
+                      )}
+
+                      {/* Title block */}
+                      <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                        <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+                          {c.name}
+                        </h3>
                       </div>
 
-                      {reward?.base_rate && (
-                        <span className="font-mono text-sm font-black" style={{ color: "var(--portal-accent)" }}>
-                          {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}/{reward.payout_model === "per_accepted_hour" ? "h" : "un"}
-                        </span>
-                      )}
+                      {/* Languages block */}
+                      <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {c.languages.map((l: any, i: number) => (
+                            <span
+                              key={i}
+                              className="font-mono text-xs font-bold px-2 py-0.5"
+                              style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                            >
+                              {l.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Action button — 80% width */}
+                      <div className="px-3 py-2.5 flex justify-center">
+                        {c.isOpen ? (
+                          <span
+                            className="inline-flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1.5 w-[80%]"
+                            style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                            Participar
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1.5 w-[80%]"
+                            style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                          >
+                            <ClockIcon className="w-3 h-3" />
+                            Waiting List
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="mt-2">
-                      {c.isOpen ? (
-                        <span
-                          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
-                          style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-                        >
-                          <ArrowRight className="w-3 h-3" />
-                          Participar
-                        </span>
+                    {/* Right 25% — reward highlight */}
+                    <div
+                      className="flex-[1] flex flex-col items-center justify-center p-2"
+                      style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}
+                    >
+                      {reward?.base_rate ? (
+                        <>
+                          <span className="font-mono text-2xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>
+                            {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}
+                          </span>
+                          <span className="font-mono text-[9px] uppercase tracking-widest font-bold mt-1" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
+                            /{reward.payout_model === "per_accepted_hour" ? "hora" : "un"}
+                          </span>
+                        </>
                       ) : (
-                        <span
-                          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
-                          style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-                        >
-                          <ClockIcon className="w-3 h-3" />
-                          Waiting List
+                        <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>
+                          —
                         </span>
                       )}
                     </div>
