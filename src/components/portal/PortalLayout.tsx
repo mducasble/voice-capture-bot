@@ -1,6 +1,11 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Layers, LogOut, User, Loader2 } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check } from "lucide-react";
+import { useState } from "react";
+import { useAuth as useAuthForReferral } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import kgenLogo from "@/assets/kgen-logo.svg";
 
 export default function PortalLayout() {
@@ -23,6 +28,7 @@ export default function PortalLayout() {
   const navItems = [
     { to: "/", icon: FolderOpen, label: "OPORTUNIDADES", exact: true },
     { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
+    { to: "/earnings", icon: DollarSign, label: "MEUS GANHOS" },
     { to: "/profile", icon: User, label: "PERFIL" },
   ];
 
@@ -64,6 +70,7 @@ export default function PortalLayout() {
             </nav>
 
             <div className="flex items-center gap-3">
+              <CopyReferralButton userId={user.id} />
               <div className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                 <User className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{user.user_metadata?.full_name || user.email}</span>
@@ -86,5 +93,48 @@ export default function PortalLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+function CopyReferralButton({ userId }: { userId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("referral_code")
+        .eq("id", userId)
+        .single();
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const code = (profile as any)?.referral_code;
+  if (!code) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/invite/${code}`);
+    setCopied(true);
+    toast.success("Link de referral copiado!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-widest transition-colors"
+      style={{
+        border: "1px solid var(--portal-accent)",
+        color: copied ? "var(--portal-accent-text)" : "var(--portal-accent)",
+        background: copied ? "var(--portal-accent)" : "transparent",
+      }}
+      title="Copiar link de referral"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      <span className="hidden sm:inline">{copied ? "Copiado!" : "Referral"}</span>
+    </button>
   );
 }
