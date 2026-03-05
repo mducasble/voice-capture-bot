@@ -14,7 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 
-const DURATION_OPTIONS = [10, 15, 20, 25, 30];
+
 
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
   return useQuery({
@@ -41,8 +41,6 @@ export default function PortalCampaign() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [topic, setTopic] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<number>(10);
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
@@ -73,36 +71,6 @@ export default function PortalCampaign() {
 
   const isOnWaitlist = !!waitlistEntry;
 
-  const handleCreateRoom = async () => {
-    if (!user || !campaign) return;
-    if (!topic.trim()) {
-      toast.error("Digite o tema da conversa");
-      return;
-    }
-    setCreating(true);
-    try {
-      const userName = user.user_metadata?.full_name || user.email || "Usuário";
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          creator_name: userName,
-          room_name: `${campaign.name} - ${userName}`,
-          status: "waiting",
-          topic: topic.trim(),
-          duration_minutes: durationMinutes,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      sessionStorage.setItem(`room_creator_${room.id}`, "true");
-      navigate(`/room/${room.id}?campaign=${campaign.id}`);
-    } catch (err: any) {
-      toast.error("Erro ao criar sala: " + err.message);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleJoinWaitlist = async () => {
     if (!user || !campaign) return;
