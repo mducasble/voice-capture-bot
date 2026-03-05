@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FolderOpen, FileAudio, Clock, ChevronDown, Play, Pause, ArrowRight } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 interface RecordingRow {
   id: string;
@@ -47,10 +48,7 @@ function SessionRow({ rec }: { rec: RecordingRow }) {
   }, [playing, rec.file_url]);
 
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3"
-      style={{ borderBottom: "1px solid var(--portal-border)" }}
-    >
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
       {rec.file_url && (
         <button onClick={toggle} className="shrink-0" style={{ color: "var(--portal-accent)" }}>
           {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -76,16 +74,15 @@ function SessionRow({ rec }: { rec: RecordingRow }) {
 function CampaignCard({ participation, recordings }: { participation: any; recordings: RecordingRow[] }) {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const campaign = participation.campaigns;
   if (!campaign) return null;
 
   const sessions = recordings.filter(r => r.recording_type === "mixed");
   const individuals = recordings.filter(r => r.recording_type === "individual");
-  // Use only mixed track durations to avoid double-counting overlapping individual tracks
   const totalDuration = sessions.reduce((s, r) => s + (r.duration_seconds || 0), 0)
     || individuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
-  // Group individuals by session_id
   const sessionGroups = new Map<string, RecordingRow[]>();
   for (const r of individuals) {
     const key = r.session_id || r.id;
@@ -95,27 +92,22 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 
   return (
     <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full text-left p-5 flex items-center justify-between gap-4 transition-colors"
-      >
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-5 flex items-center justify-between gap-4 transition-colors">
         <div className="min-w-0 flex-1">
           <h2 className="font-mono text-base font-bold uppercase tracking-tight truncate" style={{ color: "var(--portal-text)" }}>
             {campaign.name}
           </h2>
           {campaign.description && (
-            <p className="font-mono text-sm mt-1 truncate" style={{ color: "var(--portal-text-muted)" }}>
-              {campaign.description}
-            </p>
+            <p className="font-mono text-sm mt-1 truncate" style={{ color: "var(--portal-text-muted)" }}>{campaign.description}</p>
           )}
           <div className="flex items-center gap-4 mt-2 flex-wrap">
             <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-              Desde {new Date(participation.joined_at).toLocaleDateString("pt-BR")}
+              {t("myCampaigns.since")} {new Date(participation.joined_at).toLocaleDateString("pt-BR")}
             </span>
             {sessions.length > 0 && (
               <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
                 <FileAudio className="h-3.5 w-3.5" />
-                {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}
+                {sessions.length} {sessions.length === 1 ? t("myCampaigns.session") : t("myCampaigns.sessions")}
               </span>
             )}
             {totalDuration > 0 && (
@@ -126,63 +118,43 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             )}
           </div>
         </div>
-        <ChevronDown
-          className="h-4 w-4 shrink-0 transition-transform"
-          style={{
-            color: "var(--portal-text-muted)",
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-          }}
-        />
+        <ChevronDown className="h-4 w-4 shrink-0 transition-transform" style={{ color: "var(--portal-text-muted)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }} />
       </button>
 
       {expanded && (
         <div style={{ borderTop: "1px solid var(--portal-border)" }}>
           {recordings.length === 0 ? (
             <div className="p-6 text-center">
-              <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-                Nenhum material enviado ainda.
-              </p>
+              <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{t("myCampaigns.noMaterial")}</p>
             </div>
           ) : (
             <div>
-              {/* Group by session */}
               {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
                 const mixed = sessions.find(s => s.session_id === sessionId);
                 return (
                   <div key={sessionId}>
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
                       <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
-                        Sessão{" "}
+                        {t("myCampaigns.session")}{" "}
                         <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
                           {sessionId.slice(0, 8)}
                         </span>
                         {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
                       </span>
                       {mixed?.duration_seconds != null && (
-                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                          {formatDuration(mixed.duration_seconds)}
-                        </span>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(mixed.duration_seconds)}</span>
                       )}
                     </div>
                     {recs.map(r => <SessionRow key={r.id} rec={r} />)}
                   </div>
                 );
               })}
-              {/* Orphan mixed tracks (no matching individuals) */}
-              {sessions
-                .filter(s => !sessionGroups.has(s.session_id || ""))
-                .map(r => <SessionRow key={r.id} rec={r} />)}
+              {sessions.filter(s => !sessionGroups.has(s.session_id || "")).map(r => <SessionRow key={r.id} rec={r} />)}
             </div>
           )}
 
           <div className="p-4">
-            <KGenButton
-              onClick={() => navigate(`/campaign/${campaign.id}/task`)}
-              className="w-full"
-              size="sm"
-              scrambleText="ENVIAR MAIS MATERIAIS"
-              icon={<ArrowRight className="h-3.5 w-3.5" />}
-            />
+            <KGenButton onClick={() => navigate(`/campaign/${campaign.id}/task`)} className="w-full" size="sm" scrambleText={t("task.sendMore")} icon={<ArrowRight className="h-3.5 w-3.5" />} />
           </div>
         </div>
       )}
@@ -193,6 +165,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 export default function PortalMyCampaigns() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: participations, isLoading } = useQuery({
     queryKey: ["my_campaigns", user?.id],
@@ -238,39 +211,26 @@ export default function PortalMyCampaigns() {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
         <FolderOpen className="h-8 w-8 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
-        <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
-          Você ainda não participa de nenhuma campanha.
-        </p>
-        <button
-          onClick={() => navigate("/")}
-          className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
-          style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-        >
-          Explorar Campanhas
+        <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>{t("myCampaigns.noCampaigns")}</p>
+        <button onClick={() => navigate("/")} className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+          {t("myCampaigns.exploreCampaigns")}
         </button>
       </div>
     );
   }
 
-  const recordingsByCampaign = (cid: string) =>
-    (allRecordings || []).filter(r => r.campaign_id === cid);
+  const recordingsByCampaign = (cid: string) => (allRecordings || []).filter(r => r.campaign_id === cid);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
-        <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-          Minhas Campanhas
-        </h1>
+        <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{t("myCampaigns.title")}</h1>
       </div>
 
       <div className="space-y-3">
         {participations.map((p: any) => (
-          <CampaignCard
-            key={p.campaign_id}
-            participation={p}
-            recordings={recordingsByCampaign(p.campaign_id)}
-          />
+          <CampaignCard key={p.campaign_id} participation={p} recordings={recordingsByCampaign(p.campaign_id)} />
         ))}
       </div>
     </div>
