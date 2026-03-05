@@ -14,6 +14,7 @@ interface ParticipantAudioProps {
   isMuted: boolean;
   noiseGateEnabled?: boolean;
   audioProfile?: AudioProfile | null;
+  campaignId?: string;
 }
 
 export const ParticipantAudio = ({
@@ -25,6 +26,7 @@ export const ParticipantAudio = ({
   isMuted,
   noiseGateEnabled = false,
   audioProfile = null,
+  campaignId,
 }: ParticipantAudioProps) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -137,6 +139,7 @@ export const ParticipantAudio = ({
       formData.append("recording_type", "individual");
       formData.append("format", "wav");
       formData.append("noise_gate_enabled", noiseGateEnabled ? "true" : "false");
+      if (campaignId) formData.append("campaign_id", campaignId);
 
       setUploadProgress(30);
       const response = await fetch(

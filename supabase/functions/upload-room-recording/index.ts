@@ -27,6 +27,7 @@ serve(async (req) => {
     const recording_type = (formData.get('recording_type') as string) || 'individual';
     const format = (formData.get('format') as string) || 'wav';
     const noise_gate_enabled = (formData.get('noise_gate_enabled') as string) === 'true';
+    const campaign_id = formData.get('campaign_id') as string | null;
 
     if (!audioFile || !filename || !session_id) {
       return new Response(
@@ -167,9 +168,10 @@ serve(async (req) => {
         status: format === 'wav' ? 'processing' : 'completed',
         session_id,
         recording_type,
+        campaign_id: campaign_id || null,
         transcription_status: 'pending',
         language: 'pt',
-        metadata: { source: 'webapp', participant_id },
+        metadata: { source: 'webapp', participant_id, campaign_id: campaign_id || undefined },
       })
       .select()
       .single();
