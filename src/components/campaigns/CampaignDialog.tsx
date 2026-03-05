@@ -18,7 +18,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
@@ -99,6 +99,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   // Task sets
   const [taskSets, setTaskSets] = useState<CampaignTaskSet[]>([]);
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
+  const [sections, setSections] = useState<CampaignSection[]>([]);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
@@ -142,6 +143,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       if (campaign.geographic_scope) setGeoScope(campaign.geographic_scope);
       if (campaign.language_variants?.length) setLangVariants(campaign.language_variants);
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
+      if (campaign.sections?.length) setSections(campaign.sections); else setSections([]);
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
       if (campaign.referral_config) {
@@ -160,6 +162,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setGeoScope({ restriction_mode: "include", continents: [], countries: [], regions: [], states: [], cities: [] });
       setLangVariants([]);
       setTaskSets([]);
+      setSections([]);
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
@@ -186,6 +189,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         geographic_scope: geoScope,
         language_variants: langVariants,
         task_sets: taskSets,
+        sections: sections,
         reward_config: reward,
         referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
@@ -704,7 +708,65 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               </TabsContent>
 
               {/* TASK SETS */}
-              <TabsContent value="tasks" className="space-y-4 pr-4">
+              <TabsContent value="tasks" className="space-y-6 pr-4">
+                {/* --- TEMAS / ASSUNTOS --- */}
+                <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-base font-semibold">Temas / Assuntos ({sections.length})</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSections(prev => [...prev, { name: "", description: null, prompt_text: null, target_hours: null, sort_order: prev.length, is_active: true }])}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Adicionar Tema
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Estes temas aparecem como opções obrigatórias no dropdown antes de iniciar uma gravação.
+                  </p>
+                  {sections.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg text-sm">
+                      Nenhum tema cadastrado. Adicione temas para que apareçam no dropdown de gravação.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sections.map((section, i) => (
+                        <div key={i} className="flex items-start gap-2 border rounded p-2 bg-background">
+                          <div className="flex-1 space-y-1">
+                            <Input
+                              value={section.name}
+                              onChange={e => setSections(prev => prev.map((s, si) => si === i ? { ...s, name: e.target.value } : s))}
+                              placeholder="Nome do tema (ex: Viagem, Tecnologia, Família...)"
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              value={section.prompt_text || ""}
+                              onChange={e => setSections(prev => prev.map((s, si) => si === i ? { ...s, prompt_text: e.target.value || null } : s))}
+                              placeholder="Texto de orientação (opcional)"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 pt-1">
+                            <Switch
+                              checked={section.is_active}
+                              onCheckedChange={c => setSections(prev => prev.map((s, si) => si === i ? { ...s, is_active: c } : s))}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => setSections(prev => prev.filter((_, si) => si !== i))}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* --- CONJUNTOS DE TAREFAS --- */}
                 <div className="flex justify-between items-center">
                   <Label className="text-base font-semibold">Conjuntos de Tarefas ({taskSets.length})</Label>
                   <Select onValueChange={v => addTaskSet(v)}>

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   Client,
   Campaign,
+  CampaignSection,
   GeographicScope,
   LanguageVariant,
   RewardConfig,
@@ -15,7 +16,7 @@ import type {
 } from "@/lib/campaignTypes";
 import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
+export type { Client, Campaign, CampaignSection, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
 
 // --- Task Type Catalog ---
 export function useTaskTypeCatalog() {
@@ -86,7 +87,7 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
 
 // --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
     supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
@@ -94,6 +95,7 @@ async function fetchCampaignRelations(campaignId: string) {
     supabase.from("campaign_quality_flow").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
     (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
+    supabase.from("campaign_sections").select("*").eq("campaign_id", campaignId).order("sort_order"),
   ]);
 
   // Enrich task sets with validation rules
@@ -117,6 +119,7 @@ async function fetchCampaignRelations(campaignId: string) {
     referral_config: referralRes.data || null,
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
+    sections: (sectionsRes.data || []) as CampaignSection[],
   };
 }
 
@@ -164,6 +167,7 @@ export interface SaveCampaignPayload {
   geographic_scope?: GeographicScope;
   language_variants?: LanguageVariant[];
   task_sets?: CampaignTaskSet[];
+  sections?: CampaignSection[];
   reward_config?: RewardConfig;
   referral_config?: ReferralConfig;
   quality_flow?: QualityFlow;
@@ -338,6 +342,22 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       sampling_rate_unit: payload.quality_flow.sampling_rate_unit,
       rejection_reasons: payload.quality_flow.rejection_reasons,
     });
+  }
+
+  // Sections (temas/assuntos)
+  await supabase.from("campaign_sections").delete().eq("campaign_id", campaignId);
+  if (payload.sections && payload.sections.length > 0) {
+    await supabase.from("campaign_sections").insert(
+      payload.sections.map((s, i) => ({
+        campaign_id: campaignId,
+        name: s.name,
+        description: s.description,
+        prompt_text: s.prompt_text,
+        target_hours: s.target_hours,
+        sort_order: i,
+        is_active: s.is_active,
+      }))
+    );
   }
 
   // Referral config (per-campaign override)
