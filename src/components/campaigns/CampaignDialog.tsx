@@ -438,7 +438,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               <TabsTrigger value="quality">Qualidade</TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 mt-4 max-h-[55vh]">
+            <ScrollArea className="flex-1 mt-4 min-h-0">
               {/* GENERAL */}
               <TabsContent value="general" className="space-y-4 pr-4">
                 <div className="grid grid-cols-2 gap-4">
