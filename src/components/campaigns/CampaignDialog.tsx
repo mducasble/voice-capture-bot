@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -123,6 +124,8 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [newClientName, setNewClientName] = useState("");
   const [showNewClient, setShowNewClient] = useState(false);
   const [tempGeoField, setTempGeoField] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateTargetLang, setTranslateTargetLang] = useState("");
 
   // Load campaign
   useEffect(() => {
@@ -226,6 +229,75 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setNewClientName(""); setShowNewClient(false);
       toast({ title: "Cliente criado!" });
     } catch { toast({ title: "Erro ao criar cliente", variant: "destructive" }); }
+  };
+
+  const handleTranslate = async () => {
+    if (!translateTargetLang.trim()) {
+      toast({ title: "Selecione o idioma de destino", variant: "destructive" });
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const textsPayload = {
+        name: name.replace(" (Cópia)", ""),
+        description: description || "",
+        task_sets: taskSets.map(ts => ({
+          instructions_title: ts.instructions_title || "",
+          instructions_summary: ts.instructions_summary || "",
+          prompt_topic: ts.prompt_topic || "",
+          prompt_do: ts.prompt_do || [],
+          prompt_dont: ts.prompt_dont || [],
+        })),
+        sections: sections.map(s => ({
+          name: s.name || "",
+          description: s.description || "",
+          prompt_text: s.prompt_text || "",
+        })),
+        rejection_reasons: quality.rejection_reasons || [],
+      };
+
+      const { data, error } = await supabase.functions.invoke("translate-campaign", {
+        body: { texts: textsPayload, target_language: translateTargetLang },
+      });
+
+      if (error) throw error;
+      const t = data.translated;
+
+      setName(t.name + " (Cópia)");
+      setDescription(t.description || "");
+      setLanguagePrimary(translateTargetLang);
+
+      if (t.task_sets?.length) {
+        setTaskSets(prev => prev.map((ts, i) => ({
+          ...ts,
+          instructions_title: t.task_sets[i]?.instructions_title ?? ts.instructions_title,
+          instructions_summary: t.task_sets[i]?.instructions_summary ?? ts.instructions_summary,
+          prompt_topic: t.task_sets[i]?.prompt_topic ?? ts.prompt_topic,
+          prompt_do: t.task_sets[i]?.prompt_do ?? ts.prompt_do,
+          prompt_dont: t.task_sets[i]?.prompt_dont ?? ts.prompt_dont,
+        })));
+      }
+
+      if (t.sections?.length) {
+        setSections(prev => prev.map((s, i) => ({
+          ...s,
+          name: t.sections[i]?.name ?? s.name,
+          description: t.sections[i]?.description ?? s.description,
+          prompt_text: t.sections[i]?.prompt_text ?? s.prompt_text,
+        })));
+      }
+
+      if (t.rejection_reasons?.length) {
+        setQuality(prev => ({ ...prev, rejection_reasons: t.rejection_reasons }));
+      }
+
+      toast({ title: "Conteúdo traduzido com sucesso!" });
+    } catch (err: any) {
+      console.error("Translation error:", err);
+      toast({ title: "Erro na tradução", description: err.message, variant: "destructive" });
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   const addGeoItem = (field: keyof GeographicScope, value: string) => {
@@ -536,6 +608,41 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : (
           <Tabs defaultValue="general" className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {/* Translation bar for duplication */}
+            {!campaignId && duplicateFromId && (
+              <div className="flex items-center gap-2 p-3 mb-2 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+                <Languages className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs text-muted-foreground shrink-0">Traduzir para:</span>
+                <Select value={translateTargetLang} onValueChange={setTranslateTargetLang}>
+                  <SelectTrigger className="h-7 w-40 text-xs">
+                    <SelectValue placeholder="Idioma..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pt-BR">Português (BR)</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="fr">Français</SelectItem>
+                    <SelectItem value="de">Deutsch</SelectItem>
+                    <SelectItem value="it">Italiano</SelectItem>
+                    <SelectItem value="ja">日本語</SelectItem>
+                    <SelectItem value="ko">한국어</SelectItem>
+                    <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="hi">हिन्दी</SelectItem>
+                    <SelectItem value="ar">العربية</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={handleTranslate}
+                  disabled={isTranslating || !translateTargetLang}
+                >
+                  {isTranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                  {isTranslating ? "Traduzindo..." : "Traduzir"}
+                </Button>
+              </div>
+            )}
             <TabsList className="grid grid-cols-4 w-full md:grid-cols-7">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
