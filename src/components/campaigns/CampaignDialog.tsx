@@ -189,6 +189,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         geographic_scope: geoScope,
         language_variants: langVariants,
         task_sets: taskSets,
+        sections: sections,
         reward_config: reward,
         referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
