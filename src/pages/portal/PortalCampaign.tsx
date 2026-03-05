@@ -4,7 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer, Layers } from "lucide-react";
+import {
+  ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer,
+  Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
+  Users, BookOpen,
+} from "lucide-react";
 import { useState } from "react";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
@@ -42,7 +46,6 @@ export default function PortalCampaign() {
         .single();
 
       if (error) throw error;
-
       sessionStorage.setItem(`room_creator_${room.id}`, "true");
       navigate(`/portal/room/${room.id}?campaign=${campaign.id}`);
     } catch (err: any) {
@@ -71,9 +74,23 @@ export default function PortalCampaign() {
     );
   }
 
-  // Get the first enabled task set for display
-  const primaryTaskSet = campaign.task_sets?.find(ts => ts.enabled);
-  const allTopics = campaign.task_sets?.filter(ts => ts.enabled && ts.prompt_topic).map(ts => ts.prompt_topic!) || [];
+  const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
+  const allTopics = enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
+  const geo = campaign.geographic_scope;
+  const langVariants = campaign.language_variants || [];
+  const rewardCurrency = campaign.reward_config?.currency;
+  const adminRules = campaign.administrative_rules;
+
+  // Helper: render a section with border
+  const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
+    <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+      <h3 className="font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+        <Icon className="h-3.5 w-3.5" />
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -108,6 +125,12 @@ export default function PortalCampaign() {
                 </span>
               )}
             </div>
+            {rewardCurrency && (
+              <span className="flex items-center gap-1.5 font-mono text-xs px-3 py-1" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
+                <Coins className="h-3 w-3" />
+                {rewardCurrency}
+              </span>
+            )}
           </div>
           {campaign.description && (
             <p className="font-mono text-sm mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
@@ -117,14 +140,10 @@ export default function PortalCampaign() {
         </div>
 
         {/* Task types */}
-        {campaign.task_sets && campaign.task_sets.length > 0 && (
-          <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <h3 className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: "var(--portal-text-muted)" }}>
-              <Layers className="h-3.5 w-3.5 inline mr-2" />
-              Tipos de Tarefa
-            </h3>
+        {enabledTaskSets.length > 0 && (
+          <Section title="Tipos de Tarefa" icon={Layers}>
             <div className="flex flex-wrap gap-2">
-              {campaign.task_sets.filter(ts => ts.enabled).map(ts => (
+              {enabledTaskSets.map(ts => (
                 <span
                   key={ts.task_set_id}
                   className="font-mono text-xs px-3 py-1"
@@ -134,36 +153,134 @@ export default function PortalCampaign() {
                 </span>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* Task instructions from primary task set */}
-        {primaryTaskSet && (
-          <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <h3 className="font-mono text-xs uppercase tracking-widest mb-4" style={{ color: "var(--portal-text-muted)" }}>
-              Instruções da Tarefa
-            </h3>
-            <div className="p-4 space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-              {primaryTaskSet.instructions_title && (
-                <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                  {primaryTaskSet.instructions_title}
-                </p>
-              )}
-              {primaryTaskSet.instructions_summary && (
-                <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                  {primaryTaskSet.instructions_summary}
-                </p>
-              )}
-              {primaryTaskSet.prompt_topic && (
-                <div className="mt-2 p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
-                  <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
-                  <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                    Tema: {primaryTaskSet.prompt_topic}
+        {/* Task instructions — one block per enabled task set */}
+        {enabledTaskSets.map(ts => {
+          const hasDo = ts.prompt_do && ts.prompt_do.length > 0;
+          const hasDont = ts.prompt_dont && ts.prompt_dont.length > 0;
+          const hasContent = ts.instructions_title || ts.instructions_summary || ts.prompt_topic || hasDo || hasDont;
+          if (!hasContent) return null;
+          return (
+            <Section key={ts.task_set_id} title={TASK_TYPE_LABELS[ts.task_type] || ts.task_type} icon={BookOpen}>
+              <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                {ts.instructions_title && (
+                  <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                    {ts.instructions_title}
+                  </p>
+                )}
+                {ts.instructions_summary && (
+                  <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
+                    {ts.instructions_summary}
+                  </p>
+                )}
+                {ts.prompt_topic && (
+                  <div className="p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
+                    <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
+                    <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                      Tema: {ts.prompt_topic}
+                    </span>
+                  </div>
+                )}
+                {hasDo && (
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                    <ul className="space-y-1">
+                      {ts.prompt_do.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 font-mono text-xs" style={{ color: "var(--portal-text)" }}>
+                          <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {hasDont && (
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                    <ul className="space-y-1">
+                      {ts.prompt_dont.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 font-mono text-xs" style={{ color: "var(--portal-text)" }}>
+                          <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </Section>
+          );
+        })}
+
+        {/* Geographic scope */}
+        {geo && geo.restriction_mode && (
+          <Section title="Escopo Geográfico" icon={Globe2}>
+            <div className="space-y-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+                {geo.restriction_mode === "include" ? "Apenas" : "Exceto"}
+              </span>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
+                  <span key={i} className="font-mono text-xs px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
+                    {place}
                   </span>
+                ))}
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* Language variants */}
+        {langVariants.length > 0 && (
+          <Section title="Idiomas" icon={Languages}>
+            <div className="space-y-2">
+              {langVariants.map(v => (
+                <div
+                  key={v.variant_id}
+                  className="flex items-center gap-3 p-3 font-mono text-xs"
+                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                >
+                  <span style={{ color: "var(--portal-text)" }}>{v.label}</span>
+                  {v.is_primary && (
+                    <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                      Principal
+                    </span>
+                  )}
+                  {v.notes && (
+                    <span style={{ color: "var(--portal-text-muted)" }}>— {v.notes}</span>
+                  )}
                 </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Administrative rules */}
+        {adminRules && (
+          <Section title="Regras" icon={ShieldCheck}>
+            <div className="grid grid-cols-2 gap-3">
+              {adminRules.max_hours_per_user != null && (
+                <RuleBadge icon={Clock} label="Máx. horas/usuário" value={`${adminRules.max_hours_per_user}h`} />
+              )}
+              {adminRules.max_hours_per_partner_per_user != null && (
+                <RuleBadge icon={Clock} label="Máx. horas/parceiro/usuário" value={`${adminRules.max_hours_per_partner_per_user}h`} />
+              )}
+              {adminRules.max_sessions_per_user != null && (
+                <RuleBadge icon={Users} label="Máx. sessões/usuário" value={String(adminRules.max_sessions_per_user)} />
+              )}
+              {adminRules.min_acceptance_rate != null && (
+                <RuleBadge icon={ShieldCheck} label="Taxa mín. aceitação" value={`${adminRules.min_acceptance_rate}${adminRules.min_acceptance_rate_unit === "percent" ? "%" : ""}`} />
+              )}
+              {adminRules.min_participants_per_session != null && (
+                <RuleBadge icon={Users} label="Mín. participantes" value={String(adminRules.min_participants_per_session)} />
+              )}
+              {adminRules.max_participants_per_session != null && (
+                <RuleBadge icon={Users} label="Máx. participantes" value={String(adminRules.max_participants_per_session)} />
               )}
             </div>
-          </div>
+          </Section>
         )}
 
         {/* Room creation form */}
@@ -224,6 +341,18 @@ export default function PortalCampaign() {
             icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RuleBadge({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+      <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
+      <div className="flex flex-col">
+        <span style={{ color: "var(--portal-text-muted)" }}>{label}</span>
+        <span className="font-bold" style={{ color: "var(--portal-text)" }}>{value}</span>
       </div>
     </div>
   );
