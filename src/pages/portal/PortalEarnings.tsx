@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText } from "lucide-react";
+import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const ACTIVITY_TYPES = [
