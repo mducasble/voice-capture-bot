@@ -118,7 +118,7 @@ function CopyReferralButton({ userId }: { userId: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(`${window.location.origin}/invite/${code}`);
     setCopied(true);
-    toast.success("Link de referral copiado!");
+    toast.success("Link pessoal copiado!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -131,10 +131,10 @@ function CopyReferralButton({ userId }: { userId: string }) {
         color: copied ? "var(--portal-accent-text)" : "var(--portal-accent)",
         background: copied ? "var(--portal-accent)" : "transparent",
       }}
-      title="Copiar link de referral"
+      title="Copiar link pessoal"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      <span className="hidden sm:inline">{copied ? "Copiado!" : "Referral"}</span>
+      <span className="hidden sm:inline">{copied ? "Copiado!" : "Meu Link"}</span>
     </button>
   );
 }
