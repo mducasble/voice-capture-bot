@@ -276,6 +276,19 @@ export const AudioTestFlow = ({
 
   // Idle: show start button
   if (phase === "idle") {
+    if (isPortal) {
+      return (
+        <div className="p-6 text-center space-y-4" style={{ border: "2px dashed var(--portal-border)", background: "var(--portal-input-bg)" }}>
+          <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>🎙️ Teste de Áudio</p>
+          <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+            Grave {TEST_DURATION}s falando normalmente para avaliar a qualidade do seu setup
+          </p>
+          <div className="flex justify-center">
+            <KGenButton onClick={startTest} scrambleText="INICIAR TESTE" icon={<Mic className="h-4 w-4" />} />
+          </div>
+        </div>
+      );
+    }
     return (
       <Card className="border-dashed border-2 border-primary/30">
         <CardHeader className="text-center pb-2">
