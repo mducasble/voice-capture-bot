@@ -126,9 +126,10 @@
     @apply bg-card/80 backdrop-blur-xl border border-border/50;
   }
 
-  /* Portal Auth - Glassmorphism */
+  /* Portal Auth - Glassmorphism with KGeN brand */
   .portal-auth-bg {
-    background: radial-gradient(ellipse at 50% 0%, hsl(var(--primary) / 0.12) 0%, hsl(var(--background)) 60%);
+    background: radial-gradient(ellipse at 50% 0%, hsl(88 100% 51% / 0.1) 0%, hsl(168 28% 17%) 60%);
+    background-color: hsl(168 28% 17%);
   }
 
   .portal-orb {
@@ -141,7 +142,7 @@
   .portal-orb-1 {
     width: 400px;
     height: 400px;
-    background: hsl(var(--primary) / 0.4);
+    background: hsl(88 100% 51% / 0.35);
     top: -10%;
     right: -5%;
     animation: portalFloat 8s ease-in-out infinite;
@@ -150,7 +151,7 @@
   .portal-orb-2 {
     width: 300px;
     height: 300px;
-    background: hsl(var(--accent) / 0.3);
+    background: hsl(88 100% 51% / 0.2);
     bottom: -5%;
     left: -8%;
     animation: portalFloat 10s ease-in-out infinite reverse;
@@ -159,7 +160,7 @@
   .portal-orb-3 {
     width: 200px;
     height: 200px;
-    background: hsl(var(--primary) / 0.25);
+    background: hsl(150 40% 30% / 0.3);
     top: 40%;
     left: 50%;
     animation: portalFloat 12s ease-in-out infinite 2s;
@@ -172,34 +173,43 @@
   }
 
   .portal-glass-card {
-    background: hsl(var(--card) / 0.5);
+    background: hsl(168 28% 12% / 0.6);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border: 1px solid hsl(var(--border) / 0.35);
+    border: 1px solid hsl(88 100% 51% / 0.1);
     box-shadow:
-      0 8px 32px hsl(var(--primary) / 0.08),
-      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+      0 8px 32px hsl(168 28% 5% / 0.4),
+      inset 0 1px 0 hsl(88 100% 51% / 0.05);
   }
 
   .portal-glass-icon {
-    background: hsl(var(--primary) / 0.12);
+    background: hsl(168 28% 17% / 0.5);
     backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--primary) / 0.2);
-    box-shadow: 0 0 24px hsl(var(--primary) / 0.15);
+    border: 1px solid hsl(88 100% 51% / 0.15);
+    box-shadow: 0 0 30px hsl(88 100% 51% / 0.1);
   }
 
   .portal-input {
-    @apply bg-background/40 border-border/30 backdrop-blur-sm focus:border-primary/50 focus:ring-primary/20 transition-all;
+    @apply backdrop-blur-sm transition-all;
+    background: hsl(168 28% 10% / 0.5);
+    border-color: hsl(88 100% 51% / 0.12);
+  }
+
+  .portal-input:focus {
+    border-color: hsl(88 100% 51% / 0.4);
+    box-shadow: 0 0 0 2px hsl(88 100% 51% / 0.1);
   }
 
   .portal-button {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.3);
+    background: linear-gradient(135deg, hsl(88 100% 51%) 0%, hsl(88 100% 40%) 100%);
+    color: hsl(168 28% 10%);
+    font-weight: 600;
+    box-shadow: 0 4px 16px hsl(88 100% 51% / 0.25);
     transition: all 0.2s ease;
   }
 
   .portal-button:hover:not(:disabled) {
-    box-shadow: 0 6px 24px hsl(var(--primary) / 0.45);
+    box-shadow: 0 6px 24px hsl(88 100% 51% / 0.4);
     transform: translateY(-1px);
   }
 }
