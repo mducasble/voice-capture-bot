@@ -53,6 +53,7 @@ export default function PortalDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeCampaigns.map(campaign => {
           const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
+          const isWaitlistCampaign = campaign.campaign_status === "waiting_list" || (!!campaign.start_date && new Date(`${campaign.start_date}T00:00:00`) > new Date());
           return (
             <div
               key={campaign.id}
