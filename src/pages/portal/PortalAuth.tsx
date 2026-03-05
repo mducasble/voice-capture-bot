@@ -330,7 +330,7 @@ export default function PortalAuth() {
                             <span
                               key={i}
                               className="font-mono text-xs font-bold px-2 py-0.5"
-                              style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                              style={{ background: "hsl(0 0% 25%)", color: "hsl(0 0% 80%)", border: "1px solid var(--portal-border)" }}
                             >
                               {l.label}
                             </span>
@@ -338,21 +338,21 @@ export default function PortalAuth() {
                         </div>
                       </div>
 
-                      <div className="px-3 py-2.5 flex justify-center">
+                      <div className="px-3 py-3 flex justify-center">
                         {c.isOpen ? (
                           <span
-                            className="inline-flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1.5 w-[80%]"
+                            className="inline-flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest font-bold px-3 py-3 w-[80%]"
                             style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
                           >
-                            <ArrowRight className="w-3 h-3" />
+                            <ArrowRight className="w-4 h-4" />
                             Participar
                           </span>
                         ) : (
                           <span
-                            className="inline-flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1.5 w-[80%]"
+                            className="inline-flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest font-bold px-3 py-3 w-[80%]"
                             style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
                           >
-                            <ClockIcon className="w-3 h-3" />
+                            <ClockIcon className="w-4 h-4" />
                             Waiting List
                           </span>
                         )}
