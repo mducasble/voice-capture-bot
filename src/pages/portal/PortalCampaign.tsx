@@ -128,7 +128,7 @@ export default function PortalCampaign() {
   };
 
   if (isLoading) {
-    return <Skeleton className="h-64" style={{ background: "var(--portal-input-bg)" }} />;
+    return <Skeleton className="h-64" style={{ background: "var(--portal-card-bg)" }} />;
   }
 
   if (!campaign) {
@@ -236,7 +236,7 @@ export default function PortalCampaign() {
           if (!hasContent) return null;
           return (
             <Section key={ts.task_set_id} title={TASK_TYPE_LABELS[ts.task_type] || ts.task_type} icon={BookOpen}>
-              <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 {ts.instructions_title && (
                   <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
                     {ts.instructions_title}
@@ -312,7 +312,7 @@ export default function PortalCampaign() {
                 <div
                   key={v.variant_id}
                   className="flex items-center gap-3 p-3 font-mono text-xs"
-                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
                 >
                   <span style={{ color: "var(--portal-text)" }}>{v.label}</span>
                   {v.is_primary && (
@@ -359,7 +359,7 @@ export default function PortalCampaign() {
         {isBeforeStartDate ? (
           /* Campaign hasn't started — show waitlist */
           <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+            <div className="flex items-center gap-2 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <CalendarClock className="h-4 w-4 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
               <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                 Esta campanha inicia em{" "}
@@ -408,7 +408,7 @@ export default function PortalCampaign() {
 
 function RuleBadge({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+    <div className="flex items-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
       <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
       <div className="flex flex-col">
         <span style={{ color: "var(--portal-text-muted)" }}>{label}</span>

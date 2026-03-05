@@ -33,7 +33,7 @@ export default function PortalDashboard() {
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-48" style={{ background: "var(--portal-input-bg)" }} />
+            <Skeleton key={i} className="h-48" style={{ background: "var(--portal-card-bg)" }} />
           ))}
         </div>
       )}
@@ -57,7 +57,7 @@ export default function PortalDashboard() {
             <div
               key={campaign.id}
               className="group transition-colors"
-              style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+              style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
             >
               {/* Card header */}
               <div className="p-5 space-y-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
