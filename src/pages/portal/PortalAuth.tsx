@@ -340,6 +340,10 @@ export default function PortalAuth() {
                             icon={<ArrowRight className="w-4 h-4" />}
                             scrambleText={t("auth.participate")}
                             className="w-[80%]"
+                            onClick={() => {
+                              sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`);
+                              document.getElementById("login-email")?.focus();
+                            }}
                           >
                             {t("auth.participate")}
                           </KGenButton>
@@ -350,6 +354,10 @@ export default function PortalAuth() {
                             icon={<ClockIcon className="w-4 h-4" />}
                             scrambleText={t("auth.waitingList")}
                             className="w-[80%]"
+                            onClick={() => {
+                              sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`);
+                              document.getElementById("login-email")?.focus();
+                            }}
                           >
                             {t("auth.waitingList")}
                           </KGenButton>
