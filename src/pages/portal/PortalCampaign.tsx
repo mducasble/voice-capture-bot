@@ -8,7 +8,7 @@ import { ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer } from
 import { useState } from "react";
 import KGenButton from "@/components/portal/KGenButton";
 
-const DURATION_OPTIONS = [5, 10, 15, 20, 30, 45, 60];
+const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
 export default function PortalCampaign() {
   const { id } = useParams<{ id: string }>();
