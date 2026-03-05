@@ -25,7 +25,11 @@ export default function PortalCampaignTask() {
   const [mode, setMode] = useState<"choose" | "room" | "upload">("choose");
 
   const enabledTaskSets = campaign?.task_sets?.filter(ts => ts.enabled) || [];
-  const allTopics = enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
+  const activeSections = campaign?.sections?.filter(s => s.is_active) || [];
+  // Use sections if available, fallback to prompt_topic from task sets
+  const allTopics = activeSections.length > 0
+    ? activeSections.map(s => s.name)
+    : enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
 
   // Determine primary task category
   const primaryCategory = useMemo(() => {
