@@ -5,14 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer,
+  ArrowLeft, Clock, FileText, Loader2,
   Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
   Users, BookOpen, Bell, CalendarClock,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
-import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
+import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
