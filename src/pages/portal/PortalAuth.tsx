@@ -170,23 +170,40 @@ export default function PortalAuth() {
 
             {/* Language selector */}
             <div className="flex justify-center mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  const currentIdx = languages.findIndex(l => l.code === lang);
-                  const nextIdx = (currentIdx + 1) % languages.length;
-                  setLang(languages[nextIdx].code);
-                }}
-                className="w-[72px] h-[72px] flex items-center justify-center transition-all cursor-pointer overflow-hidden"
-                style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
-                title={languages.find(l => l.code === lang)?.label}
-              >
-                <img
-                  src={languages.find(l => l.code === lang)?.flag}
-                  alt={languages.find(l => l.code === lang)?.label}
-                  className="w-12 h-auto"
-                />
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setLangOpen(v => !v)}
+                  className="w-[72px] h-[72px] flex items-center justify-center transition-all cursor-pointer overflow-hidden"
+                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                  title={languages.find(l => l.code === lang)?.label}
+                >
+                  <img
+                    src={languages.find(l => l.code === lang)?.flag}
+                    alt={languages.find(l => l.code === lang)?.label}
+                    className="w-12 h-auto"
+                  />
+                </button>
+                {langOpen && (
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-1 flex gap-1 z-50 p-1"
+                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
+                  >
+                    {languages.filter(l => l.code !== lang).map(l => (
+                      <button
+                        key={l.code}
+                        type="button"
+                        onClick={() => { setLang(l.code); setLangOpen(false); }}
+                        className="w-14 h-14 flex items-center justify-center cursor-pointer overflow-hidden transition-opacity hover:opacity-80"
+                        style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}
+                        title={l.label}
+                      >
+                        <img src={l.flag} alt={l.label} className="w-10 h-auto" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
 
