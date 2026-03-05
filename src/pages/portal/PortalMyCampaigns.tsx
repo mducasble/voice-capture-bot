@@ -81,7 +81,9 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 
   const sessions = recordings.filter(r => r.recording_type === "mixed");
   const individuals = recordings.filter(r => r.recording_type === "individual");
-  const totalDuration = recordings.reduce((s, r) => s + (r.duration_seconds || 0), 0);
+  // Use only mixed track durations to avoid double-counting overlapping individual tracks
+  const totalDuration = sessions.reduce((s, r) => s + (r.duration_seconds || 0), 0)
+    || individuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
   // Group individuals by session_id
   const sessionGroups = new Map<string, RecordingRow[]>();
@@ -150,7 +152,11 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                   <div key={sessionId}>
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
                       <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
-                        Sessão {sessionId.slice(0, 8)} — {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
+                        Sessão{" "}
+                        <span className="px-1.5 py-0.5 rounded-sm" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
+                          {sessionId.slice(0, 8)}
+                        </span>
+                        {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
                       </span>
                       {mixed?.duration_seconds != null && (
                         <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
