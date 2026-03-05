@@ -57,16 +57,16 @@ function SessionRow({ rec }: { rec: RecordingRow }) {
         </button>
       )}
       <div className="flex-1 min-w-0">
-        <span className="font-mono text-xs truncate block" style={{ color: "var(--portal-text)" }}>
+        <span className="font-mono text-sm truncate block" style={{ color: "var(--portal-text)" }}>
           {rec.discord_username || rec.filename}
         </span>
       </div>
       {rec.duration_seconds != null && (
-        <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--portal-text-muted)" }}>
+        <span className="font-mono text-xs shrink-0" style={{ color: "var(--portal-text-muted)" }}>
           {formatDuration(rec.duration_seconds)}
         </span>
       )}
-      <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--portal-text-muted)" }}>
+      <span className="font-mono text-xs shrink-0" style={{ color: "var(--portal-text-muted)" }}>
         {new Date(rec.created_at).toLocaleDateString("pt-BR")}
       </span>
     </div>
@@ -98,27 +98,27 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
         className="w-full text-left p-5 flex items-center justify-between gap-4 transition-colors"
       >
         <div className="min-w-0 flex-1">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-tight truncate" style={{ color: "var(--portal-text)" }}>
+          <h2 className="font-mono text-base font-bold uppercase tracking-tight truncate" style={{ color: "var(--portal-text)" }}>
             {campaign.name}
           </h2>
           {campaign.description && (
-            <p className="font-mono text-xs mt-1 truncate" style={{ color: "var(--portal-text-muted)" }}>
+            <p className="font-mono text-sm mt-1 truncate" style={{ color: "var(--portal-text-muted)" }}>
               {campaign.description}
             </p>
           )}
           <div className="flex items-center gap-4 mt-2 flex-wrap">
-            <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+            <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
               Desde {new Date(participation.joined_at).toLocaleDateString("pt-BR")}
             </span>
             {sessions.length > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
-                <FileAudio className="h-3 w-3" />
+              <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
+                <FileAudio className="h-3.5 w-3.5" />
                 {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}
               </span>
             )}
             {totalDuration > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
-                <Clock className="h-3 w-3" />
+              <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
+                <Clock className="h-3.5 w-3.5" />
                 {formatDuration(totalDuration)}
               </span>
             )}
@@ -137,7 +137,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
         <div style={{ borderTop: "1px solid var(--portal-border)" }}>
           {recordings.length === 0 ? (
             <div className="p-6 text-center">
-              <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
                 Nenhum material enviado ainda.
               </p>
             </div>
@@ -149,11 +149,11 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                 return (
                   <div key={sessionId}>
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
-                      <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
+                      <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
                         Sessão — {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
                       </span>
                       {mixed?.duration_seconds != null && (
-                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                           {formatDuration(mixed.duration_seconds)}
                         </span>
                       )}
@@ -232,12 +232,12 @@ export default function PortalMyCampaigns() {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
         <FolderOpen className="h-8 w-8 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
-        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+        <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
           Você ainda não participa de nenhuma campanha.
         </p>
         <button
           onClick={() => navigate("/")}
-          className="font-mono text-xs uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
+          className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
           style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
         >
           Explorar Campanhas
@@ -253,7 +253,7 @@ export default function PortalMyCampaigns() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
-        <h1 className="font-mono text-lg font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+        <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
           Minhas Campanhas
         </h1>
       </div>
