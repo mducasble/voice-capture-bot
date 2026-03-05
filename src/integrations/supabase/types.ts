@@ -387,6 +387,38 @@ export type Database = {
           },
         ]
       }
+      campaign_participants: {
+        Row: {
+          campaign_id: string
+          id: string
+          joined_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          id?: string
+          joined_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          id?: string
+          joined_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_participants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_quality_flow: {
         Row: {
           campaign_id: string
