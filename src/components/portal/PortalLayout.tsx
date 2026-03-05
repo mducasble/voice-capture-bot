@@ -111,7 +111,7 @@ function CopyReferralButton({ userId }: { userId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("referral_code")
+        .select("referral_code, avatar_url")
         .eq("id", userId)
         .single();
       return data;
