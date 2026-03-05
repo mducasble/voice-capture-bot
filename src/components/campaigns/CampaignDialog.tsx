@@ -155,7 +155,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         setReferralOverride(false);
         setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
       }
-    } else if (!campaignId) {
+    } else if (!campaignId && !duplicateFromId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
       setTargetHours(0); setIsActive(true); setCampaignStatus("draft");
       setDurationUnit("days"); setDurationValue(undefined);
@@ -170,7 +170,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setReferralOverride(false);
       setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
-  }, [campaign, campaignId]);
+  }, [campaign, campaignId, duplicateFromId]);
 
   const handleSave = async () => {
     if (!name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
