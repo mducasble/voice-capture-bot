@@ -21,8 +21,9 @@ export default function PortalLayout() {
   }
 
   const navItems = [
-    { to: "/", icon: FolderOpen, label: "CAMPANHAS", exact: true },
+    { to: "/", icon: FolderOpen, label: "OPORTUNIDADES", exact: true },
     { to: "/my-campaigns", icon: Layers, label: "MINHAS CAMPANHAS" },
+    { to: "/profile", icon: User, label: "PERFIL" },
   ];
 
   return (
