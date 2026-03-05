@@ -187,6 +187,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
         language_variants: langVariants,
         task_sets: taskSets,
         reward_config: reward,
+        referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
       };
       if (campaignId) {
