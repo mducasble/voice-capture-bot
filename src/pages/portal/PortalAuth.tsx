@@ -376,8 +376,7 @@ export default function PortalAuth() {
               {mode === "vendor" && (
                 <form onSubmit={handleVendorSignup} className="space-y-5">
                   <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
-                    <Building2 className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                    Conta Vendor: acesso a campanhas exclusivas e upload em lote. Requer aprovação do administrador.
+                    Seja um vendor e tenha acesso a mais slots de campanha e outras funcionalidades da plataforma.
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
@@ -439,7 +438,7 @@ export default function PortalAuth() {
                     size="default"
                     disabled={loading}
                     scrambleText={loading ? "ENVIANDO..." : "SOLICITAR CONTA VENDOR"}
-                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
                   />
                 </form>
               )}
