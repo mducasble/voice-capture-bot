@@ -14,6 +14,7 @@ import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import LanguageSelector from "@/components/portal/LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { detectBrowserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
 
 type AuthMode = "login" | "signup" | "vendor";
 
