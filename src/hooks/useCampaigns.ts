@@ -167,6 +167,7 @@ export interface SaveCampaignPayload {
   geographic_scope?: GeographicScope;
   language_variants?: LanguageVariant[];
   task_sets?: CampaignTaskSet[];
+  sections?: CampaignSection[];
   reward_config?: RewardConfig;
   referral_config?: ReferralConfig;
   quality_flow?: QualityFlow;
