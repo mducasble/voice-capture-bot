@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers } from "lucide-react";
+import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
@@ -53,6 +53,7 @@ export default function PortalDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeCampaigns.map(campaign => {
           const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
+          const isWaitlistCampaign = campaign.campaign_status === "waiting_list" || (!!campaign.start_date && new Date(`${campaign.start_date}T00:00:00`) > new Date());
           return (
             <div
               key={campaign.id}
@@ -124,7 +125,12 @@ export default function PortalDashboard() {
               {/* Card footer */}
               <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
                 <Link to={`/campaign/${campaign.id}`}>
-                  <KGenButton className="w-full" size="sm" scrambleText="INICIAR" icon={<ArrowRight className="h-4 w-4" />} />
+                  <KGenButton
+                    className="w-full"
+                    size="sm"
+                    scrambleText={isWaitlistCampaign ? "WAITING LIST" : "INICIAR"}
+                    icon={isWaitlistCampaign ? <Bell className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                  />
                 </Link>
               </div>
             </div>
