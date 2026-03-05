@@ -218,115 +218,122 @@ export default function PortalAuth() {
       <div className="absolute bottom-8 right-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
 
       <div className="relative z-10 min-h-screen flex">
-        {/* Left panel — branding + opportunities */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col" style={{ borderRight: "1px solid var(--portal-border)" }}>
-          {/* Top: branding */}
-          <div className="p-10 pb-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <img src={kgenLogo} alt="KGeN Logo" className="w-16 h-16 mb-4" />
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2.5 h-2.5" style={{ background: "var(--portal-accent)" }} />
-              <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                AI Quests Platform
+        {/* Left panel — split into branding (left) + opportunities (right) */}
+        <div className="hidden lg:flex lg:w-2/3 flex-row" style={{ borderRight: "1px solid var(--portal-border)" }}>
+          {/* Branding column */}
+          <div className="w-1/2 flex flex-col justify-between p-10" style={{ borderRight: "1px solid var(--portal-border)" }}>
+            <div>
+              <img src={kgenLogo} alt="KGeN Logo" className="w-16 h-16 mb-6" />
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2.5 h-2.5" style={{ background: "var(--portal-accent)" }} />
+                <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+                  AI Quests Platform
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <h1 className="font-mono text-5xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
+                Join.
+                <br />
+                Complete.
+                <br />
+                <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
+              </h1>
+              <p className="font-mono text-sm max-w-md leading-relaxed mt-4" style={{ color: "var(--portal-text-muted)" }}>
+                Plataforma de coleta e preparação de dados para IA.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+              <span className="font-mono text-xs tracking-wider" style={{ color: "var(--portal-text-muted)" }}>
+                © 2026 KGEN
               </span>
             </div>
-            <h1 className="font-mono text-5xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
-              Join. Complete.{" "}
-              <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
-            </h1>
           </div>
 
-          {/* Bottom: opportunities list */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-2">
-            <div className="flex items-center gap-2 mb-3">
+          {/* Opportunities column */}
+          <div className="w-1/2 flex flex-col">
+            <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
                 Oportunidades Abertas
               </span>
             </div>
 
-            {(!publicCampaigns || publicCampaigns.length === 0) && (
-              <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                Nenhuma oportunidade disponível no momento.
-              </p>
-            )}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {(!publicCampaigns || publicCampaigns.length === 0) && (
+                <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
+                  Nenhuma oportunidade disponível no momento.
+                </p>
+              )}
 
-            {publicCampaigns?.map(c => {
-              const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
-              const reward = c.reward;
-              return (
-                <div
-                  key={c.id}
-                  className="p-3 transition-colors"
-                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
-                >
-                  {/* Task type */}
-                  {taskLabels.length > 0 && (
-                    <div className="flex items-center gap-1 mb-1.5">
-                      <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
-                      <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                        {taskLabels.join(" · ")}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Title */}
-                  <h3 className="font-mono text-sm font-bold uppercase tracking-tight mb-1.5" style={{ color: "var(--portal-text)" }}>
-                    {c.name}
-                  </h3>
-
-                  <div className="flex items-center justify-between">
-                    {/* Languages + meta */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {c.languages.map((l: any, i: number) => (
-                        <span
-                          key={i}
-                          className="font-mono text-[10px] px-1.5 py-0.5"
-                          style={{ background: "hsl(0 0% 15%)", border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-                        >
-                          {l.label}
+              {publicCampaigns?.map(c => {
+                const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
+                const reward = c.reward;
+                return (
+                  <div
+                    key={c.id}
+                    className="p-3 transition-colors"
+                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
+                  >
+                    {taskLabels.length > 0 && (
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
+                        <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                          {taskLabels.join(" · ")}
                         </span>
-                      ))}
+                      </div>
+                    )}
+
+                    <h3 className="font-mono text-sm font-bold uppercase tracking-tight mb-1.5" style={{ color: "var(--portal-text)" }}>
+                      {c.name}
+                    </h3>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {c.languages.map((l: any, i: number) => (
+                          <span
+                            key={i}
+                            className="font-mono text-[10px] px-1.5 py-0.5"
+                            style={{ background: "hsl(0 0% 15%)", border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                          >
+                            {l.label}
+                          </span>
+                        ))}
+                      </div>
+
+                      {reward?.base_rate && (
+                        <span className="font-mono text-sm font-black" style={{ color: "var(--portal-accent)" }}>
+                          {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}/{reward.payout_model === "per_accepted_hour" ? "h" : "un"}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Reward highlight */}
-                    {reward?.base_rate && (
-                      <span className="font-mono text-sm font-black" style={{ color: "var(--portal-accent)" }}>
-                        {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}/{reward.payout_model === "per_accepted_hour" ? "h" : "un"}
-                      </span>
-                    )}
+                    <div className="mt-2">
+                      {c.isOpen ? (
+                        <span
+                          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
+                          style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+                        >
+                          <ArrowRight className="w-3 h-3" />
+                          Participar
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
+                          style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                        >
+                          <ClockIcon className="w-3 h-3" />
+                          Waiting List
+                        </span>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Action badge */}
-                  <div className="mt-2">
-                    {c.isOpen ? (
-                      <span
-                        className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
-                        style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-                      >
-                        <ArrowRight className="w-3 h-3" />
-                        Participar
-                      </span>
-                    ) : (
-                      <span
-                        className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest font-bold px-2 py-1"
-                        style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-                      >
-                        <ClockIcon className="w-3 h-3" />
-                        Waiting List
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="p-6 pt-3 flex items-center gap-4" style={{ borderTop: "1px solid var(--portal-border)" }}>
-            <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
-            <span className="font-mono text-xs tracking-wider" style={{ color: "var(--portal-text-muted)" }}>
-              © 2026 KGEN
-            </span>
+                );
+              })}
+            </div>
           </div>
         </div>
 
