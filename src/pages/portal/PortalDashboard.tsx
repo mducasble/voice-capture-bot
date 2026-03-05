@@ -62,6 +62,19 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
 
 export default function PortalDashboard() {
   const { data: campaigns, isLoading } = useCampaigns();
+  const { user } = useAuth();
+
+  const { data: userWaitlistIds } = useQuery({
+    queryKey: ["user-waitlist", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("campaign_waitlist")
+        .select("campaign_id")
+        .eq("user_id", user!.id);
+      return new Set((data || []).map((w: any) => w.campaign_id));
+    },
+    enabled: !!user?.id,
+  });
 
   const allVisible = campaigns?.filter(c => c.is_active) || [];
   
