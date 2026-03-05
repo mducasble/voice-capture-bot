@@ -75,7 +75,7 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
   // Other categories use unified tables with validation_scope
   const table = getValidationTableForCategory(category) as any;
   const { data } = await supabase.from(table).select("*").eq("task_set_id", taskSetId);
-  const rows = (data || []) as ValidationRule[];
+  const rows = (data || []) as unknown as ValidationRule[];
   return {
     tech: rows.filter(r => r.validation_scope === "technical"),
     content: rows.filter(r => r.validation_scope === "content"),
