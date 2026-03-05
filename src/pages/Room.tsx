@@ -48,6 +48,7 @@ const Room = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isPortal = !location.pathname.startsWith("/admin");
+  const campaignId = new URLSearchParams(location.search).get("campaign") || undefined;
   
   const [room, setRoom] = useState<Room | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -423,6 +424,7 @@ const Room = () => {
       formData.append("participant_name", "Mixed");
       formData.append("recording_type", "mixed");
       formData.append("format", "wav");
+      if (campaignId) formData.append("campaign_id", campaignId);
 
       setMixedUploadProgress(30);
       const response = await fetch(
@@ -934,6 +936,7 @@ const Room = () => {
                   isMuted={isMuted}
                   noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
                   audioProfile={audioProfile}
+                  campaignId={campaignId}
                 />
               </div>
             </div>
@@ -1181,6 +1184,7 @@ const Room = () => {
               isMuted={isMuted}
               noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
               audioProfile={audioProfile}
+              campaignId={campaignId}
             />
           </CardContent>
         </Card>
