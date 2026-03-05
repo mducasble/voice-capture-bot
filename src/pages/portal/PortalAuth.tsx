@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import LanguageSelector from "@/components/portal/LanguageSelector";
 
 type AuthMode = "login" | "signup" | "vendor";
 
@@ -19,13 +20,6 @@ export default function PortalAuth() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
-  const [lang, setLang] = useState("pt");
-
-  const languages = [
-    { code: "pt", flag: "https://flagcdn.com/w80/br.png", label: "Português" },
-    { code: "es", flag: "https://flagcdn.com/w80/es.png", label: "Español" },
-    { code: "en", flag: "https://flagcdn.com/w80/us.png", label: "English" },
-  ];
 
   // Lightweight public campaigns query (no auth needed)
   const { data: publicCampaigns } = useQuery({
@@ -194,21 +188,7 @@ export default function PortalAuth() {
 
       {/* Top bar: language flags + theme toggle */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
-        {languages.map(l => (
-          <button
-            key={l.code}
-            type="button"
-            onClick={() => setLang(l.code)}
-            className="w-10 h-10 flex items-center justify-center cursor-pointer overflow-hidden transition-all"
-            style={{
-              border: lang === l.code ? "2px solid var(--portal-accent)" : "1px solid var(--portal-border)",
-              background: "var(--portal-input-bg)",
-            }}
-            title={l.label}
-          >
-            <img src={l.flag} alt={l.label} className="w-7 h-auto" />
-          </button>
-        ))}
+        <LanguageSelector variant="flags" />
         <button
           type="button"
           onClick={() => setLightMode(v => !v)}
