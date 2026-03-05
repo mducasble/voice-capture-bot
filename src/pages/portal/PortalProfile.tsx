@@ -5,6 +5,7 @@ import { useState, useRef } from "react";
 import { Camera, Save, Loader2, X } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const OPPORTUNITY_OPTIONS = [
   { value: "audio_capture_solo", label: "Áudio (Solo)" },
@@ -38,6 +39,7 @@ export default function PortalProfile() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
@@ -56,7 +58,6 @@ export default function PortalProfile() {
 
   const [form, setForm] = useState<ProfileData | null>(null);
 
-  // Initialize form when profile loads
   const currentForm: ProfileData = form || {
     full_name: profile?.full_name || "",
     avatar_url: profile?.avatar_url || null,
@@ -104,10 +105,10 @@ export default function PortalProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Perfil salvo com sucesso!");
+      toast.success(t("profile.savedSuccess"));
     },
     onError: () => {
-      toast.error("Erro ao salvar perfil.");
+      toast.error(t("profile.saveError"));
     },
   });
 
@@ -131,7 +132,7 @@ export default function PortalProfile() {
 
       updateField("avatar_url", urlData.publicUrl + "?t=" + Date.now());
     } catch {
-      toast.error("Erro ao enviar foto.");
+      toast.error(t("profile.uploadError"));
     } finally {
       setUploading(false);
     }
@@ -147,125 +148,53 @@ export default function PortalProfile() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
         <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-          Meu Perfil
+          {t("profile.title")}
         </h1>
       </div>
 
-      {/* Avatar */}
       <div className="flex items-center gap-6" style={{ borderBottom: "1px solid var(--portal-border)", paddingBottom: "24px" }}>
         <div className="relative">
-          <div
-            className="w-20 h-20 flex items-center justify-center overflow-hidden"
-            style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
-          >
+          <div className="w-20 h-20 flex items-center justify-center overflow-hidden" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
             {currentForm.avatar_url ? (
               <img src={currentForm.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <Camera className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
             )}
           </div>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute -bottom-2 -right-2 p-1.5"
-            style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-            disabled={uploading}
-          >
+          <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 p-1.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }} disabled={uploading}>
             {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
           </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarUpload}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
         </div>
         <div>
-          <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>
-            Foto de Perfil
-          </p>
-          <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-            Opcional · JPG, PNG
-          </p>
+          <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{t("profile.profilePhoto")}</p>
+          <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>{t("profile.optional")}</p>
         </div>
       </div>
 
-      {/* Form */}
       <div className="space-y-5">
-        <InputField
-          label="Nome Completo"
-          value={currentForm.full_name || ""}
-          onChange={v => updateField("full_name", v)}
-          placeholder="Seu nome completo"
-        />
-
-        <InputField
-          label="Wallet ID (Polygon)"
-          value={currentForm.wallet_id || ""}
-          onChange={v => updateField("wallet_id", v)}
-          placeholder="0x..."
-        />
-
+        <InputField label={t("profile.fullName")} value={currentForm.full_name || ""} onChange={v => updateField("full_name", v)} placeholder={t("profile.fullNamePlaceholder")} />
+        <InputField label={t("profile.walletId")} value={currentForm.wallet_id || ""} onChange={v => updateField("wallet_id", v)} placeholder="0x..." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField
-            label="WhatsApp"
-            value={currentForm.whatsapp || ""}
-            onChange={v => updateField("whatsapp", v)}
-            placeholder="+55 11 99999-9999"
-          />
-          <InputField
-            label="Telegram"
-            value={currentForm.telegram || ""}
-            onChange={v => updateField("telegram", v)}
-            placeholder="@username"
-          />
+          <InputField label={t("profile.whatsapp")} value={currentForm.whatsapp || ""} onChange={v => updateField("whatsapp", v)} placeholder="+55 11 99999-9999" />
+          <InputField label={t("profile.telegram")} value={currentForm.telegram || ""} onChange={v => updateField("telegram", v)} placeholder="@username" />
+        </div>
+        <InputField label={t("profile.bestEmail")} value={currentForm.email_contact || ""} onChange={v => updateField("email_contact", v)} placeholder="seu@email.com" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <InputField label={t("profile.country")} value={currentForm.country || ""} onChange={v => updateField("country", v)} placeholder="Brasil" />
+          <InputField label={t("profile.city")} value={currentForm.city || ""} onChange={v => updateField("city", v)} placeholder="São Paulo" />
         </div>
 
-        <InputField
-          label="Melhor E-mail"
-          value={currentForm.email_contact || ""}
-          onChange={v => updateField("email_contact", v)}
-          placeholder="seu@email.com"
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField
-            label="País"
-            value={currentForm.country || ""}
-            onChange={v => updateField("country", v)}
-            placeholder="Brasil"
-          />
-          <InputField
-            label="Cidade"
-            value={currentForm.city || ""}
-            onChange={v => updateField("city", v)}
-            placeholder="São Paulo"
-          />
-        </div>
-
-        {/* Spoken Languages */}
         <div className="space-y-2">
-          <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>
-            Idiomas Falados
-          </label>
+          <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>{t("profile.spokenLanguages")}</label>
           <div className="flex flex-wrap gap-2">
             {LANGUAGE_OPTIONS.map(lang => {
               const selected = currentForm.spoken_languages?.includes(lang);
               return (
-                <button
-                  key={lang}
-                  onClick={() => toggleArrayItem("spoken_languages", lang)}
-                  className="font-mono text-xs px-3 py-1.5 transition-colors"
-                  style={{
-                    border: "1px solid " + (selected ? "var(--portal-accent)" : "var(--portal-border)"),
-                    background: selected ? "var(--portal-accent)" : "hsl(0 0% 15%)",
-                    color: selected ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                  }}
-                >
+                <button key={lang} onClick={() => toggleArrayItem("spoken_languages", lang)} className="font-mono text-xs px-3 py-1.5 transition-colors" style={{ border: "1px solid " + (selected ? "var(--portal-accent)" : "var(--portal-border)"), background: selected ? "var(--portal-accent)" : "hsl(0 0% 15%)", color: selected ? "var(--portal-accent-text)" : "var(--portal-text-muted)" }}>
                   {lang}
                 </button>
               );
@@ -273,25 +202,13 @@ export default function PortalProfile() {
           </div>
         </div>
 
-        {/* Desired Opportunities */}
         <div className="space-y-2">
-          <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>
-            Tipos de Oportunidades Desejadas
-          </label>
+          <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>{t("profile.desiredOpportunities")}</label>
           <div className="flex flex-wrap gap-2">
             {OPPORTUNITY_OPTIONS.map(opt => {
               const selected = currentForm.desired_opportunities?.includes(opt.value);
               return (
-                <button
-                  key={opt.value}
-                  onClick={() => toggleArrayItem("desired_opportunities", opt.value)}
-                  className="font-mono text-xs px-3 py-1.5 transition-colors"
-                  style={{
-                    border: "1px solid " + (selected ? "var(--portal-accent)" : "var(--portal-border)"),
-                    background: selected ? "var(--portal-accent)" : "hsl(0 0% 15%)",
-                    color: selected ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                  }}
-                >
+                <button key={opt.value} onClick={() => toggleArrayItem("desired_opportunities", opt.value)} className="font-mono text-xs px-3 py-1.5 transition-colors" style={{ border: "1px solid " + (selected ? "var(--portal-accent)" : "var(--portal-border)"), background: selected ? "var(--portal-accent)" : "hsl(0 0% 15%)", color: selected ? "var(--portal-accent-text)" : "var(--portal-text-muted)" }}>
                   {opt.label}
                 </button>
               );
@@ -300,12 +217,11 @@ export default function PortalProfile() {
         </div>
       </div>
 
-      {/* Save */}
       <div style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
         <KGenButton
           onClick={() => saveMutation.mutate()}
           className="w-full"
-          scrambleText={saveMutation.isPending ? "SALVANDO..." : "SALVAR PERFIL"}
+          scrambleText={saveMutation.isPending ? t("profile.saving") : t("profile.saveProfile")}
           icon={saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         />
       </div>
@@ -313,29 +229,11 @@ export default function PortalProfile() {
   );
 }
 
-function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
+function InputField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="space-y-1.5">
-      <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>
-        {label}
-      </label>
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="portal-brutalist-input w-full"
-      />
+      <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>{label}</label>
+      <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="portal-brutalist-input w-full" />
     </div>
   );
 }

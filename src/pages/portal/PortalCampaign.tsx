@@ -13,6 +13,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import { useTranslation } from "react-i18next";
 
 
 
@@ -41,6 +42,7 @@ export default function PortalCampaign() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const { t } = useTranslation();
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 

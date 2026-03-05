@@ -9,12 +9,14 @@ import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
 }
 
 function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?: boolean }) {
+  const { t } = useTranslation();
   const enabledTaskSets = campaign.task_sets?.filter((ts: any) => ts.enabled) || [];
   const waitlist = isWaitlist(campaign);
   return (
@@ -40,7 +42,7 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(campaign.start_date), "dd MMM yyyy", { locale: ptBR })}</span>
           )}
           {campaign.target_hours && (
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{campaign.target_hours}h meta</span>
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{campaign.target_hours}{t("dashboard.goalHours")}</span>
           )}
         </div>
         {campaign.language_variants && campaign.language_variants.length > 0 && (
@@ -53,7 +55,7 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
       </div>
       <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
         <Link to={`/campaign/${campaign.id}`}>
-          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? (isOnWaitlist ? "JÁ NA WAITING LIST" : "WAITING LIST") : "INICIAR"} icon={waitlist ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />) : <ArrowRight className="h-4 w-4" />} />
+          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? (isOnWaitlist ? t("dashboard.alreadyOnWaitlist") : t("dashboard.waitingList")) : t("dashboard.start")} icon={waitlist ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />) : <ArrowRight className="h-4 w-4" />} />
         </Link>
       </div>
     </div>
@@ -63,6 +65,7 @@ function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?
 export default function PortalDashboard() {
   const { data: campaigns, isLoading } = useCampaigns();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: userWaitlistIds } = useQuery({
     queryKey: ["user-waitlist", user?.id],
@@ -100,10 +103,10 @@ export default function PortalDashboard() {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
-          <span className="font-mono text-sm tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>Oportunidades</span>
+          <span className="font-mono text-sm tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>{t("dashboard.badge")}</span>
         </div>
-        <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>Oportunidades Disponíveis</h1>
-        <p className="font-mono text-base mt-2" style={{ color: "var(--portal-text-muted)" }}>Selecione uma oportunidade para começar</p>
+        <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{t("dashboard.title")}</h1>
+        <p className="font-mono text-base mt-2" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.subtitle")}</p>
       </div>
 
       {isLoading && (
@@ -115,8 +118,8 @@ export default function PortalDashboard() {
       {!isLoading && allVisible.length === 0 && (
         <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
           <Mic2 className="h-12 w-12 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
-          <h3 className="font-mono text-xl font-bold uppercase" style={{ color: "var(--portal-text)" }}>Nenhuma campanha disponível</h3>
-          <p className="font-mono text-base mt-1" style={{ color: "var(--portal-text-muted)" }}>Aguarde novas campanhas serem publicadas.</p>
+          <h3 className="font-mono text-xl font-bold uppercase" style={{ color: "var(--portal-text)" }}>{t("dashboard.noCampaigns")}</h3>
+          <p className="font-mono text-base mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.noCampaignsDesc")}</p>
         </div>
       )}
 
@@ -134,7 +137,7 @@ export default function PortalDashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <Bell className="h-4 w-4" style={{ color: "var(--portal-text-muted)" }} />
-            <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text-muted)" }}>Em breve</h2>
+            <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.comingSoon")}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {waitlistCampaigns.map(c => <CampaignCard key={c.id} campaign={c} isOnWaitlist={userWaitlistIds?.has(c.id)} />)}
