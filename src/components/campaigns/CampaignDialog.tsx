@@ -398,7 +398,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
     );
   };
 
-
+  const renderTaskSetCard = (ts: CampaignTaskSet, index: number) => {
     const isExpanded = expandedTaskSet === index;
     const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
 
