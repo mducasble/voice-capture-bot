@@ -777,216 +777,228 @@ const Room = () => {
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Countdown Timer */}
-          {room.duration_minutes && room.is_recording && room.recording_started_at && (() => {
-            const totalSeconds = room.duration_minutes * 60;
-            const remaining = Math.max(0, totalSeconds - recordingDuration);
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
-            const isLow = remaining <= 60;
-            return (
-              <div className="p-4 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-                <div className="flex items-center justify-center gap-2">
-                  <Timer className="h-4 w-4" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
-                  <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                    Tempo restante
-                  </span>
-                </div>
-                <p className="font-mono text-4xl font-black" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
-                  {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
-                </p>
-                <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
-                  <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, background: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Countdown timer (before recording - shows total time) */}
-          {room.duration_minutes && !room.is_recording && room.status !== "completed" && (
-            <div className="p-4 text-center space-y-1" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-              <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                Tempo de conversa
-              </span>
-              <p className="font-mono text-5xl font-black tabular-nums" style={{ color: "var(--portal-accent)" }}>
-                {room.duration_minutes.toString().padStart(2, "0")}:00
-              </p>
-            </div>
-          )}
-
-          {/* Topic display */}
-          {room.topic && (
-            <div className="flex items-center gap-2 p-3 font-mono text-sm" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-              <MessageSquare className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-              <span>Tema: <strong style={{ color: "var(--portal-text)" }}>{room.topic}</strong></span>
-            </div>
-          )}
-
-          {/* Audio Test Flow */}
-          {!room.is_recording && room.status !== "completed" && (
-            <AudioTestFlow
-              participantId={currentParticipant.id}
-              participantName={currentParticipant.name}
-              roomId={room.id}
-              stream={mediaStreamRef.current}
-              testStatus={currentParticipant.audio_test_status || "pending"}
-              testResults={currentParticipant.audio_test_results}
-              onProfileRecommended={handleProfileApplied}
-              currentProfile={audioProfile}
-              isPortal={isPortal}
-              onTestComplete={() => {
-                const fetchParticipants = async () => {
-                  const { data } = await supabase
-                    .from("room_participants")
-                    .select("*")
-                    .eq("room_id", roomId)
-                    .eq("is_connected", true);
-                  if (data) {
-                    setParticipants(data as Participant[]);
-                    const me = data.find((p: any) => p.id === currentParticipant.id);
-                    if (me) setCurrentParticipant(me as Participant);
-                  }
-                };
-                fetchParticipants();
-              }}
-            />
-          )}
-
-          {/* Recording Controls (Creator only) */}
-          {currentParticipant.is_creator && (
-            <div className="p-6 space-y-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-              <div className="flex items-center justify-center gap-4">
-                {!room.is_recording ? (
-                  <KGenButton
-                    onClick={handleStartRecording}
-                    disabled={room.status === "completed"}
-                    scrambleText="INICIAR GRAVAÇÃO"
-                    icon={<Circle className="h-4 w-4 fill-current" />}
-                  />
-                ) : (
-                  <KGenButton
-                    variant="dark"
-                    onClick={handleStopRecording}
-                    scrambleText="PARAR GRAVAÇÃO"
-                    icon={<Square className="h-4 w-4 fill-current" />}
-                  />
-                )}
-              </div>
-              {isMixedUploading && (
-                <div className="space-y-1 px-2">
-                  <div className="flex justify-between font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-                    <span>ENVIANDO ÁUDIO MIXADO...</span>
-                    <span>{mixedUploadProgress}%</span>
-                  </div>
-                  <Progress value={mixedUploadProgress} className="h-1" />
-                </div>
-              )}
-              <div className="flex items-center justify-center gap-4 pt-3 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
-                {audioProfile && (
-                  <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                    🎛️ PERFIL ADAPTATIVO
-                  </span>
-                )}
-                {room.is_recording && (
-                  <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-accent)" }}>
-                    🎚️ MIX: {1 + remoteStreams.size} STREAMS
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* My Audio */}
-          <div className="space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-            <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Seu Áudio</span>
-              <button
-                onClick={toggleMute}
-                className="p-2 transition-colors"
-                style={{
-                  border: "1px solid var(--portal-border)",
-                  color: isMuted ? "hsl(0 84% 60%)" : "var(--portal-text-muted)",
-                  background: isMuted ? "hsl(0 84% 60% / 0.1)" : "transparent",
-                }}
-              >
-                {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </button>
-            </div>
-            <div className="px-4 pb-4 space-y-3">
-              {audioDevices.length > 1 && (
-                <Select value={selectedDeviceId} onValueChange={handleDeviceChange}>
-                  <SelectTrigger className="portal-brutalist-input h-8 text-xs">
-                    <SelectValue placeholder="Selecione o microfone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {audioDevices.map((device) => (
-                      <SelectItem key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <ParticipantAudio
+        <div className="flex gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          {/* LEFT COLUMN - Controls (30%) */}
+          <div className="space-y-4" style={{ width: "33%" }}>
+            {/* Audio Test Flow */}
+            {!room.is_recording && room.status !== "completed" && (
+              <AudioTestFlow
                 participantId={currentParticipant.id}
                 participantName={currentParticipant.name}
+                roomId={room.id}
                 stream={mediaStreamRef.current}
-                isRecording={room.is_recording}
-                sessionId={room.session_id}
-                isMuted={isMuted}
-                noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
-                audioProfile={audioProfile}
+                testStatus={currentParticipant.audio_test_status || "pending"}
+                testResults={currentParticipant.audio_test_results}
+                onProfileRecommended={handleProfileApplied}
+                currentProfile={audioProfile}
+                isPortal={isPortal}
+                onTestComplete={() => {
+                  const fetchParticipants = async () => {
+                    const { data } = await supabase
+                      .from("room_participants")
+                      .select("*")
+                      .eq("room_id", roomId)
+                      .eq("is_connected", true);
+                    if (data) {
+                      setParticipants(data as Participant[]);
+                      const me = data.find((p: any) => p.id === currentParticipant.id);
+                      if (me) setCurrentParticipant(me as Participant);
+                    }
+                  };
+                  fetchParticipants();
+                }}
               />
+            )}
+
+            {/* Recording Controls (Creator only) */}
+            {currentParticipant.is_creator && (
+              <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                <div className="flex items-center justify-center">
+                  {!room.is_recording ? (
+                    <KGenButton
+                      onClick={handleStartRecording}
+                      disabled={room.status === "completed"}
+                      scrambleText="INICIAR GRAVAÇÃO"
+                      icon={<Circle className="h-4 w-4 fill-current" />}
+                      className="w-full"
+                    />
+                  ) : (
+                    <KGenButton
+                      variant="dark"
+                      onClick={handleStopRecording}
+                      scrambleText="PARAR GRAVAÇÃO"
+                      icon={<Square className="h-4 w-4 fill-current" />}
+                      className="w-full"
+                    />
+                  )}
+                </div>
+                {isMixedUploading && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span>ENVIANDO ÁUDIO...</span>
+                      <span>{mixedUploadProgress}%</span>
+                    </div>
+                    <Progress value={mixedUploadProgress} className="h-1" />
+                  </div>
+                )}
+                <div className="flex items-center justify-center gap-3 pt-2 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
+                  {audioProfile && (
+                    <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+                      🎛️ PERFIL ADAPTATIVO
+                    </span>
+                  )}
+                  {room.is_recording && (
+                    <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-accent)" }}>
+                      🎚️ MIX: {1 + remoteStreams.size} STREAMS
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Participants */}
+            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <div className="p-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
+                  Participantes ({participants.length})
+                </span>
+              </div>
+              <div className="p-3 space-y-1.5">
+                {participants.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-2"
+                    style={{ border: "1px solid var(--portal-border)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2" style={{ background: p.is_connected ? "var(--portal-accent)" : "var(--portal-text-muted)" }} />
+                      <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{p.name}</span>
+                      {p.is_creator && (
+                        <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+                          Criador
+                        </span>
+                      )}
+                      {p.id === currentParticipant.id && (
+                        <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                          Você
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {p.audio_test_status === "passed" && <span className="text-[10px]">✅</span>}
+                      {p.audio_test_status === "failed" && <span className="text-[10px]">❌</span>}
+                      {p.audio_test_status === "testing" && <span className="text-[10px]">⏳</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* My Audio */}
+            <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+              <div className="p-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Seu Áudio</span>
+                <button
+                  onClick={toggleMute}
+                  className="p-1.5 transition-colors"
+                  style={{
+                    border: "1px solid var(--portal-border)",
+                    color: isMuted ? "hsl(0 84% 60%)" : "var(--portal-text-muted)",
+                    background: isMuted ? "hsl(0 84% 60% / 0.1)" : "transparent",
+                  }}
+                >
+                  {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <div className="p-3 space-y-2">
+                {audioDevices.length > 1 && (
+                  <Select value={selectedDeviceId} onValueChange={handleDeviceChange}>
+                    <SelectTrigger className="portal-brutalist-input h-8 text-xs">
+                      <SelectValue placeholder="Selecione o microfone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {audioDevices.map((device) => (
+                        <SelectItem key={device.deviceId} value={device.deviceId}>
+                          {device.label || `Microfone ${audioDevices.indexOf(device) + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <ParticipantAudio
+                  participantId={currentParticipant.id}
+                  participantName={currentParticipant.name}
+                  stream={mediaStreamRef.current}
+                  isRecording={room.is_recording}
+                  sessionId={room.session_id}
+                  isMuted={isMuted}
+                  noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
+                  audioProfile={audioProfile}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Participants */}
-          <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-            <div className="p-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
-                Participantes ({participants.length})
+          {/* RIGHT COLUMN - Content (67%) */}
+          <div className="space-y-4" style={{ width: "67%" }}>
+            {/* Countdown Timer */}
+            {room.duration_minutes && (() => {
+              if (room.is_recording && room.recording_started_at) {
+                const totalSeconds = room.duration_minutes * 60;
+                const remaining = Math.max(0, totalSeconds - recordingDuration);
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
+                const isLow = remaining <= 60;
+                return (
+                  <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      Tempo restante
+                    </span>
+                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
+                      {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
+                    </p>
+                    <div className="w-full h-1.5" style={{ background: "var(--portal-border)" }}>
+                      <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, background: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
+                    </div>
+                  </div>
+                );
+              }
+              if (!room.is_recording && room.status !== "completed") {
+                return (
+                  <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                    <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      Tempo de conversa
+                    </span>
+                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
+                      {room.duration_minutes.toString().padStart(2, "0")}:00
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Topic display */}
+            {room.topic && (
+              <div className="p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
+                  Tema da Conversa
+                </span>
+                <p className="font-mono text-lg font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                  {room.topic}
+                </p>
+              </div>
+            )}
+
+            {/* Script / Talking Points placeholder */}
+            <div className="p-4 flex-1" style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-input-bg)", minHeight: "200px" }}>
+              <span className="font-mono text-[10px] uppercase tracking-widest block mb-3" style={{ color: "var(--portal-text-muted)" }}>
+                Roteiro / Pontos de Conversa
               </span>
-            </div>
-            <div className="p-4 space-y-2">
-              {participants.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between p-3"
-                  style={{ border: "1px solid var(--portal-border)" }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2" style={{ background: p.is_connected ? "var(--portal-accent)" : "var(--portal-text-muted)" }} />
-                    <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{p.name}</span>
-                    {p.is_creator && (
-                      <span className="font-mono text-[10px] px-2 py-0.5 uppercase" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                        Criador
-                      </span>
-                    )}
-                    {p.id === currentParticipant.id && (
-                      <span className="font-mono text-[10px] px-2 py-0.5 uppercase" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
-                        Você
-                      </span>
-                    )}
-                    {p.audio_test_status === "passed" && (
-                      <span className="font-mono text-[10px] px-2 py-0.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>✅ OK</span>
-                    )}
-                    {p.audio_test_status === "failed" && (
-                      <span className="font-mono text-[10px] px-2 py-0.5" style={{ border: "1px solid hsl(0 84% 60%)", color: "hsl(0 84% 60%)" }}>❌</span>
-                    )}
-                    {p.audio_test_status === "testing" && (
-                      <span className="font-mono text-[10px] px-2 py-0.5" style={{ border: "1px solid var(--portal-text-muted)", color: "var(--portal-text-muted)" }}>⏳</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Mic className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-                    {p.id !== currentParticipant.id && remoteStreams.has(p.id) && (
-                      <Volume2 className="h-3.5 w-3.5" style={{ color: "var(--portal-accent)" }} />
-                    )}
-                  </div>
-                </div>
-              ))}
+              <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
+                Nenhum roteiro definido para esta sala.
+              </p>
             </div>
           </div>
         </div>
