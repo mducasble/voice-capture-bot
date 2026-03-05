@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers } from "lucide-react";
+import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
