@@ -5,16 +5,33 @@ import type {
   Campaign,
   GeographicScope,
   LanguageVariant,
-  TaskConfig,
-  AdministrativeRules,
-  AudioValidationRule,
-  ContentValidationRule,
   RewardConfig,
   QualityFlow,
+  CampaignTaskSet,
+  ValidationRule,
+  TaskTypeCatalog,
 } from "@/lib/campaignTypes";
+import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, GeographicScope, LanguageVariant, TaskConfig, AdministrativeRules, AudioValidationRule, ContentValidationRule, RewardConfig, QualityFlow };
+export type { Client, Campaign, GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog };
 
+// --- Task Type Catalog ---
+export function useTaskTypeCatalog() {
+  return useQuery({
+    queryKey: ["task_type_catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_type_catalog")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data as TaskTypeCatalog[];
+    },
+  });
+}
+
+// --- Clients ---
 export function useClients() {
   return useQuery({
     queryKey: ["clients"],
@@ -26,29 +43,78 @@ export function useClients() {
   });
 }
 
+export function useCreateClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (client: { name: string; contact_email?: string; contact_phone?: string; notes?: string }) => {
+      const { data, error } = await supabase.from("clients").insert([client]).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clients"] }),
+  });
+}
+
+// --- Fetch task set validation rules based on category ---
+function getValidationTableForCategory(category: string): string {
+  return CATEGORY_VALIDATION_TABLE[category] || "campaign_audio_validation";
+}
+
+async function fetchTaskSetValidation(taskSetId: string, category: string): Promise<{ tech: ValidationRule[]; content: ValidationRule[] }> {
+  if (category === "audio") {
+    // Audio uses legacy tables
+    const [audioRes, contentRes] = await Promise.all([
+      supabase.from("campaign_audio_validation").select("*").eq("task_set_id", taskSetId),
+      supabase.from("campaign_content_validation").select("*").eq("task_set_id", taskSetId),
+    ]);
+    return {
+      tech: (audioRes.data || []) as ValidationRule[],
+      content: (contentRes.data || []) as ValidationRule[],
+    };
+  }
+  // Other categories use unified tables with validation_scope
+  const table = getValidationTableForCategory(category) as any;
+  const { data } = await supabase.from(table).select("*").eq("task_set_id", taskSetId);
+  const rows = (data || []) as unknown as ValidationRule[];
+  return {
+    tech: rows.filter(r => r.validation_scope === "technical"),
+    content: rows.filter(r => r.validation_scope === "content"),
+  };
+}
+
+// --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskRes, adminRes, audioRes, contentRes, rewardRes, qualityRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
-    supabase.from("campaign_task_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
-    supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
-    supabase.from("campaign_audio_validation").select("*").eq("campaign_id", campaignId),
-    supabase.from("campaign_content_validation").select("*").eq("campaign_id", campaignId),
+    supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
     supabase.from("campaign_reward_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_quality_flow").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
+
+  // Enrich task sets with validation rules
+  const taskSets: CampaignTaskSet[] = await Promise.all(
+    (taskSetsRes.data || []).map(async (ts: any) => {
+      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
+      const validation = await fetchTaskSetValidation(ts.id, category);
+      return {
+        ...ts,
+        tech_validation: validation.tech,
+        content_validation: validation.content,
+      } as CampaignTaskSet;
+    })
+  );
+
   return {
     geographic_scope: geoRes.data || null,
     language_variants: langRes.data || [],
-    task_config: taskRes.data || null,
-    administrative_rules: adminRes.data || null,
-    audio_validation: audioRes.data || [],
-    content_validation: contentRes.data || [],
+    task_sets: taskSets,
     reward_config: rewardRes.data || null,
     quality_flow: qualityRes.data || null,
   };
 }
 
+// --- Campaigns ---
 export function useCampaigns() {
   return useQuery({
     queryKey: ["campaigns"],
@@ -86,30 +152,78 @@ export function useCampaign(id: string | undefined) {
   });
 }
 
-export function useCreateClient() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (client: { name: string; contact_email?: string; contact_phone?: string; notes?: string }) => {
-      const { data, error } = await supabase.from("clients").insert([client]).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clients"] }),
-  });
-}
-
+// --- Save payload ---
 export interface SaveCampaignPayload {
   campaign: Partial<Campaign>;
   geographic_scope?: GeographicScope;
   language_variants?: LanguageVariant[];
-  task_config?: TaskConfig;
-  administrative_rules?: AdministrativeRules;
-  audio_validation?: AudioValidationRule[];
-  content_validation?: ContentValidationRule[];
+  task_sets?: CampaignTaskSet[];
   reward_config?: RewardConfig;
   quality_flow?: QualityFlow;
 }
 
+// --- Upsert validation rules for a task set ---
+async function upsertTaskSetValidation(taskSetId: string, taskType: string, techRules: ValidationRule[], contentRules: ValidationRule[]) {
+  const category = TASK_TYPE_CATEGORIES[taskType] || "audio";
+
+  if (category === "audio") {
+    // Audio uses legacy tables
+    await supabase.from("campaign_audio_validation").delete().eq("task_set_id", taskSetId);
+    if (techRules.length > 0) {
+      await supabase.from("campaign_audio_validation").insert(
+        techRules.map(r => ({
+          task_set_id: taskSetId,
+          campaign_id: null as any, // legacy field
+          rule_key: r.rule_key,
+          min_value: r.min_value,
+          max_value: r.max_value,
+          target_value: r.target_value ?? null,
+          allowed_values: r.allowed_values ?? null,
+          is_critical: r.is_critical,
+        }))
+      );
+    }
+    await supabase.from("campaign_content_validation").delete().eq("task_set_id", taskSetId);
+    if (contentRules.length > 0) {
+      await supabase.from("campaign_content_validation").insert(
+        contentRules.map(r => ({
+          task_set_id: taskSetId,
+          campaign_id: null as any,
+          rule_key: r.rule_key,
+          min_value: r.min_value,
+          max_value: r.max_value,
+          is_critical: r.is_critical,
+        }))
+      );
+    }
+    return;
+  }
+
+  // Other categories use unified table
+  const table = getValidationTableForCategory(category) as any;
+  await supabase.from(table).delete().eq("task_set_id", taskSetId);
+  const allRules = [
+    ...techRules.map(r => ({ ...r, validation_scope: "technical" })),
+    ...contentRules.map(r => ({ ...r, validation_scope: "content" })),
+  ];
+  if (allRules.length > 0) {
+    await supabase.from(table).insert(
+      allRules.map(r => ({
+        task_set_id: taskSetId,
+        validation_scope: r.validation_scope,
+        rule_key: r.rule_key,
+        min_value: r.min_value ?? null,
+        max_value: r.max_value ?? null,
+        target_value: r.target_value ?? null,
+        allowed_values: r.allowed_values ?? null,
+        config: r.config ?? {},
+        is_critical: r.is_critical,
+      }))
+    );
+  }
+}
+
+// --- Upsert relations ---
 async function upsertRelations(campaignId: string, payload: SaveCampaignPayload) {
   // Geographic scope
   await supabase.from("campaign_geographic_scope").delete().eq("campaign_id", campaignId);
@@ -129,7 +243,7 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   await supabase.from("campaign_language_variants").delete().eq("campaign_id", campaignId);
   if (payload.language_variants && payload.language_variants.length > 0) {
     await supabase.from("campaign_language_variants").insert(
-      payload.language_variants.map((v) => ({
+      payload.language_variants.map(v => ({
         campaign_id: campaignId,
         variant_id: v.variant_id,
         label: v.label,
@@ -139,64 +253,59 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
     );
   }
 
-  // Task config
-  await supabase.from("campaign_task_config").delete().eq("campaign_id", campaignId);
-  if (payload.task_config) {
-    await supabase.from("campaign_task_config").insert({
-      campaign_id: campaignId,
-      task_type: payload.task_config.task_type,
-      instructions_title: payload.task_config.instructions_title,
-      instructions_summary: payload.task_config.instructions_summary,
-      prompt_topic: payload.task_config.prompt_topic,
-      prompt_do: payload.task_config.prompt_do,
-      prompt_dont: payload.task_config.prompt_dont,
-    });
+  // Task sets
+  // First, get existing task sets for cleanup
+  const { data: existingTaskSets } = await supabase
+    .from("campaign_task_sets")
+    .select("id, task_type")
+    .eq("campaign_id", campaignId);
+
+  // Delete validation rules for existing task sets before deleting them
+  if (existingTaskSets) {
+    for (const ts of existingTaskSets) {
+      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
+      if (category === "audio") {
+        await supabase.from("campaign_audio_validation").delete().eq("task_set_id", ts.id);
+        await supabase.from("campaign_content_validation").delete().eq("task_set_id", ts.id);
+      } else {
+        const table = getValidationTableForCategory(category) as any;
+        await supabase.from(table).delete().eq("task_set_id", ts.id);
+      }
+    }
   }
 
-  // Administrative rules
-  await supabase.from("campaign_administrative_rules").delete().eq("campaign_id", campaignId);
-  if (payload.administrative_rules) {
-    const ar = payload.administrative_rules;
-    await supabase.from("campaign_administrative_rules").insert({
-      campaign_id: campaignId,
-      max_hours_per_user: ar.max_hours_per_user,
-      max_hours_per_partner_per_user: ar.max_hours_per_partner_per_user,
-      min_acceptance_rate: ar.min_acceptance_rate,
-      min_acceptance_rate_unit: ar.min_acceptance_rate_unit,
-      max_sessions_per_user: ar.max_sessions_per_user,
-      min_participants_per_session: ar.min_participants_per_session,
-      max_participants_per_session: ar.max_participants_per_session,
-    });
-  }
+  await supabase.from("campaign_task_sets").delete().eq("campaign_id", campaignId);
 
-  // Audio validation
-  await supabase.from("campaign_audio_validation").delete().eq("campaign_id", campaignId);
-  if (payload.audio_validation && payload.audio_validation.length > 0) {
-    await supabase.from("campaign_audio_validation").insert(
-      payload.audio_validation.map((r) => ({
-        campaign_id: campaignId,
-        rule_key: r.rule_key,
-        min_value: r.min_value,
-        max_value: r.max_value,
-        target_value: r.target_value,
-        allowed_values: r.allowed_values,
-        is_critical: r.is_critical,
-      }))
-    );
-  }
+  if (payload.task_sets && payload.task_sets.length > 0) {
+    for (const ts of payload.task_sets) {
+      const { data: inserted, error } = await supabase
+        .from("campaign_task_sets")
+        .insert({
+          campaign_id: campaignId,
+          task_set_id: ts.task_set_id,
+          task_type: ts.task_type,
+          enabled: ts.enabled,
+          weight: ts.weight,
+          instructions_title: ts.instructions_title,
+          instructions_summary: ts.instructions_summary,
+          prompt_topic: ts.prompt_topic,
+          prompt_do: ts.prompt_do,
+          prompt_dont: ts.prompt_dont,
+          admin_rules: ts.admin_rules,
+        })
+        .select()
+        .single();
 
-  // Content validation
-  await supabase.from("campaign_content_validation").delete().eq("campaign_id", campaignId);
-  if (payload.content_validation && payload.content_validation.length > 0) {
-    await supabase.from("campaign_content_validation").insert(
-      payload.content_validation.map((r) => ({
-        campaign_id: campaignId,
-        rule_key: r.rule_key,
-        min_value: r.min_value,
-        max_value: r.max_value,
-        is_critical: r.is_critical,
-      }))
-    );
+      if (error) throw error;
+      if (inserted) {
+        await upsertTaskSetValidation(
+          inserted.id,
+          ts.task_type,
+          ts.tech_validation || [],
+          ts.content_validation || []
+        );
+      }
+    }
   }
 
   // Reward config
@@ -225,6 +334,7 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   }
 }
 
+// --- Mutations ---
 export function useCreateCampaign() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -247,6 +357,8 @@ export function useCreateCampaign() {
           timezone: c.timezone,
           visibility_is_public: c.visibility_is_public ?? false,
           partner_id: c.partner_id,
+          schema_version: c.schema_version || "campaign.v1",
+          language_primary: c.language_primary,
         })
         .select()
         .single();
@@ -280,6 +392,8 @@ export function useUpdateCampaign() {
           timezone: c.timezone,
           visibility_is_public: c.visibility_is_public,
           partner_id: c.partner_id,
+          schema_version: c.schema_version,
+          language_primary: c.language_primary,
         })
         .eq("id", id);
       if (error) throw error;

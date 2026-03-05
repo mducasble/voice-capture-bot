@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer } from "lucide-react";
+import { ArrowLeft, Radio, Clock, FileText, Loader2, MessageSquare, Timer, Layers } from "lucide-react";
 import { useState } from "react";
 import KGenButton from "@/components/portal/KGenButton";
+import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
@@ -70,6 +71,10 @@ export default function PortalCampaign() {
     );
   }
 
+  // Get the first enabled task set for display
+  const primaryTaskSet = campaign.task_sets?.find(ts => ts.enabled);
+  const allTopics = campaign.task_sets?.filter(ts => ts.enabled && ts.prompt_topic).map(ts => ts.prompt_topic!) || [];
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* Back button */}
@@ -111,70 +116,49 @@ export default function PortalCampaign() {
           )}
         </div>
 
-        {/* Audio requirements */}
-        <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-          <h3 className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: "var(--portal-text-muted)" }}>
-            Requisitos de Áudio
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              `${campaign.audio_sample_rate || 48000}Hz`,
-              `${campaign.audio_bit_depth || 16}bit`,
-              `${campaign.audio_channels || 1}ch`,
-              (campaign.audio_format || "WAV").toUpperCase(),
-              ...(campaign.audio_min_snr_db ? [`SNR ≥ ${campaign.audio_min_snr_db}dB`] : []),
-            ].map(spec => (
-              <span
-                key={spec}
-                className="font-mono text-xs px-3 py-1"
-                style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}
-              >
-                {spec}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Duration limits */}
-        {(campaign.audio_min_duration_seconds || campaign.audio_max_duration_seconds) && (
-          <div className="p-6 flex gap-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            {campaign.audio_min_duration_seconds && (
-              <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                <Clock className="h-3.5 w-3.5" />
-                Mín: {campaign.audio_min_duration_seconds}s
-              </span>
-            )}
-            {campaign.audio_max_duration_seconds && (
-              <span className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                <Clock className="h-3.5 w-3.5" />
-                Máx: {campaign.audio_max_duration_seconds}s
-              </span>
-            )}
+        {/* Task types */}
+        {campaign.task_sets && campaign.task_sets.length > 0 && (
+          <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+            <h3 className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: "var(--portal-text-muted)" }}>
+              <Layers className="h-3.5 w-3.5 inline mr-2" />
+              Tipos de Tarefa
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {campaign.task_sets.filter(ts => ts.enabled).map(ts => (
+                <span
+                  key={ts.task_set_id}
+                  className="font-mono text-xs px-3 py-1"
+                  style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}
+                >
+                  {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Task Config */}
-        {campaign.task_config && (
+        {/* Task instructions from primary task set */}
+        {primaryTaskSet && (
           <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
             <h3 className="font-mono text-xs uppercase tracking-widest mb-4" style={{ color: "var(--portal-text-muted)" }}>
               Instruções da Tarefa
             </h3>
             <div className="p-4 space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
-              {campaign.task_config.instructions_title && (
+              {primaryTaskSet.instructions_title && (
                 <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                  {campaign.task_config.instructions_title}
+                  {primaryTaskSet.instructions_title}
                 </p>
               )}
-              {campaign.task_config.instructions_summary && (
+              {primaryTaskSet.instructions_summary && (
                 <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                  {campaign.task_config.instructions_summary}
+                  {primaryTaskSet.instructions_summary}
                 </p>
               )}
-              {campaign.task_config.prompt_topic && (
+              {primaryTaskSet.prompt_topic && (
                 <div className="mt-2 p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
                   <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
                   <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                    Tema: {campaign.task_config.prompt_topic}
+                    Tema: {primaryTaskSet.prompt_topic}
                   </span>
                 </div>
               )}
@@ -188,7 +172,7 @@ export default function PortalCampaign() {
             Configurar Sala
           </h3>
 
-          {/* Topic - select from campaign sections */}
+          {/* Topic */}
           <div className="space-y-2">
             <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
               <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
@@ -199,11 +183,9 @@ export default function PortalCampaign() {
               onChange={(e) => setTopic(e.target.value)}
             >
               <option value="">Selecione um tema...</option>
-              {campaign.task_config?.prompt_topic && (
-                <option value={campaign.task_config.prompt_topic}>
-                  {campaign.task_config.prompt_topic}
-                </option>
-              )}
+              {allTopics.map((t, i) => (
+                <option key={i} value={t}>{t}</option>
+              ))}
             </select>
           </div>
 

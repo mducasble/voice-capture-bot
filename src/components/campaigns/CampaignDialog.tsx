@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,36 +10,18 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  useCampaign,
-  useClients,
-  useCreateCampaign,
-  useUpdateCampaign,
-  useDeleteCampaign,
-  useCreateClient,
+  useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope,
-  LanguageVariant,
-  TaskConfig,
-  AdministrativeRules,
-  AudioValidationRule,
-  ContentValidationRule,
-  RewardConfig,
-  QualityFlow,
+  GeographicScope, LanguageVariant, RewardConfig, QualityFlow, CampaignTaskSet, ValidationRule,
 } from "@/lib/campaignTypes";
 import {
-  DEFAULT_AUDIO_RULES,
-  DEFAULT_CONTENT_RULES,
-  RULE_LABELS,
+  DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
 } from "@/lib/campaignTypes";
 import { toast } from "@/hooks/use-toast";
 
@@ -53,9 +31,42 @@ interface CampaignDialogProps {
   campaignId: string | null;
 }
 
+// Convert catalog default JSONB validation to ValidationRule[]
+function catalogJsonToRules(json: Record<string, any>, scope: "technical" | "content"): ValidationRule[] {
+  return Object.entries(json).map(([key, val]) => ({
+    rule_key: key,
+    validation_scope: scope,
+    min_value: val.min_value ?? val.min_db ?? val.min_value_hz ?? val.min_score ?? val.min_width_px ?? null,
+    max_value: val.max_value ?? val.max_db ?? val.max_width_px ?? null,
+    target_value: val.target_value_hz ?? val.target_value ?? null,
+    allowed_values: val.allowed_values_hz ?? val.allowed_values ?? val.values ?? null,
+    config: val,
+    is_critical: val.is_critical ?? false,
+  }));
+}
+
+function createDefaultTaskSet(taskType: string, catalog: any[]): CampaignTaskSet {
+  const cat = catalog.find(c => c.task_type === taskType);
+  return {
+    task_set_id: `set_${taskType}_${Date.now()}`,
+    task_type: taskType,
+    enabled: true,
+    weight: 1,
+    instructions_title: "",
+    instructions_summary: "",
+    prompt_topic: "",
+    prompt_do: [],
+    prompt_dont: [],
+    admin_rules: cat?.default_admin_rules || {},
+    tech_validation: cat ? catalogJsonToRules(cat.default_tech_validation, "technical") : [],
+    content_validation: cat ? catalogJsonToRules(cat.default_content_validation, "content") : [],
+  };
+}
+
 export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProps) {
   const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? undefined);
   const { data: clients } = useClients();
+  const { data: catalog } = useTaskTypeCatalog();
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const deleteCampaign = useDeleteCampaign();
@@ -69,76 +80,40 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
   const [endDate, setEndDate] = useState("");
   const [targetHours, setTargetHours] = useState<number>(0);
   const [isActive, setIsActive] = useState(true);
-  const [campaignType, setCampaignType] = useState("audio_capture_group");
   const [campaignStatus, setCampaignStatus] = useState("draft");
   const [durationUnit, setDurationUnit] = useState("days");
   const [durationValue, setDurationValue] = useState<number | undefined>();
   const [timezone, setTimezone] = useState("America/Sao_Paulo");
   const [visibilityIsPublic, setVisibilityIsPublic] = useState(false);
   const [partnerId, setPartnerId] = useState("");
+  const [languagePrimary, setLanguagePrimary] = useState("pt-BR");
 
   // Geographic scope
   const [geoScope, setGeoScope] = useState<GeographicScope>({
-    restriction_mode: "include",
-    continents: [],
-    countries: [],
-    regions: [],
-    states: [],
-    cities: [],
+    restriction_mode: "include", continents: [], countries: [], regions: [], states: [], cities: [],
   });
 
   // Language variants
   const [langVariants, setLangVariants] = useState<LanguageVariant[]>([]);
 
-  // Task config
-  const [taskConfig, setTaskConfig] = useState<TaskConfig>({
-    task_type: "audio_capture_group",
-    instructions_title: "",
-    instructions_summary: "",
-    prompt_topic: "",
-    prompt_do: [],
-    prompt_dont: [],
-  });
-
-  // Administrative rules
-  const [adminRules, setAdminRules] = useState<AdministrativeRules>({
-    max_hours_per_user: null,
-    max_hours_per_partner_per_user: null,
-    min_acceptance_rate: null,
-    min_acceptance_rate_unit: "percent",
-    max_sessions_per_user: null,
-    min_participants_per_session: null,
-    max_participants_per_session: null,
-  });
-
-  // Audio & content validation
-  const [audioRules, setAudioRules] = useState<AudioValidationRule[]>(DEFAULT_AUDIO_RULES);
-  const [contentRules, setContentRules] = useState<ContentValidationRule[]>(DEFAULT_CONTENT_RULES);
+  // Task sets
+  const [taskSets, setTaskSets] = useState<CampaignTaskSet[]>([]);
+  const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
-    currency: "USD",
-    payout_model: "per_accepted_hour",
-    base_rate: null,
-    bonus_rate: null,
-    bonus_condition: "",
+    currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "",
   });
 
   // Quality flow
   const [quality, setQuality] = useState<QualityFlow>({
-    review_mode: "hybrid",
-    sampling_rate_value: 10,
-    sampling_rate_unit: "percent",
-    rejection_reasons: ["low_snr", "rms_out_of_range", "metadata_missing", "prompt_non_compliance", "topic_not_covered"],
+    review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent",
+    rejection_reasons: [...DEFAULT_REJECTION_REASONS],
   });
 
-  // New client
+  // UI state
   const [newClientName, setNewClientName] = useState("");
   const [showNewClient, setShowNewClient] = useState(false);
-
-  // Temp inputs for array fields
-  const [tempDo, setTempDo] = useState("");
-  const [tempDont, setTempDont] = useState("");
   const [tempGeoField, setTempGeoField] = useState<Record<string, string>>({});
 
   // Load campaign
@@ -151,65 +126,54 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       setEndDate(campaign.end_date || "");
       setTargetHours(campaign.target_hours || 0);
       setIsActive(campaign.is_active ?? true);
-      setCampaignType(campaign.campaign_type || "audio_capture_group");
       setCampaignStatus(campaign.campaign_status || "draft");
       setDurationUnit(campaign.duration_unit || "days");
       setDurationValue(campaign.duration_value ?? undefined);
       setTimezone(campaign.timezone || "America/Sao_Paulo");
       setVisibilityIsPublic(campaign.visibility_is_public ?? false);
       setPartnerId(campaign.partner_id || "");
-
+      setLanguagePrimary(campaign.language_primary || "pt-BR");
       if (campaign.geographic_scope) setGeoScope(campaign.geographic_scope);
       if (campaign.language_variants?.length) setLangVariants(campaign.language_variants);
-      if (campaign.task_config) setTaskConfig(campaign.task_config);
-      if (campaign.administrative_rules) setAdminRules(campaign.administrative_rules);
-      if (campaign.audio_validation?.length) setAudioRules(campaign.audio_validation);
-      if (campaign.content_validation?.length) setContentRules(campaign.content_validation);
+      if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
     } else if (!campaignId) {
-      // Reset defaults
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
-      setTargetHours(0); setIsActive(true); setCampaignType("audio_capture_group");
-      setCampaignStatus("draft"); setDurationUnit("days"); setDurationValue(undefined);
+      setTargetHours(0); setIsActive(true); setCampaignStatus("draft");
+      setDurationUnit("days"); setDurationValue(undefined);
       setTimezone("America/Sao_Paulo"); setVisibilityIsPublic(false); setPartnerId("");
+      setLanguagePrimary("pt-BR");
       setGeoScope({ restriction_mode: "include", continents: [], countries: [], regions: [], states: [], cities: [] });
       setLangVariants([]);
-      setTaskConfig({ task_type: "audio_capture_group", instructions_title: "", instructions_summary: "", prompt_topic: "", prompt_do: [], prompt_dont: [] });
-      setAdminRules({ max_hours_per_user: null, max_hours_per_partner_per_user: null, min_acceptance_rate: null, min_acceptance_rate_unit: "percent", max_sessions_per_user: null, min_participants_per_session: null, max_participants_per_session: null });
-      setAudioRules(DEFAULT_AUDIO_RULES);
-      setContentRules(DEFAULT_CONTENT_RULES);
-      setReward({ currency: "USD", payout_model: "per_accepted_hour", base_rate: null, bonus_rate: null, bonus_condition: "" });
-      setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: ["low_snr", "rms_out_of_range", "metadata_missing", "prompt_non_compliance", "topic_not_covered"] });
+      setTaskSets([]);
+      setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
+      setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
     }
   }, [campaign, campaignId]);
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      toast({ title: "Nome obrigatório", variant: "destructive" });
-      return;
-    }
+    if (!name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     try {
       const payload = {
         campaign: {
           name, description: description || null, client_id: clientId || null,
           start_date: startDate || null, end_date: endDate || null,
           target_hours: targetHours || null, is_active: isActive,
-          campaign_type: campaignType, campaign_status: campaignStatus,
+          campaign_type: taskSets.length > 0 ? taskSets[0].task_type : null,
+          campaign_status: campaignStatus,
           duration_unit: durationUnit, duration_value: durationValue ?? null,
           timezone, visibility_is_public: visibilityIsPublic,
           partner_id: partnerId || null,
+          schema_version: "campaign.v1",
+          language_primary: languagePrimary || null,
         },
         geographic_scope: geoScope,
         language_variants: langVariants,
-        task_config: taskConfig,
-        administrative_rules: adminRules,
-        audio_validation: audioRules,
-        content_validation: contentRules,
+        task_sets: taskSets,
         reward_config: reward,
         quality_flow: quality,
       };
-
       if (campaignId) {
         await updateCampaign.mutateAsync({ id: campaignId, ...payload });
         toast({ title: "Campanha atualizada!" });
@@ -244,29 +208,49 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
 
   const addGeoItem = (field: keyof GeographicScope, value: string) => {
     if (!value.trim()) return;
-    setGeoScope(prev => ({
-      ...prev,
-      [field]: [...(prev[field] as string[]), value.trim()],
-    }));
+    setGeoScope(prev => ({ ...prev, [field]: [...(prev[field] as string[]), value.trim()] }));
     setTempGeoField(prev => ({ ...prev, [field]: "" }));
   };
 
   const removeGeoItem = (field: keyof GeographicScope, index: number) => {
-    setGeoScope(prev => ({
-      ...prev,
-      [field]: (prev[field] as string[]).filter((_, i) => i !== index),
+    setGeoScope(prev => ({ ...prev, [field]: (prev[field] as string[]).filter((_, i) => i !== index) }));
+  };
+
+  const addTaskSet = (taskType: string) => {
+    if (!catalog) return;
+    const newTs = createDefaultTaskSet(taskType, catalog);
+    setTaskSets(prev => [...prev, newTs]);
+    setExpandedTaskSet(taskSets.length);
+  };
+
+  const removeTaskSet = (index: number) => {
+    setTaskSets(prev => prev.filter((_, i) => i !== index));
+    setExpandedTaskSet(null);
+  };
+
+  const updateTaskSet = (index: number, updates: Partial<CampaignTaskSet>) => {
+    setTaskSets(prev => prev.map((ts, i) => i === index ? { ...ts, ...updates } : ts));
+  };
+
+  const updateTechRule = (tsIndex: number, ruleIndex: number, field: string, value: any) => {
+    setTaskSets(prev => prev.map((ts, i) => {
+      if (i !== tsIndex) return ts;
+      const rules = [...(ts.tech_validation || [])];
+      rules[ruleIndex] = { ...rules[ruleIndex], [field]: value };
+      return { ...ts, tech_validation: rules };
+    }));
+  };
+
+  const updateContentRule = (tsIndex: number, ruleIndex: number, field: string, value: any) => {
+    setTaskSets(prev => prev.map((ts, i) => {
+      if (i !== tsIndex) return ts;
+      const rules = [...(ts.content_validation || [])];
+      rules[ruleIndex] = { ...rules[ruleIndex], [field]: value };
+      return { ...ts, content_validation: rules };
     }));
   };
 
   const isLoading = createCampaign.isPending || updateCampaign.isPending || deleteCampaign.isPending;
-
-  const updateAudioRule = (index: number, field: keyof AudioValidationRule, value: any) => {
-    setAudioRules(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
-  };
-
-  const updateContentRule = (index: number, field: keyof ContentValidationRule, value: any) => {
-    setContentRules(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
-  };
 
   const renderGeoField = (field: keyof GeographicScope, label: string) => {
     const items = geoScope[field] as string[];
@@ -297,6 +281,142 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
     );
   };
 
+  const renderValidationRules = (rules: ValidationRule[], tsIndex: number, type: "tech" | "content") => {
+    const updateFn = type === "tech" ? updateTechRule : updateContentRule;
+    return (
+      <div className="space-y-2">
+        {rules.map((rule, i) => (
+          <div key={rule.rule_key} className="grid grid-cols-[1fr_70px_70px_70px_50px] gap-2 items-center text-sm">
+            <span className="truncate text-xs">{RULE_LABELS[rule.rule_key] || rule.rule_key}</span>
+            <Input type="number" step="any" value={rule.min_value ?? ""} onChange={e => updateFn(tsIndex, i, "min_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Mín" className="h-7 text-xs" />
+            <Input type="number" step="any" value={rule.max_value ?? ""} onChange={e => updateFn(tsIndex, i, "max_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Máx" className="h-7 text-xs" />
+            <Input type="number" step="any" value={rule.target_value ?? ""} onChange={e => updateFn(tsIndex, i, "target_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Alvo" className="h-7 text-xs" />
+            <div className="flex items-center justify-center">
+              <Switch checked={rule.is_critical} onCheckedChange={c => updateFn(tsIndex, i, "is_critical", c)} />
+            </div>
+          </div>
+        ))}
+        {rules.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-2">Nenhuma regra configurada</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderTaskSetCard = (ts: CampaignTaskSet, index: number) => {
+    const isExpanded = expandedTaskSet === index;
+    const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
+
+    return (
+      <div key={index} className="border rounded-lg overflow-hidden">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50"
+          onClick={() => setExpandedTaskSet(isExpanded ? null : index)}
+        >
+          <div className="flex items-center gap-2">
+            <Badge variant={ts.enabled ? "default" : "outline"} className="text-xs">
+              {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
+            </Badge>
+            <span className="text-xs text-muted-foreground">{ts.task_set_id}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Switch
+              checked={ts.enabled}
+              onCheckedChange={c => { updateTaskSet(index, { enabled: c }); }}
+              onClick={e => e.stopPropagation()}
+            />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => { e.stopPropagation(); removeTaskSet(index); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        </div>
+
+        {/* Expanded content */}
+        {isExpanded && (
+          <div className="border-t p-3 space-y-4">
+            {/* Instructions */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Instruções</Label>
+              <Input value={ts.instructions_title || ""} onChange={e => updateTaskSet(index, { instructions_title: e.target.value })} placeholder="Título" className="h-8 text-xs" />
+              <Textarea value={ts.instructions_summary || ""} onChange={e => updateTaskSet(index, { instructions_summary: e.target.value })} placeholder="Resumo" rows={2} className="text-xs" />
+              <Input value={ts.prompt_topic || ""} onChange={e => updateTaskSet(index, { prompt_topic: e.target.value })} placeholder="Tópico do prompt" className="h-8 text-xs" />
+            </div>
+
+            {/* DO / DONT */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">O que FAZER</Label>
+                <div className="flex gap-1">
+                  <Input placeholder="Adicionar" className="h-7 text-xs" id={`do-${index}`}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const v = (e.target as HTMLInputElement).value.trim();
+                        if (v) { updateTaskSet(index, { prompt_do: [...ts.prompt_do, v] }); (e.target as HTMLInputElement).value = ""; }
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1">{ts.prompt_do.map((item, i) => (
+                  <Badge key={i} variant="secondary" className="cursor-pointer text-xs" onClick={() => updateTaskSet(index, { prompt_do: ts.prompt_do.filter((_, ii) => ii !== i) })}>✅ {item} ×</Badge>
+                ))}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">O que NÃO fazer</Label>
+                <div className="flex gap-1">
+                  <Input placeholder="Adicionar" className="h-7 text-xs" id={`dont-${index}`}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const v = (e.target as HTMLInputElement).value.trim();
+                        if (v) { updateTaskSet(index, { prompt_dont: [...ts.prompt_dont, v] }); (e.target as HTMLInputElement).value = ""; }
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1">{ts.prompt_dont.map((item, i) => (
+                  <Badge key={i} variant="destructive" className="cursor-pointer text-xs" onClick={() => updateTaskSet(index, { prompt_dont: ts.prompt_dont.filter((_, ii) => ii !== i) })}>🚫 {item} ×</Badge>
+                ))}</div>
+              </div>
+            </div>
+
+            {/* Admin rules (JSON editor) */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Regras Administrativas (JSON)</Label>
+              <Textarea
+                value={JSON.stringify(ts.admin_rules, null, 2)}
+                onChange={e => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    updateTaskSet(index, { admin_rules: parsed });
+                  } catch { /* ignore parse errors while typing */ }
+                }}
+                rows={4}
+                className="font-mono text-xs"
+              />
+            </div>
+
+            {/* Technical Validation */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-1">
+                Validação Técnica <AlertTriangle className="h-3 w-3 text-destructive" />
+              </Label>
+              {renderValidationRules(ts.tech_validation || [], index, "tech")}
+            </div>
+
+            {/* Content Validation */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Validação de Conteúdo</Label>
+              {renderValidationRules(ts.content_validation || [], index, "content")}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -309,13 +429,11 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : (
           <Tabs defaultValue="general" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid grid-cols-4 w-full md:grid-cols-8">
+            <TabsList className="grid grid-cols-3 w-full md:grid-cols-6">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
               <TabsTrigger value="lang">Idiomas</TabsTrigger>
-              <TabsTrigger value="task">Tarefa</TabsTrigger>
-              <TabsTrigger value="audio">Áudio</TabsTrigger>
-              <TabsTrigger value="content">Conteúdo</TabsTrigger>
+              <TabsTrigger value="tasks">Tarefas</TabsTrigger>
               <TabsTrigger value="reward">Reward</TabsTrigger>
               <TabsTrigger value="quality">Qualidade</TabsTrigger>
             </TabsList>
@@ -370,15 +488,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select value={campaignType} onValueChange={setCampaignType}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="audio_capture_group">Captura em Grupo</SelectItem>
-                        <SelectItem value="audio_capture_solo">Captura Solo</SelectItem>
-                        <SelectItem value="transcription">Transcrição</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Idioma Primário</Label>
+                    <Input value={languagePrimary} onChange={e => setLanguagePrimary(e.target.value)} placeholder="pt-BR" />
                   </div>
                   <div className="space-y-2">
                     <Label>Timezone</Label>
@@ -490,127 +601,29 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                 )}
               </TabsContent>
 
-              {/* TASK CONFIG */}
-              <TabsContent value="task" className="space-y-4 pr-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Tarefa</Label>
-                  <Select value={taskConfig.task_type} onValueChange={v => setTaskConfig(p => ({ ...p, task_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+              {/* TASK SETS */}
+              <TabsContent value="tasks" className="space-y-4 pr-4">
+                <div className="flex justify-between items-center">
+                  <Label className="text-base font-semibold">Conjuntos de Tarefas ({taskSets.length})</Label>
+                  <Select onValueChange={v => addTaskSet(v)}>
+                    <SelectTrigger className="w-56"><SelectValue placeholder="Adicionar tipo de tarefa" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="audio_capture_group">Captura em Grupo</SelectItem>
-                      <SelectItem value="audio_capture_solo">Captura Solo</SelectItem>
-                      <SelectItem value="transcription">Transcrição</SelectItem>
+                      {catalog?.map(c => (
+                        <SelectItem key={c.task_type} value={c.task_type}>{c.ui_label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Título das Instruções</Label>
-                  <Input value={taskConfig.instructions_title || ""} onChange={e => setTaskConfig(p => ({ ...p, instructions_title: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Resumo</Label>
-                  <Textarea value={taskConfig.instructions_summary || ""} onChange={e => setTaskConfig(p => ({ ...p, instructions_summary: e.target.value }))} rows={2} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tópico do Prompt</Label>
-                  <Input value={taskConfig.prompt_topic || ""} onChange={e => setTaskConfig(p => ({ ...p, prompt_topic: e.target.value }))} />
-                </div>
-                {/* DO */}
-                <div className="space-y-2">
-                  <Label>O que FAZER</Label>
-                  <div className="flex gap-2">
-                    <Input value={tempDo} onChange={e => setTempDo(e.target.value)} placeholder="Adicionar instrução" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (tempDo.trim()) { setTaskConfig(p => ({ ...p, prompt_do: [...p.prompt_do, tempDo.trim()] })); setTempDo(""); } } }} />
-                    <Button variant="outline" size="icon" onClick={() => { if (tempDo.trim()) { setTaskConfig(p => ({ ...p, prompt_do: [...p.prompt_do, tempDo.trim()] })); setTempDo(""); } }}><Plus className="h-4 w-4" /></Button>
-                  </div>
-                  {taskConfig.prompt_do.map((item, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer mr-1" onClick={() => setTaskConfig(p => ({ ...p, prompt_do: p.prompt_do.filter((_, ii) => ii !== i) }))}>
-                      ✅ {item} ×
-                    </Badge>
-                  ))}
-                </div>
-                {/* DONT */}
-                <div className="space-y-2">
-                  <Label>O que NÃO fazer</Label>
-                  <div className="flex gap-2">
-                    <Input value={tempDont} onChange={e => setTempDont(e.target.value)} placeholder="Adicionar restrição" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (tempDont.trim()) { setTaskConfig(p => ({ ...p, prompt_dont: [...p.prompt_dont, tempDont.trim()] })); setTempDont(""); } } }} />
-                    <Button variant="outline" size="icon" onClick={() => { if (tempDont.trim()) { setTaskConfig(p => ({ ...p, prompt_dont: [...p.prompt_dont, tempDont.trim()] })); setTempDont(""); } }}><Plus className="h-4 w-4" /></Button>
-                  </div>
-                  {taskConfig.prompt_dont.map((item, i) => (
-                    <Badge key={i} variant="destructive" className="cursor-pointer mr-1" onClick={() => setTaskConfig(p => ({ ...p, prompt_dont: p.prompt_dont.filter((_, ii) => ii !== i) }))}>
-                      🚫 {item} ×
-                    </Badge>
-                  ))}
-                </div>
 
-                {/* Admin rules */}
-                <div className="border-t pt-4 mt-4">
-                  <Label className="text-base font-semibold">Regras Administrativas</Label>
-                  <div className="grid grid-cols-2 gap-4 mt-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Max horas/usuário</Label>
-                      <Input type="number" value={adminRules.max_hours_per_user ?? ""} onChange={e => setAdminRules(p => ({ ...p, max_hours_per_user: e.target.value ? parseFloat(e.target.value) : null }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Max horas/partner/usuário</Label>
-                      <Input type="number" value={adminRules.max_hours_per_partner_per_user ?? ""} onChange={e => setAdminRules(p => ({ ...p, max_hours_per_partner_per_user: e.target.value ? parseFloat(e.target.value) : null }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Taxa aceitação mín. (%)</Label>
-                      <Input type="number" value={adminRules.min_acceptance_rate ?? ""} onChange={e => setAdminRules(p => ({ ...p, min_acceptance_rate: e.target.value ? parseFloat(e.target.value) : null }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Max sessões/usuário</Label>
-                      <Input type="number" value={adminRules.max_sessions_per_user ?? ""} onChange={e => setAdminRules(p => ({ ...p, max_sessions_per_user: e.target.value ? parseInt(e.target.value) : null }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Mín. participantes/sessão</Label>
-                      <Input type="number" value={adminRules.min_participants_per_session ?? ""} onChange={e => setAdminRules(p => ({ ...p, min_participants_per_session: e.target.value ? parseInt(e.target.value) : null }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Máx. participantes/sessão</Label>
-                      <Input type="number" value={adminRules.max_participants_per_session ?? ""} onChange={e => setAdminRules(p => ({ ...p, max_participants_per_session: e.target.value ? parseInt(e.target.value) : null }))} />
-                    </div>
+                {taskSets.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                    Nenhum conjunto de tarefas. Adicione um tipo acima.
                   </div>
-                </div>
-              </TabsContent>
-
-              {/* AUDIO VALIDATION */}
-              <TabsContent value="audio" className="space-y-3 pr-4">
-                <Label className="text-base font-semibold">Regras de Validação de Áudio</Label>
-                <div className="space-y-2">
-                  {audioRules.map((rule, i) => (
-                    <div key={rule.rule_key} className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 items-center text-sm">
-                      <span className="truncate">{RULE_LABELS[rule.rule_key] || rule.rule_key}</span>
-                      <Input type="number" step="any" value={rule.min_value ?? ""} onChange={e => updateAudioRule(i, "min_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Mín" className="h-8 text-xs" />
-                      <Input type="number" step="any" value={rule.max_value ?? ""} onChange={e => updateAudioRule(i, "max_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Máx" className="h-8 text-xs" />
-                      <Input type="number" step="any" value={rule.target_value ?? ""} onChange={e => updateAudioRule(i, "target_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Alvo" className="h-8 text-xs" />
-                      <div className="flex items-center justify-center">
-                        <Switch checked={rule.is_critical} onCheckedChange={c => updateAudioRule(i, "is_critical", c)} />
-                        {rule.is_critical && <AlertTriangle className="h-3 w-3 text-destructive ml-1" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> = regra crítica (rejeição automática)
-                </p>
-              </TabsContent>
-
-              {/* CONTENT VALIDATION */}
-              <TabsContent value="content" className="space-y-3 pr-4">
-                <Label className="text-base font-semibold">Regras de Validação de Conteúdo</Label>
-                <div className="space-y-2">
-                  {contentRules.map((rule, i) => (
-                    <div key={rule.rule_key} className="grid grid-cols-[1fr_80px_80px_60px] gap-2 items-center text-sm">
-                      <span className="truncate">{RULE_LABELS[rule.rule_key] || rule.rule_key}</span>
-                      <Input type="number" step="any" value={rule.min_value ?? ""} onChange={e => updateContentRule(i, "min_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Mín" className="h-8 text-xs" />
-                      <Input type="number" step="any" value={rule.max_value ?? ""} onChange={e => updateContentRule(i, "max_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Máx" className="h-8 text-xs" />
-                      <div className="flex items-center justify-center">
-                        <Switch checked={rule.is_critical} onCheckedChange={c => updateContentRule(i, "is_critical", c)} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    {taskSets.map((ts, i) => renderTaskSetCard(ts, i))}
+                  </div>
+                )}
               </TabsContent>
 
               {/* REWARD CONFIG */}
@@ -632,6 +645,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                     <Select value={reward.payout_model} onValueChange={v => setReward(p => ({ ...p, payout_model: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="per_accepted_unit">Por unidade aceita</SelectItem>
                         <SelectItem value="per_accepted_hour">Por hora aceita</SelectItem>
                         <SelectItem value="per_session">Por sessão</SelectItem>
                         <SelectItem value="fixed">Fixo</SelectItem>
@@ -690,11 +704,8 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
                       onKeyDown={e => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          const val = (e.target as HTMLInputElement).value.trim();
-                          if (val) {
-                            setQuality(p => ({ ...p, rejection_reasons: [...p.rejection_reasons, val] }));
-                            (e.target as HTMLInputElement).value = "";
-                          }
+                          const v = (e.target as HTMLInputElement).value.trim();
+                          if (v) { setQuality(p => ({ ...p, rejection_reasons: [...p.rejection_reasons, v] })); (e.target as HTMLInputElement).value = ""; }
                         }
                       }}
                     />
@@ -703,16 +714,15 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               </TabsContent>
             </ScrollArea>
 
+            {/* Actions */}
             <div className="flex justify-between pt-4 border-t mt-4">
-              {campaignId && (
-                <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                </Button>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
+              {campaignId ? (
+                <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>Excluir</Button>
+              ) : <div />}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? "Salvando..." : campaignId ? "Salvar" : "Criar"}
+                  {isLoading ? "Salvando..." : campaignId ? "Atualizar" : "Criar"}
                 </Button>
               </div>
             </div>
