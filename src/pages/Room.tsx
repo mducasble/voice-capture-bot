@@ -806,16 +806,16 @@ const Room = () => {
 
           {/* Duration info (before recording starts) */}
           {room.duration_minutes && !room.is_recording && room.status !== "completed" && (
-            <div className="flex items-center justify-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-              <Timer className="h-3.5 w-3.5" />
+            <div className="flex items-center justify-center gap-2 p-3 font-mono text-sm" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <Timer className="h-4 w-4" />
               <span>Duração da conversa: <strong style={{ color: "var(--portal-text)" }}>{room.duration_minutes} minutos</strong></span>
             </div>
           )}
 
           {/* Topic display */}
           {room.topic && (
-            <div className="flex items-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-              <MessageSquare className="h-3.5 w-3.5" style={{ color: "var(--portal-accent)" }} />
+            <div className="flex items-center gap-2 p-3 font-mono text-sm" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <MessageSquare className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
               <span>Tema: <strong style={{ color: "var(--portal-text)" }}>{room.topic}</strong></span>
             </div>
           )}
