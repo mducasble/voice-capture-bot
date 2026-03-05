@@ -28,6 +28,7 @@ export default function PortalAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/");
+      }
     });
 
     // Check if already logged in
