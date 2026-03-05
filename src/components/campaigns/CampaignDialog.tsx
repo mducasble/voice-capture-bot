@@ -143,6 +143,7 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
       if (campaign.geographic_scope) setGeoScope(campaign.geographic_scope);
       if (campaign.language_variants?.length) setLangVariants(campaign.language_variants);
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
+      if (campaign.sections?.length) setSections(campaign.sections); else setSections([]);
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
       if (campaign.referral_config) {
