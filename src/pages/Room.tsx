@@ -219,7 +219,7 @@ const Room = () => {
 
       if (error || !data) {
         toast.error("Sala não encontrada");
-        navigate("/rooms");
+        navigate(isPortal ? "/portal" : "/rooms");
         return;
       }
 
@@ -525,13 +525,19 @@ const Room = () => {
       setLocalStream(null);
     }
 
-    navigate("/rooms");
+    navigate(isPortal ? "/portal" : "/rooms");
   };
 
   if (!room) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Carregando sala...</div>
+      <div className={isPortal ? "" : "min-h-screen bg-background flex items-center justify-center"}>
+        {isPortal ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="animate-pulse font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Carregando sala...</div>
+          </div>
+        ) : (
+          <div className="animate-pulse text-muted-foreground">Carregando sala...</div>
+        )}
       </div>
     );
   }
