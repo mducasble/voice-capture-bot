@@ -161,9 +161,14 @@ export default function Campaigns() {
                           </Badge>
                         ))}
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar campanha" onClick={(e) => handleDuplicate(e, campaign.id)}>
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Waiting list" onClick={(e) => { e.stopPropagation(); setWaitlistCampaign({ id: campaign.id, name: campaign.name }); }}>
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar campanha" onClick={(e) => handleDuplicate(e, campaign.id)}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
