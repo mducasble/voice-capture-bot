@@ -275,32 +275,55 @@ export default function PortalAuth() {
                 return (
                   <div
                     key={c.id}
-                    className="flex overflow-hidden transition-colors"
+                    className="overflow-hidden transition-colors"
                     style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}
                   >
-                    {/* Left 75% — content */}
-                    <div className="flex-[3] flex flex-col">
-                      {/* Task type header — full width with outline */}
-                      {taskLabels.length > 0 && (
-                        <div
-                          className="flex items-center gap-1.5 px-3 py-2"
-                          style={{ borderBottom: "1px solid var(--portal-border)" }}
-                        >
-                          <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
-                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                            {taskLabels.join(" · ")}
-                          </span>
+                    {/* Top section: task type + title WITH green reward sidebar */}
+                    <div className="flex">
+                      {/* Left 80% — task type + title */}
+                      <div className="flex-[4] flex flex-col">
+                        {taskLabels.length > 0 && (
+                          <div
+                            className="flex items-center gap-1.5 px-3 py-2"
+                            style={{ borderBottom: "1px solid var(--portal-border)" }}
+                          >
+                            <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
+                            <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                              {taskLabels.join(" · ")}
+                            </span>
+                          </div>
+                        )}
+                        <div className="px-3 py-2">
+                          <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+                            {c.name}
+                          </h3>
                         </div>
-                      )}
-
-                      {/* Title block */}
-                      <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                        <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-                          {c.name}
-                        </h3>
                       </div>
 
-                      {/* Languages block */}
+                      {/* Right 20% — reward highlight */}
+                      <div
+                        className="flex-[1] flex flex-col items-center justify-center p-2"
+                        style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}
+                      >
+                        {reward?.base_rate ? (
+                          <>
+                            <span className="font-mono text-xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>
+                              {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}
+                            </span>
+                            <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
+                              /{reward.payout_model === "per_accepted_hour" ? "hora" : "un"}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom section: languages + button (full width, no green sidebar) */}
+                    <div style={{ borderTop: "1px solid var(--portal-border)" }}>
                       <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {c.languages.map((l: any, i: number) => (
@@ -315,7 +338,6 @@ export default function PortalAuth() {
                         </div>
                       </div>
 
-                      {/* Action button — 80% width */}
                       <div className="px-3 py-2.5 flex justify-center">
                         {c.isOpen ? (
                           <span
@@ -335,27 +357,6 @@ export default function PortalAuth() {
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    {/* Right 25% — reward highlight */}
-                    <div
-                      className="flex-[1] flex flex-col items-center justify-center p-2"
-                      style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}
-                    >
-                      {reward?.base_rate ? (
-                        <>
-                          <span className="font-mono text-2xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>
-                            {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}
-                          </span>
-                          <span className="font-mono text-[9px] uppercase tracking-widest font-bold mt-1" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
-                            /{reward.payout_model === "per_accepted_hour" ? "hora" : "un"}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>
-                          —
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
