@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2 } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 
 import { Button } from "@/components/ui/button";
@@ -754,9 +754,16 @@ const Room = () => {
             <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
-            <p className="font-mono text-xs mt-1 flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-              <Users className="h-3 w-3" /> {participants.length} participante(s)
-            </p>
+            <div className="flex items-center gap-4 mt-1">
+              <p className="font-mono text-xs flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                <Users className="h-3 w-3" /> {participants.length} participante(s)
+              </p>
+              {room.topic && (
+                <p className="font-mono text-xs flex items-center gap-1.5" style={{ color: "var(--portal-accent)" }}>
+                  <MessageSquare className="h-3 w-3" /> {room.topic}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
