@@ -69,8 +69,8 @@ export default function PortalAuth() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl portal-glass-icon mb-5">
-            <img src={kgenLogo} alt="KGeN Logo" className="h-8 w-8" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl portal-glass-icon mb-5">
+            <img src={kgenLogo} alt="KGeN Logo" className="h-20 w-20 rounded-lg" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             KGeN AI Quests
@@ -83,16 +83,18 @@ export default function PortalAuth() {
         {/* Glass Card */}
         <div className="portal-glass-card rounded-2xl p-6">
           <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2 bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-1">
+            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1" style={{ background: 'hsl(168 28% 10% / 0.5)', borderColor: 'hsl(88 100% 51% / 0.1)' }}>
               <TabsTrigger
                 value="login"
-                className="rounded-lg data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground transition-all"
+                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
+                style={{ ['--tw-bg-opacity' as string]: 1 }}
+                data-active-style="true"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
-                className="rounded-lg data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground transition-all"
+                className="rounded-lg data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
               >
                 Cadastrar
               </TabsTrigger>
