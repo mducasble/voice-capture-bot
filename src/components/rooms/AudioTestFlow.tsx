@@ -310,6 +310,28 @@ export const AudioTestFlow = ({
   // Recording
   if (phase === "recording") {
     const progress = ((TEST_DURATION - countdown) / TEST_DURATION) * 100;
+    if (isPortal) {
+      return (
+        <div className="p-6 text-center space-y-4" style={{ border: "2px solid hsl(0 84% 60%)", background: "var(--portal-input-bg)" }}>
+          <div className="flex items-center justify-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "hsl(0 84% 60%)" }} />
+              <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "hsl(0 84% 60%)" }} />
+            </span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Gravando Teste...</span>
+          </div>
+          <p className="font-mono text-4xl font-black" style={{ color: "var(--portal-text)" }}>
+            {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
+          </p>
+          <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
+            <div className="h-full transition-all" style={{ width: `${progress}%`, background: "hsl(0 84% 60%)" }} />
+          </div>
+          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+            Fale como se estivesse gravando normalmente. Evite pausas muito longas.
+          </p>
+        </div>
+      );
+    }
     return (
       <Card className="border-2 border-red-500/50">
         <CardHeader className="text-center pb-2">
@@ -337,6 +359,20 @@ export const AudioTestFlow = ({
 
   // Analyzing
   if (phase === "analyzing") {
+    if (isPortal) {
+      return (
+        <div className="p-6 text-center space-y-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+          <div className="flex items-center justify-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--portal-accent)" }} />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Analisando áudio...</span>
+          </div>
+          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>Calculando métricas de qualidade. Isso pode levar até 30s.</p>
+          <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
+            <div className="h-full transition-all" style={{ width: `${analysisProgress}%`, background: "var(--portal-accent)" }} />
+          </div>
+        </div>
+      );
+    }
     return (
       <Card>
         <CardHeader className="text-center pb-2">
