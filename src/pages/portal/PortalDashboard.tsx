@@ -1,17 +1,20 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell } from "lucide-react";
+import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 function isWaitlist(c: any) {
   return c.campaign_status === "waiting_list" || (!!c.start_date && new Date(`${c.start_date}T00:00:00`) > new Date());
 }
 
-function CampaignCard({ campaign }: { campaign: any }) {
+function CampaignCard({ campaign, isOnWaitlist }: { campaign: any; isOnWaitlist?: boolean }) {
   const enabledTaskSets = campaign.task_sets?.filter((ts: any) => ts.enabled) || [];
   const waitlist = isWaitlist(campaign);
   return (
@@ -50,7 +53,7 @@ function CampaignCard({ campaign }: { campaign: any }) {
       </div>
       <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
         <Link to={`/campaign/${campaign.id}`}>
-          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? "WAITING LIST" : "INICIAR"} icon={waitlist ? <Bell className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} />
+          <KGenButton className="w-full" size="sm" scrambleText={waitlist ? (isOnWaitlist ? "JÁ NA WAITING LIST" : "WAITING LIST") : "INICIAR"} icon={waitlist ? (isOnWaitlist ? <CheckCircle className="h-4 w-4" /> : <Bell className="h-4 w-4" />) : <ArrowRight className="h-4 w-4" />} />
         </Link>
       </div>
     </div>
@@ -59,6 +62,19 @@ function CampaignCard({ campaign }: { campaign: any }) {
 
 export default function PortalDashboard() {
   const { data: campaigns, isLoading } = useCampaigns();
+  const { user } = useAuth();
+
+  const { data: userWaitlistIds } = useQuery({
+    queryKey: ["user-waitlist", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("campaign_waitlist")
+        .select("campaign_id")
+        .eq("user_id", user!.id);
+      return new Set((data || []).map((w: any) => w.campaign_id));
+    },
+    enabled: !!user?.id,
+  });
 
   const allVisible = campaigns?.filter(c => c.is_active) || [];
   
@@ -121,7 +137,7 @@ export default function PortalDashboard() {
             <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text-muted)" }}>Em breve</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-            {waitlistCampaigns.map(c => <CampaignCard key={c.id} campaign={c} />)}
+            {waitlistCampaigns.map(c => <CampaignCard key={c.id} campaign={c} isOnWaitlist={userWaitlistIds?.has(c.id)} />)}
           </div>
         </div>
       )}
