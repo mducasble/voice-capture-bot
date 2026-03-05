@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import KGenButton from "@/components/portal/KGenButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -55,51 +55,99 @@ export default function PortalAuth() {
   };
 
   return (
-    <div className="portal-auth-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="portal-orb portal-orb-1" />
-        <div className="portal-orb portal-orb-2" />
-        <div className="portal-orb portal-orb-3" />
-      </div>
+    <div className="portal-auth-page min-h-screen relative overflow-hidden">
+      {/* Grid background */}
+      <div className="absolute inset-0 portal-grid-bg" />
 
-      {/* Noise texture overlay */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")' }} />
+      {/* Decorative corner squares */}
+      <div className="absolute top-8 left-8 w-3 h-3 bg-[#8cff05]" />
+      <div className="absolute top-8 right-8 w-3 h-3 bg-[#8cff05]" />
+      <div className="absolute bottom-8 left-8 w-3 h-3 bg-[#8cff05]" />
+      <div className="absolute bottom-8 right-8 w-3 h-3 bg-[#8cff05]" />
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <img src={kgenLogo} alt="KGeN Logo" className="w-48 h-48 mb-5 mx-auto block" />
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            KGeN AI Quests
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">
-            Plataforma de gravação profissional de áudio
-          </p>
+      {/* Main layout */}
+      <div className="relative z-10 min-h-screen flex">
+        {/* Left panel — branding */}
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 border-r border-[#2a2a2a]">
+          <div>
+            <img src={kgenLogo} alt="KGeN Logo" className="w-20 h-20 mb-6" />
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-3 h-3 bg-[#8cff05]" />
+              <span className="font-mono text-sm tracking-[0.3em] uppercase text-[#8cff05]">
+                AI Quests Platform
+              </span>
+            </div>
+            <h1 className="font-mono text-6xl font-black uppercase leading-[0.95] tracking-tight text-foreground">
+              Record.
+              <br />
+              Enhance.
+              <br />
+              <span className="text-[#8cff05]">Deliver.</span>
+            </h1>
+            <p className="font-mono text-sm text-muted-foreground max-w-md leading-relaxed">
+              Plataforma profissional de gravação e aprimoramento de áudio para campanhas de dados de voz.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-[#2a2a2a]" />
+            <span className="font-mono text-xs text-muted-foreground tracking-wider">
+              © 2026 KGEN
+            </span>
+          </div>
         </div>
 
-        {/* Glass Card */}
-        <div className="portal-glass-card rounded-2xl p-6">
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1" style={{ background: 'hsl(168 28% 10% / 0.5)' }}>
-              <TabsTrigger
-                value="login"
-                className="rounded-lg data-[state=active]:bg-[hsl(88,100%,51%)] data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
+        {/* Right panel — auth form */}
+        <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+          <div className="w-full max-w-md">
+            {/* Mobile logo */}
+            <div className="lg:hidden flex items-center gap-3 mb-10">
+              <img src={kgenLogo} alt="KGeN Logo" className="w-14 h-14" />
+              <div>
+                <h2 className="font-mono text-lg font-black uppercase tracking-tight text-foreground">
+                  KGeN AI Quests
+                </h2>
+                <p className="font-mono text-xs text-muted-foreground">
+                  Recording Platform
+                </p>
+              </div>
+            </div>
+
+            {/* Mode switcher */}
+            <div className="flex border border-[#2a2a2a] mb-8">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={`flex-1 py-3 font-mono text-sm uppercase tracking-widest transition-all ${
+                  mode === "login"
+                    ? "bg-[#8cff05] text-[#1f3338] font-bold"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                }`}
               >
                 Entrar
-              </TabsTrigger>
-              <TabsTrigger
-                value="signup"
-                className="rounded-lg data-[state=active]:bg-[hsl(88,100%,51%)] data-[state=active]:text-[hsl(168,28%,10%)] data-[state=active]:shadow-none text-muted-foreground transition-all"
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("signup")}
+                className={`flex-1 py-3 font-mono text-sm uppercase tracking-widest border-l border-[#2a2a2a] transition-all ${
+                  mode === "signup"
+                    ? "bg-[#8cff05] text-[#1f3338] font-bold"
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                }`}
               >
                 Cadastrar
-              </TabsTrigger>
-            </TabsList>
+              </button>
+            </div>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 pt-5">
+            {mode === "login" ? (
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-sm text-foreground/80">E-mail</Label>
+                  <Label htmlFor="login-email" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    E-mail
+                  </Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -107,11 +155,13 @@ export default function PortalAuth() {
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="portal-input"
+                    className="portal-brutalist-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-sm text-foreground/80">Senha</Label>
+                  <Label htmlFor="login-password" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    Senha
+                  </Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -119,31 +169,33 @@ export default function PortalAuth() {
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="portal-input"
+                    className="portal-brutalist-input"
                   />
                 </div>
-                <KGenButton type="submit" className="w-full" size="sm" disabled={loading} scramble={!loading}>
+                <KGenButton type="submit" className="w-full" size="default" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {loading ? "ENTRANDO..." : "ENTRAR"}
                 </KGenButton>
               </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4 pt-5">
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name" className="text-sm text-foreground/80">Nome completo</Label>
+                  <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    Nome completo
+                  </Label>
                   <Input
                     id="signup-name"
                     required
                     value={signupName}
                     onChange={e => setSignupName(e.target.value)}
                     placeholder="Seu nome"
-                    className="portal-input"
+                    className="portal-brutalist-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-sm text-foreground/80">E-mail</Label>
+                  <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    E-mail
+                  </Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -151,11 +203,13 @@ export default function PortalAuth() {
                     value={signupEmail}
                     onChange={e => setSignupEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="portal-input"
+                    className="portal-brutalist-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-sm text-foreground/80">Senha</Label>
+                  <Label htmlFor="signup-password" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    Senha
+                  </Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -164,21 +218,24 @@ export default function PortalAuth() {
                     value={signupPassword}
                     onChange={e => setSignupPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="portal-input"
+                    className="portal-brutalist-input"
                   />
                 </div>
-                <KGenButton type="submit" className="w-full" size="sm" disabled={loading} scramble={!loading}>
+                <KGenButton type="submit" className="w-full" size="default" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {loading ? "CRIANDO..." : "CRIAR CONTA"}
                 </KGenButton>
               </form>
-            </TabsContent>
-          </Tabs>
-        </div>
+            )}
 
-        <p className="text-center text-xs text-muted-foreground/50 mt-6">
-          © 2026 KGeN AI Quests Platform
-        </p>
+            {/* Decorative bottom line */}
+            <div className="mt-10 flex items-center gap-3">
+              <div className="h-px flex-1 bg-[#2a2a2a]" />
+              <div className="w-2 h-2 bg-[#8cff05]" />
+              <div className="h-px flex-1 bg-[#2a2a2a]" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
