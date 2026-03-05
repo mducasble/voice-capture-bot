@@ -254,7 +254,7 @@ export default function PortalAuth() {
           </div>
 
           {/* Opportunities column */}
-          <div className="w-1/2 flex flex-col" style={{ maxHeight: "30%" }}>
+          <div className="w-[30%] flex flex-col">
             <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
