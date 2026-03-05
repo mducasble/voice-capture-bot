@@ -408,6 +408,7 @@ export type Database = {
         Row: {
           created_at: string
           creator_name: string
+          duration_minutes: number | null
           id: string
           is_recording: boolean | null
           noise_gate_enabled: boolean
@@ -415,11 +416,13 @@ export type Database = {
           room_name: string | null
           session_id: string | null
           status: string
+          topic: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           creator_name: string
+          duration_minutes?: number | null
           id?: string
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
@@ -427,11 +430,13 @@ export type Database = {
           room_name?: string | null
           session_id?: string | null
           status?: string
+          topic?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           creator_name?: string
+          duration_minutes?: number | null
           id?: string
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
@@ -439,6 +444,7 @@ export type Database = {
           room_name?: string | null
           session_id?: string | null
           status?: string
+          topic?: string | null
           updated_at?: string
         }
         Relationships: []

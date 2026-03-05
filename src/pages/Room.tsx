@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2 } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ interface Room {
   noise_gate_enabled: boolean;
   recording_started_at: string | null;
   created_at: string;
+  topic: string | null;
+  duration_minutes: number | null;
 }
 
 interface Participant {
@@ -752,9 +754,16 @@ const Room = () => {
             <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
-            <p className="font-mono text-xs mt-1 flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-              <Users className="h-3 w-3" /> {participants.length} participante(s)
-            </p>
+            <div className="flex items-center gap-4 mt-1">
+              <p className="font-mono text-xs flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                <Users className="h-3 w-3" /> {participants.length} participante(s)
+              </p>
+              {room.topic && (
+                <p className="font-mono text-xs flex items-center gap-1.5" style={{ color: "var(--portal-accent)" }}>
+                  <MessageSquare className="h-3 w-3" /> {room.topic}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -769,6 +778,48 @@ const Room = () => {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-6">
+          {/* Countdown Timer */}
+          {room.duration_minutes && room.is_recording && room.recording_started_at && (() => {
+            const totalSeconds = room.duration_minutes * 60;
+            const remaining = Math.max(0, totalSeconds - recordingDuration);
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
+            const isLow = remaining <= 60;
+            return (
+              <div className="p-4 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
+                <div className="flex items-center justify-center gap-2">
+                  <Timer className="h-4 w-4" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
+                  <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                    Tempo restante
+                  </span>
+                </div>
+                <p className="font-mono text-4xl font-black" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
+                  {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
+                </p>
+                <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
+                  <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, background: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Duration info (before recording starts) */}
+          {room.duration_minutes && !room.is_recording && room.status !== "completed" && (
+            <div className="flex items-center justify-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <Timer className="h-3.5 w-3.5" />
+              <span>Duração da conversa: <strong style={{ color: "var(--portal-text)" }}>{room.duration_minutes} minutos</strong></span>
+            </div>
+          )}
+
+          {/* Topic display */}
+          {room.topic && (
+            <div className="flex items-center gap-2 p-3 font-mono text-xs" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <MessageSquare className="h-3.5 w-3.5" style={{ color: "var(--portal-accent)" }} />
+              <span>Tema: <strong style={{ color: "var(--portal-text)" }}>{room.topic}</strong></span>
+            </div>
+          )}
+
           {/* Audio Test Flow */}
           {!room.is_recording && room.status !== "completed" && (
             <AudioTestFlow
@@ -780,6 +831,7 @@ const Room = () => {
               testResults={currentParticipant.audio_test_results}
               onProfileRecommended={handleProfileApplied}
               currentProfile={audioProfile}
+              isPortal={isPortal}
               onTestComplete={() => {
                 const fetchParticipants = async () => {
                   const { data } = await supabase
