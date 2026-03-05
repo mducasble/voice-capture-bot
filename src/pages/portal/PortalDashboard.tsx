@@ -62,7 +62,7 @@ export default function PortalDashboard() {
               {/* Task type label at top */}
               {enabledTaskSets.length > 0 && (
                 <div
-                  className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-1 px-4 py-2"
+                  className="font-mono text-sm uppercase tracking-widest font-bold flex items-center gap-1 px-4 py-3"
                   style={{ color: "var(--portal-text-muted)", borderBottom: "1px solid var(--portal-border)" }}
                 >
                   <Layers className="h-2.5 w-2.5" />
