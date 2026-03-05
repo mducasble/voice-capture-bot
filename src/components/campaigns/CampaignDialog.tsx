@@ -708,7 +708,65 @@ export function CampaignDialog({ open, onClose, campaignId }: CampaignDialogProp
               </TabsContent>
 
               {/* TASK SETS */}
-              <TabsContent value="tasks" className="space-y-4 pr-4">
+              <TabsContent value="tasks" className="space-y-6 pr-4">
+                {/* --- TEMAS / ASSUNTOS --- */}
+                <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-base font-semibold">Temas / Assuntos ({sections.length})</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSections(prev => [...prev, { name: "", description: null, prompt_text: null, target_hours: null, sort_order: prev.length, is_active: true }])}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Adicionar Tema
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Estes temas aparecem como opções obrigatórias no dropdown antes de iniciar uma gravação.
+                  </p>
+                  {sections.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg text-sm">
+                      Nenhum tema cadastrado. Adicione temas para que apareçam no dropdown de gravação.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sections.map((section, i) => (
+                        <div key={i} className="flex items-start gap-2 border rounded p-2 bg-background">
+                          <div className="flex-1 space-y-1">
+                            <Input
+                              value={section.name}
+                              onChange={e => setSections(prev => prev.map((s, si) => si === i ? { ...s, name: e.target.value } : s))}
+                              placeholder="Nome do tema (ex: Viagem, Tecnologia, Família...)"
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              value={section.prompt_text || ""}
+                              onChange={e => setSections(prev => prev.map((s, si) => si === i ? { ...s, prompt_text: e.target.value || null } : s))}
+                              placeholder="Texto de orientação (opcional)"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 pt-1">
+                            <Switch
+                              checked={section.is_active}
+                              onCheckedChange={c => setSections(prev => prev.map((s, si) => si === i ? { ...s, is_active: c } : s))}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => setSections(prev => prev.filter((_, si) => si !== i))}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* --- CONJUNTOS DE TAREFAS --- */}
                 <div className="flex justify-between items-center">
                   <Label className="text-base font-semibold">Conjuntos de Tarefas ({taskSets.length})</Label>
                   <Select onValueChange={v => addTaskSet(v)}>
