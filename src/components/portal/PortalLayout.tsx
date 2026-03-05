@@ -70,14 +70,18 @@ export default function PortalLayout() {
                   </Link>
                 );
               })}
+              <CopyReferralButton userId={user.id} />
             </nav>
 
             <div className="flex items-center gap-3">
-              <CopyReferralButton userId={user.id} />
-              <div className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 font-mono text-xs transition-colors hover:opacity-80"
+                style={{ color: "var(--portal-text-muted)" }}
+              >
                 <User className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{user.user_metadata?.full_name || user.email}</span>
-              </div>
+              </Link>
               <button
                 onClick={signOut}
                 className="p-2 transition-colors"
