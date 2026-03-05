@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, type ButtonHTMLAttributes } from "react";
+import { useRef, useCallback, useState, useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -39,13 +39,17 @@ function useScramble() {
 
 const CLIP_PATH = "polygon(10px 0px, 100% 0px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0px 100%, 0px 10px)";
 
-export type KGenButtonVariant = "primary" | "dark" | "outline";
+export type KGenButtonVariant = "primary" | "dark" | "outline" | "white";
 export type KGenButtonSize = "default" | "sm" | "lg";
 
 interface KGenButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: KGenButtonVariant;
   size?: KGenButtonSize;
   scramble?: boolean;
+  /** Text used for scramble effect. Required when children contains JSX. */
+  scrambleText?: string;
+  /** Optional icon rendered before the text */
+  icon?: ReactNode;
 }
 
 const variantStyles: Record<KGenButtonVariant, { base: string; hover: string }> = {
@@ -61,6 +65,10 @@ const variantStyles: Record<KGenButtonVariant, { base: string; hover: string }> 
     base: "bg-transparent text-foreground border-foreground/30 shadow-[0_10px_22px_rgba(0,0,0,.10)]",
     hover: "hover:bg-foreground/10 hover:brightness-[1.03]",
   },
+  white: {
+    base: "bg-white text-[hsl(168,28%,10%)] shadow-[0_10px_22px_rgba(0,0,0,.18),inset_0_1px_0_rgba(255,255,255,.20)]",
+    hover: "hover:brightness-[0.95]",
+  },
 };
 
 const sizeStyles: Record<KGenButtonSize, string> = {
@@ -73,6 +81,8 @@ const KGenButton = ({
   variant = "primary",
   size = "default",
   scramble: enableScramble = true,
+  scrambleText,
+  icon,
   className,
   children,
   ...props
@@ -81,10 +91,10 @@ const KGenButton = ({
   const shineRef = useRef<HTMLSpanElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const { scramble: doScramble, stop } = useScramble();
-  const [hovered, setHovered] = useState(false);
-  const label = typeof children === "string" ? children : "";
 
-  // Lock width on mount
+  // Resolve label: explicit scrambleText > string children > empty
+  const label = scrambleText || (typeof children === "string" ? children : "");
+
   useEffect(() => {
     if (btnRef.current) {
       const w = btnRef.current.getBoundingClientRect().width;
@@ -93,11 +103,9 @@ const KGenButton = ({
   }, [children]);
 
   const handleMouseEnter = useCallback(() => {
-    setHovered(true);
     if (enableScramble && label && spanRef.current) {
       doScramble(spanRef.current, label);
     }
-    // Shine animation
     if (shineRef.current) {
       const el = shineRef.current;
       el.style.transition = "none";
@@ -114,7 +122,6 @@ const KGenButton = ({
   }, [enableScramble, label, doScramble]);
 
   const handleMouseLeave = useCallback(() => {
-    setHovered(false);
     if (enableScramble && label && spanRef.current) {
       stop(spanRef.current, label);
     }
@@ -135,7 +142,7 @@ const KGenButton = ({
       onMouseLeave={handleMouseLeave}
       className={cn(
         "group relative inline-flex items-center justify-center",
-        "uppercase tracking-wider select-none whitespace-nowrap font-display !font-black",
+        "uppercase tracking-wider select-none whitespace-nowrap font-mono !font-black",
         "transition-[background-color,filter,box-shadow] duration-200 ease-out",
         "border border-white/[.18]",
         "disabled:opacity-50 disabled:pointer-events-none",
@@ -162,7 +169,8 @@ const KGenButton = ({
           opacity: 0,
         }}
       />
-      <span ref={spanRef}>{children}</span>
+      {icon && <span className="mr-2 flex-shrink-0">{icon}</span>}
+      <span ref={spanRef}>{label || children}</span>
     </button>
   );
 };
