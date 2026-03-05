@@ -1130,6 +1130,44 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_config: {
+        Row: {
+          campaign_id: string | null
+          cascade_keep_ratio: number
+          created_at: string
+          id: string
+          max_levels: number
+          pool_percent: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          cascade_keep_ratio?: number
+          created_at?: string
+          id?: string
+          max_levels?: number
+          pool_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          cascade_keep_ratio?: number
+          created_at?: string
+          id?: string
+          max_levels?: number
+          pool_percent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_config_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           created_at: string
