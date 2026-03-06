@@ -1619,6 +1619,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_referral: {
+        Args: { p_referral_code: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "vendor"
