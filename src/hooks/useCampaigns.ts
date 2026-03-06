@@ -385,6 +385,8 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       prompt_do: payload.instructions.prompt_do || [],
       prompt_dont: payload.instructions.prompt_dont || [],
       required_hardware: payload.instructions.required_hardware || [],
+      video_url: payload.instructions.video_url || null,
+      pdf_file_url: payload.instructions.pdf_file_url || null,
     });
   }
 }
