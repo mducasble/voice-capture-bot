@@ -28,6 +28,33 @@ export default function PortalAuth() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMode, setAuthDialogMode] = useState<"login" | "signup">("login");
   const [selectedCampaignName, setSelectedCampaignName] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => detectBrowserCountry() || "ALL");
+
+  // Country name helper
+  const countryName = (code: string) => {
+    try {
+      const dn = new Intl.DisplayNames([t("auth.locale") || "en"], { type: "region" });
+      return dn.of(code) || code;
+    } catch { return code; }
+  };
+
+  // Fetch all countries that have campaigns with geo scope
+  const { data: availableCountries } = useQuery({
+    queryKey: ["auth-available-countries"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("campaign_geographic_scope")
+        .select("countries");
+      if (!data) return [];
+      const set = new Set<string>();
+      data.forEach((row: any) => {
+        (row.countries || []).forEach((c: string) => set.add(c.toUpperCase()));
+      });
+      return Array.from(set).sort((a, b) => countryName(a).localeCompare(countryName(b)));
+    },
+    staleTime: 300_000,
+  });
+
   // Lightweight public campaigns query (no auth needed)
   const { data: publicCampaigns } = useQuery({
     queryKey: ["public-campaigns-preview"],
@@ -37,7 +64,7 @@ export default function PortalAuth() {
         .select("id, name, language_primary, campaign_status, start_date, is_active, visibility_is_public")
         .eq("is_active", true)
         .order("start_date", { ascending: true, nullsFirst: true })
-        .limit(8);
+        .limit(20);
 
       if (!campaigns || campaigns.length === 0) return [];
 
@@ -49,21 +76,22 @@ export default function PortalAuth() {
         supabase.from("campaign_geographic_scope").select("campaign_id, restriction_mode, countries").in("campaign_id", ids),
       ]);
 
-      const browserCountry = detectBrowserCountry();
-
-      return campaigns
-        .map(c => ({
-          ...c,
-          task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
-          reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
-          languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
-          geo_scope: (geoRes.data || []).find(g => g.campaign_id === c.id) || null,
-          isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
-        }))
-        .filter(c => isCampaignVisibleForCountry(c.geo_scope, browserCountry));
+      return campaigns.map(c => ({
+        ...c,
+        task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
+        reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
+        languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
+        geo_scope: (geoRes.data || []).find(g => g.campaign_id === c.id) || null,
+        isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
+      }));
     },
     staleTime: 60_000,
   });
+
+  // Filter campaigns by selected country
+  const filteredCampaigns = (publicCampaigns || []).filter(c =>
+    selectedCountry === "ALL" ? true : isCampaignVisibleForCountry(c.geo_scope, selectedCountry)
+  );
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
