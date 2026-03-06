@@ -1020,6 +1020,75 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                     </div>
                   </div>
                 </div>
+
+                {/* HARDWARE NECESSÁRIO */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm">Hardware Necessário</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Digite o nome do dispositivo e a IA sugere um ícone automaticamente. Itens já cadastrados são reutilizados.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={hardwareInput}
+                      onChange={e => setHardwareInput(e.target.value)}
+                      placeholder="Ex: Microfone, Fone de ouvido, Smartphone..."
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addHardwareItem(); } }}
+                      disabled={hardwareLoading}
+                    />
+                    <Button variant="outline" size="icon" onClick={addHardwareItem} disabled={hardwareLoading}>
+                      {hardwareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {/* Suggestions from catalog */}
+                  {hardwareCatalog.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {hardwareCatalog
+                        .filter(h => !globalInstructions.required_hardware.includes(h.name))
+                        .slice(0, 12)
+                        .map(h => {
+                          const LucideIcon = (icons as any)[toPascalCase(h.icon_name)];
+                          return (
+                            <Badge
+                              key={h.id}
+                              variant="outline"
+                              className="cursor-pointer text-xs gap-1 hover:bg-muted"
+                              onClick={() => setGlobalInstructions(prev => ({
+                                ...prev,
+                                required_hardware: [...prev.required_hardware, h.name],
+                              }))}
+                            >
+                              {LucideIcon && <LucideIcon className="h-3 w-3" />}
+                              {h.name} +
+                            </Badge>
+                          );
+                        })}
+                    </div>
+                  )}
+                  {/* Selected hardware */}
+                  {globalInstructions.required_hardware.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
+                      {globalInstructions.required_hardware.map((hwName, i) => {
+                        const catalogItem = hardwareCatalog.find(h => h.name === hwName);
+                        const LucideIcon = catalogItem ? (icons as any)[toPascalCase(catalogItem.icon_name)] : null;
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-center gap-1.5 px-3 py-1.5 border rounded-md bg-background cursor-pointer hover:bg-destructive/10 transition-colors"
+                            onClick={() => setGlobalInstructions(prev => ({
+                              ...prev,
+                              required_hardware: prev.required_hardware.filter((_, ii) => ii !== i),
+                            }))}
+                            title="Clique para remover"
+                          >
+                            {LucideIcon && <LucideIcon className="h-4 w-4 text-primary" />}
+                            <span className="text-xs font-medium">{hwName}</span>
+                            <span className="text-xs text-muted-foreground">×</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
 
               {/* GEOGRAPHIC SCOPE */}
