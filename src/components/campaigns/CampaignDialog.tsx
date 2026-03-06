@@ -873,7 +873,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   </Select>
                 </div>
                 {renderGeoField("continents", "Continentes")}
-                {renderGeoField("countries", "Países")}
+                {renderCountrySelector()}
                 {renderGeoField("regions", "Regiões")}
                 {renderGeoField("states", "Estados")}
                 {renderGeoField("cities", "Cidades")}
