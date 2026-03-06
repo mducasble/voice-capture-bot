@@ -195,6 +195,15 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             </p>
           )}
 
+        </div>
+
+        {/* Bottom: Reward + Flags + CTA + link */}
+        <div style={{
+          padding: `0 ${padding}px ${padding}px`,
+          display: "flex",
+          flexDirection: "column",
+          gap: isVertical ? 24 : 16,
+        }}>
           {/* Reward highlight - green background */}
           {rewardText && (
             <div style={{
@@ -233,7 +242,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             if (allCountries.length === 0) return null;
             const flagH = isWide ? 28 : isVertical ? 40 : 36;
             return (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginTop: 4 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                 {allCountries.map((c, i) => (
                   <img
                     key={i}
@@ -250,15 +259,8 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
               </div>
             );
           })()}
-        </div>
 
-        {/* Bottom: CTA + link */}
-        <div style={{
-          padding: `0 ${padding}px ${padding}px`,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}>
+          {/* CTA */}
           <div style={{
             background: "#8cff05",
             color: "#111",
@@ -281,8 +283,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           }}>
             {shortLink || "kgen.quest"}
           </span>
-      </div>
-      </div>
+        </div>
     );
   }
 );
