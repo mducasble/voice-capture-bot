@@ -372,7 +372,7 @@ export default function PortalAuth() {
           {/* Branding column */}
           <div className="w-1/2 flex flex-col justify-between p-10 xl:p-16 2xl:p-20" style={{ borderRight: "1px solid var(--portal-border)" }}>
             <div>
-              <img src={kgenLogo} alt="KGeN Logo" className="w-24 h-24 xl:w-36 xl:h-36 2xl:w-48 2xl:h-48 mb-6 xl:mb-10" />
+              <img src={kgenLogo} alt="KGeN Logo" className="w-16 h-16 xl:w-24 xl:h-24 2xl:w-32 2xl:h-32 mb-6 xl:mb-8" />
               <div className="flex items-center gap-2 xl:gap-3 mb-3">
                 <div className="w-2.5 h-2.5 xl:w-3 xl:h-3" style={{ background: "var(--portal-accent)" }} />
                 <span className="font-mono text-xs xl:text-sm 2xl:text-base tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
@@ -382,7 +382,7 @@ export default function PortalAuth() {
             </div>
 
             <div>
-              <h1 className="font-mono text-5xl xl:text-7xl 2xl:text-8xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
+              <h1 className="font-mono text-4xl xl:text-5xl 2xl:text-6xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
                 Join.
                 <br />
                 Complete.
