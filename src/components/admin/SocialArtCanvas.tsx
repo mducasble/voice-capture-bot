@@ -225,26 +225,27 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             </div>
           )}
 
-          {/* Country codes */}
+          {/* Country flags */}
           {(() => {
             const campaignCountries = campaign?.geographic_scope?.countries || [];
             const extra = extraCountries || [];
             const allCountries = [...new Set([...campaignCountries, ...extra])];
             if (allCountries.length === 0) return null;
-            const codeFontSize = isWide ? 24 : isVertical ? 32 : 28;
+            const flagH = isWide ? 28 : isVertical ? 40 : 36;
             return (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginTop: 4 }}>
                 {allCountries.map((c, i) => (
-                  <span key={i} style={{
-                    fontSize: codeFontSize,
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.5)",
-                    letterSpacing: "0.1em",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    padding: "4px 10px",
-                  }}>
-                    {c.toUpperCase()}
-                  </span>
+                  <img
+                    key={i}
+                    src={`https://flagcdn.com/w80/${c.toLowerCase()}.png`}
+                    alt={c.toUpperCase()}
+                    style={{
+                      height: flagH,
+                      width: "auto",
+                      borderRadius: 2,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                    }}
+                  />
                 ))}
               </div>
             );
