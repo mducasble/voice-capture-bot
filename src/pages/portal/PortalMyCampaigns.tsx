@@ -192,6 +192,7 @@ export default function PortalMyCampaigns() {
         .from("voice_recordings")
         .select("id, filename, duration_seconds, recording_type, session_id, created_at, discord_username, file_url, status, campaign_id")
         .in("campaign_id", campaignIds)
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as (RecordingRow & { campaign_id: string })[];
