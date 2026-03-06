@@ -222,6 +222,106 @@ export default function PortalAuth() {
     { key: "vendor", label: t("auth.vendor") },
   ];
 
+  const renderAuthForm = () => (
+    <>
+      {/* Mode switcher — 3 tabs */}
+      <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
+        {tabs.map((tab, i) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setMode(tab.key)}
+            className="flex-1 py-3 font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+            style={{
+              background: mode === tab.key ? "var(--portal-accent)" : "transparent",
+              color: mode === tab.key ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+              fontWeight: mode === tab.key ? 700 : 400,
+              borderLeft: i > 0 ? "1px solid var(--portal-border)" : "none",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        {mode === "login" && (
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="login-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
+              <Input id="login-email" type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.password")}</Label>
+              <Input id="login-password" type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" className="portal-brutalist-input" />
+            </div>
+            <KGenButton type="submit" className="w-full" size="default" disabled={loading} scrambleText={loading ? t("common.loading") : t("auth.loginButton")} icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} />
+          </form>
+        )}
+
+        {mode === "signup" && (
+          <form onSubmit={handleSignup} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.name")}</Label>
+              <Input id="signup-name" required value={signupName} onChange={e => setSignupName(e.target.value)} placeholder={t("auth.name")} className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
+              <Input id="signup-email" type="email" required value={signupEmail} onChange={e => setSignupEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.password")}</Label>
+              <Input id="signup-password" type="password" required minLength={6} value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="••••••••" className="portal-brutalist-input" />
+            </div>
+            <KGenButton type="submit" className="w-full" size="default" disabled={loading} scrambleText={loading ? t("common.loading") : t("auth.signupButton")} icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} />
+          </form>
+        )}
+
+        {mode === "vendor" && (
+          <form onSubmit={handleVendorSignup} className="space-y-5">
+            <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>{t("auth.vendorDesc")}</div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.name")}</Label>
+              <Input id="vendor-name" required value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder={t("auth.name")} className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-company" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.company")}</Label>
+              <Input id="vendor-company" value={vendorCompany} onChange={e => setVendorCompany(e.target.value)} placeholder={t("auth.company")} className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
+              <Input id="vendor-email" type="email" required value={vendorEmail} onChange={e => setVendorEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.password")}</Label>
+              <Input id="vendor-password" type="password" required minLength={6} value={vendorPassword} onChange={e => setVendorPassword(e.target.value)} placeholder="••••••••" className="portal-brutalist-input" />
+            </div>
+            <KGenButton type="submit" className="w-full" size="default" disabled={loading} scrambleText={loading ? t("common.loading") : t("auth.vendorButton")} icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined} />
+          </form>
+        )}
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mt-6 mb-4">
+          <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+          <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.or")}</span>
+          <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+        </div>
+
+        {/* Google Sign In */}
+        <KGenButton type="button" onClick={handleGoogleSignIn} disabled={loading} variant="white" className="w-full" size="default" scrambleText={t("auth.googleButton")}
+          icon={<svg width="24" height="24" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>}
+        />
+      </div>
+
+      {/* Decorative bottom line */}
+      <div className="mt-10 flex items-center gap-3">
+        <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+        <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+        <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+      </div>
+    </>
+  );
+
   return (
     <div className={`portal-auth-page min-h-screen relative overflow-hidden ${lightMode ? "portal-light" : ""}`}>
       <div className="absolute inset-0 portal-grid-bg" />
@@ -247,8 +347,8 @@ export default function PortalAuth() {
       <div className="absolute bottom-8 left-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
       <div className="absolute bottom-8 right-8 w-3 h-3" style={{ background: "var(--portal-accent)" }} />
 
-      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
-        {/* Branding section — visible on all sizes */}
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* ===== MOBILE: Branding ===== */}
         <div className="lg:hidden px-6 pt-10 pb-6">
           <div className="flex items-center gap-3 mb-4">
             <img src={kgenLogo} alt="KGeN Logo" className="w-12 h-12" />
@@ -267,87 +367,10 @@ export default function PortalAuth() {
           </p>
         </div>
 
-        {/* Mobile opportunities */}
-        <div className="lg:hidden px-6 pb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-              <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                {t("auth.openOpportunities")}
-              </span>
-            </div>
-            <Select value={selectedCountry} onValueChange={setSelectedCountry}>
-              <SelectTrigger className="w-auto min-w-[140px] h-8 font-mono text-xs border-0 bg-transparent gap-1.5" style={{ color: "var(--portal-text)", borderBottom: "1px solid var(--portal-border)" }}>
-                <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="font-mono text-xs">
-                <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
-                {(availableCountries || []).map(code => (
-                  <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            {filteredCampaigns.length === 0 && (
-              <p className="font-mono text-xs py-4 text-center" style={{ color: "var(--portal-text-muted)" }}>
-                {t("auth.noOpportunities")}
-              </p>
-            )}
-            {[...filteredCampaigns].sort((a, b) => {
-              if (a.isOpen && !b.isOpen) return -1;
-              if (!a.isOpen && b.isOpen) return 1;
-              return 0;
-            }).map(c => {
-              const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
-              const reward = c.reward;
-              return (
-                <div key={c.id} className="overflow-hidden" style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}>
-                  <div className="flex">
-                    <div className="flex-[4] flex flex-col">
-                      {taskLabels.length > 0 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                          <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
-                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>{taskLabels.join(" · ")}</span>
-                        </div>
-                      )}
-                      <div className="px-3 py-2">
-                        <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{c.name}</h3>
-                      </div>
-                    </div>
-                    <div className="flex-[1] flex flex-col items-center justify-center p-2" style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}>
-                      {reward?.base_rate ? (
-                        <>
-                          <span className="font-mono text-lg font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>{reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}</span>
-                          <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>/{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}</span>
-                        </>
-                      ) : (
-                        <span className="font-mono text-[10px] uppercase font-bold" style={{ color: "var(--portal-accent-text)" }}>—</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="px-3 py-2 flex justify-center" style={{ borderTop: "1px solid var(--portal-border)" }}>
-                    {c.isOpen ? (
-                      <KGenButton variant="dark" size="sm" icon={<ArrowRight className="w-4 h-4" />} scrambleText={t("auth.participate")} className="w-full"
-                        onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
-                      >{t("auth.participate")}</KGenButton>
-                    ) : (
-                      <KGenButton variant="outline" size="sm" icon={<ClockIcon className="w-4 h-4" />} scrambleText={t("auth.waitingList")} className="w-full"
-                        onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
-                      >{t("auth.waitingList")}</KGenButton>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Desktop left panel — split into branding (left) + opportunities (right) */}
-        <div className="hidden lg:flex lg:w-2/3 flex-row" style={{ borderRight: "1px solid var(--portal-border)" }}>
+        {/* ===== DESKTOP: Top row — Branding (left) + Auth form (right) ===== */}
+        <div className="hidden lg:flex flex-row" style={{ borderBottom: "1px solid var(--portal-border)" }}>
           {/* Branding column */}
-          <div className="w-[70%] flex flex-col justify-between p-10 xl:p-16 2xl:p-20" style={{ borderRight: "1px solid var(--portal-border)" }}>
+          <div className="w-1/2 flex flex-col justify-between p-10 xl:p-16 2xl:p-20" style={{ borderRight: "1px solid var(--portal-border)" }}>
             <div>
               <img src={kgenLogo} alt="KGeN Logo" className="w-24 h-24 xl:w-36 xl:h-36 2xl:w-48 2xl:h-48 mb-6 xl:mb-10" />
               <div className="flex items-center gap-2 xl:gap-3 mb-3">
@@ -379,379 +402,115 @@ export default function PortalAuth() {
             </div>
           </div>
 
-          {/* Opportunities column */}
-          <div className="w-[30%] flex flex-col">
-            <div className="p-5 flex flex-col gap-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-                <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                  {t("auth.openOpportunities")}
-                </span>
-              </div>
-              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
-                <SelectTrigger className="w-full h-9 font-mono text-xs rounded-none" style={{ borderColor: "var(--portal-border)", background: "transparent", color: "var(--portal-text)" }}>
-                  <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="font-mono text-xs">
-                  <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
-                  {(availableCountries || []).map(code => (
-                    <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {filteredCampaigns.length === 0 && (
-                <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
-                  {t("auth.noOpportunities")}
-                </p>
-              )}
-
-              {[...filteredCampaigns].sort((a, b) => {
-                // Open campaigns first, then waitlist
-                if (a.isOpen && !b.isOpen) return -1;
-                if (!a.isOpen && b.isOpen) return 1;
-                return 0;
-              }).map(c => {
-                const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
-                const reward = c.reward;
-                return (
-                  <div
-                    key={c.id}
-                    className="overflow-hidden transition-colors"
-                    style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}
-                  >
-                    {/* Top section: task type + title WITH green reward sidebar */}
-                    <div className="flex">
-                      {/* Left 80% — task type + title */}
-                      <div className="flex-[4] flex flex-col">
-                        {taskLabels.length > 0 && (
-                          <div
-                            className="flex items-center gap-1.5 px-3 py-2"
-                            style={{ borderBottom: "1px solid var(--portal-border)" }}
-                          >
-                            <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
-                            <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                              {taskLabels.join(" · ")}
-                            </span>
-                          </div>
-                        )}
-                        <div className="px-3 py-2">
-                          <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-                            {c.name}
-                          </h3>
-                        </div>
-                      </div>
-
-                      {/* Right 20% — reward highlight */}
-                      <div
-                        className="flex-[1] flex flex-col items-center justify-center p-2"
-                        style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}
-                      >
-                        {reward?.base_rate ? (
-                          <>
-                            <span className="font-mono text-xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>
-                              {reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}
-                            </span>
-                            <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
-                              /{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom section: languages + button (full width, no green sidebar) */}
-                    <div style={{ borderTop: "1px solid var(--portal-border)" }}>
-                      <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {c.languages.map((l: any, i: number) => (
-                            <span
-                              key={i}
-                              className="font-mono text-xs font-bold px-2 py-0.5"
-                              style={{ background: "hsl(0 0% 25%)", color: "hsl(0 0% 80%)", border: "1px solid var(--portal-border)" }}
-                            >
-                              {l.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="px-3 py-3 flex justify-center">
-                        {c.isOpen ? (
-                          <KGenButton
-                            variant="dark"
-                            size="sm"
-                            icon={<ArrowRight className="w-4 h-4" />}
-                            scrambleText={t("auth.participate")}
-                            className="w-[80%]"
-                            onClick={() => {
-                              sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`);
-                              setSelectedCampaignName(c.name);
-                              setAuthDialogMode("signup");
-                              setAuthDialogOpen(true);
-                            }}
-                          >
-                            {t("auth.participate")}
-                          </KGenButton>
-                        ) : (
-                          <KGenButton
-                            variant="outline"
-                            size="sm"
-                            icon={<ClockIcon className="w-4 h-4" />}
-                            scrambleText={t("auth.waitingList")}
-                            className="w-[80%]"
-                            onClick={() => {
-                              sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`);
-                              setSelectedCampaignName(c.name);
-                              setAuthDialogMode("signup");
-                              setAuthDialogOpen(true);
-                            }}
-                          >
-                            {t("auth.waitingList")}
-                          </KGenButton>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Auth form column (right) — rendered here for desktop only, mobile version below */}
+          <div className="w-1/2 flex items-center justify-center p-6 lg:p-12">
+            <div className="w-full max-w-md">
+              {renderAuthForm()}
             </div>
           </div>
         </div>
 
-        {/* Right panel — auth form */}
-        <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-          <div className="w-full max-w-md">
-
-
-
-            {/* Mode switcher — 3 tabs */}
-            <div className="flex" style={{ border: "1px solid var(--portal-border)" }}>
-              {tabs.map((tab, i) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setMode(tab.key)}
-                  className="flex-1 py-3 font-mono text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
-                  style={{
-                    background: mode === tab.key ? "var(--portal-accent)" : "transparent",
-                    color: mode === tab.key ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
-                    fontWeight: mode === tab.key ? 700 : 400,
-                    borderLeft: i > 0 ? "1px solid var(--portal-border)" : "none",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              {mode === "login" && (
-                <form onSubmit={handleLogin} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.email")}
-                     </Label>
-                     <Input
-                       id="login-email"
-                       type="email"
-                       required
-                       value={loginEmail}
-                       onChange={e => setLoginEmail(e.target.value)}
-                       placeholder="you@email.com"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.password")}
-                    </Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      required
-                      value={loginPassword}
-                      onChange={e => setLoginPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <KGenButton
-                    type="submit"
-                    className="w-full"
-                    size="default"
-                    disabled={loading}
-                    scrambleText={loading ? t("common.loading") : t("auth.loginButton")}
-                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
-                  />
-                </form>
-              )}
-
-              {mode === "signup" && (
-                <form onSubmit={handleSignup} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.name")}
-                     </Label>
-                     <Input
-                       id="signup-name"
-                       required
-                       value={signupName}
-                       onChange={e => setSignupName(e.target.value)}
-                       placeholder={t("auth.name")}
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.email")}
-                     </Label>
-                     <Input
-                       id="signup-email"
-                       type="email"
-                       required
-                       value={signupEmail}
-                       onChange={e => setSignupEmail(e.target.value)}
-                       placeholder="you@email.com"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.password")}
-                     </Label>
-                     <Input
-                       id="signup-password"
-                       type="password"
-                       required
-                       minLength={6}
-                       value={signupPassword}
-                       onChange={e => setSignupPassword(e.target.value)}
-                       placeholder="••••••••"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <KGenButton
-                    type="submit"
-                    className="w-full"
-                    size="default"
-                    disabled={loading}
-                    scrambleText={loading ? t("common.loading") : t("auth.signupButton")}
-                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
-                  />
-                </form>
-              )}
-
-              {mode === "vendor" && (
-                <form onSubmit={handleVendorSignup} className="space-y-5">
-                   <div className="p-3 font-mono text-xs leading-relaxed" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 8%, transparent)" }}>
-                     {t("auth.vendorDesc")}
-                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.name")}
-                     </Label>
-                     <Input
-                       id="vendor-name"
-                       required
-                       value={vendorName}
-                       onChange={e => setVendorName(e.target.value)}
-                       placeholder={t("auth.name")}
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-company" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.company")}
-                     </Label>
-                     <Input
-                       id="vendor-company"
-                       value={vendorCompany}
-                       onChange={e => setVendorCompany(e.target.value)}
-                       placeholder={t("auth.company")}
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.email")}
-                     </Label>
-                     <Input
-                       id="vendor-email"
-                       type="email"
-                       required
-                       value={vendorEmail}
-                       onChange={e => setVendorEmail(e.target.value)}
-                       placeholder="you@email.com"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor-password" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("auth.password")}
-                     </Label>
-                     <Input
-                       id="vendor-password"
-                       type="password"
-                       required
-                       minLength={6}
-                       value={vendorPassword}
-                       onChange={e => setVendorPassword(e.target.value)}
-                       placeholder="••••••••"
-                      className="portal-brutalist-input"
-                    />
-                  </div>
-                  <KGenButton
-                    type="submit"
-                    className="w-full"
-                    size="default"
-                    disabled={loading}
-                    scrambleText={loading ? t("common.loading") : t("auth.vendorButton")}
-                    icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
-                  />
-                </form>
-              )}
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 mt-6 mb-4">
-                <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
-                <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.or")}</span>
-                <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
-              </div>
-
-              {/* Google Sign In */}
-              <KGenButton
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                variant="white"
-                className="w-full"
-                size="default"
-                scrambleText={t("auth.googleButton")}
-                icon={
-                  <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-                    <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                  </svg>
-                }
-              />
-            </div>
-
-            {/* Decorative bottom line */}
-            <div className="mt-10 flex items-center gap-3">
-              <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+        {/* ===== FULL-WIDTH: Opportunities section ===== */}
+        <div className="px-6 lg:px-10 xl:px-16 2xl:px-20 py-8 lg:py-10">
+          <div className="flex items-center justify-between mb-4 lg:mb-6">
+            <div className="flex items-center gap-2">
               <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-              <div className="h-px flex-1" style={{ background: "var(--portal-border)" }} />
+              <span className="font-mono text-xs lg:text-sm tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                {t("auth.openOpportunities")}
+              </span>
             </div>
+            <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+              <SelectTrigger className="w-auto min-w-[140px] h-8 lg:h-9 font-mono text-xs border-0 bg-transparent gap-1.5" style={{ color: "var(--portal-text)", borderBottom: "1px solid var(--portal-border)" }}>
+                <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-mono text-xs">
+                <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
+                {(availableCountries || []).map(code => (
+                  <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredCampaigns.length === 0 && (
+            <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
+              {t("auth.noOpportunities")}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {[...filteredCampaigns].sort((a, b) => {
+              if (a.isOpen && !b.isOpen) return -1;
+              if (!a.isOpen && b.isOpen) return 1;
+              return 0;
+            }).map(c => {
+              const taskLabels = c.task_sets.map((ts: any) => TASK_TYPE_LABELS[ts.task_type] || ts.task_type);
+              const reward = c.reward;
+              return (
+                <div
+                  key={c.id}
+                  className="overflow-hidden transition-colors"
+                  style={{ border: "1px solid var(--portal-border)", background: "color-mix(in srgb, var(--portal-card-bg) 50%, transparent)" }}
+                >
+                  {/* Top section: task type + title WITH green reward sidebar */}
+                  <div className="flex">
+                    <div className="flex-[4] flex flex-col">
+                      {taskLabels.length > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                          <Layers className="w-3 h-3" style={{ color: "var(--portal-text-muted)" }} />
+                          <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>{taskLabels.join(" · ")}</span>
+                        </div>
+                      )}
+                      <div className="px-3 py-2">
+                        <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{c.name}</h3>
+                      </div>
+                    </div>
+                    <div className="flex-[1] flex flex-col items-center justify-center p-2" style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}>
+                      {reward?.base_rate ? (
+                        <>
+                          <span className="font-mono text-xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>{reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}</span>
+                          <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>/{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}</span>
+                        </>
+                      ) : (
+                        <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>—</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom section: languages + button */}
+                  <div style={{ borderTop: "1px solid var(--portal-border)" }}>
+                    <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {c.languages.map((l: any, i: number) => (
+                          <span key={i} className="font-mono text-xs font-bold px-2 py-0.5" style={{ background: "hsl(0 0% 25%)", color: "hsl(0 0% 80%)", border: "1px solid var(--portal-border)" }}>
+                            {l.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-3 flex justify-center">
+                      {c.isOpen ? (
+                        <KGenButton variant="dark" size="sm" icon={<ArrowRight className="w-4 h-4" />} scrambleText={t("auth.participate")} className="w-[80%]"
+                          onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}/task`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
+                        >{t("auth.participate")}</KGenButton>
+                      ) : (
+                        <KGenButton variant="outline" size="sm" icon={<ClockIcon className="w-4 h-4" />} scrambleText={t("auth.waitingList")} className="w-[80%]"
+                          onClick={() => { sessionStorage.setItem("redirect_after_login", `/campaign/${c.id}`); setSelectedCampaignName(c.name); setAuthDialogMode("signup"); setAuthDialogOpen(true); }}
+                        >{t("auth.waitingList")}</KGenButton>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mobile auth form — only visible on mobile (desktop uses renderAuthForm inside top row) */}
+        <div className="lg:hidden flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md">
+            {renderAuthForm()}
           </div>
         </div>
       </div>
