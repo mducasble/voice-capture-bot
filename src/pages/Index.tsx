@@ -1,19 +1,14 @@
 import { useMemo } from "react";
-import { Mic2, Clock, HardDrive, Server } from "lucide-react";
+import { Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
-import { StatsCard } from "@/components/StatsCard";
-import { StorageStatsCard } from "@/components/StorageStatsCard";
-import { AudioSpecBadge } from "@/components/AudioSpecBadge";
 import { AudioUpload } from "@/components/AudioUpload";
 import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
-import { useRecordings, useRecordingStats, type Recording } from "@/hooks/useRecordings";
+import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
   const { data: recordings, isLoading, error } = useRecordings();
-  const stats = useRecordingStats(recordings);
 
   // Group recordings by session_id
   const groupedSessions = useMemo(() => {
@@ -59,72 +54,21 @@ const Index = () => {
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <section className="space-y-4">
-        <h1 className="text-2xl font-bold text-foreground">Gravações</h1>
-        <p className="text-sm text-muted-foreground">
-          Capture Discord voice channels com áudio de alta qualidade
-        </p>
-        <div className="flex pt-1">
-          <AudioSpecBadge />
+      {/* Header */}
+      <section className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Gravações</h1>
+          <p className="text-sm text-muted-foreground">Gerenciar uploads e sessões de áudio</p>
         </div>
       </section>
 
+      {/* Upload Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AudioUpload />
+        <MultiSpeakerUpload />
+      </section>
+
       <main className="space-y-8">
-        {/* Hero Section */}
-        <section className="text-center space-y-4 py-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-            </span>
-            High-Quality Voice Capture
-          </div>
-          <h2 className="text-4xl font-bold text-foreground">
-            Professional Audio Recording
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Capture Discord voice channels with broadcast-quality audio specifications
-          </p>
-          <div className="flex justify-center pt-2">
-            <AudioSpecBadge />
-          </div>
-        </section>
-
-        {/* Stats Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Total Recordings"
-            value={stats.totalRecordings}
-            subtitle="All time"
-            icon={Mic2}
-          />
-          <StatsCard
-            title="Total Duration"
-            value={stats.totalDuration}
-            subtitle="Hours recorded"
-            icon={Clock}
-          />
-          <StatsCard
-            title="Storage Used"
-            value={stats.totalSize}
-            subtitle="Uncompressed WAV"
-            icon={HardDrive}
-          />
-          <StatsCard
-            title="Servers"
-            value={stats.uniqueServers}
-            subtitle="Connected guilds"
-            icon={Server}
-          />
-        </section>
-
-        {/* Upload Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <AudioUpload />
-          <MultiSpeakerUpload />
-          <StorageStatsCard stats={stats.storageStats} />
-        </section>
 
         {/* Recordings List */}
         <section className="space-y-4">

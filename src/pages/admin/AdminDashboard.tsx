@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
-import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, ArrowUpRight, ArrowDownRight, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, subDays, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { useRecordings, useRecordingStats } from "@/hooks/useRecordings";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChartContainer,
@@ -135,6 +137,8 @@ export default function AdminDashboard() {
   const { data: profiles = [] } = useProfiles();
   const { data: participants = [] } = useParticipants();
   const { data: earnings = [] } = useEarnings();
+  const { data: recordings } = useRecordings();
+  const recStats = useRecordingStats(recordings);
 
   const totalUsers = profiles.length;
   const uniqueQuestUsers = useMemo(() => new Set(participants.map((p) => p.user_id)).size, [participants]);
@@ -304,6 +308,109 @@ export default function AdminDashboard() {
           <span className="text-xs font-medium text-muted-foreground">Fazendo Quest</span>
         </div>
       </div>
+
+      {/* Infrastructure Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Gravações"
+          value={recStats.totalRecordings.toLocaleString("pt-BR")}
+          icon={Mic2}
+          gradient="bg-gradient-to-br from-primary to-[hsl(280_72%_60%)]"
+          iconBg="bg-gradient-to-br from-[hsl(250_80%_55%)] to-[hsl(280_72%_60%)] shadow-primary/30"
+        />
+        <StatCard
+          title="Duração Total"
+          value={recStats.totalDuration}
+          icon={Clock}
+          gradient="bg-gradient-to-br from-[hsl(200_80%_50%)] to-[hsl(220_70%_55%)]"
+          iconBg="bg-gradient-to-br from-[hsl(200_80%_50%)] to-[hsl(220_70%_55%)] shadow-[hsl(200_80%_50%)]/30"
+        />
+        <StatCard
+          title="Armazenamento"
+          value={recStats.totalSize}
+          icon={HardDrive}
+          gradient="bg-gradient-to-br from-[hsl(280_60%_55%)] to-[hsl(300_50%_50%)]"
+          iconBg="bg-gradient-to-br from-[hsl(280_60%_55%)] to-[hsl(300_50%_50%)] shadow-[hsl(280_60%_55%)]/30"
+        />
+        <StatCard
+          title="Servidores"
+          value={recStats.uniqueServers.toLocaleString("pt-BR")}
+          icon={Server}
+          gradient="bg-gradient-to-br from-accent to-[hsl(170_60%_45%)]"
+          iconBg="bg-gradient-to-br from-[hsl(155_72%_42%)] to-[hsl(170_60%_45%)] shadow-accent/30"
+        />
+      </div>
+
+      {/* Storage Breakdown */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+              <Database className="h-4 w-4 text-primary" />
+            </div>
+            Armazenamento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground font-medium">Uso total</span>
+              <span className="font-semibold text-foreground">
+                {formatBytes(recStats.storageStats.totalBytes)} / {formatBytes(1024 * 1024 * 1024)}
+              </span>
+            </div>
+            <Progress
+              value={Math.min(100, (recStats.storageStats.totalBytes / (1024 * 1024 * 1024)) * 100)}
+              className="h-2.5 rounded-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              {((recStats.storageStats.totalBytes / (1024 * 1024 * 1024)) * 100).toFixed(1)}% usado •{" "}
+              {formatBytes(1024 * 1024 * 1024 - recStats.storageStats.totalBytes)} disponível
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <FileAudio className="h-8 w-8 text-primary opacity-70" />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Originais (WAV)</p>
+                <p className="text-lg font-bold text-foreground">{formatBytes(recStats.storageStats.totalBytes)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <FileArchive className="h-8 w-8 text-accent opacity-70" />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Comprimidos</p>
+                <p className="text-lg font-bold text-foreground">{formatBytes(recStats.storageStats.compressedBytes)}</p>
+                {recStats.storageStats.totalBytes > 0 && (
+                  <p className="text-xs font-semibold text-accent">
+                    -{((1 - recStats.storageStats.compressedBytes / recStats.storageStats.totalBytes) * 100).toFixed(0)}% economia
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+              <Mic2 className="h-8 w-8 text-muted-foreground opacity-50" />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Média por arquivo</p>
+                <p className="text-lg font-bold text-foreground">
+                  {recStats.storageStats.recordingCount > 0
+                    ? formatBytes(recStats.storageStats.totalBytes / recStats.storageStats.recordingCount)
+                    : "0 B"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
