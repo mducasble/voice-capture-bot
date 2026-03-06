@@ -38,7 +38,6 @@ export default function SocialArt() {
   const [extraCountries, setExtraCountries] = useState<string[]>([]);
   const [newCountryInput, setNewCountryInput] = useState<string>("");
   const canvasRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
 
   const campaign = campaigns?.find(c => c.id === selectedCampaignId);
   const format = FORMATS.find(f => f.id === selectedFormat)!;
