@@ -137,8 +137,9 @@ Deno.serve(async (req) => {
     // Font style
     const fontFamily = `'SF Mono', 'Fira Code', 'Consolas', 'Courier New', monospace`;
 
-    // Logo - embedded as nested SVG (no external fetch needed)
-    parts.push(`<svg x="${padding}" y="${padding}" width="${logoSize}" height="${logoSize}" viewBox="0 0 220.04 220.04">`);
+    // Logo - embedded as <g> with scale transform (nested <svg> doesn't render in Canvas)
+    const logoScale = logoSize / 220.04;
+    parts.push(`<g transform="translate(${padding},${padding}) scale(${logoScale})">`);
     parts.push(`<rect fill="#8cff05" width="220.04" height="220.04"/>`);
     parts.push(`<rect fill="#1f3338" x="22.59" y="22.59" width="20.07" height="26.1"/>`);
     parts.push(`<path fill="#1f3338" d="M148.32,54.02v16.05h33.14v16.97h-47.91v-48.4h63.91v-16.05h-62.74c-9.84,0-17.83,7.98-17.83,17.83v44.85c0,9.84,7.98,17.83,17.83,17.83h62.79v-49.08h-49.2Z"/>`);
@@ -148,7 +149,7 @@ Deno.serve(async (req) => {
     parts.push(`<rect fill="#1f3338" x="177.45" y="116.86" width="20.07" height="31.42"/>`);
     parts.push(`<polygon fill="#1f3338" points="43.83 62.84 89.52 103.11 103.16 103.11 103.16 89.47 72.91 62.84 103.16 36.21 103.16 22.59 89.52 22.58 43.83 62.84"/>`);
     parts.push(`<polygon fill="#1f3338" points="116.93 116.86 116.93 131.1 183.2 197.38 197.45 197.38 197.45 183.14 131.17 116.86 116.93 116.86"/>`);
-    parts.push(`</svg>`);
+    parts.push(`</g>`);
 
     // QUEST badge
     const questText = labels.quest;
