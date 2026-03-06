@@ -57,7 +57,11 @@ export default function SocialArt() {
       const campaignCountries = campaign?.geographic_scope?.countries || [];
       const allCountries = [...new Set([...campaignCountries, ...extraCountries])];
 
+      const fallbackAuthToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const { data, error } = await supabase.functions.invoke("render-social-art-png", {
+        headers: fallbackAuthToken
+          ? { Authorization: `Bearer ${fallbackAuthToken}` }
+          : undefined,
         body: {
           campaignName: campaign.name,
           campaignDescription: campaign.description || "",
