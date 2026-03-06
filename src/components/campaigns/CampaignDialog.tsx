@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2 } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -346,6 +347,71 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
 
   const isLoading = createCampaign.isPending || updateCampaign.isPending || deleteCampaign.isPending;
 
+  // Predefined country list (ISO 3166-1 alpha-2)
+  const COUNTRY_LIST: { code: string; name: string }[] = [
+    { code: "BR", name: "Brasil" },
+    { code: "AR", name: "Argentina" },
+    { code: "PE", name: "Peru" },
+    { code: "CO", name: "Colômbia" },
+    { code: "CL", name: "Chile" },
+    { code: "MX", name: "México" },
+    { code: "VE", name: "Venezuela" },
+    { code: "EC", name: "Equador" },
+    { code: "BO", name: "Bolívia" },
+    { code: "PY", name: "Paraguai" },
+    { code: "UY", name: "Uruguai" },
+    { code: "CR", name: "Costa Rica" },
+    { code: "PA", name: "Panamá" },
+    { code: "GT", name: "Guatemala" },
+    { code: "HN", name: "Honduras" },
+    { code: "NI", name: "Nicarágua" },
+    { code: "DO", name: "República Dominicana" },
+    { code: "CU", name: "Cuba" },
+    { code: "US", name: "Estados Unidos" },
+    { code: "CA", name: "Canadá" },
+    { code: "GB", name: "Reino Unido" },
+    { code: "FR", name: "França" },
+    { code: "DE", name: "Alemanha" },
+    { code: "ES", name: "Espanha" },
+    { code: "PT", name: "Portugal" },
+    { code: "IT", name: "Itália" },
+    { code: "IN", name: "Índia" },
+    { code: "JP", name: "Japão" },
+    { code: "KR", name: "Coreia do Sul" },
+    { code: "CN", name: "China" },
+    { code: "AU", name: "Austrália" },
+    { code: "NG", name: "Nigéria" },
+    { code: "ZA", name: "África do Sul" },
+    { code: "KE", name: "Quênia" },
+    { code: "EG", name: "Egito" },
+    { code: "PH", name: "Filipinas" },
+    { code: "ID", name: "Indonésia" },
+    { code: "TH", name: "Tailândia" },
+    { code: "VN", name: "Vietnã" },
+    { code: "PK", name: "Paquistão" },
+    { code: "BD", name: "Bangladesh" },
+    { code: "TR", name: "Turquia" },
+    { code: "RU", name: "Rússia" },
+    { code: "PL", name: "Polônia" },
+    { code: "UA", name: "Ucrânia" },
+    { code: "MA", name: "Marrocos" },
+    { code: "GH", name: "Gana" },
+    { code: "TZ", name: "Tanzânia" },
+    { code: "ET", name: "Etiópia" },
+  ];
+
+  const toggleCountry = (code: string) => {
+    setGeoScope(prev => {
+      const current = prev.countries || [];
+      return {
+        ...prev,
+        countries: current.includes(code)
+          ? current.filter(c => c !== code)
+          : [...current, code],
+      };
+    });
+  };
+
   const renderGeoField = (field: keyof GeographicScope, label: string) => {
     const items = geoScope[field] as string[];
     return (
@@ -371,6 +437,39 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderCountrySelector = () => {
+    const selected = geoScope.countries || [];
+    return (
+      <div className="space-y-2">
+        <Label>Países ({selected.length} selecionado{selected.length !== 1 ? "s" : ""})</Label>
+        {selected.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {selected.map(code => {
+              const c = COUNTRY_LIST.find(cl => cl.code === code);
+              return (
+                <Badge key={code} variant="secondary" className="cursor-pointer" onClick={() => toggleCountry(code)}>
+                  {c?.name || code} ×
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+        <div className="border rounded-lg max-h-48 overflow-y-auto p-2 space-y-1">
+          {COUNTRY_LIST.map(c => (
+            <label key={c.code} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
+              <Checkbox
+                checked={selected.includes(c.code)}
+                onCheckedChange={() => toggleCountry(c.code)}
+              />
+              <span>{c.name}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{c.code}</span>
+            </label>
+          ))}
+        </div>
       </div>
     );
   };
@@ -774,7 +873,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   </Select>
                 </div>
                 {renderGeoField("continents", "Continentes")}
-                {renderGeoField("countries", "Países")}
+                {renderCountrySelector()}
                 {renderGeoField("regions", "Regiões")}
                 {renderGeoField("states", "Estados")}
                 {renderGeoField("cities", "Cidades")}
