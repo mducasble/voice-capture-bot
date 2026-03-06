@@ -414,8 +414,8 @@ export default function PortalAuth() {
         <div className="px-6 lg:px-10 xl:px-16 2xl:px-20 py-8 lg:py-10">
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-              <span className="font-mono text-xs lg:text-sm tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+              <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
+              <span className="font-mono text-4xl xl:text-5xl 2xl:text-6xl tracking-tight uppercase font-black" style={{ color: "var(--portal-text)" }}>
                 {t("auth.openOpportunities")}
               </span>
             </div>
