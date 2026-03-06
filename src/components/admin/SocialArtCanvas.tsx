@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import kgenLogoGreen from "@/assets/kgen-logo-green.png";
 import type { Campaign } from "@/lib/campaignTypes";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 
