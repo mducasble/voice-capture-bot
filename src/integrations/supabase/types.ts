@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      annotation_submissions: {
+        Row: {
+          annotation_data: Json | null
+          campaign_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          quality_rejection_reason: string | null
+          quality_reviewed_at: string | null
+          quality_reviewed_by: string | null
+          quality_status: string | null
+          section_id: string | null
+          source_submission_id: string | null
+          source_submission_type: string | null
+          task_set_id: string | null
+          updated_at: string
+          user_id: string
+          validation_rejection_reason: string | null
+          validation_reviewed_at: string | null
+          validation_reviewed_by: string | null
+          validation_status: string | null
+        }
+        Insert: {
+          annotation_data?: Json | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          source_submission_id?: string | null
+          source_submission_type?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+        }
+        Update: {
+          annotation_data?: Json | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          source_submission_id?: string | null
+          source_submission_type?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotation_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotation_submissions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotation_submissions_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_administrative_rules: {
         Row: {
           campaign_id: string
@@ -1007,6 +1095,168 @@ export type Database = {
         }
         Relationships: []
       }
+      earnings_ledger: {
+        Row: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          credited_at: string | null
+          currency: string
+          description: string | null
+          entry_type: string
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          reference_id: string | null
+          status: string
+          submission_id: string
+          submission_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          campaign_id: string
+          created_at?: string
+          credited_at?: string | null
+          currency?: string
+          description?: string | null
+          entry_type?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference_id?: string | null
+          status?: string
+          submission_id: string
+          submission_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          created_at?: string
+          credited_at?: string | null
+          currency?: string
+          description?: string | null
+          entry_type?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference_id?: string | null
+          status?: string
+          submission_id?: string
+          submission_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "earnings_ledger_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_submissions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          file_size_bytes: number | null
+          file_url: string | null
+          filename: string
+          format: string | null
+          height: number | null
+          id: string
+          metadata: Json | null
+          quality_rejection_reason: string | null
+          quality_reviewed_at: string | null
+          quality_reviewed_by: string | null
+          quality_status: string | null
+          section_id: string | null
+          task_set_id: string | null
+          updated_at: string
+          user_id: string
+          validation_rejection_reason: string | null
+          validation_reviewed_at: string | null
+          validation_reviewed_by: string | null
+          validation_status: string | null
+          width: number | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          filename: string
+          format?: string | null
+          height?: number | null
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          width?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          filename?: string
+          format?: string | null
+          height?: number | null
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_submissions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_submissions_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       languages: {
         Row: {
           code: string
@@ -1368,6 +1618,94 @@ export type Database = {
         }
         Relationships: []
       }
+      text_submissions: {
+        Row: {
+          campaign_id: string
+          content: string | null
+          created_at: string
+          id: string
+          language: string | null
+          metadata: Json | null
+          quality_rejection_reason: string | null
+          quality_reviewed_at: string | null
+          quality_reviewed_by: string | null
+          quality_status: string | null
+          section_id: string | null
+          task_set_id: string | null
+          updated_at: string
+          user_id: string
+          validation_rejection_reason: string | null
+          validation_reviewed_at: string | null
+          validation_reviewed_by: string | null
+          validation_status: string | null
+          word_count: number | null
+        }
+        Insert: {
+          campaign_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          word_count?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "text_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "text_submissions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "text_submissions_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1422,6 +1760,109 @@ export type Database = {
         }
         Relationships: []
       }
+      video_submissions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          file_url: string | null
+          filename: string
+          format: string | null
+          frame_rate: number | null
+          height: number | null
+          id: string
+          metadata: Json | null
+          quality_rejection_reason: string | null
+          quality_reviewed_at: string | null
+          quality_reviewed_by: string | null
+          quality_status: string | null
+          section_id: string | null
+          task_set_id: string | null
+          updated_at: string
+          user_id: string
+          validation_rejection_reason: string | null
+          validation_reviewed_at: string | null
+          validation_reviewed_by: string | null
+          validation_status: string | null
+          width: number | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          filename: string
+          format?: string | null
+          frame_rate?: number | null
+          height?: number | null
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          width?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          filename?: string
+          format?: string | null
+          frame_rate?: number | null
+          height?: number | null
+          id?: string
+          metadata?: Json | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
+          quality_status?: string | null
+          section_id?: string | null
+          task_set_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_submissions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_submissions_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voice_recordings: {
         Row: {
           bit_depth: number | null
@@ -1445,6 +1886,9 @@ export type Database = {
           language: string | null
           metadata: Json | null
           mp3_file_url: string | null
+          quality_rejection_reason: string | null
+          quality_reviewed_at: string | null
+          quality_reviewed_by: string | null
           quality_status: string | null
           recording_type: string | null
           sample_rate: number | null
@@ -1458,6 +1902,11 @@ export type Database = {
           transcription_elevenlabs_status: string | null
           transcription_status: string | null
           updated_at: string
+          user_id: string | null
+          validation_rejection_reason: string | null
+          validation_reviewed_at: string | null
+          validation_reviewed_by: string | null
+          validation_status: string | null
         }
         Insert: {
           bit_depth?: number | null
@@ -1481,6 +1930,9 @@ export type Database = {
           language?: string | null
           metadata?: Json | null
           mp3_file_url?: string | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
           quality_status?: string | null
           recording_type?: string | null
           sample_rate?: number | null
@@ -1494,6 +1946,11 @@ export type Database = {
           transcription_elevenlabs_status?: string | null
           transcription_status?: string | null
           updated_at?: string
+          user_id?: string | null
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
         }
         Update: {
           bit_depth?: number | null
@@ -1517,6 +1974,9 @@ export type Database = {
           language?: string | null
           metadata?: Json | null
           mp3_file_url?: string | null
+          quality_rejection_reason?: string | null
+          quality_reviewed_at?: string | null
+          quality_reviewed_by?: string | null
           quality_status?: string | null
           recording_type?: string | null
           sample_rate?: number | null
@@ -1530,6 +1990,11 @@ export type Database = {
           transcription_elevenlabs_status?: string | null
           transcription_status?: string | null
           updated_at?: string
+          user_id?: string | null
+          validation_rejection_reason?: string | null
+          validation_reviewed_at?: string | null
+          validation_reviewed_by?: string | null
+          validation_status?: string | null
         }
         Relationships: [
           {
