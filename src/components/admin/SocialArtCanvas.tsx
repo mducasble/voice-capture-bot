@@ -59,11 +59,11 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
     const gridSize = isWide ? 40 : 60;
 
     // Font sizes scaled to canvas
-    const titleSize = isWide ? 48 : isVertical ? 72 : 64;
-    const subtitleSize = isWide ? 22 : isVertical ? 32 : 28;
-    const bodySize = isWide ? 18 : isVertical ? 24 : 22;
-    const linkSize = isWide ? 20 : isVertical ? 28 : 24;
-    const rewardSize = isWide ? 56 : isVertical ? 80 : 72;
+    const titleSize = isWide ? 51 : isVertical ? 75 : 67;
+    const subtitleSize = isWide ? 25 : isVertical ? 35 : 31;
+    const bodySize = isWide ? 21 : isVertical ? 27 : 25;
+    const linkSize = isWide ? 23 : isVertical ? 31 : 27;
+    const rewardSize = isWide ? 59 : isVertical ? 83 : 75;
     const logoSize = isWide ? 96 : isVertical ? 128 : 112;
     const badgeSize = isWide ? 56 : isVertical ? 72 : 64;
     const smallBadgeSize = isWide ? 14 : isVertical ? 18 : 16;
