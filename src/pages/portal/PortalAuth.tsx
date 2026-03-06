@@ -50,7 +50,13 @@ export default function PortalAuth() {
       data.forEach((row: any) => {
         (row.countries || []).forEach((c: string) => set.add(c.toUpperCase()));
       });
-      return Array.from(set).sort((a, b) => countryName(a).localeCompare(countryName(b)));
+      const sorted = Array.from(set).sort((a, b) => {
+        // BR always first
+        if (a === "BR") return -1;
+        if (b === "BR") return 1;
+        return countryName(a).localeCompare(countryName(b));
+      });
+      return sorted;
     },
     staleTime: 300_000,
   });
