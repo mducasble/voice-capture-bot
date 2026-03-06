@@ -7,13 +7,18 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Clock, FileText, Loader2,
   Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
-  Users, BookOpen, Bell, CalendarClock,
+  Users, BookOpen, Bell, CalendarClock, Wrench, icons,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import type { HardwareCatalogItem } from "@/lib/campaignTypes";
 import { useTranslation } from "react-i18next";
+
+function toPascalCase(str: string): string {
+  return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+}
 
 
 
@@ -43,6 +48,14 @@ export default function PortalCampaign() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const { t } = useTranslation();
+  const [hardwareCatalog, setHardwareCatalog] = useState<HardwareCatalogItem[]>([]);
+
+  // Load hardware catalog
+  useEffect(() => {
+    supabase.from("hardware_catalog").select("*").order("name").then(({ data }) => {
+      if (data) setHardwareCatalog(data as any);
+    });
+  }, []);
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
@@ -233,7 +246,7 @@ export default function PortalCampaign() {
         )}
 
         {/* Global campaign instructions */}
-        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0)) && (
+        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0) || (campaign.instructions.required_hardware?.length > 0)) && (
           <Section title="Instruções Gerais" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {campaign.instructions.instructions_title && (
@@ -270,6 +283,35 @@ export default function PortalCampaign() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {campaign.instructions.required_hardware && campaign.instructions.required_hardware.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    <Wrench className="h-3 w-3" /> Hardware Necessário
+                  </span>
+                  <div className="flex flex-wrap gap-3">
+                    {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
+                      const catalogItem = hardwareCatalog.find(h => h.name === hwName);
+                      const LucideIcon = catalogItem ? (icons as any)[toPascalCase(catalogItem.icon_name)] : null;
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
+                          style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
+                        >
+                          {LucideIcon ? (
+                            <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
+                          ) : (
+                            <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
+                          )}
+                          <span className="font-mono text-[10px] text-center leading-tight" style={{ color: "var(--portal-text)" }}>
+                            {hwName}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

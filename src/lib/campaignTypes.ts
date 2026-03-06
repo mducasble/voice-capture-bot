@@ -49,6 +49,13 @@ export interface ReferralConfig {
   max_levels: number;
 }
 
+export interface HardwareCatalogItem {
+  id: string;
+  name: string;
+  icon_name: string;
+  created_at: string;
+}
+
 export interface CampaignInstructions {
   id?: string;
   campaign_id?: string;
@@ -56,6 +63,7 @@ export interface CampaignInstructions {
   instructions_summary: string | null;
   prompt_do: string[];
   prompt_dont: string[];
+  required_hardware: string[];
 }
 
 export interface QualityFlow {
