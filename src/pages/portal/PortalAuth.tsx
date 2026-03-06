@@ -6,7 +6,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X } from "lucide-react";
+import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
@@ -15,6 +15,7 @@ import LanguageSelector from "@/components/portal/LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { detectBrowserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AuthMode = "login" | "signup" | "vendor";
 
