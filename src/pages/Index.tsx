@@ -6,11 +6,9 @@ import { AudioUpload } from "@/components/AudioUpload";
 import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
 import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
   const { data: recordings, isLoading, error } = useRecordings();
-  const stats = useRecordingStats(recordings);
 
   // Group recordings by session_id
   const groupedSessions = useMemo(() => {
