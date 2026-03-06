@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import html2canvas from "html2canvas";
+
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,7 +38,6 @@ export default function SocialArt() {
   const [extraCountries, setExtraCountries] = useState<string[]>([]);
   const [newCountryInput, setNewCountryInput] = useState<string>("");
   const canvasRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
 
   const campaign = campaigns?.find(c => c.id === selectedCampaignId);
   const format = FORMATS.find(f => f.id === selectedFormat)!;
@@ -49,46 +48,86 @@ export default function SocialArt() {
   const shortLink = campaign ? `kgen.quest/${selectedLang}/${(campaignIndex ?? 0) + 1}` : "";
 
   const handleDownloadTemplate = useCallback(async () => {
-    if (!exportRef.current) return;
+    if (!campaign) return;
+
+    toast.info("Gerando imagem...");
 
     try {
-      const images = Array.from(exportRef.current.querySelectorAll("img"));
-      await Promise.all(
-        images.map((img) => {
-          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-          return new Promise<void>((resolve) => {
-            const done = () => resolve();
-            img.addEventListener("load", done, { once: true });
-            img.addEventListener("error", done, { once: true });
-          });
-        })
-      );
+      // Collect all countries
+      const campaignCountries = campaign?.geographic_scope?.countries || [];
+      const allCountries = [...new Set([...campaignCountries, ...extraCountries])];
 
-      const canvas = await html2canvas(exportRef.current, {
-        width: format.width,
-        height: format.height,
-        windowWidth: format.width,
-        windowHeight: format.height,
-        scale: 1,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: "#111111",
+      const { data, error } = await supabase.functions.invoke("render-social-art-png", {
+        body: {
+          campaignName: campaign.name,
+          campaignDescription: campaign.description || "",
+          taskTypes: (campaign.task_sets || []).filter(ts => ts.enabled).map(ts => {
+            // Use the same labels as the canvas component
+            const TASK_TYPE_LABELS: Record<string, string> = {
+              audio_capture_solo: "Captura de Áudio (Solo)",
+              audio_capture_group: "Captura de Áudio (Grupo)",
+              image_capture: "Envio de Imagens e Fotos",
+              video_capture: "Captura de Vídeo",
+              text_annotation: "Anotação de Texto",
+              audio_transcription: "Transcrição de Áudio",
+              audio_review: "Revisão de Áudio",
+              image_annotation: "Anotação de Imagem",
+              video_annotation: "Anotação de Vídeo",
+            };
+            return TASK_TYPE_LABELS[ts.task_type] || ts.task_type;
+          }),
+          reward: campaign.reward_config,
+          language: selectedLang,
+          format: { width: format.width, height: format.height, id: selectedFormat },
+          shortLink,
+          countries: allCountries,
+          customTitle: customTitle || undefined,
+          customDescription: customDescription || undefined,
+        },
       });
 
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${campaign?.name || "quest"}-${selectedFormat}-${selectedLang}.png`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        toast.success("Arte exportada!");
-      }, "image/png");
-    } catch (err) {
+      if (error) throw error;
+      if (!data?.svg) throw new Error("No SVG returned");
+
+      // Convert SVG to PNG via Image + Canvas
+      const svgBlob = new Blob([data.svg], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.width = format.width;
+      img.height = format.height;
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = format.width;
+          canvas.height = format.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, format.width, format.height);
+          URL.revokeObjectURL(svgUrl);
+
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error("Canvas toBlob failed")); return; }
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `${campaign?.name || "quest"}-${selectedFormat}-${selectedLang}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            toast.success("Arte exportada!");
+            resolve();
+          }, "image/png");
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          reject(new Error("Failed to load SVG"));
+        };
+        img.src = svgUrl;
+      });
+    } catch (err: any) {
       console.error(err);
-      toast.error("Erro ao exportar imagem");
+      toast.error("Erro ao exportar: " + (err.message || "Erro desconhecido"));
     }
-  }, [campaign, format, selectedFormat, selectedLang]);
+  }, [campaign, format, selectedFormat, selectedLang, shortLink, customTitle, customDescription, extraCountries]);
 
   const handleGenerateAI = useCallback(async () => {
     if (!campaign) return;
@@ -346,19 +385,6 @@ export default function SocialArt() {
           </div>
         </div>
 
-        {/* Hidden full-size export canvas */}
-        <div style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }} aria-hidden="true">
-          <SocialArtCanvas
-            ref={exportRef}
-            campaign={campaign || null}
-            format={format}
-            language={selectedLang}
-            shortLink={shortLink}
-            customTitle={customTitle || undefined}
-            customDescription={customDescription || undefined}
-            extraCountries={extraCountries.length > 0 ? extraCountries : undefined}
-          />
-        </div>
       </div>
     </div>
   );
