@@ -87,31 +87,21 @@ const RoomsMonitor = () => {
   const closedRooms = rooms.filter((r) => ["completed", "closed"].includes(r.status));
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Radio className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Monitor de Salas</h1>
-              <p className="text-sm text-muted-foreground">
-                {activeRooms.length} ativa{activeRooms.length !== 1 ? "s" : ""} · {rooms.length} total
-              </p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchRooms} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
+    <div className="space-y-8 max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Monitor de Salas</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {activeRooms.length} ativa{activeRooms.length !== 1 ? "s" : ""} · {rooms.length} total
+          </p>
         </div>
-      </header>
+        <Button variant="outline" size="sm" onClick={fetchRooms} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Atualizar
+        </Button>
+      </div>
 
-      <main className="container py-8 space-y-8 max-w-4xl">
+      <div className="space-y-8">
         {/* Active rooms */}
         {activeRooms.length > 0 && (
           <section>
