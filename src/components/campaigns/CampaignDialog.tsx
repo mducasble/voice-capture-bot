@@ -211,7 +211,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         reward_config: reward,
         referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
-        instructions: (globalInstructions.instructions_title || globalInstructions.instructions_summary || globalInstructions.prompt_do.length || globalInstructions.prompt_dont.length) ? globalInstructions : null,
+        instructions: (globalInstructions.instructions_title || globalInstructions.instructions_summary || globalInstructions.prompt_do.length || globalInstructions.prompt_dont.length || globalInstructions.required_hardware.length) ? globalInstructions : null,
       };
       if (campaignId) {
         await updateCampaign.mutateAsync({ id: campaignId, ...payload });
