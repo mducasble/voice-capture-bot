@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 
 import { useCampaigns } from "@/hooks/useCampaigns";
+import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -66,18 +67,6 @@ export default function SocialArt() {
           campaignName: campaign.name,
           campaignDescription: campaign.description || "",
           taskTypes: (campaign.task_sets || []).filter(ts => ts.enabled).map(ts => {
-            // Use the same labels as the canvas component
-            const TASK_TYPE_LABELS: Record<string, string> = {
-              audio_capture_solo: "Captura de Áudio (Solo)",
-              audio_capture_group: "Captura de Áudio (Grupo)",
-              image_capture: "Envio de Imagens e Fotos",
-              video_capture: "Captura de Vídeo",
-              text_annotation: "Anotação de Texto",
-              audio_transcription: "Transcrição de Áudio",
-              audio_review: "Revisão de Áudio",
-              image_annotation: "Anotação de Imagem",
-              video_annotation: "Anotação de Vídeo",
-            };
             return TASK_TYPE_LABELS[ts.task_type] || ts.task_type;
           }),
           reward: campaign.reward_config,
