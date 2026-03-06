@@ -189,11 +189,10 @@ export default function PortalMyCampaigns() {
     queryFn: async () => {
       if (!campaignIds.length) return [];
       const { data, error } = await supabase
-        .from("voice_recordings")
-        .select("id, filename, duration_seconds, recording_type, session_id, created_at, discord_username, file_url, status, campaign_id")
-        .in("campaign_id", campaignIds)
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
+        .rpc("get_my_campaign_recordings", {
+          p_user_id: user!.id,
+          p_campaign_ids: campaignIds,
+        });
       if (error) throw error;
       return (data || []) as (RecordingRow & { campaign_id: string })[];
     },

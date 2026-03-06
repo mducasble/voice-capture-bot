@@ -394,6 +394,7 @@ const Room = () => {
           room_id: roomId,
           name: participantName,
           is_creator: false,
+          user_id: (await supabase.auth.getUser()).data.user?.id || null,
         })
         .select()
         .single();

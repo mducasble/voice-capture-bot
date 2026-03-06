@@ -68,6 +68,7 @@ export default function PortalCampaignTask() {
           room_id: room.id,
           name: userName,
           is_creator: true,
+          user_id: user?.id || null,
         })
         .select()
         .single();
