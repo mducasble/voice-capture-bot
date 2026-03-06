@@ -82,8 +82,8 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
             {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           </button>
         )}
-        <span className="font-mono text-base truncate block" style={{ color: "var(--portal-text)" }}>
-          {rec.discord_username || rec.filename}
+        <span className="font-mono text-base truncate block" style={{ color: rec.recording_type === "mixed" ? "var(--portal-accent)" : "var(--portal-text)" }}>
+          {rec.recording_type === "mixed" ? "🎧 Áudio Combinado" : (rec.discord_username || rec.filename)}
         </span>
       </div>
       <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
