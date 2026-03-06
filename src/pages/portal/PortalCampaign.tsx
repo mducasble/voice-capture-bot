@@ -20,6 +20,14 @@ function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 }
 
+function getEmbedUrl(url: string): string {
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  return url;
+}
+
 
 
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
