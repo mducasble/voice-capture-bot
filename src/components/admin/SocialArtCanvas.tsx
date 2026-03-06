@@ -58,8 +58,8 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
     const bodySize = isWide ? 18 : isVertical ? 24 : 22;
     const linkSize = isWide ? 20 : isVertical ? 28 : 24;
     const rewardSize = isWide ? 56 : isVertical ? 80 : 72;
-    const logoSize = isWide ? 48 : isVertical ? 64 : 56;
-    const badgeSize = isWide ? 14 : isVertical ? 18 : 16;
+    const logoSize = isWide ? 96 : isVertical ? 128 : 112;
+    const badgeSize = isWide ? 56 : isVertical ? 72 : 64;
 
     const padding = isWide ? 48 : 64;
 
