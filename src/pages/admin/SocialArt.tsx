@@ -3,7 +3,9 @@ import { useCampaigns } from "@/hooks/useCampaigns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Download, Loader2, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Download, Loader2, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import SocialArtCanvas from "@/components/admin/SocialArtCanvas";
@@ -30,6 +32,10 @@ export default function SocialArt() {
   const [selectedLang, setSelectedLang] = useState<string>("pt");
   const [generating, setGenerating] = useState(false);
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
+  const [customTitle, setCustomTitle] = useState<string>("");
+  const [customDescription, setCustomDescription] = useState<string>("");
+  const [extraCountries, setExtraCountries] = useState<string[]>([]);
+  const [newCountryInput, setNewCountryInput] = useState<string>("");
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const campaign = campaigns?.find(c => c.id === selectedCampaignId);
@@ -204,7 +210,75 @@ export default function SocialArt() {
               </div>
             )}
 
-            {/* Actions */}
+            {/* Custom Title */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Título customizado</Label>
+              <Input
+                placeholder={campaign?.name || "Usar título da quest"}
+                value={customTitle}
+                onChange={e => setCustomTitle(e.target.value)}
+              />
+            </div>
+
+            {/* Custom Description */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Descrição customizada</Label>
+              <Textarea
+                placeholder={campaign?.description || "Usar descrição da quest"}
+                value={customDescription}
+                onChange={e => setCustomDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {/* Extra Countries */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Bandeiras extras</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: BR, US, MX"
+                  value={newCountryInput}
+                  onChange={e => setNewCountryInput(e.target.value.toUpperCase())}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const codes = newCountryInput.split(/[,\s]+/).filter(c => c.length === 2);
+                      if (codes.length > 0) {
+                        setExtraCountries(prev => [...new Set([...prev, ...codes])]);
+                        setNewCountryInput("");
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const codes = newCountryInput.split(/[,\s]+/).filter(c => c.length === 2);
+                    if (codes.length > 0) {
+                      setExtraCountries(prev => [...new Set([...prev, ...codes])]);
+                      setNewCountryInput("");
+                    }
+                  }}
+                >
+                  +
+                </Button>
+              </div>
+              {extraCountries.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {extraCountries.map(c => (
+                    <span key={c} className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary border border-border text-xs font-mono">
+                      {c}
+                      <button onClick={() => setExtraCountries(prev => prev.filter(x => x !== c))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="space-y-3 pt-4">
               <Button
                 className="w-full"
@@ -249,6 +323,9 @@ export default function SocialArt() {
                     format={format}
                     language={selectedLang}
                     shortLink={shortLink}
+                    customTitle={customTitle || undefined}
+                    customDescription={customDescription || undefined}
+                    extraCountries={extraCountries.length > 0 ? extraCountries : undefined}
                   />
                 </div>
               </div>
