@@ -379,21 +379,35 @@ export default function PortalAuth() {
 
           {/* Opportunities column */}
           <div className="w-[30%] flex flex-col">
-            <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-              <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                {t("auth.openOpportunities")}
-              </span>
+            <div className="p-5 flex flex-col gap-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+                <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                  {t("auth.openOpportunities")}
+                </span>
+              </div>
+              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                <SelectTrigger className="w-full h-9 font-mono text-xs rounded-none" style={{ borderColor: "var(--portal-border)", background: "transparent", color: "var(--portal-text)" }}>
+                  <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="font-mono text-xs">
+                  <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
+                  {(availableCountries || []).map(code => (
+                    <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {(!publicCampaigns || publicCampaigns.length === 0) && (
+              {filteredCampaigns.length === 0 && (
                 <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
                   {t("auth.noOpportunities")}
                 </p>
               )}
 
-              {[...(publicCampaigns || [])].sort((a, b) => {
+              {[...filteredCampaigns].sort((a, b) => {
                 // Open campaigns first, then waitlist
                 if (a.isOpen && !b.isOpen) return -1;
                 if (!a.isOpen && b.isOpen) return 1;
