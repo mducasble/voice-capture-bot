@@ -61,7 +61,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
     // Font sizes scaled to canvas
     const titleSize = isWide ? 51 : isVertical ? 75 : 67;
     const subtitleSize = isWide ? 25 : isVertical ? 35 : 31;
-    const bodySize = isWide ? 21 : isVertical ? 27 : 25;
+    const bodySize = isWide ? 28 : isVertical ? 36 : 32;
     const linkSize = isWide ? 23 : isVertical ? 31 : 27;
     const rewardSize = isWide ? 59 : isVertical ? 83 : 75;
     const logoSize = isWide ? 96 : isVertical ? 128 : 112;
@@ -93,8 +93,8 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           width: format.width,
           height: format.height,
           backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.15) 2px, transparent 2px),
-            linear-gradient(90deg, rgba(255,255,255,0.15) 2px, transparent 2px)
+            linear-gradient(rgba(255,255,255,0.25) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(255,255,255,0.25) 2px, transparent 2px)
           `,
           backgroundSize: `${gridSize}px ${gridSize}px`,
           pointerEvents: "none",
@@ -181,7 +181,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             <p style={{
               fontSize: bodySize,
               lineHeight: 1.5,
-              color: "rgba(255,255,255,0.6)",
+              color: "rgba(255,255,255,0.85)",
               margin: 0,
               maxWidth: format.width * 0.8,
             }}>
