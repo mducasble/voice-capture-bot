@@ -10,6 +10,12 @@ interface Props {
   shortLink: string;
 }
 
+// Convert ISO 3166-1 alpha-2 code to flag emoji
+function countryFlag(code: string): string {
+  const upper = code.toUpperCase();
+  return String.fromCodePoint(...[...upper].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
 const LANG_LABELS: Record<string, Record<string, string>> = {
   pt: {
     earn: "GANHE",
