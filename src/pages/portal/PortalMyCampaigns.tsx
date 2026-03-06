@@ -216,7 +216,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             </div>
           ) : (
             <div>
-              <SessionMetricsSummary recordings={recordings} />
+              <CampaignStatusSummary recordings={recordings} />
               {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
                 const sessionDuration = recs.find(r => r.recording_type === "mixed")?.duration_seconds
                   ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
