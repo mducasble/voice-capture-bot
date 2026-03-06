@@ -1095,6 +1095,75 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                     </div>
                   )}
                 </div>
+
+                {/* VÍDEO EMBED */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm">Vídeo de Instrução (YouTube/Vimeo)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cole a URL do YouTube ou Vimeo. O vídeo será embedado na página da campanha.
+                  </p>
+                  <Input
+                    value={globalInstructions.video_url || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, video_url: e.target.value || null }))}
+                    placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/..."
+                  />
+                  {globalInstructions.video_url && (
+                    <div className="border rounded-lg overflow-hidden aspect-video">
+                      <iframe
+                        src={getEmbedUrl(globalInstructions.video_url)}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* PDF DE INSTRUÇÕES */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm">PDF com Instruções Detalhadas</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Faça upload de um PDF que será disponibilizado para download pelos participantes.
+                  </p>
+                  {globalInstructions.pdf_file_url ? (
+                    <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                      <FileText className="h-5 w-5 text-primary shrink-0" />
+                      <a href={globalInstructions.pdf_file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate flex-1">
+                        {globalInstructions.pdf_file_url.split("/").pop()}
+                      </a>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setGlobalInstructions(prev => ({ ...prev, pdf_file_url: null }))}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".pdf"
+                        disabled={pdfUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setPdfUploading(true);
+                          try {
+                            const path = `instructions/${Date.now()}_${file.name}`;
+                            const { error: uploadError } = await supabase.storage.from("campaign-files").upload(path, file, { contentType: "application/pdf" });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage.from("campaign-files").getPublicUrl(path);
+                            setGlobalInstructions(prev => ({ ...prev, pdf_file_url: urlData.publicUrl }));
+                            toast({ title: "PDF enviado com sucesso!" });
+                          } catch (err) {
+                            console.error(err);
+                            toast({ title: "Erro ao enviar PDF", variant: "destructive" });
+                          } finally {
+                            setPdfUploading(false);
+                          }
+                        }}
+                      />
+                      {pdfUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
 
               {/* GEOGRAPHIC SCOPE */}
