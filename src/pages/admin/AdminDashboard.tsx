@@ -137,6 +137,8 @@ export default function AdminDashboard() {
   const { data: profiles = [] } = useProfiles();
   const { data: participants = [] } = useParticipants();
   const { data: earnings = [] } = useEarnings();
+  const { data: recordings } = useRecordings();
+  const recStats = useRecordingStats(recordings);
 
   const totalUsers = profiles.length;
   const uniqueQuestUsers = useMemo(() => new Set(participants.map((p) => p.user_id)).size, [participants]);
