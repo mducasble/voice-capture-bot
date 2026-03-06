@@ -466,11 +466,11 @@ export default function PortalAuth() {
                         <h3 className="font-mono text-sm font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{c.name}</h3>
                       </div>
                     </div>
-                    <div className="flex-[1] flex flex-col items-center justify-center p-2" style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}>
+                    <div className="flex-[1] flex flex-col items-center justify-center p-3" style={{ background: "var(--portal-accent)", borderLeft: "1px solid var(--portal-border)" }}>
                       {reward?.base_rate ? (
                         <>
-                          <span className="font-mono text-xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>{reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}</span>
-                          <span className="font-mono text-[8px] uppercase tracking-widest font-bold mt-0.5" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>/{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}</span>
+                          <span className="font-mono text-2xl lg:text-3xl font-black leading-none" style={{ color: "var(--portal-accent-text)" }}>{reward.currency === "BRL" ? "R$" : "$"}{reward.base_rate}</span>
+                          <span className="font-mono text-[10px] lg:text-xs uppercase tracking-widest font-bold mt-1" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>/{reward.payout_model === "per_accepted_hour" ? t("auth.perHour") : t("auth.perUnit")}</span>
                         </>
                       ) : (
                         <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent-text)" }}>—</span>
