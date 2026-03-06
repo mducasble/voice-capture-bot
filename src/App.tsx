@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
 
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Rooms = lazy(() => import("./pages/Rooms"));
@@ -27,12 +28,18 @@ const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 
 const queryClient = new QueryClient();
 
+function AppInner() {
+  useGlobalAuthReferral();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AppInner />
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
           <Routes>
             {/* Portal routes (public-facing, root) */}
