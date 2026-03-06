@@ -61,7 +61,7 @@ export function useRecordings(guildId?: string, userId?: string) {
       let query = supabase
         .from("voice_recordings")
         .select("*, elevenlabs_chunk_state, gemini_chunk_state, recording_topics(name, emoji)")
-        .neq("quality_status", "transcription-only")
+        .or("quality_status.neq.transcription-only,quality_status.is.null")
         .order("created_at", { ascending: false });
 
       if (guildId) {
