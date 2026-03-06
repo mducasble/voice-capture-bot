@@ -514,7 +514,6 @@ export default function PortalAuth() {
           </div>
         </div>
       </div>
-      </div>
 
       {/* Auth Dialog triggered by campaign buttons */}
       <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
