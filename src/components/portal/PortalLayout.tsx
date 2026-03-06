@@ -11,7 +11,7 @@ import LanguageSelector from "./LanguageSelector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
-export default function PortalLayout() {
+export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const { t } = useTranslation();
