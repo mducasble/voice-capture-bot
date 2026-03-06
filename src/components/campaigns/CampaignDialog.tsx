@@ -188,6 +188,44 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     }
   }, [campaign, campaignId, duplicateFromId]);
 
+  // Load hardware catalog
+  useEffect(() => {
+    supabase.from("hardware_catalog").select("*").order("name").then(({ data }) => {
+      if (data) setHardwareCatalog(data as any);
+    });
+  }, []);
+
+  const addHardwareItem = async () => {
+    const val = hardwareInput.trim();
+    if (!val) return;
+    if (globalInstructions.required_hardware.includes(val)) {
+      setHardwareInput("");
+      return;
+    }
+    setHardwareLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-hardware-icon", {
+        body: { name: val },
+      });
+      if (error) throw error;
+      const hw = data.hardware;
+      if (hw && !hardwareCatalog.find(h => h.id === hw.id)) {
+        setHardwareCatalog(prev => [...prev, hw]);
+      }
+      const hwName = hw?.name || val;
+      setGlobalInstructions(prev => ({
+        ...prev,
+        required_hardware: [...prev.required_hardware, hwName],
+      }));
+      setHardwareInput("");
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro ao sugerir ícone", variant: "destructive" });
+    } finally {
+      setHardwareLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     try {
