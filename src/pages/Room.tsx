@@ -48,7 +48,16 @@ const Room = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isPortal = !location.pathname.startsWith("/admin");
-  const campaignId = new URLSearchParams(location.search).get("campaign") || undefined;
+  const searchParams = new URLSearchParams(location.search);
+  const campaignId = searchParams.get("campaign") || undefined;
+  const refCode = searchParams.get("ref") || undefined;
+
+  // Store referral code from room invite link
+  useEffect(() => {
+    if (refCode) {
+      localStorage.setItem("referral_code", refCode);
+    }
+  }, [refCode]);
   
   const [room, setRoom] = useState<Room | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -491,10 +500,28 @@ const Room = () => {
     toast.success("Gravação finalizada! Processando uploads...");
   };
 
-  // Copy room link
-  const copyLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
+  // Copy room link with referral code
+  const copyLink = async () => {
+    const url = new URL(window.location.href);
+    
+    // Try to get current user's referral code
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("referral_code")
+          .eq("id", user.id)
+          .single();
+        if (profile?.referral_code) {
+          url.searchParams.set("ref", profile.referral_code);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch referral code:", e);
+    }
+    
+    navigator.clipboard.writeText(url.toString());
     setCopied(true);
     toast.success("Link copiado!");
     setTimeout(() => setCopied(false), 2000);
