@@ -7,13 +7,18 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Clock, FileText, Loader2,
   Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
-  Users, BookOpen, Bell, CalendarClock,
+  Users, BookOpen, Bell, CalendarClock, Wrench, icons,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
+import type { HardwareCatalogItem } from "@/lib/campaignTypes";
 import { useTranslation } from "react-i18next";
+
+function toPascalCase(str: string): string {
+  return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+}
 
 
 
