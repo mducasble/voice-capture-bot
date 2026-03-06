@@ -89,6 +89,10 @@ export default function AdminLogin() {
 
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin + "/admin/login",
+      extraParams: {
+        hd: "kgen.io",
+        prompt: "select_account",
+      },
     });
 
     if (result.error) {
