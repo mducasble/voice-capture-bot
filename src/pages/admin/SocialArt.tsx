@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import html2canvas from "html2canvas";
+
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
