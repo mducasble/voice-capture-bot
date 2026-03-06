@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink, FolderOpen, FileCheck, FileText, ListChecks } from "lucide-react";
+import { Mic2, Clock, HardDrive, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
