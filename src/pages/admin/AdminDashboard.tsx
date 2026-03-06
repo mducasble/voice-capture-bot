@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
-import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, ArrowUpRight, ArrowDownRight, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, subDays, isWithinInterval, startOfDay, endOfDay } from "date-fns";
