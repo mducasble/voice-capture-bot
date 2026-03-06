@@ -15,19 +15,24 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const checkAdminAndRedirect = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    return !!data;
+  };
 
   useEffect(() => {
-    // If already logged in as admin, redirect to dashboard
     const check = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .eq("role", "admin")
-          .maybeSingle();
-        if (data) {
+        const isAdmin = await checkAdminAndRedirect(session.user.id);
+        if (isAdmin) {
           navigate("/admin", { replace: true });
           return;
         }
