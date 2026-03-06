@@ -102,6 +102,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
                 objectFit: "contain",
               }}
             />
+          </div>
           <div style={{
             background: "#8cff05",
             color: "#111",
