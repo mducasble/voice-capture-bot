@@ -34,10 +34,12 @@ const Rooms = () => {
       if (error) throw error;
 
       // Add creator as first participant
+      const currentUser = (await supabase.auth.getUser()).data.user;
       const { data: participant } = await supabase.from("room_participants").insert({
         room_id: room.id,
         name: creatorName.trim(),
         is_creator: true,
+        user_id: currentUser?.id || null,
       }).select().single();
 
       // Store creator participant ID so Room page recognises them

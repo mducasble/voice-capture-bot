@@ -1495,6 +1495,7 @@ export type Database = {
           left_at: string | null
           name: string
           room_id: string
+          user_id: string | null
         }
         Insert: {
           audio_test_results?: Json | null
@@ -1506,6 +1507,7 @@ export type Database = {
           left_at?: string | null
           name: string
           room_id: string
+          user_id?: string | null
         }
         Update: {
           audio_test_results?: Json | null
@@ -1517,6 +1519,7 @@ export type Database = {
           left_at?: string | null
           name?: string
           room_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2077,6 +2080,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_campaign_recordings: {
+        Args: { p_campaign_ids: string[]; p_user_id: string }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          discord_username: string
+          duration_seconds: number
+          file_url: string
+          filename: string
+          id: string
+          recording_type: string
+          session_id: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
