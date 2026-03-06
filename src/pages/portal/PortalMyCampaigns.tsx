@@ -119,7 +119,7 @@ function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
   const countByStatus = (field: "quality_status" | "validation_status") => {
     return {
       validated: individuals.filter(r => r[field] === "validated" || r[field] === "approved").length,
-      rejected: individuals.filter(r => r[field] === "rejected").length,
+      rejected: individuals.filter(r => r[field] === "rejected" || r[field] === "failed").length,
       pending: individuals.filter(r => !r[field] || r[field] === "pending" || r[field] === "processing").length,
     };
   };
