@@ -752,8 +752,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 </Button>
               </div>
             )}
-            <TabsList className="grid grid-cols-4 w-full md:grid-cols-7">
+            <TabsList className="grid grid-cols-4 w-full md:grid-cols-8">
               <TabsTrigger value="general">Geral</TabsTrigger>
+              <TabsTrigger value="instructions">Instruções</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
               <TabsTrigger value="lang">Idiomas</TabsTrigger>
               <TabsTrigger value="tasks">Tarefas</TabsTrigger>
@@ -866,6 +867,100 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   <div className="flex items-center gap-2">
                     <Switch checked={visibilityIsPublic} onCheckedChange={setVisibilityIsPublic} />
                     <Label>Pública</Label>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* GLOBAL INSTRUCTIONS */}
+              <TabsContent value="instructions" className="space-y-4 pr-4">
+                <p className="text-xs text-muted-foreground">
+                  Instruções gerais da campanha visíveis para todos os participantes. Instruções específicas por tipo de tarefa podem ser configuradas na aba Tarefas.
+                </p>
+                <div className="space-y-2">
+                  <Label>Título</Label>
+                  <Input
+                    value={globalInstructions.instructions_title || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_title: e.target.value || null }))}
+                    placeholder="Ex: Como participar desta campanha"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Resumo / Descrição detalhada</Label>
+                  <Textarea
+                    value={globalInstructions.instructions_summary || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_summary: e.target.value || null }))}
+                    placeholder="Explique ao participante o que ele precisa fazer..."
+                    rows={4}
+                  />
+                </div>
+
+                {/* DO / DONT */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">O que FAZER</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Adicionar item"
+                        id="global-do"
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (e.target as HTMLInputElement).value.trim();
+                            if (v) {
+                              setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, v] }));
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }
+                        }}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        const el = document.getElementById("global-do") as HTMLInputElement;
+                        if (el?.value.trim()) {
+                          setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, el.value.trim()] }));
+                          el.value = "";
+                        }
+                      }}><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {globalInstructions.prompt_do.map((item, i) => (
+                        <Badge key={i} variant="secondary" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: prev.prompt_do.filter((_, ii) => ii !== i) }))}>
+                          ✅ {item} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">O que NÃO fazer</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Adicionar item"
+                        id="global-dont"
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (e.target as HTMLInputElement).value.trim();
+                            if (v) {
+                              setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, v] }));
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }
+                        }}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        const el = document.getElementById("global-dont") as HTMLInputElement;
+                        if (el?.value.trim()) {
+                          setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, el.value.trim()] }));
+                          el.value = "";
+                        }
+                      }}><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {globalInstructions.prompt_dont.map((item, i) => (
+                        <Badge key={i} variant="destructive" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: prev.prompt_dont.filter((_, ii) => ii !== i) }))}>
+                          🚫 {item} ×
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </TabsContent>
