@@ -86,17 +86,20 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
         }}
       >
         {/* Grid overlay */}
-        <svg
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id={`grid-${format.id}`} width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
-              <path d={`M ${gridSize} 0 L 0 0 0 ${gridSize}`} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#grid-${format.id})`} />
-        </svg>
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: format.width,
+          height: format.height,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.15) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(255,255,255,0.15) 2px, transparent 2px)
+          `,
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+          pointerEvents: "none",
+          zIndex: 0,
+        }} />
 
         {/* Corner accents */}
         <div style={{ position: "absolute", top: 20, left: 20, width: 12, height: 12, background: "#8cff05" }} />
