@@ -181,7 +181,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
     || individuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
   const sessionGroups = new Map<string, RecordingRow[]>();
-  for (const r of individuals) {
+  for (const r of recordings) {
     const key = r.session_id || r.id;
     if (!sessionGroups.has(key)) sessionGroups.set(key, []);
     sessionGroups.get(key)!.push(r);
