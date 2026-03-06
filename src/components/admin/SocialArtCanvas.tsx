@@ -8,6 +8,9 @@ interface Props {
   format: { width: number; height: number; id: string };
   language: string;
   shortLink: string;
+  customTitle?: string;
+  customDescription?: string;
+  extraCountries?: string[];
 }
 
 // Convert ISO 3166-1 alpha-2 code to flag emoji
@@ -41,7 +44,7 @@ const LANG_LABELS: Record<string, Record<string, string>> = {
 };
 
 const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
-  ({ campaign, format, language, shortLink }, ref) => {
+  ({ campaign, format, language, shortLink, customTitle, customDescription, extraCountries }, ref) => {
     const labels = LANG_LABELS[language] || LANG_LABELS.en;
     const isVertical = format.height > format.width;
     const isWide = format.width > format.height && format.id === "twitter";
@@ -172,12 +175,12 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
               margin: 0,
               color: "#fff",
             }}>
-              {campaign?.name || "Quest Name"}
+              {customTitle || campaign?.name || "Quest Name"}
             </h1>
           </div>
 
           {/* Description */}
-          {campaign?.description && (
+          {(customDescription || campaign?.description) && (
             <p style={{
               fontSize: bodySize,
               lineHeight: 1.5,
@@ -185,9 +188,10 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
               margin: 0,
               maxWidth: format.width * 0.8,
             }}>
-              {campaign.description.length > 120
-                ? campaign.description.slice(0, 120) + "..."
-                : campaign.description}
+              {(() => {
+                const desc = customDescription || campaign?.description || "";
+                return desc.length > 120 ? desc.slice(0, 120) + "..." : desc;
+              })()}
             </p>
           )}
 
@@ -223,12 +227,14 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
 
           {/* Country codes */}
           {(() => {
-            const countries = campaign?.geographic_scope?.countries || [];
-            if (countries.length === 0) return null;
+            const campaignCountries = campaign?.geographic_scope?.countries || [];
+            const extra = extraCountries || [];
+            const allCountries = [...new Set([...campaignCountries, ...extra])];
+            if (allCountries.length === 0) return null;
             const codeFontSize = isWide ? 24 : isVertical ? 32 : 28;
             return (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
-                {countries.map((c, i) => (
+                {allCountries.map((c, i) => (
                   <span key={i} style={{
                     fontSize: codeFontSize,
                     fontWeight: 700,
