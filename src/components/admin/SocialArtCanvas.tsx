@@ -284,6 +284,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             {shortLink || "kgen.quest"}
           </span>
         </div>
+      </div>
     );
   }
 );
