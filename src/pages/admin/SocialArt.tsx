@@ -52,19 +52,28 @@ export default function SocialArt() {
     if (!exportRef.current) return;
 
     try {
-      // Temporarily make export canvas visible for html2canvas
-      exportRef.current.style.display = "block";
+      const images = Array.from(exportRef.current.querySelectorAll("img"));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+          });
+        })
+      );
 
       const canvas = await html2canvas(exportRef.current, {
         width: format.width,
         height: format.height,
+        windowWidth: format.width,
+        windowHeight: format.height,
         scale: 1,
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#111111",
       });
-
-      exportRef.current.style.display = "none";
 
       canvas.toBlob((blob) => {
         if (!blob) return;
@@ -77,7 +86,6 @@ export default function SocialArt() {
       }, "image/png");
     } catch (err) {
       console.error(err);
-      if (exportRef.current) exportRef.current.style.display = "none";
       toast.error("Erro ao exportar imagem");
     }
   }, [campaign, format, selectedFormat, selectedLang]);
@@ -339,7 +347,7 @@ export default function SocialArt() {
         </div>
 
         {/* Hidden full-size export canvas */}
-        <div style={{ position: "fixed", left: "-9999px", top: 0, display: "none" }}>
+        <div style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }} aria-hidden="true">
           <SocialArtCanvas
             ref={exportRef}
             campaign={campaign || null}
