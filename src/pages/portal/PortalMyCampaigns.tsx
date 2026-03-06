@@ -241,7 +241,8 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             <div>
               <SessionMetricsSummary recordings={recordings} />
               {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
-                const mixed = sessions.find(s => s.session_id === sessionId);
+                const sessionDuration = recs.find(r => r.recording_type === "mixed")?.duration_seconds
+                  ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
                 return (
                   <div key={sessionId}>
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
@@ -252,15 +253,14 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                         </span>
                         {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
                       </span>
-                      {mixed?.duration_seconds != null && (
-                        <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(mixed.duration_seconds)}</span>
+                      {sessionDuration > 0 && (
+                        <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
                       )}
                     </div>
                     {recs.map(r => <SessionRow key={r.id} rec={r} />)}
                   </div>
                 );
               })}
-              {sessions.filter(s => !sessionGroups.has(s.session_id || "")).map(r => <SessionRow key={r.id} rec={r} />)}
             </div>
           )}
 
