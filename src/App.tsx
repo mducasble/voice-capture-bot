@@ -14,6 +14,7 @@ const Review = lazy(() => import("./pages/Review"));
 const Transcript = lazy(() => import("./pages/Transcript"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ReviewQueue = lazy(() => import("./pages/admin/ReviewQueue"));
+const SocialArt = lazy(() => import("./pages/admin/SocialArt"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/admin/review" element={<Review />} />
             <Route path="/admin/review-queue" element={<ReviewQueue />} />
             <Route path="/admin/transcription" element={<Transcript />} />
+            <Route path="/admin/social-art" element={<SocialArt />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

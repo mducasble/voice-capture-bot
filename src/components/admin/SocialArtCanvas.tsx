@@ -65,7 +65,6 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={ref}
-        xmlns="http://www.w3.org/1999/xhtml"
         style={{
           width: format.width,
           height: format.height,
