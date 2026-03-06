@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { format, subDays, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { useRecordings, useRecordingStats } from "@/hooks/useRecordings";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChartContainer,
