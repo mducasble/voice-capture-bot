@@ -27,6 +27,11 @@ import {
 } from "@/lib/campaignTypes";
 import { toast } from "@/hooks/use-toast";
 
+// Convert kebab-case icon name to PascalCase for lucide-react icons lookup
+function toPascalCase(str: string): string {
+  return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+}
+
 interface CampaignDialogProps {
   open: boolean;
   onClose: () => void;
