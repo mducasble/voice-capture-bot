@@ -159,7 +159,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           {/* Reward highlight */}
           {rewardText && (
             <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span style={{ fontSize: badgeSize, fontWeight: 600, color: "#8cff05", textTransform: "uppercase", letterSpacing: "0.15em" }}>
+              <span style={{ fontSize: smallBadgeSize, fontWeight: 600, color: "#8cff05", textTransform: "uppercase", letterSpacing: "0.15em" }}>
                 {labels.earn}
               </span>
               <span style={{
@@ -180,8 +180,8 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
                 <span key={i} style={{
                   border: "1px solid rgba(140, 255, 5, 0.3)",
                   color: "#8cff05",
-                  padding: `${badgeSize * 0.4}px ${badgeSize * 0.9}px`,
-                  fontSize: badgeSize,
+                  padding: `${smallBadgeSize * 0.4}px ${smallBadgeSize * 0.9}px`,
+                  fontSize: smallBadgeSize,
                   fontWeight: 600,
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",
@@ -197,21 +197,32 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
         <div style={{
           padding: `0 ${padding}px ${padding}px`,
           display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 16,
+          flexDirection: "column",
+          gap: 12,
         }}>
           <div style={{
             background: "#8cff05",
             color: "#111",
-            padding: `${linkSize * 0.6}px ${linkSize * 1.2}px`,
-            fontSize: linkSize,
-            fontWeight: 800,
-            letterSpacing: "0.1em",
+            padding: `${linkSize * 0.8}px ${linkSize * 1.5}px`,
+            fontSize: linkSize * 1.3,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
             textTransform: "uppercase",
+            textAlign: "center",
+            width: "60%",
+            minWidth: "50%",
           }}>
             {labels.joinNow}
           </div>
+          <span style={{
+            fontSize: linkSize * 0.85,
+            fontWeight: 600,
+            color: "rgba(255,255,255,0.5)",
+            letterSpacing: "0.05em",
+          }}>
+            {shortLink || "kgen.quest"}
+          </span>
+        </div>
           <span style={{
             fontSize: linkSize * 0.85,
             fontWeight: 600,
