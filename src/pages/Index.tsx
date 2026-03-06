@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Mic2, Clock, HardDrive, Server, Radio, ExternalLink, FolderOpen, FileCheck, FileText, ListChecks } from "lucide-react";
+import { Mic2, Clock, HardDrive, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
@@ -59,66 +58,19 @@ const Index = () => {
   }, [recordings]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Radio className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Voice Recorder</h1>
-              <p className="text-sm text-muted-foreground">Discord Audio Capture</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="default" asChild>
-              <Link to="/admin/rooms" className="flex items-center gap-2">
-                <Radio className="h-4 w-4" />
-                Salas de Áudio
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/campaigns" className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4" />
-                Campanhas
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/review" className="flex items-center gap-2">
-                <FileCheck className="h-4 w-4" />
-                Revisão
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/review-queue" className="flex items-center gap-2">
-                <ListChecks className="h-4 w-4" />
-                Fila de Revisão
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/transcription" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Transcrição
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <a
-                href="https://discord.com/developers/applications"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                Discord Portal
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-          </div>
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <section className="space-y-4">
+        <h1 className="text-2xl font-bold text-foreground">Gravações</h1>
+        <p className="text-sm text-muted-foreground">
+          Capture Discord voice channels com áudio de alta qualidade
+        </p>
+        <div className="flex pt-1">
+          <AudioSpecBadge />
         </div>
-      </header>
+      </section>
 
-      <main className="container py-8 space-y-8">
+      <main className="space-y-8">
         {/* Hero Section */}
         <section className="text-center space-y-4 py-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm">
@@ -233,15 +185,6 @@ const Index = () => {
           )}
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-6 mt-12">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>
-            Audio captured at 48kHz • 16-bit • Dual Channel • WAV Format
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };
