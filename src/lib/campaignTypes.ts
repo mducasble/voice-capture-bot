@@ -49,6 +49,15 @@ export interface ReferralConfig {
   max_levels: number;
 }
 
+export interface CampaignInstructions {
+  id?: string;
+  campaign_id?: string;
+  instructions_title: string | null;
+  instructions_summary: string | null;
+  prompt_do: string[];
+  prompt_dont: string[];
+}
+
 export interface QualityFlow {
   id?: string;
   campaign_id?: string;
@@ -170,6 +179,7 @@ export interface Campaign {
   referral_config?: ReferralConfig | null;
   quality_flow?: QualityFlow | null;
   administrative_rules?: AdministrativeRules | null;
+  instructions?: CampaignInstructions | null;
   sections?: CampaignSection[];
   // Legacy relations (kept for backward compat)
   task_config?: any | null;
