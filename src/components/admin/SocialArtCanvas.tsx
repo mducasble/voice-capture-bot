@@ -219,7 +219,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
                 fontWeight: 800,
                 color: "#111",
                 textTransform: "uppercase",
-                letterSpacing: "0.15em",
+                letterSpacing: "0.1em",
               }}>
                 {labels.earn}
               </span>
