@@ -177,6 +177,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setLangVariants([]);
       setTaskSets([]);
       setSections([]);
+      setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [] });
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
