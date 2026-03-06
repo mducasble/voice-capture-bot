@@ -78,8 +78,8 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           height: format.height,
           backgroundColor: "#111111",
           backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)
+            linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
           `,
           backgroundSize: `${gridSize}px ${gridSize}px`,
           position: "relative",
