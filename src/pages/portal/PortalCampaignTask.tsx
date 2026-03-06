@@ -60,7 +60,22 @@ export default function PortalCampaignTask() {
         .single();
 
       if (error) throw error;
-      sessionStorage.setItem(`room_creator_${room.id}`, "true");
+
+      // Insert creator as participant
+      const { data: participant, error: partError } = await supabase
+        .from("room_participants")
+        .insert({
+          room_id: room.id,
+          name: userName,
+          is_creator: true,
+        })
+        .select()
+        .single();
+
+      if (partError) throw partError;
+
+      // Store participant ID for Room.tsx auto-connect
+      sessionStorage.setItem(`room_${room.id}_participant`, participant.id);
       navigate(`/room/${room.id}?campaign=${campaign.id}`);
     } catch (err: any) {
       toast.error("Erro ao criar sala: " + err.message);
