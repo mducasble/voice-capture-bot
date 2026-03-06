@@ -222,16 +222,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           }}>
             {shortLink || "kgen.quest"}
           </span>
-        </div>
-          <span style={{
-            fontSize: linkSize * 0.85,
-            fontWeight: 600,
-            color: "rgba(255,255,255,0.5)",
-            letterSpacing: "0.05em",
-          }}>
-            {shortLink || "kgen.quest"}
-          </span>
-        </div>
+      </div>
       </div>
     );
   }
