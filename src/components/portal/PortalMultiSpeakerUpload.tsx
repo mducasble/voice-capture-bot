@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAudioMetadata } from "@/lib/audioMetadata";
 import KGenButton from "@/components/portal/KGenButton";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SpeakerFile {
   id: string;
@@ -18,6 +19,7 @@ interface PortalMultiSpeakerUploadProps {
 }
 
 export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: PortalMultiSpeakerUploadProps) {
+  const { user } = useAuth();
   const [speakerFiles, setSpeakerFiles] = useState<SpeakerFile[]>([]);
   const [mixedFile, setMixedFile] = useState<File | null>(null);
   const [autoMix, setAutoMix] = useState(true);
@@ -111,6 +113,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
           duration_seconds: meta.durationSeconds, sample_rate: meta.sampleRate ?? 48000,
           bit_depth: meta.bitDepth ?? 16, channels: meta.channels ?? 2, format: meta.format ?? ext,
           session_id: sessionId, recording_type: "individual", campaign_id: campaignId,
+          user_id: user?.id || null,
           discord_user_id: `manual_${sf.id}`, discord_username: sf.speakerName,
           discord_guild_id: "manual_upload", discord_guild_name: "Upload Manual",
           discord_channel_id: "multi_speaker", discord_channel_name: "Portal Upload",
@@ -148,6 +151,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
         filename: mixFn, file_url: mixUrl, file_size_bytes: mixBlob?.size ?? null,
         duration_seconds: mixMeta?.durationSeconds ?? null, session_id: sessionId,
         recording_type: "mixed", campaign_id: campaignId,
+        user_id: user?.id || null,
         discord_user_id: "manual_upload", discord_username: "Multi-Speaker Session",
         discord_guild_id: "manual_upload", discord_guild_name: "Upload Manual",
         discord_channel_id: "multi_speaker", discord_channel_name: "Portal Upload",
