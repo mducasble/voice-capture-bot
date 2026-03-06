@@ -113,7 +113,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           <div style={{
             background: "#8cff05",
             color: "#111",
-            padding: `${badgeSize * 0.5}px ${badgeSize * 1.2}px`,
+            padding: `${badgeSize * 0.15}px ${badgeSize * 0.4}px`,
             fontSize: badgeSize,
             fontWeight: 800,
             letterSpacing: "0.2em",
@@ -197,6 +197,21 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
               ))}
             </div>
           )}
+          {/* Country flags */}
+          {(() => {
+            const countries = campaign?.geographic_scope?.countries || [];
+            if (countries.length === 0) return null;
+            const flagSize = isWide ? 28 : isVertical ? 40 : 36;
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                {countries.map((c, i) => (
+                  <span key={i} style={{ fontSize: flagSize, lineHeight: 1 }}>
+                    {countryFlag(c)}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Bottom: CTA + link */}
