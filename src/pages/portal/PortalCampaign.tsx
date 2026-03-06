@@ -285,6 +285,35 @@ export default function PortalCampaign() {
                   </ul>
                 </div>
               )}
+              {campaign.instructions.required_hardware && campaign.instructions.required_hardware.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    <Wrench className="h-3 w-3" /> Hardware Necessário
+                  </span>
+                  <div className="flex flex-wrap gap-3">
+                    {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
+                      const catalogItem = hardwareCatalog.find(h => h.name === hwName);
+                      const LucideIcon = catalogItem ? (icons as any)[toPascalCase(catalogItem.icon_name)] : null;
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
+                          style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
+                        >
+                          {LucideIcon ? (
+                            <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
+                          ) : (
+                            <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
+                          )}
+                          <span className="font-mono text-[10px] text-center leading-tight" style={{ color: "var(--portal-text)" }}>
+                            {hwName}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </Section>
         )}
