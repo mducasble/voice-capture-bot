@@ -6,7 +6,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X } from "lucide-react";
+import { Loader2, Sun, Moon, ArrowRight, Layers, Clock as ClockIcon, X, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import KGenButton from "@/components/portal/KGenButton";
 import kgenLogo from "@/assets/kgen-logo.svg";
@@ -15,18 +15,46 @@ import LanguageSelector from "@/components/portal/LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { detectBrowserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AuthMode = "login" | "signup" | "vendor";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMode, setAuthDialogMode] = useState<"login" | "signup">("login");
   const [selectedCampaignName, setSelectedCampaignName] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => detectBrowserCountry() || "ALL");
+
+  // Country name helper
+  const countryName = (code: string) => {
+    try {
+      const dn = new Intl.DisplayNames([i18n.language || "en"], { type: "region" });
+      return dn.of(code) || code;
+    } catch { return code; }
+  };
+
+  // Fetch all countries that have campaigns with geo scope
+  const { data: availableCountries } = useQuery({
+    queryKey: ["auth-available-countries"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("campaign_geographic_scope")
+        .select("countries");
+      if (!data) return [];
+      const set = new Set<string>();
+      data.forEach((row: any) => {
+        (row.countries || []).forEach((c: string) => set.add(c.toUpperCase()));
+      });
+      return Array.from(set).sort((a, b) => countryName(a).localeCompare(countryName(b)));
+    },
+    staleTime: 300_000,
+  });
+
   // Lightweight public campaigns query (no auth needed)
   const { data: publicCampaigns } = useQuery({
     queryKey: ["public-campaigns-preview"],
@@ -36,7 +64,7 @@ export default function PortalAuth() {
         .select("id, name, language_primary, campaign_status, start_date, is_active, visibility_is_public")
         .eq("is_active", true)
         .order("start_date", { ascending: true, nullsFirst: true })
-        .limit(8);
+        .limit(20);
 
       if (!campaigns || campaigns.length === 0) return [];
 
@@ -48,21 +76,22 @@ export default function PortalAuth() {
         supabase.from("campaign_geographic_scope").select("campaign_id, restriction_mode, countries").in("campaign_id", ids),
       ]);
 
-      const browserCountry = detectBrowserCountry();
-
-      return campaigns
-        .map(c => ({
-          ...c,
-          task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
-          reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
-          languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
-          geo_scope: (geoRes.data || []).find(g => g.campaign_id === c.id) || null,
-          isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
-        }))
-        .filter(c => isCampaignVisibleForCountry(c.geo_scope, browserCountry));
+      return campaigns.map(c => ({
+        ...c,
+        task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
+        reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
+        languages: (langVarRes.data || []).filter(l => l.campaign_id === c.id),
+        geo_scope: (geoRes.data || []).find(g => g.campaign_id === c.id) || null,
+        isOpen: c.start_date ? new Date(c.start_date) <= new Date() : true,
+      }));
     },
     staleTime: 60_000,
   });
+
+  // Filter campaigns by selected country
+  const filteredCampaigns = (publicCampaigns || []).filter(c =>
+    selectedCountry === "ALL" ? true : isCampaignVisibleForCountry(c.geo_scope, selectedCountry)
+  );
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -238,19 +267,33 @@ export default function PortalAuth() {
 
         {/* Mobile opportunities */}
         <div className="lg:hidden px-6 pb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-            <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-              {t("auth.openOpportunities")}
-            </span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+              <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                {t("auth.openOpportunities")}
+              </span>
+            </div>
+            <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+              <SelectTrigger className="w-auto min-w-[140px] h-8 font-mono text-xs border-0 bg-transparent gap-1.5" style={{ color: "var(--portal-text)", borderBottom: "1px solid var(--portal-border)" }}>
+                <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-mono text-xs">
+                <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
+                {(availableCountries || []).map(code => (
+                  <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-            {(!publicCampaigns || publicCampaigns.length === 0) && (
+            {filteredCampaigns.length === 0 && (
               <p className="font-mono text-xs py-4 text-center" style={{ color: "var(--portal-text-muted)" }}>
                 {t("auth.noOpportunities")}
               </p>
             )}
-            {[...(publicCampaigns || [])].sort((a, b) => {
+            {[...filteredCampaigns].sort((a, b) => {
               if (a.isOpen && !b.isOpen) return -1;
               if (!a.isOpen && b.isOpen) return 1;
               return 0;
@@ -336,21 +379,35 @@ export default function PortalAuth() {
 
           {/* Opportunities column */}
           <div className="w-[30%] flex flex-col">
-            <div className="p-5 flex items-center gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-              <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-                {t("auth.openOpportunities")}
-              </span>
+            <div className="p-5 flex flex-col gap-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+                <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                  {t("auth.openOpportunities")}
+                </span>
+              </div>
+              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                <SelectTrigger className="w-full h-9 font-mono text-xs rounded-none" style={{ borderColor: "var(--portal-border)", background: "transparent", color: "var(--portal-text)" }}>
+                  <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="font-mono text-xs">
+                  <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
+                  {(availableCountries || []).map(code => (
+                    <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {(!publicCampaigns || publicCampaigns.length === 0) && (
+              {filteredCampaigns.length === 0 && (
                 <p className="font-mono text-xs py-8 text-center" style={{ color: "var(--portal-text-muted)" }}>
                   {t("auth.noOpportunities")}
                 </p>
               )}
 
-              {[...(publicCampaigns || [])].sort((a, b) => {
+              {[...filteredCampaigns].sort((a, b) => {
                 // Open campaigns first, then waitlist
                 if (a.isOpen && !b.isOpen) return -1;
                 if (!a.isOpen && b.isOpen) return 1;
