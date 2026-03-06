@@ -252,6 +252,12 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       const textsPayload = {
         name: name.replace(" (Cópia)", ""),
         description: description || "",
+        global_instructions: {
+          instructions_title: globalInstructions.instructions_title || "",
+          instructions_summary: globalInstructions.instructions_summary || "",
+          prompt_do: globalInstructions.prompt_do || [],
+          prompt_dont: globalInstructions.prompt_dont || [],
+        },
         task_sets: taskSets.map(ts => ({
           instructions_title: ts.instructions_title || "",
           instructions_summary: ts.instructions_summary || "",
@@ -277,6 +283,16 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setName(t.name + " (Cópia)");
       setDescription(t.description || "");
       setLanguagePrimary(translateTargetLang);
+
+      if (t.global_instructions) {
+        setGlobalInstructions(prev => ({
+          ...prev,
+          instructions_title: t.global_instructions.instructions_title ?? prev.instructions_title,
+          instructions_summary: t.global_instructions.instructions_summary ?? prev.instructions_summary,
+          prompt_do: t.global_instructions.prompt_do ?? prev.prompt_do,
+          prompt_dont: t.global_instructions.prompt_dont ?? prev.prompt_dont,
+        }));
+      }
 
       if (t.task_sets?.length) {
         setTaskSets(prev => prev.map((ts, i) => ({
