@@ -2090,9 +2090,14 @@ export type Database = {
           file_url: string
           filename: string
           id: string
+          quality_rejection_reason: string
+          quality_status: string
           recording_type: string
           session_id: string
+          snr_db: number
           status: string
+          validation_rejection_reason: string
+          validation_status: string
         }[]
       }
       has_role: {
