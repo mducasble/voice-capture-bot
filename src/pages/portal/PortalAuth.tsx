@@ -267,19 +267,33 @@ export default function PortalAuth() {
 
         {/* Mobile opportunities */}
         <div className="lg:hidden px-6 pb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
-            <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
-              {t("auth.openOpportunities")}
-            </span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2" style={{ background: "var(--portal-accent)" }} />
+              <span className="font-mono text-xs tracking-[0.2em] uppercase font-bold" style={{ color: "var(--portal-text-muted)" }}>
+                {t("auth.openOpportunities")}
+              </span>
+            </div>
+            <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+              <SelectTrigger className="w-auto min-w-[140px] h-8 font-mono text-xs border-0 bg-transparent gap-1.5" style={{ color: "var(--portal-text)", borderBottom: "1px solid var(--portal-border)" }}>
+                <MapPin className="w-3 h-3 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-mono text-xs">
+                <SelectItem value="ALL">{t("auth.allCountries") || "Todos os países"}</SelectItem>
+                {(availableCountries || []).map(code => (
+                  <SelectItem key={code} value={code}>{countryName(code)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-            {(!publicCampaigns || publicCampaigns.length === 0) && (
+            {filteredCampaigns.length === 0 && (
               <p className="font-mono text-xs py-4 text-center" style={{ color: "var(--portal-text-muted)" }}>
                 {t("auth.noOpportunities")}
               </p>
             )}
-            {[...(publicCampaigns || [])].sort((a, b) => {
+            {[...filteredCampaigns].sort((a, b) => {
               if (a.isOpen && !b.isOpen) return -1;
               if (!a.isOpen && b.isOpen) return 1;
               return 0;
