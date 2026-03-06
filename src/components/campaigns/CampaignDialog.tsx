@@ -20,7 +20,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule, CampaignInstructions,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
@@ -103,6 +103,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [taskSets, setTaskSets] = useState<CampaignTaskSet[]>([]);
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
   const [sections, setSections] = useState<CampaignSection[]>([]);
+  const [globalInstructions, setGlobalInstructions] = useState<CampaignInstructions>({
+    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [],
+  });
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
