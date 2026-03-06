@@ -1,19 +1,22 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 const ACTIVITY_TYPES = [
-  { key: "audio_capture_solo", label: "Áudio Solo", icon: Mic },
-  { key: "audio_capture_group", label: "Áudio Grupo", icon: Mic },
-  { key: "video_submission", label: "Vídeo", icon: Video },
-  { key: "image_submission", label: "Imagem", icon: Image },
-  { key: "data_labeling", label: "Data Labelling", icon: Tag },
-  { key: "transcription", label: "Transcrição", icon: FileText },
+  { key: "audio", label: "Áudio", icon: Mic },
+  { key: "video", label: "Vídeo", icon: Video },
+  { key: "image", label: "Imagem", icon: Image },
+  { key: "annotation", label: "Data Labelling", icon: Tag },
+  { key: "text", label: "Texto", icon: FileText },
 ];
+
+function fmt(v: number) {
+  return `$${v.toFixed(2)}`;
+}
 
 export default function PortalEarnings() {
   const { user } = useAuth();
@@ -33,6 +36,56 @@ export default function PortalEarnings() {
     },
     enabled: !!user?.id,
   });
+
+  const { data: ledgerRows } = useQuery({
+    queryKey: ["earnings-ledger", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("earnings_ledger")
+        .select("amount, status, entry_type, submission_type")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const stats = useMemo(() => {
+    const rows = ledgerRows || [];
+    const byActivity: Record<string, { direct: number; referral: number; pending: number; tasks: number; total: number }> = {};
+    ACTIVITY_TYPES.forEach(a => { byActivity[a.key] = { direct: 0, referral: 0, pending: 0, tasks: 0, total: 0 }; });
+
+    let totalAccumulated = 0;
+    let totalCredited = 0;
+    let totalPaid = 0;
+
+    for (const row of rows) {
+      const type = row.submission_type || "audio";
+      const bucket = byActivity[type] || byActivity["audio"];
+      const amount = Number(row.amount) || 0;
+
+      if (row.status === "cancelled") continue;
+
+      if (row.entry_type === "referral_bonus") {
+        bucket.referral += amount;
+      } else {
+        bucket.direct += amount;
+      }
+      bucket.tasks += 1;
+      bucket.total += amount;
+
+      if (row.status === "pending") {
+        bucket.pending += 1;
+      }
+
+      totalAccumulated += amount;
+      if (row.status === "credited") totalCredited += amount;
+      if (row.status === "paid") totalPaid += amount;
+    }
+
+    return { byActivity, totalAccumulated, availableWithdraw: totalCredited, totalPaid };
+  }, [ledgerRows]);
 
   const referralCode = (profile as any)?.referral_code || "";
 
@@ -56,42 +109,47 @@ export default function PortalEarnings() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {ACTIVITY_TYPES.map(activity => (
-            <div key={activity.key} className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-              <div className="flex items-center gap-3">
-                <div className="p-2" style={{ background: "hsl(0 0% 15%)" }}>
-                  <activity.icon className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+          {ACTIVITY_TYPES.map(activity => {
+            const s = stats.byActivity[activity.key];
+            return (
+              <div key={activity.key} className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2" style={{ background: "hsl(0 0% 15%)" }}>
+                    <activity.icon className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+                  </div>
+                  <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{activity.label}</p>
                 </div>
-                <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{activity.label}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                  <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>$0.00</p>
-                  <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.direct)}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
+                  </div>
+                  <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.referral)}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Referral</p>
+                  </div>
                 </div>
-                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                  <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>$0.00</p>
-                  <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Referral</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1.5" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.2)" }}>
-                <AlertCircle className="h-3 w-3" style={{ color: "hsl(40 80% 50%)" }} />
-                <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "hsl(40 80% 50%)" }}>
-                  0 {t("earnings.pendingApproval")}
+                {s.pending > 0 && (
+                  <div className="flex items-center gap-1.5 px-2 py-1.5" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.2)" }}>
+                    <AlertCircle className="h-3 w-3" style={{ color: "hsl(40 80% 50%)" }} />
+                    <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "hsl(40 80% 50%)" }}>
+                      {s.pending} {t("earnings.pendingApproval")}
+                    </p>
+                  </div>
+                )}
+                <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
+                  {s.tasks} {t("earnings.tasks")} · {t("earnings.total")}: {fmt(s.total)}
                 </p>
               </div>
-              <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
-                0 {t("earnings.tasks")} · {t("earnings.total")}: $0.00
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: t("earnings.totalAccumulated"), value: "$0.00" },
-            { label: t("earnings.availableWithdraw"), value: "$0.00" },
-            { label: t("earnings.totalWithdrawn"), value: "$0.00" },
+            { label: t("earnings.totalAccumulated"), value: fmt(stats.totalAccumulated) },
+            { label: t("earnings.availableWithdraw"), value: fmt(stats.availableWithdraw) },
+            { label: t("earnings.totalWithdrawn"), value: fmt(stats.totalPaid) },
           ].map(item => (
             <div key={item.label} className="flex flex-col items-center justify-center p-4" style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}>
               <span className="font-mono text-lg font-black" style={{ color: "var(--portal-accent)" }}>{item.value}</span>
