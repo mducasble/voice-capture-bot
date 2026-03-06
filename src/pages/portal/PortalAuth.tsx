@@ -33,7 +33,8 @@ export default function PortalAuth() {
   // Country name helper
   const countryName = (code: string) => {
     try {
-      const dn = new Intl.DisplayNames([t("auth.locale") || "en"], { type: "region" });
+      const lang = (window as any).__i18n_lang || navigator.language?.split("-")[0] || "en";
+      const dn = new Intl.DisplayNames([lang], { type: "region" });
       return dn.of(code) || code;
     } catch { return code; }
   };
