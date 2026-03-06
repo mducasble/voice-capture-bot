@@ -143,6 +143,24 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           padding: `${padding * 0.5}px ${padding}px`,
           gap: isVertical ? 40 : 24,
         }}>
+          {/* Task type labels - above title */}
+          {taskTypes.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {taskTypes.map((t, i) => (
+                <span key={i} style={{
+                  color: "#8cff05",
+                  fontSize: smallBadgeSize * 3,
+                  fontWeight: 800,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  lineHeight: 1.1,
+                }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Campaign name */}
           <div>
             <h1 style={{
@@ -173,16 +191,29 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             </p>
           )}
 
-          {/* Reward highlight */}
+          {/* Reward highlight - green background */}
           {rewardText && (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span style={{ fontSize: smallBadgeSize, fontWeight: 600, color: "#8cff05", textTransform: "uppercase", letterSpacing: "0.15em" }}>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "baseline",
+              gap: 16,
+              background: "#8cff05",
+              padding: `${rewardSize * 0.3}px ${rewardSize * 0.5}px`,
+              alignSelf: "flex-start",
+            }}>
+              <span style={{
+                fontSize: smallBadgeSize * 3,
+                fontWeight: 800,
+                color: "#111",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
+              }}>
                 {labels.earn}
               </span>
               <span style={{
                 fontSize: rewardSize,
                 fontWeight: 900,
-                color: "#8cff05",
+                color: "#111",
                 lineHeight: 1,
               }}>
                 {rewardText}
@@ -190,34 +221,23 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             </div>
           )}
 
-          {/* Task type badges */}
-          {taskTypes.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {taskTypes.map((t, i) => (
-                <span key={i} style={{
-                  border: "1px solid rgba(140, 255, 5, 0.3)",
-                  color: "#8cff05",
-                  padding: `${smallBadgeSize * 0.4}px ${smallBadgeSize * 0.9}px`,
-                  fontSize: smallBadgeSize,
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                }}>
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-          {/* Country flags */}
+          {/* Country codes */}
           {(() => {
             const countries = campaign?.geographic_scope?.countries || [];
             if (countries.length === 0) return null;
-            const flagSize = isWide ? 28 : isVertical ? 40 : 36;
+            const codeFontSize = isWide ? 24 : isVertical ? 32 : 28;
             return (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
                 {countries.map((c, i) => (
-                  <span key={i} style={{ fontSize: flagSize, lineHeight: 1 }}>
-                    {countryFlag(c)}
+                  <span key={i} style={{
+                    fontSize: codeFontSize,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.5)",
+                    letterSpacing: "0.1em",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    padding: "4px 10px",
+                  }}>
+                    {c.toUpperCase()}
                   </span>
                 ))}
               </div>
