@@ -82,6 +82,38 @@ export default function AdminLogin() {
     navigate("/admin", { replace: true });
   };
 
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    // Sign out any existing session first
+    await supabase.auth.signOut();
+
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/admin/login",
+    });
+
+    if (result.error) {
+      toast.error("Erro ao autenticar com Google.");
+      setGoogleLoading(false);
+      return;
+    }
+
+    // If redirected, the page will reload and useEffect will handle the check
+    if (!result.redirected) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const isAdmin = await checkAdminAndRedirect(session.user.id);
+        if (isAdmin) {
+          toast.success("Bem-vindo ao painel administrativo!");
+          navigate("/admin", { replace: true });
+        } else {
+          await supabase.auth.signOut();
+          toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
+        }
+      }
+      setGoogleLoading(false);
+    }
+  };
+
   if (checking) {
     return (
       <div className="admin-theme min-h-screen flex items-center justify-center bg-background">
