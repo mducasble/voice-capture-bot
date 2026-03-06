@@ -144,7 +144,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           flexDirection: "column",
           justifyContent: isVertical ? "center" : "center",
           padding: `${padding * 0.5}px ${padding}px`,
-          gap: isVertical ? 40 : 24,
+          gap: isVertical ? 32 : 20,
         }}>
           {/* Task type labels - above title */}
           {taskTypes.length > 0 && (
@@ -202,16 +202,16 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           padding: `0 ${padding}px ${padding}px`,
           display: "flex",
           flexDirection: "column",
-          gap: isVertical ? 24 : 16,
+          gap: isVertical ? 18 : 12,
         }}>
           {/* Reward highlight - green background */}
           {rewardText && (
             <div style={{
               display: "inline-flex",
-              alignItems: "baseline",
-              gap: 16,
+              alignItems: "center",
+              gap: 12,
               background: "#8cff05",
-              padding: `${rewardSize * 0.3}px ${rewardSize * 0.5}px`,
+              padding: `${isWide ? 12 : isVertical ? 16 : 14}px ${isWide ? 20 : isVertical ? 28 : 24}px`,
               alignSelf: "flex-start",
             }}>
               <span style={{
@@ -219,7 +219,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
                 fontWeight: 800,
                 color: "#111",
                 textTransform: "uppercase",
-                letterSpacing: "0.15em",
+                letterSpacing: "0.1em",
               }}>
                 {labels.earn}
               </span>
@@ -242,7 +242,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
             if (allCountries.length === 0) return null;
             const flagH = isWide ? 28 : isVertical ? 40 : 36;
             return (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", padding: "2px 0" }}>
                 {allCountries.map((c, i) => (
                   <img
                     key={i}
