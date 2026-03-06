@@ -48,6 +48,14 @@ export default function PortalCampaign() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const { t } = useTranslation();
+  const [hardwareCatalog, setHardwareCatalog] = useState<HardwareCatalogItem[]>([]);
+
+  // Load hardware catalog
+  useEffect(() => {
+    supabase.from("hardware_catalog").select("*").order("name").then(({ data }) => {
+      if (data) setHardwareCatalog(data as any);
+    });
+  }, []);
 
   const { data: waitlistEntry, isLoading: waitlistLoading } = useWaitlistStatus(id, user?.id);
 
