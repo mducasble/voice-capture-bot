@@ -71,6 +71,7 @@ const Room = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [audioProfile, setAudioProfile] = useState<AudioProfile | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [dbCreatorParticipant, setDbCreatorParticipant] = useState<Participant | null>(null);
   
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -241,26 +242,41 @@ const Room = () => {
     fetchRoom();
   }, [roomId, navigate]);
 
-  // Check if current user is the creator and auto-connect
+  // Fetch creator participant from DB (including disconnected ones)
   useEffect(() => {
-    if (!roomId || !room) return;
-
-    const checkCreatorParticipant = async () => {
-      const { data: creatorParticipant } = await supabase
+    if (!roomId) return;
+    const fetchCreator = async () => {
+      const { data } = await supabase
         .from("room_participants")
         .select("*")
         .eq("room_id", roomId)
         .eq("is_creator", true)
         .single();
+      if (data) setDbCreatorParticipant(data as Participant);
+    };
+    fetchCreator();
+  }, [roomId]);
 
-      if (creatorParticipant && !currentParticipant) {
+  // Check if current user is the creator and auto-connect
+  useEffect(() => {
+    if (!roomId || !room || !dbCreatorParticipant) return;
+
+    const checkCreatorParticipant = async () => {
+      if (!currentParticipant) {
         const storedCreatorId = sessionStorage.getItem(`room_${roomId}_participant`);
-        if (storedCreatorId === creatorParticipant.id) {
+        if (storedCreatorId === dbCreatorParticipant.id) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
             mediaStreamRef.current = stream;
             setLocalStream(stream);
-            setCurrentParticipant(creatorParticipant as Participant);
+
+            // Re-mark as connected in DB
+            await supabase
+              .from("room_participants")
+              .update({ is_connected: true, left_at: null })
+              .eq("id", dbCreatorParticipant.id);
+
+            setCurrentParticipant(dbCreatorParticipant);
           } catch (error) {
             console.error("Error getting microphone:", error);
           }
@@ -269,7 +285,7 @@ const Room = () => {
     };
 
     checkCreatorParticipant();
-  }, [roomId, room, currentParticipant, getAudioConstraints]);
+  }, [roomId, room, dbCreatorParticipant, currentParticipant, getAudioConstraints]);
 
   // Fetch and subscribe to participants
   useEffect(() => {
@@ -357,6 +373,12 @@ const Room = () => {
           .single();
 
         if (creatorParticipant) {
+          // Re-mark as connected in DB
+          await supabase
+            .from("room_participants")
+            .update({ is_connected: true, left_at: null })
+            .eq("id", creatorParticipant.id);
+
           // Store in sessionStorage for reconnection
           sessionStorage.setItem(`room_${roomId}_participant`, creatorParticipant.id);
           setCurrentParticipant(creatorParticipant as Participant);
@@ -577,8 +599,8 @@ const Room = () => {
 
     // Check if user might be the creator via sessionStorage
     const storedParticipantId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
-    // Also check if the stored ID matches the creator participant
-    const creatorParticipant = participants.find(p => p.is_creator);
+    // Check participants list first, but also check DB-fetched creator (may be disconnected)
+    const creatorParticipant = participants.find(p => p.is_creator) || dbCreatorParticipant;
     const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
 
     // Join screen
