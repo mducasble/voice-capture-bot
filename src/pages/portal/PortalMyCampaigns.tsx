@@ -35,18 +35,18 @@ function formatDuration(seconds: number) {
 
 function StatusBadge({ label, status, reason }: { label: string; status: string | null; reason?: string | null }) {
   const config: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
-    validated: { icon: <CheckCircle className="h-3 w-3" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    approved: { icon: <CheckCircle className="h-3 w-3" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    rejected: { icon: <XCircle className="h-3 w-3" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
-    pending: { icon: <AlertCircle className="h-3 w-3" />, color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)" },
-    processing: { icon: <Loader2 className="h-3 w-3 animate-spin" />, color: "var(--portal-accent)", bg: "rgba(255,255,255,0.05)" },
+    validated: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+    approved: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+    rejected: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+    pending: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)" },
+    processing: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: "var(--portal-accent)", bg: "rgba(255,255,255,0.05)" },
   };
   const s = status || "pending";
   const c = config[s] || config.pending;
 
   return (
     <span
-      className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest px-1.5 py-0.5"
+      className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
       style={{ color: c.color, background: c.bg }}
       title={reason || undefined}
     >
@@ -55,7 +55,7 @@ function StatusBadge({ label, status, reason }: { label: string; status: string 
   );
 }
 
-function SessionRow({ rec }: { rec: RecordingRow }) {
+function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -75,37 +75,37 @@ function SessionRow({ rec }: { rec: RecordingRow }) {
   }, [playing, rec.file_url]);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+    <div className="flex items-center gap-3 px-4 py-3.5 flex-wrap" style={{ borderBottom: "1px solid var(--portal-border)" }}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {rec.file_url && (
           <button onClick={toggle} className="shrink-0" style={{ color: "var(--portal-accent)" }}>
             {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           </button>
         )}
-        <span className="font-mono text-sm truncate block" style={{ color: "var(--portal-text)" }}>
+        <span className="font-mono text-base truncate block" style={{ color: "var(--portal-text)" }}>
           {rec.discord_username || rec.filename}
         </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+      <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
         {rec.snr_db != null && (
           <span
-            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest px-1.5 py-0.5"
+            className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
             style={{
               color: rec.snr_db >= 25 ? "#22c55e" : rec.snr_db >= 15 ? "#eab308" : "#ef4444",
               background: rec.snr_db >= 25 ? "rgba(34,197,94,0.15)" : rec.snr_db >= 15 ? "rgba(234,179,8,0.15)" : "rgba(239,68,68,0.15)",
             }}
           >
-            <Signal className="h-3 w-3" /> {rec.snr_db.toFixed(1)}dB
+            <Signal className="h-3.5 w-3.5" /> {rec.snr_db.toFixed(1)}dB
           </span>
         )}
         <StatusBadge label="QA" status={rec.quality_status} reason={rec.quality_rejection_reason} />
         <StatusBadge label="Val" status={rec.validation_status} reason={rec.validation_rejection_reason} />
         {rec.duration_seconds != null && (
-          <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+          <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
             {formatDuration(rec.duration_seconds)}
           </span>
         )}
-        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+        <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
           {new Date(rec.created_at).toLocaleDateString("pt-BR")}
         </span>
       </div>
@@ -140,26 +140,26 @@ function SessionMetricsSummary({ recordings }: { recordings: RecordingRow[] }) {
   if (individuals.length === 0) return null;
 
   return (
-    <div className="px-4 py-3 flex items-center gap-4 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
+    <div className="px-4 py-3.5 flex items-center gap-4 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
       {totalDuration > 0 && (
-        <span className="flex items-center gap-1 font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+        <span className="flex items-center gap-1 font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
           <Clock className="h-3 w-3" /> {formatDuration(totalDuration)}
         </span>
       )}
       {avgSnr != null && (
         <span
-          className="flex items-center gap-1 font-mono text-xs"
+          className="flex items-center gap-1 font-mono text-sm"
           style={{ color: avgSnr >= 25 ? "#22c55e" : avgSnr >= 15 ? "#eab308" : "#ef4444" }}
         >
-          <Signal className="h-3 w-3" /> SNR {avgSnr.toFixed(1)}dB
+          <Signal className="h-3.5 w-3.5" /> SNR {avgSnr.toFixed(1)}dB
         </span>
       )}
-      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+      <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
         QA: <span style={{ color: qa.validated > 0 ? "#22c55e" : "var(--portal-text-muted)" }}>{qa.validated}✓</span>
         {qa.rejected > 0 && <> <span style={{ color: "#ef4444" }}>{qa.rejected}✗</span></>}
         {qa.pending > 0 && <> <span>{qa.pending}⏳</span></>}
       </span>
-      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+      <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
         Val: <span style={{ color: val.validated > 0 ? "#22c55e" : "var(--portal-text-muted)" }}>{val.validated}✓</span>
         {val.rejected > 0 && <> <span style={{ color: "#ef4444" }}>{val.rejected}✗</span></>}
         {val.pending > 0 && <> <span>{val.pending}⏳</span></>}
@@ -245,7 +245,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                 return (
                   <div key={sessionId}>
                     <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
-                      <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
+                      <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
                         {t("myCampaigns.session")}{" "}
                         <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
                           {sessionId.slice(0, 8)}
@@ -253,7 +253,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                         {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
                       </span>
                       {mixed?.duration_seconds != null && (
-                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(mixed.duration_seconds)}</span>
+                        <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(mixed.duration_seconds)}</span>
                       )}
                     </div>
                     {recs.map(r => <SessionRow key={r.id} rec={r} />)}
