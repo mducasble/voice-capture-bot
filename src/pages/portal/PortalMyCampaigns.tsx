@@ -113,24 +113,14 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
   );
 }
 
-function SessionMetricsSummary({ recordings }: { recordings: RecordingRow[] }) {
-  const { t } = useTranslation();
+function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
   const individuals = recordings.filter(r => r.recording_type === "individual");
-  const mixed = recordings.filter(r => r.recording_type === "mixed");
-
-  const totalDuration = mixed.reduce((s, r) => s + (r.duration_seconds || 0), 0)
-    || individuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
-
-  const withSnr = individuals.filter(r => r.snr_db != null);
-  const avgSnr = withSnr.length > 0 ? withSnr.reduce((s, r) => s + r.snr_db!, 0) / withSnr.length : null;
 
   const countByStatus = (field: "quality_status" | "validation_status") => {
-    const all = individuals;
     return {
-      validated: all.filter(r => r[field] === "validated" || r[field] === "approved").length,
-      rejected: all.filter(r => r[field] === "rejected").length,
-      pending: all.filter(r => !r[field] || r[field] === "pending" || r[field] === "processing").length,
-      total: all.length,
+      validated: individuals.filter(r => r[field] === "validated" || r[field] === "approved").length,
+      rejected: individuals.filter(r => r[field] === "rejected").length,
+      pending: individuals.filter(r => !r[field] || r[field] === "pending" || r[field] === "processing").length,
     };
   };
 
@@ -141,19 +131,6 @@ function SessionMetricsSummary({ recordings }: { recordings: RecordingRow[] }) {
 
   return (
     <div className="px-4 py-3.5 flex items-center gap-4 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
-      {totalDuration > 0 && (
-        <span className="flex items-center gap-1 font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-          <Clock className="h-3 w-3" /> {formatDuration(totalDuration)}
-        </span>
-      )}
-      {avgSnr != null && (
-        <span
-          className="flex items-center gap-1 font-mono text-sm"
-          style={{ color: avgSnr >= 25 ? "#22c55e" : avgSnr >= 15 ? "#eab308" : "#ef4444" }}
-        >
-          <Signal className="h-3.5 w-3.5" /> SNR {avgSnr.toFixed(1)}dB
-        </span>
-      )}
       <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
         QA: <span style={{ color: qa.validated > 0 ? "#22c55e" : "var(--portal-text-muted)" }}>{qa.validated}✓</span>
         {qa.rejected > 0 && <> <span style={{ color: "#ef4444" }}>{qa.rejected}✗</span></>}
@@ -239,7 +216,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             </div>
           ) : (
             <div>
-              <SessionMetricsSummary recordings={recordings} />
+              <CampaignStatusSummary recordings={recordings} />
               {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
                 const sessionDuration = recs.find(r => r.recording_type === "mixed")?.duration_seconds
                   ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
