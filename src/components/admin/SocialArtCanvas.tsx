@@ -77,11 +77,6 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           width: format.width,
           height: format.height,
           backgroundColor: "#111111",
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
-          `,
-          backgroundSize: `${gridSize}px ${gridSize}px`,
           position: "relative",
           fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
           color: "#eaeaea",
@@ -90,6 +85,22 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
           flexDirection: "column",
         }}
       >
+        {/* Grid overlay */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: format.width,
+          height: format.height,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.15) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(255,255,255,0.15) 2px, transparent 2px)
+          `,
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+          pointerEvents: "none",
+          zIndex: 0,
+        }} />
+
         {/* Corner accents */}
         <div style={{ position: "absolute", top: 20, left: 20, width: 12, height: 12, background: "#8cff05" }} />
         <div style={{ position: "absolute", top: 20, right: 20, width: 12, height: 12, background: "#8cff05" }} />
