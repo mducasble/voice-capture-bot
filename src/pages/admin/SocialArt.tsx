@@ -38,6 +38,7 @@ export default function SocialArt() {
   const [extraCountries, setExtraCountries] = useState<string[]>([]);
   const [newCountryInput, setNewCountryInput] = useState<string>("");
   const canvasRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const campaign = campaigns?.find(c => c.id === selectedCampaignId);
   const format = FORMATS.find(f => f.id === selectedFormat)!;
@@ -48,10 +49,13 @@ export default function SocialArt() {
   const shortLink = campaign ? `kgen.quest/${selectedLang}/${(campaignIndex ?? 0) + 1}` : "";
 
   const handleDownloadTemplate = useCallback(async () => {
-    if (!canvasRef.current) return;
+    if (!exportRef.current) return;
 
     try {
-      const canvas = await html2canvas(canvasRef.current, {
+      // Temporarily make export canvas visible for html2canvas
+      exportRef.current.style.display = "block";
+
+      const canvas = await html2canvas(exportRef.current, {
         width: format.width,
         height: format.height,
         scale: 1,
@@ -59,6 +63,8 @@ export default function SocialArt() {
         allowTaint: false,
         backgroundColor: "#111111",
       });
+
+      exportRef.current.style.display = "none";
 
       canvas.toBlob((blob) => {
         if (!blob) return;
@@ -71,6 +77,7 @@ export default function SocialArt() {
       }, "image/png");
     } catch (err) {
       console.error(err);
+      if (exportRef.current) exportRef.current.style.display = "none";
       toast.error("Erro ao exportar imagem");
     }
   }, [campaign, format, selectedFormat, selectedLang]);
@@ -329,6 +336,20 @@ export default function SocialArt() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Hidden full-size export canvas */}
+        <div style={{ position: "fixed", left: "-9999px", top: 0, display: "none" }}>
+          <SocialArtCanvas
+            ref={exportRef}
+            campaign={campaign || null}
+            format={format}
+            language={selectedLang}
+            shortLink={shortLink}
+            customTitle={customTitle || undefined}
+            customDescription={customDescription || undefined}
+            extraCountries={extraCountries.length > 0 ? extraCountries : undefined}
+          />
         </div>
       </div>
     </div>
