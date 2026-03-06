@@ -401,6 +401,47 @@ export type Database = {
           },
         ]
       }
+      campaign_instructions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          instructions_summary: string | null
+          instructions_title: string | null
+          prompt_do: string[] | null
+          prompt_dont: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_instructions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_language_variants: {
         Row: {
           campaign_id: string
