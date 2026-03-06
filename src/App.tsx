@@ -4,9 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
 import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
 
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const Index = lazy(() => import("./pages/Index"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Rooms = lazy(() => import("./pages/Rooms"));
 const Room = lazy(() => import("./pages/Room"));
@@ -57,16 +59,19 @@ const App = () => (
               <Route path="room/:roomId" element={<Room />} />
             </Route>
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<Index />} />
-            <Route path="/admin/campaigns" element={<Campaigns />} />
-            <Route path="/admin/rooms" element={<Rooms />} />
-            <Route path="/admin/room/:roomId" element={<Room />} />
-            <Route path="/admin/review" element={<Review />} />
-            <Route path="/admin/review-queue" element={<ReviewQueue />} />
-            <Route path="/admin/transcription" element={<Transcript />} />
-            <Route path="/admin/social-art" element={<SocialArt />} />
-            <Route path="/admin/rooms-monitor" element={<RoomsMonitor />} />
+            {/* Admin routes with sidebar layout */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="recordings" element={<Index />} />
+              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="rooms" element={<Rooms />} />
+              <Route path="room/:roomId" element={<Room />} />
+              <Route path="review" element={<Review />} />
+              <Route path="review-queue" element={<ReviewQueue />} />
+              <Route path="transcription" element={<Transcript />} />
+              <Route path="social-art" element={<SocialArt />} />
+              <Route path="rooms-monitor" element={<RoomsMonitor />} />
+            </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
