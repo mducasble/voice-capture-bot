@@ -1,14 +1,11 @@
 import { useMemo } from "react";
-import { Mic2, Clock, HardDrive, Server } from "lucide-react";
+import { Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
-import { StatsCard } from "@/components/StatsCard";
-import { StorageStatsCard } from "@/components/StorageStatsCard";
-import { AudioSpecBadge } from "@/components/AudioSpecBadge";
 import { AudioUpload } from "@/components/AudioUpload";
 import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
-import { useRecordings, useRecordingStats, type Recording } from "@/hooks/useRecordings";
+import { useRecordings, type Recording } from "@/hooks/useRecordings";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
