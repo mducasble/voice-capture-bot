@@ -38,6 +38,7 @@ function StatusBadge({ label, status, reason }: { label: string; status: string 
     validated: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
     approved: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
     rejected: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+    failed: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
     pending: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)" },
     processing: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: "var(--portal-accent)", bg: "rgba(255,255,255,0.05)" },
   };
