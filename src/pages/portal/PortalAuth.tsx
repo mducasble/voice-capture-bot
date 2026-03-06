@@ -21,7 +21,7 @@ type AuthMode = "login" | "signup" | "vendor";
 
 export default function PortalAuth() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
   const [lightMode, setLightMode] = useState(false);
@@ -33,8 +33,7 @@ export default function PortalAuth() {
   // Country name helper
   const countryName = (code: string) => {
     try {
-      const lang = (window as any).__i18n_lang || navigator.language?.split("-")[0] || "en";
-      const dn = new Intl.DisplayNames([lang], { type: "region" });
+      const dn = new Intl.DisplayNames([i18n.language || "en"], { type: "region" });
       return dn.of(code) || code;
     } catch { return code; }
   };
