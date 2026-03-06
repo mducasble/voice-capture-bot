@@ -246,7 +246,7 @@ export default function PortalCampaign() {
         )}
 
         {/* Global campaign instructions */}
-        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0)) && (
+        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0) || (campaign.instructions.required_hardware?.length > 0)) && (
           <Section title="Instruções Gerais" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {campaign.instructions.instructions_title && (
