@@ -20,6 +20,14 @@ function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 }
 
+function getEmbedUrl(url: string): string {
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  return url;
+}
+
 
 
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
@@ -312,6 +320,38 @@ export default function PortalCampaign() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+              {campaign.instructions.video_url && (
+                <div className="space-y-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    Vídeo de Instrução
+                  </span>
+                  <div className="aspect-video overflow-hidden" style={{ border: "1px solid var(--portal-border)" }}>
+                    <iframe
+                      src={getEmbedUrl(campaign.instructions.video_url)}
+                      className="w-full h-full"
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    />
+                  </div>
+                </div>
+              )}
+              {campaign.instructions.pdf_file_url && (
+                <div className="space-y-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    <FileText className="h-3 w-3" /> Instruções Completas (PDF)
+                  </span>
+                  <a
+                    href={campaign.instructions.pdf_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-3 font-mono text-xs transition-colors hover:opacity-80"
+                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)", color: "var(--portal-accent)" }}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Baixar PDF com instruções detalhadas
+                  </a>
                 </div>
               )}
             </div>

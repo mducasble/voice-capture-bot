@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -30,6 +30,17 @@ import { toast } from "@/hooks/use-toast";
 // Convert kebab-case icon name to PascalCase for lucide-react icons lookup
 function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+}
+
+// Convert YouTube/Vimeo URLs to embed URLs
+function getEmbedUrl(url: string): string {
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  return url;
 }
 
 interface CampaignDialogProps {
@@ -109,8 +120,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
   const [sections, setSections] = useState<CampaignSection[]>([]);
   const [globalInstructions, setGlobalInstructions] = useState<CampaignInstructions>({
-    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [],
+    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null,
   });
+  const [pdfUploading, setPdfUploading] = useState(false);
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
   const [hardwareInput, setHardwareInput] = useState("");
   const [hardwareLoading, setHardwareLoading] = useState(false);
@@ -164,7 +176,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       if (campaign.instructions) {
         setGlobalInstructions(campaign.instructions);
       } else {
-        setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [] });
+        setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
       }
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
@@ -185,7 +197,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setLangVariants([]);
       setTaskSets([]);
       setSections([]);
-      setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [] });
+      setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
@@ -254,7 +266,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         reward_config: reward,
         referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
-        instructions: (globalInstructions.instructions_title || globalInstructions.instructions_summary || globalInstructions.prompt_do.length || globalInstructions.prompt_dont.length || globalInstructions.required_hardware.length) ? globalInstructions : null,
+        instructions: (globalInstructions.instructions_title || globalInstructions.instructions_summary || globalInstructions.prompt_do.length || globalInstructions.prompt_dont.length || globalInstructions.required_hardware.length || globalInstructions.video_url || globalInstructions.pdf_file_url) ? globalInstructions : null,
       };
       if (campaignId) {
         await updateCampaign.mutateAsync({ id: campaignId, ...payload });
@@ -1091,6 +1103,75 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+
+                {/* VÍDEO EMBED */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm">Vídeo de Instrução (YouTube/Vimeo)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cole a URL do YouTube ou Vimeo. O vídeo será embedado na página da campanha.
+                  </p>
+                  <Input
+                    value={globalInstructions.video_url || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, video_url: e.target.value || null }))}
+                    placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/..."
+                  />
+                  {globalInstructions.video_url && (
+                    <div className="border rounded-lg overflow-hidden aspect-video">
+                      <iframe
+                        src={getEmbedUrl(globalInstructions.video_url)}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* PDF DE INSTRUÇÕES */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm">PDF com Instruções Detalhadas</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Faça upload de um PDF que será disponibilizado para download pelos participantes.
+                  </p>
+                  {globalInstructions.pdf_file_url ? (
+                    <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                      <FileText className="h-5 w-5 text-primary shrink-0" />
+                      <a href={globalInstructions.pdf_file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate flex-1">
+                        {globalInstructions.pdf_file_url.split("/").pop()}
+                      </a>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setGlobalInstructions(prev => ({ ...prev, pdf_file_url: null }))}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".pdf"
+                        disabled={pdfUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setPdfUploading(true);
+                          try {
+                            const path = `instructions/${Date.now()}_${file.name}`;
+                            const { error: uploadError } = await supabase.storage.from("campaign-files").upload(path, file, { contentType: "application/pdf" });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage.from("campaign-files").getPublicUrl(path);
+                            setGlobalInstructions(prev => ({ ...prev, pdf_file_url: urlData.publicUrl }));
+                            toast({ title: "PDF enviado com sucesso!" });
+                          } catch (err) {
+                            console.error(err);
+                            toast({ title: "Erro ao enviar PDF", variant: "destructive" });
+                          } finally {
+                            setPdfUploading(false);
+                          }
+                        }}
+                      />
+                      {pdfUploading && <Loader2 className="h-4 w-4 animate-spin" />}
                     </div>
                   )}
                 </div>

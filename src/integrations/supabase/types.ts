@@ -408,10 +408,12 @@ export type Database = {
           id: string
           instructions_summary: string | null
           instructions_title: string | null
+          pdf_file_url: string | null
           prompt_do: string[] | null
           prompt_dont: string[] | null
           required_hardware: string[] | null
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           campaign_id: string
@@ -419,10 +421,12 @@ export type Database = {
           id?: string
           instructions_summary?: string | null
           instructions_title?: string | null
+          pdf_file_url?: string | null
           prompt_do?: string[] | null
           prompt_dont?: string[] | null
           required_hardware?: string[] | null
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           campaign_id?: string
@@ -430,10 +434,12 @@ export type Database = {
           id?: string
           instructions_summary?: string | null
           instructions_title?: string | null
+          pdf_file_url?: string | null
           prompt_do?: string[] | null
           prompt_dont?: string[] | null
           required_hardware?: string[] | null
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
           {

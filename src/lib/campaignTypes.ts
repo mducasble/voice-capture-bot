@@ -64,6 +64,8 @@ export interface CampaignInstructions {
   prompt_do: string[];
   prompt_dont: string[];
   required_hardware: string[];
+  video_url: string | null;
+  pdf_file_url: string | null;
 }
 
 export interface QualityFlow {
