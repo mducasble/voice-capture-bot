@@ -160,8 +160,8 @@ Deno.serve(async (req) => {
     parts.push(`<rect x="${questX}" y="${questY}" width="${questW}" height="${questH}" fill="#8cff05"/>`);
     parts.push(`<text x="${questX + questW / 2}" y="${questY + questH * 0.72}" text-anchor="middle" font-family="${fontFamily}" font-size="${badgeSize}" font-weight="800" letter-spacing="0.2em" fill="#111">${questText}</text>`);
 
-    // Content area
-    let cy = padding + logoSize + padding * 0.8;
+    // Content area - match the React preview spacing (logo + generous gap)
+    let cy = padding + logoSize + padding * 1.5;
 
     // Task type labels
     if (taskTypes.length > 0) {
