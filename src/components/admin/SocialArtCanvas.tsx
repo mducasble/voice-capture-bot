@@ -93,24 +93,15 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
         <div style={{ padding: `${padding}px ${padding}px 0`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* KGeN Logo placeholder - using text since we can't embed SVG easily in export */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: logoSize,
-              height: logoSize,
-              background: "linear-gradient(135deg, #8cff05 0%, #5fa003 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 900,
-              fontSize: logoSize * 0.4,
-              color: "#111",
-              letterSpacing: "-1px",
-            }}>
-              K
-            </div>
-            <span style={{ fontSize: subtitleSize * 0.7, fontWeight: 700, letterSpacing: "0.15em", color: "#8cff05", textTransform: "uppercase" }}>
-              KGeN
-            </span>
-          </div>
+            <img
+              src={kgenLogoGreen}
+              alt="KGeN"
+              style={{
+                width: logoSize,
+                height: logoSize,
+                objectFit: "contain",
+              }}
+            />
           <div style={{
             background: "#8cff05",
             color: "#111",
