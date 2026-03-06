@@ -88,7 +88,7 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
 
 // --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes, instructionsRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
     supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
@@ -97,6 +97,7 @@ async function fetchCampaignRelations(campaignId: string) {
     supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
     (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_sections").select("*").eq("campaign_id", campaignId).order("sort_order"),
+    (supabase as any).from("campaign_instructions").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
 
   // Enrich task sets with validation rules
@@ -121,6 +122,7 @@ async function fetchCampaignRelations(campaignId: string) {
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
     sections: (sectionsRes.data || []) as CampaignSection[],
+    instructions: instructionsRes.data || null,
   };
 }
 
