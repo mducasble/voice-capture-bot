@@ -20,7 +20,7 @@ import {
   useCampaign, useClients, useCreateCampaign, useUpdateCampaign, useDeleteCampaign, useCreateClient, useTaskTypeCatalog,
 } from "@/hooks/useCampaigns";
 import type {
-  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule,
+  GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, CampaignSection, ValidationRule, CampaignInstructions,
 } from "@/lib/campaignTypes";
 import {
   DEFAULT_REJECTION_REASONS, RULE_LABELS, TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES,
@@ -103,6 +103,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [taskSets, setTaskSets] = useState<CampaignTaskSet[]>([]);
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
   const [sections, setSections] = useState<CampaignSection[]>([]);
+  const [globalInstructions, setGlobalInstructions] = useState<CampaignInstructions>({
+    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [],
+  });
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
@@ -150,6 +153,11 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       if (campaign.language_variants?.length) setLangVariants(campaign.language_variants);
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
       if (campaign.sections?.length) setSections(campaign.sections); else setSections([]);
+      if (campaign.instructions) {
+        setGlobalInstructions(campaign.instructions);
+      } else {
+        setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [] });
+      }
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
       if (campaign.referral_config) {
@@ -169,6 +177,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setLangVariants([]);
       setTaskSets([]);
       setSections([]);
+      setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [] });
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
@@ -199,6 +208,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         reward_config: reward,
         referral_config: referralOverride ? referralConfig : undefined,
         quality_flow: quality,
+        instructions: (globalInstructions.instructions_title || globalInstructions.instructions_summary || globalInstructions.prompt_do.length || globalInstructions.prompt_dont.length) ? globalInstructions : null,
       };
       if (campaignId) {
         await updateCampaign.mutateAsync({ id: campaignId, ...payload });
@@ -242,6 +252,12 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       const textsPayload = {
         name: name.replace(" (Cópia)", ""),
         description: description || "",
+        global_instructions: {
+          instructions_title: globalInstructions.instructions_title || "",
+          instructions_summary: globalInstructions.instructions_summary || "",
+          prompt_do: globalInstructions.prompt_do || [],
+          prompt_dont: globalInstructions.prompt_dont || [],
+        },
         task_sets: taskSets.map(ts => ({
           instructions_title: ts.instructions_title || "",
           instructions_summary: ts.instructions_summary || "",
@@ -267,6 +283,16 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setName(t.name + " (Cópia)");
       setDescription(t.description || "");
       setLanguagePrimary(translateTargetLang);
+
+      if (t.global_instructions) {
+        setGlobalInstructions(prev => ({
+          ...prev,
+          instructions_title: t.global_instructions.instructions_title ?? prev.instructions_title,
+          instructions_summary: t.global_instructions.instructions_summary ?? prev.instructions_summary,
+          prompt_do: t.global_instructions.prompt_do ?? prev.prompt_do,
+          prompt_dont: t.global_instructions.prompt_dont ?? prev.prompt_dont,
+        }));
+      }
 
       if (t.task_sets?.length) {
         setTaskSets(prev => prev.map((ts, i) => ({
@@ -742,8 +768,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 </Button>
               </div>
             )}
-            <TabsList className="grid grid-cols-4 w-full md:grid-cols-7">
+            <TabsList className="grid grid-cols-4 w-full md:grid-cols-8">
               <TabsTrigger value="general">Geral</TabsTrigger>
+              <TabsTrigger value="instructions">Instruções</TabsTrigger>
               <TabsTrigger value="geo">Geografia</TabsTrigger>
               <TabsTrigger value="lang">Idiomas</TabsTrigger>
               <TabsTrigger value="tasks">Tarefas</TabsTrigger>
@@ -856,6 +883,100 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   <div className="flex items-center gap-2">
                     <Switch checked={visibilityIsPublic} onCheckedChange={setVisibilityIsPublic} />
                     <Label>Pública</Label>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* GLOBAL INSTRUCTIONS */}
+              <TabsContent value="instructions" className="space-y-4 pr-4">
+                <p className="text-xs text-muted-foreground">
+                  Instruções gerais da campanha visíveis para todos os participantes. Instruções específicas por tipo de tarefa podem ser configuradas na aba Tarefas.
+                </p>
+                <div className="space-y-2">
+                  <Label>Título</Label>
+                  <Input
+                    value={globalInstructions.instructions_title || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_title: e.target.value || null }))}
+                    placeholder="Ex: Como participar desta campanha"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Resumo / Descrição detalhada</Label>
+                  <Textarea
+                    value={globalInstructions.instructions_summary || ""}
+                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_summary: e.target.value || null }))}
+                    placeholder="Explique ao participante o que ele precisa fazer..."
+                    rows={4}
+                  />
+                </div>
+
+                {/* DO / DONT */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">O que FAZER</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Adicionar item"
+                        id="global-do"
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (e.target as HTMLInputElement).value.trim();
+                            if (v) {
+                              setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, v] }));
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }
+                        }}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        const el = document.getElementById("global-do") as HTMLInputElement;
+                        if (el?.value.trim()) {
+                          setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, el.value.trim()] }));
+                          el.value = "";
+                        }
+                      }}><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {globalInstructions.prompt_do.map((item, i) => (
+                        <Badge key={i} variant="secondary" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: prev.prompt_do.filter((_, ii) => ii !== i) }))}>
+                          ✅ {item} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">O que NÃO fazer</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Adicionar item"
+                        id="global-dont"
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = (e.target as HTMLInputElement).value.trim();
+                            if (v) {
+                              setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, v] }));
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }
+                        }}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        const el = document.getElementById("global-dont") as HTMLInputElement;
+                        if (el?.value.trim()) {
+                          setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, el.value.trim()] }));
+                          el.value = "";
+                        }
+                      }}><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {globalInstructions.prompt_dont.map((item, i) => (
+                        <Badge key={i} variant="destructive" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: prev.prompt_dont.filter((_, ii) => ii !== i) }))}>
+                          🚫 {item} ×
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </TabsContent>

@@ -232,6 +232,50 @@ export default function PortalCampaign() {
           </Section>
         )}
 
+        {/* Global campaign instructions */}
+        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0)) && (
+          <Section title="Instruções Gerais" icon={BookOpen}>
+            <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+              {campaign.instructions.instructions_title && (
+                <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                  {campaign.instructions.instructions_title}
+                </p>
+              )}
+              {campaign.instructions.instructions_summary && (
+                <p className="font-mono text-xs leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
+                  {campaign.instructions.instructions_summary}
+                </p>
+              )}
+              {campaign.instructions.prompt_do && campaign.instructions.prompt_do.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                  <ul className="space-y-1">
+                    {campaign.instructions.prompt_do.map((item: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 font-mono text-xs" style={{ color: "var(--portal-text)" }}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {campaign.instructions.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                  <ul className="space-y-1">
+                    {campaign.instructions.prompt_dont.map((item: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 font-mono text-xs" style={{ color: "var(--portal-text)" }}>
+                        <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </Section>
+        )}
+
         {/* Task instructions — one block per enabled task set */}
         {enabledTaskSets.map(ts => {
           const hasDo = ts.prompt_do && ts.prompt_do.length > 0;

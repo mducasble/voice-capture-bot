@@ -57,12 +57,13 @@ serve(async (req) => {
 
     const enriched = await Promise.all(
       (campaigns || []).map(async (c: any) => {
-        const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes] = await Promise.all([
+        const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, instructionsRes] = await Promise.all([
           supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", c.id).maybeSingle(),
           supabase.from("campaign_language_variants").select("*").eq("campaign_id", c.id),
           supabase.from("campaign_task_sets").select("*").eq("campaign_id", c.id).order("weight"),
           supabase.from("campaign_reward_config").select("*").eq("campaign_id", c.id).maybeSingle(),
           supabase.from("campaign_quality_flow").select("*").eq("campaign_id", c.id).maybeSingle(),
+          supabase.from("campaign_instructions").select("*").eq("campaign_id", c.id).maybeSingle(),
         ]);
 
         // Enrich task sets with validation
@@ -100,6 +101,7 @@ serve(async (req) => {
           task_sets: taskSets,
           reward_config: rewardRes.data || null,
           quality_flow: qualityRes.data || null,
+          instructions: instructionsRes.data || null,
         };
       })
     );

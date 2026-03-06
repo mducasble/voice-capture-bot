@@ -4,6 +4,7 @@ import type {
   Client,
   Campaign,
   CampaignSection,
+  CampaignInstructions,
   GeographicScope,
   LanguageVariant,
   RewardConfig,
@@ -16,7 +17,7 @@ import type {
 } from "@/lib/campaignTypes";
 import { CATEGORY_VALIDATION_TABLE, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 
-export type { Client, Campaign, CampaignSection, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
+export type { Client, Campaign, CampaignSection, CampaignInstructions, GeographicScope, LanguageVariant, RewardConfig, ReferralConfig, QualityFlow, CampaignTaskSet, ValidationRule, TaskTypeCatalog, AdministrativeRules };
 
 // --- Task Type Catalog ---
 export function useTaskTypeCatalog() {
@@ -87,7 +88,7 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
 
 // --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes, instructionsRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
     supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
@@ -96,6 +97,7 @@ async function fetchCampaignRelations(campaignId: string) {
     supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
     (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_sections").select("*").eq("campaign_id", campaignId).order("sort_order"),
+    (supabase as any).from("campaign_instructions").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
 
   // Enrich task sets with validation rules
@@ -120,6 +122,7 @@ async function fetchCampaignRelations(campaignId: string) {
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
     sections: (sectionsRes.data || []) as CampaignSection[],
+    instructions: instructionsRes.data || null,
   };
 }
 
@@ -171,6 +174,7 @@ export interface SaveCampaignPayload {
   reward_config?: RewardConfig;
   referral_config?: ReferralConfig;
   quality_flow?: QualityFlow;
+  instructions?: CampaignInstructions | null;
 }
 
 // --- Upsert validation rules for a task set ---
@@ -368,6 +372,18 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       pool_percent: payload.referral_config.pool_percent,
       cascade_keep_ratio: payload.referral_config.cascade_keep_ratio,
       max_levels: payload.referral_config.max_levels,
+    });
+  }
+
+  // Campaign instructions (global)
+  await (supabase as any).from("campaign_instructions").delete().eq("campaign_id", campaignId);
+  if (payload.instructions) {
+    await (supabase as any).from("campaign_instructions").insert({
+      campaign_id: campaignId,
+      instructions_title: payload.instructions.instructions_title,
+      instructions_summary: payload.instructions.instructions_summary,
+      prompt_do: payload.instructions.prompt_do || [],
+      prompt_dont: payload.instructions.prompt_dont || [],
     });
   }
 }
