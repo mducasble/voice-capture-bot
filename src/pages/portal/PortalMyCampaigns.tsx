@@ -129,18 +129,33 @@ function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
 
   if (individuals.length === 0) return null;
 
+  const StatusPill = ({ label, counts }: { label: string; counts: { validated: number; rejected: number; pending: number } }) => (
+    <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}>
+      <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{label}</span>
+      <div className="flex items-center gap-1.5">
+        {counts.validated > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+            <CheckCircle className="h-3 w-3" /> {counts.validated}
+          </span>
+        )}
+        {counts.rejected > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#ef4444", background: "rgba(239,68,68,0.15)" }}>
+            <XCircle className="h-3 w-3" /> {counts.rejected}
+          </span>
+        )}
+        {counts.pending > 0 && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "var(--portal-text-muted)", background: "rgba(255,255,255,0.05)" }}>
+            <AlertCircle className="h-3 w-3" /> {counts.pending}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="px-4 py-3.5 flex items-center gap-4 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
-      <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-        QA: <span style={{ color: qa.validated > 0 ? "#22c55e" : "var(--portal-text-muted)" }}>{qa.validated}✓</span>
-        {qa.rejected > 0 && <> <span style={{ color: "#ef4444" }}>{qa.rejected}✗</span></>}
-        {qa.pending > 0 && <> <span>{qa.pending}⏳</span></>}
-      </span>
-      <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-        Val: <span style={{ color: val.validated > 0 ? "#22c55e" : "var(--portal-text-muted)" }}>{val.validated}✓</span>
-        {val.rejected > 0 && <> <span style={{ color: "#ef4444" }}>{val.rejected}✗</span></>}
-        {val.pending > 0 && <> <span>{val.pending}⏳</span></>}
-      </span>
+    <div className="px-4 py-3.5 flex items-center justify-end gap-3 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
+      <StatusPill label="QA" counts={qa} />
+      <StatusPill label="Val" counts={val} />
     </div>
   );
 }
