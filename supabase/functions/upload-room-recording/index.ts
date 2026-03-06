@@ -17,6 +17,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Extract user_id from JWT if present
+    let authUserId: string | null = null;
+    const authHeader = req.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) authUserId = user.id;
+    }
+
     // Parse multipart form data (binary audio + metadata)
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -158,6 +167,7 @@ serve(async (req) => {
         discord_channel_id: session_id,
         discord_user_id: participant_id,
         discord_username: participant_name,
+        user_id: authUserId,
         filename,
         file_url: s3Url,
         file_size_bytes: bytes.length,
