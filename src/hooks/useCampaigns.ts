@@ -374,6 +374,18 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       max_levels: payload.referral_config.max_levels,
     });
   }
+
+  // Campaign instructions (global)
+  await (supabase as any).from("campaign_instructions").delete().eq("campaign_id", campaignId);
+  if (payload.instructions) {
+    await (supabase as any).from("campaign_instructions").insert({
+      campaign_id: campaignId,
+      instructions_title: payload.instructions.instructions_title,
+      instructions_summary: payload.instructions.instructions_summary,
+      prompt_do: payload.instructions.prompt_do || [],
+      prompt_dont: payload.instructions.prompt_dont || [],
+    });
+  }
 }
 
 // --- Mutations ---
