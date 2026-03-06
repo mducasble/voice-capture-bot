@@ -174,6 +174,7 @@ export interface SaveCampaignPayload {
   reward_config?: RewardConfig;
   referral_config?: ReferralConfig;
   quality_flow?: QualityFlow;
+  instructions?: CampaignInstructions | null;
 }
 
 // --- Upsert validation rules for a task set ---
