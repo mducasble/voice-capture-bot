@@ -9,6 +9,19 @@ const LANG_LABELS: Record<string, Record<string, string>> = {
   es: { earn: "GANA", perHour: "/hora", perUnit: "/unid", joinNow: "PARTICIPA AHORA", quest: "QUEST" },
 };
 
+// KGeN logo as inline SVG paths (from Asset_16-2.svg)
+const KGEN_LOGO_SVG = `<svg viewBox="0 0 220.04 220.04" xmlns="http://www.w3.org/2000/svg">
+  <rect fill="#8cff05" width="220.04" height="220.04"/>
+  <rect fill="#1f3338" x="22.59" y="22.59" width="20.07" height="26.1"/>
+  <path fill="#1f3338" d="M148.32,54.02v16.05h33.14v16.97h-47.91v-48.4h63.91v-16.05h-62.74c-9.84,0-17.83,7.98-17.83,17.83v44.85c0,9.84,7.98,17.83,17.83,17.83h62.79v-49.08h-49.2Z"/>
+  <path fill="#1f3338" d="M22.54,134.69v44.85c0,9.84,7.98,17.83,17.83,17.83h62.74v-16.05h-63.91v-48.4h46.1v16.97h-31.33v16.05h49.2v-49.08h-62.79c-9.84,0-17.83,7.98-17.83,17.83Z"/>
+  <rect fill="#1f3338" x="22.59" y="76.99" width="20.07" height="26.1"/>
+  <rect fill="#1f3338" x="116.9" y="165.94" width="20.07" height="31.42"/>
+  <rect fill="#1f3338" x="177.45" y="116.86" width="20.07" height="31.42"/>
+  <polygon fill="#1f3338" points="43.83 62.84 89.52 103.11 103.16 103.11 103.16 89.47 72.91 62.84 103.16 36.21 103.16 22.59 89.52 22.58 43.83 62.84"/>
+  <polygon fill="#1f3338" points="116.93 116.86 116.93 131.1 183.2 197.38 197.45 197.38 197.45 183.14 131.17 116.86 116.93 116.86"/>
+</svg>`;
+
 // Fetch image and convert to base64 data URI
 async function fetchAsBase64(url: string): Promise<string> {
   try {
@@ -94,10 +107,6 @@ Deno.serve(async (req) => {
     const desc = customDescription || campaignDescription || "";
     const truncDesc = desc.length > 120 ? desc.slice(0, 120) + "..." : desc;
 
-    // Fetch logo
-    const logoUrl = "https://voice-tracker.lovable.app/assets/kgen-logo-green.png";
-    const logoB64 = await fetchAsBase64(logoUrl);
-
     // Fetch flag images
     const flagImages: string[] = [];
     for (const c of countries) {
@@ -128,10 +137,18 @@ Deno.serve(async (req) => {
     // Font style
     const fontFamily = `'SF Mono', 'Fira Code', 'Consolas', 'Courier New', monospace`;
 
-    // Logo
-    if (logoB64) {
-      parts.push(`<image href="${logoB64}" x="${padding}" y="${padding}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
-    }
+    // Logo - embedded as nested SVG (no external fetch needed)
+    parts.push(`<svg x="${padding}" y="${padding}" width="${logoSize}" height="${logoSize}" viewBox="0 0 220.04 220.04">`);
+    parts.push(`<rect fill="#8cff05" width="220.04" height="220.04"/>`);
+    parts.push(`<rect fill="#1f3338" x="22.59" y="22.59" width="20.07" height="26.1"/>`);
+    parts.push(`<path fill="#1f3338" d="M148.32,54.02v16.05h33.14v16.97h-47.91v-48.4h63.91v-16.05h-62.74c-9.84,0-17.83,7.98-17.83,17.83v44.85c0,9.84,7.98,17.83,17.83,17.83h62.79v-49.08h-49.2Z"/>`);
+    parts.push(`<path fill="#1f3338" d="M22.54,134.69v44.85c0,9.84,7.98,17.83,17.83,17.83h62.74v-16.05h-63.91v-48.4h46.1v16.97h-31.33v16.05h49.2v-49.08h-62.79c-9.84,0-17.83,7.98-17.83,17.83Z"/>`);
+    parts.push(`<rect fill="#1f3338" x="22.59" y="76.99" width="20.07" height="26.1"/>`);
+    parts.push(`<rect fill="#1f3338" x="116.9" y="165.94" width="20.07" height="31.42"/>`);
+    parts.push(`<rect fill="#1f3338" x="177.45" y="116.86" width="20.07" height="31.42"/>`);
+    parts.push(`<polygon fill="#1f3338" points="43.83 62.84 89.52 103.11 103.16 103.11 103.16 89.47 72.91 62.84 103.16 36.21 103.16 22.59 89.52 22.58 43.83 62.84"/>`);
+    parts.push(`<polygon fill="#1f3338" points="116.93 116.86 116.93 131.1 183.2 197.38 197.45 197.38 197.45 183.14 131.17 116.86 116.93 116.86"/>`);
+    parts.push(`</svg>`);
 
     // QUEST badge
     const questText = labels.quest;
