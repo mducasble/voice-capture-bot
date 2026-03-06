@@ -159,6 +159,16 @@ serve(async (req) => {
 
     console.log(`Successfully uploaded to S3: ${s3Url}`);
 
+    // Calculate duration from WAV file size (PCM: size = duration * sampleRate * channels * bytesPerSample + 44 header)
+    const wavChannels = format === 'wav' ? 1 : 2;
+    const bytesPerSample = 2; // 16-bit
+    const sampleRate = 48000;
+    const headerSize = 44;
+    const pcmBytes = Math.max(0, bytes.length - headerSize);
+    const durationSeconds = pcmBytes / (sampleRate * wavChannels * bytesPerSample);
+
+    console.log(`Calculated duration: ${durationSeconds.toFixed(2)}s from ${bytes.length} bytes`);
+
     // Register in database
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')
@@ -171,9 +181,10 @@ serve(async (req) => {
         filename,
         file_url: s3Url,
         file_size_bytes: bytes.length,
-        sample_rate: 48000,
+        duration_seconds: durationSeconds > 0 ? durationSeconds : null,
+        sample_rate: sampleRate,
         bit_depth: 16,
-        channels: format === 'wav' ? 1 : 2,
+        channels: wavChannels,
         format,
         status: format === 'wav' ? 'processing' : 'completed',
         session_id,
