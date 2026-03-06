@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import html2canvas from "html2canvas";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,47 +51,26 @@ export default function SocialArt() {
     if (!canvasRef.current) return;
 
     try {
-      // Use html2canvas approach via canvas API
-      const el = canvasRef.current;
-      const canvas = document.createElement("canvas");
-      canvas.width = format.width;
-      canvas.height = format.height;
+      const canvas = await html2canvas(canvasRef.current, {
+        width: format.width,
+        height: format.height,
+        scale: 1,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: "#111111",
+      });
 
-      // Use foreignObject SVG approach for high-quality export
-      const svgData = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${format.width}" height="${format.height}">
-          <foreignObject width="100%" height="100%">
-            ${new XMLSerializer().serializeToString(el)}
-          </foreignObject>
-        </svg>
-      `;
-      
-      const img = new Image();
-      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      
-      img.onload = () => {
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `${campaign?.name || "quest"}-${selectedFormat}-${selectedLang}.png`;
-          a.click();
-          URL.revokeObjectURL(a.href);
-          toast.success("Arte exportada!");
-        }, "image/png");
-      };
-      
-      img.onerror = () => {
-        toast.error("Erro ao exportar. Tente a geração por IA.");
-      };
-      
-      img.src = url;
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${campaign?.name || "quest"}-${selectedFormat}-${selectedLang}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast.success("Arte exportada!");
+      }, "image/png");
     } catch (err) {
+      console.error(err);
       toast.error("Erro ao exportar imagem");
     }
   }, [campaign, format, selectedFormat, selectedLang]);
