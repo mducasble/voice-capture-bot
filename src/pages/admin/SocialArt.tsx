@@ -385,19 +385,6 @@ export default function SocialArt() {
           </div>
         </div>
 
-        {/* Hidden full-size export canvas */}
-        <div style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }} aria-hidden="true">
-          <SocialArtCanvas
-            ref={exportRef}
-            campaign={campaign || null}
-            format={format}
-            language={selectedLang}
-            shortLink={shortLink}
-            customTitle={customTitle || undefined}
-            customDescription={customDescription || undefined}
-            extraCountries={extraCountries.length > 0 ? extraCountries : undefined}
-          />
-        </div>
       </div>
     </div>
   );
