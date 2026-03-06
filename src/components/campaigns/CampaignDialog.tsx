@@ -104,8 +104,11 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
   const [sections, setSections] = useState<CampaignSection[]>([]);
   const [globalInstructions, setGlobalInstructions] = useState<CampaignInstructions>({
-    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [],
+    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [],
   });
+  const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
+  const [hardwareInput, setHardwareInput] = useState("");
+  const [hardwareLoading, setHardwareLoading] = useState(false);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
