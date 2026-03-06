@@ -152,7 +152,7 @@ const SocialArtCanvas = forwardRef<HTMLDivElement, Props>(
               {taskTypes.map((t, i) => (
                 <span key={i} style={{
                   color: "#8cff05",
-                  fontSize: smallBadgeSize * 3 - 1,
+                  fontSize: smallBadgeSize * 2.5,
                   fontWeight: 800,
                   letterSpacing: "0.03em",
                   textTransform: "uppercase",
