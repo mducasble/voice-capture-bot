@@ -8,6 +8,7 @@ import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const Index = lazy(() => import("./pages/Index"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Rooms = lazy(() => import("./pages/Rooms"));
@@ -58,6 +59,9 @@ const App = () => (
               <Route path="profile" element={<PortalProfile />} />
               <Route path="room/:roomId" element={<Room />} />
             </Route>
+
+            {/* Admin login (standalone, no layout) */}
+            <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* Admin routes with sidebar layout */}
             <Route path="/admin" element={<AdminLayout />}>
