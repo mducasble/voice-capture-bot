@@ -373,6 +373,12 @@ const Room = () => {
           .single();
 
         if (creatorParticipant) {
+          // Re-mark as connected in DB
+          await supabase
+            .from("room_participants")
+            .update({ is_connected: true, left_at: null })
+            .eq("id", creatorParticipant.id);
+
           // Store in sessionStorage for reconnection
           sessionStorage.setItem(`room_${roomId}_participant`, creatorParticipant.id);
           setCurrentParticipant(creatorParticipant as Participant);
