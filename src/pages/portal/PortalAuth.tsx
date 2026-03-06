@@ -347,26 +347,26 @@ export default function PortalAuth() {
         {/* Desktop left panel — split into branding (left) + opportunities (right) */}
         <div className="hidden lg:flex lg:w-2/3 flex-row" style={{ borderRight: "1px solid var(--portal-border)" }}>
           {/* Branding column */}
-          <div className="w-[70%] flex flex-col justify-between p-10" style={{ borderRight: "1px solid var(--portal-border)" }}>
+          <div className="w-[70%] flex flex-col justify-between p-10 xl:p-16 2xl:p-20" style={{ borderRight: "1px solid var(--portal-border)" }}>
             <div>
-              <img src={kgenLogo} alt="KGeN Logo" className="w-16 h-16 mb-6" />
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2.5 h-2.5" style={{ background: "var(--portal-accent)" }} />
-                <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+              <img src={kgenLogo} alt="KGeN Logo" className="w-24 h-24 xl:w-36 xl:h-36 2xl:w-48 2xl:h-48 mb-6 xl:mb-10" />
+              <div className="flex items-center gap-2 xl:gap-3 mb-3">
+                <div className="w-2.5 h-2.5 xl:w-3 xl:h-3" style={{ background: "var(--portal-accent)" }} />
+                <span className="font-mono text-xs xl:text-sm 2xl:text-base tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
                   AI Quests Platform
                 </span>
               </div>
             </div>
 
             <div>
-              <h1 className="font-mono text-5xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
+              <h1 className="font-mono text-5xl xl:text-7xl 2xl:text-8xl font-black uppercase leading-[0.95] tracking-tight" style={{ color: "var(--portal-text)" }}>
                 Join.
                 <br />
                 Complete.
                 <br />
                 <span style={{ color: "var(--portal-accent)" }}>Earn.</span>
               </h1>
-              <p className="font-mono text-sm max-w-md leading-relaxed mt-4" style={{ color: "var(--portal-text-muted)" }}>
+              <p className="font-mono text-sm xl:text-base 2xl:text-lg max-w-md leading-relaxed mt-4 xl:mt-6" style={{ color: "var(--portal-text-muted)" }}>
                 {t("auth.platform")}
               </p>
             </div>
