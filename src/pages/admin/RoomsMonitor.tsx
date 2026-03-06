@@ -138,7 +138,7 @@ const RoomsMonitor = () => {
             <p className="text-lg">Nenhuma sala encontrada</p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
