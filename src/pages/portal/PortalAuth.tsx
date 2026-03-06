@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { processReferralOnSignup } from "@/hooks/useReferral";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -102,9 +101,6 @@ export default function PortalAuth() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        if (event === "SIGNED_IN") {
-          await processReferralOnSignup(session.user.id);
-        }
         const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
         sessionStorage.removeItem("redirect_after_login");
         navigate(redirectTo);
