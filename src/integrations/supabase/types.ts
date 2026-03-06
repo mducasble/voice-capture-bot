@@ -410,6 +410,7 @@ export type Database = {
           instructions_title: string | null
           prompt_do: string[] | null
           prompt_dont: string[] | null
+          required_hardware: string[] | null
           updated_at: string
         }
         Insert: {
@@ -420,6 +421,7 @@ export type Database = {
           instructions_title?: string | null
           prompt_do?: string[] | null
           prompt_dont?: string[] | null
+          required_hardware?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -430,6 +432,7 @@ export type Database = {
           instructions_title?: string | null
           prompt_do?: string[] | null
           prompt_dont?: string[] | null
+          required_hardware?: string[] | null
           updated_at?: string
         }
         Relationships: [
@@ -1200,6 +1203,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hardware_catalog: {
+        Row: {
+          created_at: string
+          icon_name: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          icon_name: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          icon_name?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       image_submissions: {
         Row: {
