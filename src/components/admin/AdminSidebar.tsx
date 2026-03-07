@@ -61,12 +61,12 @@ export function AdminSidebar() {
               </div>
               {/* Notification */}
               <button className="admin-icon-box h-10 w-10 admin-icon-box-muted">
-                <Bell className="h-4.5 w-4.5" />
+                <Bell className="h-5 w-5" />
               </button>
             </div>
             {/* Compose */}
             <button className="admin-icon-box h-10 w-10 bg-primary text-primary-foreground">
-              <PenSquare className="h-4.5 w-4.5" />
+              <PenSquare className="h-5 w-5" />
             </button>
           </div>
         )}
@@ -75,7 +75,7 @@ export function AdminSidebar() {
         {!collapsed && (
           <div className="px-4 pb-2">
             <div className="admin-search-box">
-              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Search className="h-[18px] w-[18px] text-muted-foreground shrink-0" />
               <input
                 placeholder="Search"
                 className="bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
@@ -96,18 +96,18 @@ export function AdminSidebar() {
                       <NavLink
                         to={item.url}
                         end={item.url === "/admin"}
-                        className={`group/item flex items-center gap-3.5 px-2 py-1.5 rounded-2xl text-[15px] transition-all duration-150 ${
+                       className={`group/item flex items-center gap-3.5 px-2 py-1.5 rounded-2xl text-[17px] transition-all duration-150 ${
                           active
-                            ? "text-foreground font-semibold"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "text-[hsl(0_0%_95%)] font-semibold"
+                            : "text-[hsl(0_0%_75%)] hover:text-[hsl(0_0%_95%)]"
                         }`}
                         activeClassName=""
                       >
                         {/* Icon in a rounded box */}
-                        <div className={`admin-icon-box h-9 w-9 shrink-0 ${
+                        <div className={`admin-icon-box h-10 w-10 shrink-0 ${
                           active ? "admin-icon-box-active" : "admin-icon-box-muted"
                         }`}>
-                          <item.icon className="h-4 w-4" />
+                          <item.icon className="h-[18px] w-[18px]" />
                         </div>
                         {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
                       </NavLink>
@@ -122,9 +122,9 @@ export function AdminSidebar() {
         {/* More */}
         {!collapsed && (
           <div className="mt-auto px-4 pb-2">
-            <button className="flex items-center gap-3.5 text-muted-foreground text-[15px] hover:text-foreground transition-colors px-2 py-1.5">
-              <div className="admin-icon-box h-9 w-9 admin-icon-box-muted">
-                <MoreHorizontal className="h-4 w-4" />
+            <button className="flex items-center gap-3.5 text-[hsl(0_0%_75%)] text-[17px] hover:text-[hsl(0_0%_95%)] transition-colors px-2 py-1.5">
+              <div className="admin-icon-box h-10 w-10 admin-icon-box-muted">
+                <MoreHorizontal className="h-[18px] w-[18px]" />
               </div>
               <span>More</span>
             </button>
