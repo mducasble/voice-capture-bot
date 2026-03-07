@@ -9,6 +9,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2, ShieldCheck, Lock } from "lucide-react";
 import { toast } from "sonner";
 
+const AUTH_TIMEOUT_MS = 6000;
+
+const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> => {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error("timeout")), timeoutMs);
+    }),
+  ]);
+};
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -18,19 +29,31 @@ export default function AdminLogin() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const checkAdminAndRedirect = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    return !!data;
+    try {
+      const { data } = await withTimeout(
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle()
+      );
+
+      return !!data;
+    } catch {
+      return false;
+    }
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const check = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession());
+
         if (session?.user) {
           const isAdmin = await checkAdminAndRedirect(session.user.id);
           if (isAdmin) {
@@ -39,81 +62,94 @@ export default function AdminLogin() {
           }
         }
       } catch {
-        // Network error — just show login form
+        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      } finally {
+        if (mounted) setChecking(false);
       }
-      setChecking(false);
     };
-    check();
+
+    void check();
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Sign out any existing session first to avoid portal session conflicts
-    await supabase.auth.signOut();
+    // Sign out local session first to avoid session conflicts
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password })
+      );
 
-    if (error) {
-      toast.error(error.message);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (!data.user) {
+        toast.error("Erro ao autenticar.");
+        return;
+      }
+
+      const isAdmin = await checkAdminAndRedirect(data.user.id);
+
+      if (!isAdmin) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
+        return;
+      }
+
+      toast.success("Bem-vindo ao painel administrativo!");
+      navigate("/admin", { replace: true });
+    } catch {
+      toast.error("Não foi possível conectar ao backend agora. Tente novamente.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (!data.user) {
-      toast.error("Erro ao autenticar.");
-      setLoading(false);
-      return;
-    }
-
-    // Check admin role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (!roleData) {
-      await supabase.auth.signOut();
-      toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Bem-vindo ao painel administrativo!");
-    navigate("/admin", { replace: true });
   };
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    // Sign out any existing session first
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/admin/login",
-    });
+    try {
+      const result = await withTimeout(
+        lovable.auth.signInWithOAuth("google", {
+          redirect_uri: window.location.origin + "/admin/login",
+        }),
+        10000
+      );
 
-    if (result.error) {
-      toast.error("Erro ao autenticar com Google.");
-      setGoogleLoading(false);
-      return;
-    }
+      if (result.error) {
+        toast.error("Erro ao autenticar com Google.");
+        return;
+      }
 
-    // If redirected, the page will reload and useEffect will handle the check
-    if (!result.redirected) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const isAdmin = await checkAdminAndRedirect(session.user.id);
-        if (isAdmin) {
-          toast.success("Bem-vindo ao painel administrativo!");
-          navigate("/admin", { replace: true });
-        } else {
-          await supabase.auth.signOut();
-          toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
+      // If redirected, the page will reload and useEffect will handle the check
+      if (!result.redirected) {
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession());
+
+        if (session?.user) {
+          const isAdmin = await checkAdminAndRedirect(session.user.id);
+          if (isAdmin) {
+            toast.success("Bem-vindo ao painel administrativo!");
+            navigate("/admin", { replace: true });
+          } else {
+            await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+            toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
+          }
         }
       }
+    } catch {
+      toast.error("Não foi possível conectar ao backend agora. Tente novamente.");
+    } finally {
       setGoogleLoading(false);
     }
   };
