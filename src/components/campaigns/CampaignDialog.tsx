@@ -1315,125 +1315,150 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 )}
               </TabsContent>
 
-              {/* REWARD CONFIG */}
-              <TabsContent value="reward" className="space-y-4 pr-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Moeda</Label>
-                    <Select value={reward.currency} onValueChange={v => setReward(p => ({ ...p, currency: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="BRL">BRL</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {/* VALORES (Reward + Referral) */}
+              <TabsContent value="valores" className="space-y-6 pr-4">
+                {/* Reward Config */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold border-b pb-2">Remuneração da Tarefa</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Moeda</Label>
+                      <Select value={reward.currency} onValueChange={v => setReward(p => ({ ...p, currency: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="BRL">BRL</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Modelo de Pagamento</Label>
+                      <Select value={reward.payout_model} onValueChange={v => setReward(p => ({ ...p, payout_model: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="per_accepted_unit">Por unidade aceita</SelectItem>
+                          <SelectItem value="per_accepted_hour">Por hora aceita</SelectItem>
+                          <SelectItem value="per_session">Por sessão</SelectItem>
+                          <SelectItem value="fixed">Fixo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Taxa Base ({reward.currency})</Label>
+                      <Input type="number" step="0.01" value={reward.base_rate ?? ""} onChange={e => setReward(p => ({ ...p, base_rate: e.target.value ? parseFloat(e.target.value) : null }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Taxa Bônus ({reward.currency})</Label>
+                      <Input type="number" step="0.01" value={reward.bonus_rate ?? ""} onChange={e => setReward(p => ({ ...p, bonus_rate: e.target.value ? parseFloat(e.target.value) : null }))} />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Modelo de Pagamento</Label>
-                    <Select value={reward.payout_model} onValueChange={v => setReward(p => ({ ...p, payout_model: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="per_accepted_unit">Por unidade aceita</SelectItem>
-                        <SelectItem value="per_accepted_hour">Por hora aceita</SelectItem>
-                        <SelectItem value="per_session">Por sessão</SelectItem>
-                        <SelectItem value="fixed">Fixo</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Condição de Bônus</Label>
+                    <Input value={reward.bonus_condition || ""} onChange={e => setReward(p => ({ ...p, bonus_condition: e.target.value }))} placeholder="Ex: acceptance_rate >= 90" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Taxa Base</Label>
-                    <Input type="number" step="0.01" value={reward.base_rate ?? ""} onChange={e => setReward(p => ({ ...p, base_rate: e.target.value ? parseFloat(e.target.value) : null }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Taxa Bônus</Label>
-                    <Input type="number" step="0.01" value={reward.bonus_rate ?? ""} onChange={e => setReward(p => ({ ...p, bonus_rate: e.target.value ? parseFloat(e.target.value) : null }))} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Condição de Bônus</Label>
-                  <Input value={reward.bonus_condition || ""} onChange={e => setReward(p => ({ ...p, bonus_condition: e.target.value }))} placeholder="Ex: acceptance_rate >= 90" />
-                </div>
-              </TabsContent>
 
-              {/* REFERRAL CONFIG */}
-              <TabsContent value="referral" className="space-y-4 pr-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Switch checked={referralOverride} onCheckedChange={setReferralOverride} />
-                  <Label>Usar configuração específica para esta campanha</Label>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  {referralOverride
-                    ? "Esta campanha usará os valores abaixo ao invés do padrão global."
-                    : "Esta campanha usa a configuração global de referral (10%, cascata 60/40, 5 níveis)."}
-                </p>
-                {referralOverride && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Pool de Referral (%)</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          value={referralConfig.pool_percent}
-                          onChange={e => setReferralConfig(p => ({ ...p, pool_percent: parseFloat(e.target.value) || 0 }))}
-                        />
-                        <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Proporção de Cascata</Label>
-                        <Input
-                          type="number"
-                          step="0.05"
-                          min="0"
-                          max="1"
-                          value={referralConfig.cascade_keep_ratio}
-                          onChange={e => setReferralConfig(p => ({ ...p, cascade_keep_ratio: parseFloat(e.target.value) || 0 }))}
-                        />
-                        <p className="text-xs text-muted-foreground">Ex: 0.60 = nível atual fica com 60%, passa 40%</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Máx Níveis</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="5"
-                          value={referralConfig.max_levels}
-                          onChange={e => setReferralConfig(p => ({ ...p, max_levels: parseInt(e.target.value) || 5 }))}
-                        />
+                {/* Referral Config */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold border-b pb-2">Referral</h4>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={referralOverride} onCheckedChange={setReferralOverride} />
+                    <Label>Usar configuração específica para esta campanha</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {referralOverride
+                      ? "Esta campanha usará os valores abaixo ao invés do padrão global."
+                      : "Esta campanha usa a configuração global de referral (10%, cascata 60/40, 5 níveis)."}
+                  </p>
+                  {referralOverride && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Pool de Referral (%)</Label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            value={referralConfig.pool_percent}
+                            onChange={e => setReferralConfig(p => ({ ...p, pool_percent: parseFloat(e.target.value) || 0 }))}
+                          />
+                          <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Proporção de Cascata</Label>
+                          <Input
+                            type="number"
+                            step="0.05"
+                            min="0"
+                            max="1"
+                            value={referralConfig.cascade_keep_ratio}
+                            onChange={e => setReferralConfig(p => ({ ...p, cascade_keep_ratio: parseFloat(e.target.value) || 0 }))}
+                          />
+                          <p className="text-xs text-muted-foreground">Ex: 0.60 = nível atual fica com 60%, passa 40%</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Máx Níveis</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="5"
+                            value={referralConfig.max_levels}
+                            onChange={e => setReferralConfig(p => ({ ...p, max_levels: parseInt(e.target.value) || 5 }))}
+                          />
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Preview */}
-                    <div className="border rounded-lg p-3 space-y-1">
-                      <Label className="text-xs font-semibold">Simulação (atividade de $100)</Label>
-                      {(() => {
-                        const pool = referralConfig.pool_percent;
-                        const ratio = referralConfig.cascade_keep_ratio;
-                        const levels = referralConfig.max_levels;
-                        let remaining = pool;
-                        const distribution: { level: number; value: number }[] = [];
-                        for (let i = 1; i <= levels; i++) {
-                          if (i === levels) {
-                            distribution.push({ level: i, value: remaining });
-                          } else {
-                            const take = remaining * ratio;
-                            distribution.push({ level: i, value: take });
-                            remaining -= take;
-                          }
-                        }
-                        return distribution.map(d => (
-                          <div key={d.level} className="flex justify-between text-xs">
-                            <span>Nível {d.level}</span>
-                            <span className="font-mono">${d.value.toFixed(3)} ({(d.value).toFixed(2)}%)</span>
+                {/* Simulação de Ganhos por Nível */}
+                {(() => {
+                  const baseRate = reward.base_rate ?? 0;
+                  const cfg = referralOverride ? referralConfig : { pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 };
+                  const poolAmount = baseRate * (cfg.pool_percent / 100);
+                  let remaining = poolAmount;
+                  const distribution: { level: number; value: number }[] = [];
+                  for (let i = 1; i <= cfg.max_levels; i++) {
+                    if (i === cfg.max_levels) {
+                      distribution.push({ level: i, value: remaining });
+                    } else {
+                      const take = remaining * cfg.cascade_keep_ratio;
+                      distribution.push({ level: i, value: take });
+                      remaining -= take;
+                    }
+                  }
+                  const currSymbol = reward.currency === "BRL" ? "R$" : reward.currency === "EUR" ? "€" : "$";
+                  return (
+                    <div className="border rounded-lg p-4 space-y-2 bg-muted/30">
+                      <Label className="text-xs font-semibold">
+                        Simulação de Ganhos por Nível
+                        {baseRate > 0 && <span className="text-muted-foreground font-normal ml-1">(base: {currSymbol}{baseRate.toFixed(2)})</span>}
+                      </Label>
+                      {baseRate > 0 ? (
+                        <>
+                          <div className="flex justify-between text-xs font-medium border-b pb-1 mb-1">
+                            <span>Nível</span>
+                            <span>Ganho por indicação</span>
                           </div>
-                        ));
-                      })()}
+                          {distribution.map(d => (
+                            <div key={d.level} className="flex justify-between text-xs">
+                              <span>Nível {d.level}</span>
+                              <span className="font-mono">{currSymbol}{d.value.toFixed(4)}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between text-xs font-medium border-t pt-1 mt-1">
+                            <span>Total pool referral</span>
+                            <span className="font-mono">{currSymbol}{poolAmount.toFixed(4)} ({cfg.pool_percent}%)</span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Defina a taxa base acima para ver a simulação.</p>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </TabsContent>
 
               {/* QUALITY FLOW */}
