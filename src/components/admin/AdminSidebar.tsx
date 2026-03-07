@@ -111,7 +111,7 @@ export function AdminSidebar() {
               </SidebarGroupLabel>
             )}
             <SidebarGroupContent>
-              <SidebarMenu className="px-3 space-y-1">
+              <SidebarMenu className="px-3 space-y-0.5">
                 {section.items.map((item) => {
                   const active = isActive(item.url);
                   return (
@@ -121,7 +121,7 @@ export function AdminSidebar() {
                         end={item.url === "/admin"}
                         className={cn(
                           "group/item flex items-center transition-colors",
-                          collapsed ? "justify-center py-1.5" : "gap-3 px-3 py-2",
+                          collapsed ? "justify-center py-0.5" : "gap-3 px-3 py-0.5",
                           active
                             ? "text-foreground font-semibold"
                             : "text-muted-foreground hover:text-foreground"
