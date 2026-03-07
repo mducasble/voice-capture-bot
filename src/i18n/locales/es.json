@@ -79,7 +79,10 @@
     "notFound": "Campaña no encontrada.",
     "joinedWaitlist": "¡Te uniste a la lista de espera!",
     "leftWaitlist": "Saliste de la lista de espera.",
-    "theme": "Tema"
+    "theme": "Tema",
+    "referralDistribution": "Distribución de Referidos",
+    "referralDistributionDesc": "Valores pagados por referido para cada nivel de tu red.",
+    "level": "Nivel"
   },
   "task": {
     "backToCampaign": "Volver a la Campaña",
