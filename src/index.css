@@ -53,9 +53,9 @@
     --sidebar-ring: 235 86% 65%;
   }
 
-  /* Admin premium dark theme — near-black like the reference */
+  /* Admin premium dark theme — pure black canvas with gray panels */
   .admin-theme {
-    --background: 240 12% 4%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 93%;
     --card: 240 10% 8%;
     --card-foreground: 0 0% 93%;
@@ -91,8 +91,28 @@
     --sidebar-ring: 265 75% 58%;
   }
 
+  /* Floating panels on black canvas */
+  .admin-theme .admin-panel {
+    background: hsl(240 6% 10%);
+    border-radius: 2.5rem;
+    border: 1px solid hsl(0 0% 100% / 0.05);
+  }
+
+  .admin-theme .admin-panel-sidebar {
+    background: hsl(240 6% 8%);
+    border-radius: 2.5rem;
+    border: 1px solid hsl(0 0% 100% / 0.04);
+    overflow: hidden;
+  }
+
+  /* Override sidebar internal bg to transparent since panel handles it */
+  .admin-theme .admin-panel-sidebar [data-sidebar] {
+    background: transparent !important;
+    border: none !important;
+  }
+
   .admin-theme .admin-glass-card {
-    background: hsl(240 10% 8% / 0.8);
+    background: hsl(240 6% 13% / 0.8);
     backdrop-filter: blur(16px);
     border: 1px solid hsl(0 0% 100% / 0.06);
     box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4);
