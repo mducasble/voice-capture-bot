@@ -61,26 +61,26 @@ export default function AdminLayout() {
         <div className="min-h-screen flex w-full bg-background">
           <AdminSidebar />
           <div className="flex-1 flex flex-col min-w-0">
-            <header className="h-16 flex items-center justify-between border-b border-border bg-card px-6 sticky top-0 z-50">
+            <header className="h-16 flex items-center justify-between border-b border-border/50 bg-card/50 backdrop-blur-xl px-6 sticky top-0 z-50">
               <div className="flex items-center gap-4">
-                <SidebarTrigger />
+                <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
                 <div className="relative hidden md:block">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                   <Input
                     placeholder="Buscar..."
-                    className="pl-9 h-9 w-64 bg-secondary border-0 text-sm focus-visible:ring-1"
+                    className="pl-9 h-9 w-64 bg-secondary/50 border-border/50 text-sm focus-visible:ring-1 focus-visible:ring-primary/50 placeholder:text-muted-foreground/40"
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground hover:bg-secondary/60">
                   <Bell className="h-4.5 w-4.5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive" />
+                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[hsl(265_80%_60%)] shadow-sm shadow-[hsl(265_80%_60%/0.5)]" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={signOut} title="Sair">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-secondary/60" onClick={signOut} title="Sair">
                   <LogOut className="h-4 w-4" />
                 </Button>
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-[hsl(280_72%_60%)] flex items-center justify-center text-primary-foreground text-xs font-bold">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[hsl(265_80%_60%)] to-[hsl(300_70%_55%)] flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-[hsl(265_80%_60%/0.25)]">
                   {user.email?.charAt(0).toUpperCase() || "A"}
                 </div>
               </div>
