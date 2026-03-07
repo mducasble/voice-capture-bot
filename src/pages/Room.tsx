@@ -430,7 +430,7 @@ const Room = () => {
       .from("rooms")
       .update({ 
         is_recording: true, 
-        status: "recording",
+        status: "live",
         recording_started_at: new Date().toISOString()
       })
       .eq("id", roomId);
