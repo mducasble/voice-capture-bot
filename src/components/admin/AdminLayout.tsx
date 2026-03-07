@@ -59,7 +59,7 @@ export default function AdminLayout() {
       <SidebarProvider>
         <div className="min-h-screen flex w-full p-2 gap-2">
           {/* Sidebar panel */}
-          <div className="admin-panel-sidebar shrink-0">
+          <div className="admin-panel shrink-0 overflow-hidden">
             <AdminSidebar />
           </div>
           {/* Main area */}

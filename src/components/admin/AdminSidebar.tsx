@@ -87,7 +87,7 @@ export function AdminSidebar() {
         {/* Navigation items */}
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu className="px-3 space-y-1">
+            <SidebarMenu className="px-3 space-y-1.5">
               {navItems.map((item) => {
                 const active = isActive(item.url);
                 return (
@@ -96,7 +96,7 @@ export function AdminSidebar() {
                       <NavLink
                         to={item.url}
                         end={item.url === "/admin"}
-                       className={`group/item flex items-center gap-3.5 px-2 py-1.5 rounded-2xl text-[17px] transition-all duration-150 ${
+                       className={`group/item flex items-center gap-3.5 px-2 py-2.5 rounded-2xl text-[17px] transition-all duration-150 ${
                           active
                             ? "text-[hsl(0_0%_95%)] font-semibold"
                             : "text-[hsl(0_0%_75%)] hover:text-[hsl(0_0%_95%)]"
