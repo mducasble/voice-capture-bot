@@ -229,23 +229,24 @@ export default function PortalCampaign() {
 
         {/* Header */}
         <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
-                <span className="font-mono text-base tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                  Campanha
-                </span>
-              </div>
-              <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-                {campaign.name}
-              </h1>
-              {campaign.client && (
-                <span className="inline-block font-mono text-sm uppercase tracking-widest px-2 py-1 mt-2" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
-                  {campaign.client.name}
-                </span>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
+              <span className="font-mono text-base tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+                Campanha
+              </span>
+              {enabledTaskSets.length > 0 && (
+                <>
+                  <span className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>›</span>
+                  <span className="font-mono text-sm uppercase tracking-wider" style={{ color: "var(--portal-text-muted)" }}>
+                    {enabledTaskSets.map(ts => TASK_TYPE_LABELS[ts.task_type] || ts.task_type).join(" · ")}
+                  </span>
+                </>
               )}
             </div>
+            <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+              {campaign.name}
+            </h1>
           </div>
           {campaign.description && (
             <p className="font-mono text-base mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
@@ -253,23 +254,6 @@ export default function PortalCampaign() {
             </p>
           )}
         </div>
-
-        {/* Task types */}
-        {enabledTaskSets.length > 0 && (
-          <Section title="Tipos de Tarefa" icon={Layers}>
-            <div className="flex flex-wrap gap-2">
-              {enabledTaskSets.map(ts => (
-                <span
-                  key={ts.task_set_id}
-                  className="font-mono text-base px-3 py-1"
-                  style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}
-                >
-                  {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
-                </span>
-              ))}
-            </div>
-          </Section>
-        )}
 
         {/* Global campaign instructions */}
         {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0) || (campaign.instructions.required_hardware?.length > 0)) && (
