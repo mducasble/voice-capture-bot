@@ -127,9 +127,9 @@ export function AdminSidebar() {
                           }`}
                           activeClassName=""
                         >
-                          <div className={`admin-icon-box h-[3.25rem] w-[3.25rem] min-h-[3.25rem] min-w-[3.25rem] max-h-[3.25rem] max-w-[3.25rem] aspect-square overflow-hidden shrink-0 ${
+                          <div className={`admin-icon-box h-[3.25rem] w-[3.25rem] min-h-[3.25rem] min-w-[3.25rem] max-h-[3.25rem] max-w-[3.25rem] shrink-0 rounded-[1.05rem] ${
                             active ? "admin-icon-box-active" : "admin-icon-box-muted"
-                          }`}>
+                          }`}
                             <item.icon className="h-5 w-5" />
                           </div>
                           {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
