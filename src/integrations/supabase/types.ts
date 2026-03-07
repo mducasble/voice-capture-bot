@@ -1458,6 +1458,7 @@ export type Database = {
           created_at: string
           id: string
           max_levels: number
+          pool_fixed_amount: number | null
           pool_percent: number
           updated_at: string
         }
@@ -1467,6 +1468,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_levels?: number
+          pool_fixed_amount?: number | null
           pool_percent?: number
           updated_at?: string
         }
@@ -1476,6 +1478,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_levels?: number
+          pool_fixed_amount?: number | null
           pool_percent?: number
           updated_at?: string
         }

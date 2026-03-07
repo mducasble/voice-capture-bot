@@ -1,0 +1,1 @@
+ALTER TABLE public.referral_config ADD COLUMN pool_fixed_amount numeric DEFAULT NULL;
