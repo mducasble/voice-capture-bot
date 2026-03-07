@@ -165,7 +165,7 @@ function RoomCard({ room }: { room: RoomWithParticipants }) {
 
   return (
     <div
-      className="border border-border rounded-lg bg-card/60 hover:bg-card/80 transition-colors cursor-pointer"
+      className="border border-border/50 rounded-xl bg-card/70 backdrop-blur-sm hover:bg-card/90 transition-all duration-200 cursor-pointer"
       onClick={() => navigate(`/admin/room/${room.id}`)}
     >
       {/* Header */}
