@@ -116,6 +116,7 @@
 
   .admin-theme .admin-icon-box-muted {
     background: hsl(240 5.89% 5.06%);
+    border: 1px solid hsl(0 0% 100% / 0.06);
     color: hsl(0 0% 70%);
   }
 
