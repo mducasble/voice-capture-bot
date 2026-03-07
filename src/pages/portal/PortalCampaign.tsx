@@ -303,9 +303,9 @@ export default function PortalCampaign() {
                 </p>
               )}
               {campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0 && (
-                <ol className="space-y-3">
+                <ol className="space-y-2">
                   {(campaign.instructions.instructions_steps as Array<{ title: string; description: string }>).map((step, idx) => (
-                    <li key={idx} className="flex gap-3">
+                    <li key={idx} className="flex gap-3 p-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
                       <span className="font-mono text-lg font-bold shrink-0" style={{ color: "var(--portal-accent)" }}>{idx + 1}.</span>
                       <div className="space-y-0.5">
                         {step.title && <p className="font-mono text-base font-semibold" style={{ color: "var(--portal-text)" }}>{step.title}</p>}
