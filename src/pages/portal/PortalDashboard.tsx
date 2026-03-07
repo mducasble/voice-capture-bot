@@ -105,9 +105,17 @@ function CampaignCard({ campaign, isOnWaitlist, user, onWaitlistToggle }: { camp
           </div>
         )}
       </div>
-      <div className="p-5" style={{ borderTop: "1px solid var(--portal-border)" }}>
+      <div className="p-5 flex gap-2" style={{ borderTop: "1px solid var(--portal-border)" }}>
         <KGenButton
-          className="w-full"
+          className="flex-1"
+          size="sm"
+          variant="ghost"
+          onClick={() => navigate(`/campaign/${campaign.id}`)}
+          scrambleText={t("dashboard.viewDetails")}
+          icon={<BookOpen className="h-4 w-4" />}
+        />
+        <KGenButton
+          className="flex-1"
           size="sm"
           onClick={handleClick}
           disabled={joining}
