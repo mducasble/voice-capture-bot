@@ -9,16 +9,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2, ShieldCheck, Lock } from "lucide-react";
 import { toast } from "sonner";
 
-const AUTH_TIMEOUT_MS = 6000;
+const CHECKING_FALLBACK_MS = 10000;
 
-const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> => {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error("timeout")), timeoutMs);
-    }),
-  ]);
-};
+type AdminRoleCheck = "admin" | "not_admin" | "error";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -28,42 +21,52 @@ export default function AdminLogin() {
   const [checking, setChecking] = useState(true);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const checkAdminAndRedirect = async (userId: string) => {
+  const checkAdminRole = async (userId: string): Promise<AdminRoleCheck> => {
     try {
-      const { data } = await withTimeout(
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .eq("role", "admin")
-          .maybeSingle()
-      );
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
 
-      return !!data;
+      if (error) return "error";
+      return data ? "admin" : "not_admin";
     } catch {
-      return false;
+      return "error";
     }
   };
 
   useEffect(() => {
     let mounted = true;
+    const fallbackTimer = window.setTimeout(() => {
+      if (mounted) setChecking(false);
+    }, CHECKING_FALLBACK_MS);
 
     const check = async () => {
       try {
         const {
           data: { session },
-        } = await withTimeout(supabase.auth.getSession());
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) throw error;
 
         if (session?.user) {
-          const isAdmin = await checkAdminAndRedirect(session.user.id);
-          if (isAdmin) {
+          const roleCheck = await checkAdminRole(session.user.id);
+          if (roleCheck === "admin") {
             navigate("/admin", { replace: true });
             return;
           }
+
+          if (roleCheck === "error") {
+            toast.error("Não foi possível validar permissões agora. Tente novamente.");
+          }
         }
       } catch {
-        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        // Não bloqueia a tela de login
       } finally {
+        window.clearTimeout(fallbackTimer);
         if (mounted) setChecking(false);
       }
     };
@@ -71,6 +74,7 @@ export default function AdminLogin() {
     void check();
     return () => {
       mounted = false;
+      window.clearTimeout(fallbackTimer);
     };
   }, [navigate]);
 
@@ -78,13 +82,10 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true);
 
-    // Sign out local session first to avoid session conflicts
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
     try {
-      const { data, error } = await withTimeout(
-        supabase.auth.signInWithPassword({ email, password })
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         toast.error(error.message);
@@ -96,9 +97,15 @@ export default function AdminLogin() {
         return;
       }
 
-      const isAdmin = await checkAdminAndRedirect(data.user.id);
+      const roleCheck = await checkAdminRole(data.user.id);
 
-      if (!isAdmin) {
+      if (roleCheck === "error") {
+        toast.error("Erro ao validar permissões. Tente novamente.");
+        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        return;
+      }
+
+      if (roleCheck === "not_admin") {
         await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
         toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
         return;
@@ -118,12 +125,9 @@ export default function AdminLogin() {
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
     try {
-      const result = await withTimeout(
-        lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin + "/admin/login",
-        }),
-        10000
-      );
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/admin/login",
+      });
 
       if (result.error) {
         toast.error("Erro ao autenticar com Google.");
@@ -134,17 +138,24 @@ export default function AdminLogin() {
       if (!result.redirected) {
         const {
           data: { session },
-        } = await withTimeout(supabase.auth.getSession());
+        } = await supabase.auth.getSession();
 
         if (session?.user) {
-          const isAdmin = await checkAdminAndRedirect(session.user.id);
-          if (isAdmin) {
+          const roleCheck = await checkAdminRole(session.user.id);
+
+          if (roleCheck === "admin") {
             toast.success("Bem-vindo ao painel administrativo!");
             navigate("/admin", { replace: true });
-          } else {
-            await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
-            toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
+            return;
           }
+
+          if (roleCheck === "error") {
+            toast.error("Erro ao validar permissões. Tente novamente.");
+            return;
+          }
+
+          await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+          toast.error("Acesso negado. Esta conta não possui permissão de administrador.");
         }
       }
     } catch {
@@ -271,3 +282,4 @@ export default function AdminLogin() {
     </div>
   );
 }
+

@@ -2,16 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
-const AUTH_TIMEOUT_MS = 6000;
-
-const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> => {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error("timeout")), timeoutMs);
-    }),
-  ]);
-};
+const AUTH_FALLBACK_MS = 8000;
 
 export function useAdminAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -21,31 +12,28 @@ export function useAdminAuth() {
   useEffect(() => {
     let cancelled = false;
 
-    const failSafeTimer = window.setTimeout(() => {
-      if (cancelled) return;
-      setIsAdmin(false);
-      setLoading(false);
-    }, AUTH_TIMEOUT_MS + 1000);
-
     const finishLoading = () => {
-      window.clearTimeout(failSafeTimer);
       if (!cancelled) setLoading(false);
     };
 
-    const checkAdmin = async (userId: string) => {
-      try {
-        const { data } = await withTimeout(
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId)
-            .eq("role", "admin")
-            .maybeSingle()
-        );
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setLoading(false);
+    }, AUTH_FALLBACK_MS);
 
-        if (!cancelled) setIsAdmin(!!data);
+    const checkAdmin = async (userId: string): Promise<boolean> => {
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (error) return false;
+        return !!data;
       } catch {
-        if (!cancelled) setIsAdmin(false);
+        return false;
       }
     };
 
@@ -59,7 +47,8 @@ export function useAdminAuth() {
         return;
       }
 
-      await checkAdmin(currentUser.id);
+      const admin = await checkAdmin(currentUser.id);
+      if (!cancelled) setIsAdmin(admin);
       finishLoading();
     };
 
@@ -69,34 +58,29 @@ export function useAdminAuth() {
       void applySession(session);
     });
 
-    void (async () => {
-      try {
-        const {
-          data: { session },
-        } = await withTimeout(supabase.auth.getSession());
-        await applySession(session);
-      } catch {
+    void supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => applySession(session))
+      .catch(() => {
         if (!cancelled) {
           setUser(null);
           setIsAdmin(false);
         }
-
-        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
         finishLoading();
-      }
-    })();
+      });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(failSafeTimer);
+      window.clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut({ scope: "local" });
+    await supabase.auth.signOut();
   };
 
   return { user, isAdmin, loading, signOut };
 }
+
 
