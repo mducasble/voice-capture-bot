@@ -58,11 +58,17 @@ export interface HardwareCatalogItem {
   created_at: string;
 }
 
+export interface InstructionStep {
+  title: string;
+  description: string;
+}
+
 export interface CampaignInstructions {
   id?: string;
   campaign_id?: string;
   instructions_title: string | null;
   instructions_summary: string | null;
+  instructions_steps: InstructionStep[];
   prompt_do: string[];
   prompt_dont: string[];
   required_hardware: string[];

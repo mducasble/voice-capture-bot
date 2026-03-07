@@ -294,13 +294,26 @@ export default function PortalCampaign() {
         )}
 
         {/* SECTION 2: Instruções Passo a Passo / Vídeo / PDF */}
-        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
+        {campaign.instructions && (campaign.instructions.instructions_title || (campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0) || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
           <Section title="Instruções" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {campaign.instructions.instructions_title && (
                 <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
                   {campaign.instructions.instructions_title}
                 </p>
+              )}
+              {campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0 && (
+                <ol className="space-y-3">
+                  {(campaign.instructions.instructions_steps as Array<{ title: string; description: string }>).map((step, idx) => (
+                    <li key={idx} className="flex gap-3">
+                      <span className="font-mono text-lg font-bold shrink-0" style={{ color: "var(--portal-accent)" }}>{idx + 1}.</span>
+                      <div className="space-y-0.5">
+                        {step.title && <p className="font-mono text-base font-semibold" style={{ color: "var(--portal-text)" }}>{step.title}</p>}
+                        {step.description && <p className="font-mono text-sm leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>{step.description}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               )}
               {campaign.instructions.instructions_summary && (
                 <p className="font-mono text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>

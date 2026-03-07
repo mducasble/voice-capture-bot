@@ -406,6 +406,7 @@ export type Database = {
           campaign_id: string
           created_at: string
           id: string
+          instructions_steps: Json | null
           instructions_summary: string | null
           instructions_title: string | null
           pdf_file_url: string | null
@@ -419,6 +420,7 @@ export type Database = {
           campaign_id: string
           created_at?: string
           id?: string
+          instructions_steps?: Json | null
           instructions_summary?: string | null
           instructions_title?: string | null
           pdf_file_url?: string | null
@@ -432,6 +434,7 @@ export type Database = {
           campaign_id?: string
           created_at?: string
           id?: string
+          instructions_steps?: Json | null
           instructions_summary?: string | null
           instructions_title?: string | null
           pdf_file_url?: string | null
