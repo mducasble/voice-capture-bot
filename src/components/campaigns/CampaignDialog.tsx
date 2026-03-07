@@ -141,7 +141,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   // Referral config (per-campaign override, null = use global default)
   const [referralOverride, setReferralOverride] = useState(false);
   const [referralConfig, setReferralConfig] = useState<ReferralConfig>({
-    pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5,
+    pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5,
   });
 
   // UI state
@@ -185,7 +185,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         setReferralConfig(campaign.referral_config);
       } else {
         setReferralOverride(false);
-        setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+        setReferralConfig({ pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5 });
       }
     } else if (!campaignId && !duplicateFromId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
@@ -201,7 +201,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
-      setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+      setReferralConfig({ pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
   }, [campaign, campaignId, duplicateFromId]);
 
