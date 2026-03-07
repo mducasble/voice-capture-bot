@@ -79,7 +79,10 @@
     "notFound": "Campaign not found.",
     "joinedWaitlist": "You joined the waiting list!",
     "leftWaitlist": "You left the waiting list.",
-    "theme": "Theme"
+    "theme": "Theme",
+    "referralDistribution": "Referral Distribution",
+    "referralDistributionDesc": "Amounts paid per referral for each level in your network.",
+    "level": "Level"
   },
   "task": {
     "backToCampaign": "Back to Campaign",

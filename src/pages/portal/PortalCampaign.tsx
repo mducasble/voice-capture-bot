@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Clock, FileText, Loader2,
   Layers, Globe2, Languages, Coins, ShieldCheck, CheckCircle2, XCircle,
-  Users, BookOpen, Bell, CalendarClock, Wrench, icons,
+  Users, BookOpen, Bell, CalendarClock, Wrench, icons, Share2,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -484,6 +484,51 @@ export default function PortalCampaign() {
             </div>
           </Section>
         )}
+
+        {/* Referral distribution */}
+        {campaign.referral_config && campaign.reward_config?.base_rate != null && (() => {
+          const rc = campaign.referral_config;
+          const baseRate = campaign.reward_config!.base_rate!;
+          const pool = rc.pool_fixed_amount != null ? rc.pool_fixed_amount : baseRate * (rc.pool_percent / 100);
+          const levels: number[] = [];
+          let remaining = pool;
+          for (let i = 0; i < rc.max_levels; i++) {
+            const val = remaining * rc.cascade_keep_ratio;
+            levels.push(val);
+            remaining -= val;
+          }
+          const currency = campaign.reward_config!.currency || "USD";
+          const payoutModel = campaign.reward_config!.payout_model || "per_hour";
+          const unitLabel = payoutModel === "per_unit" ? "/un" : "/h";
+          return (
+            <Section title={t("campaign.referralDistribution") || "Distribuição Indicação"} icon={Share2}>
+              <div className="space-y-3">
+                <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                  {t("campaign.referralDistributionDesc") || "Valores pagos por indicação para cada nível da sua rede."}
+                </p>
+                <div className="grid grid-cols-5 gap-2">
+                  {levels.map((val, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col items-center gap-1.5 p-3"
+                      style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                        {t("campaign.level") || "Nível"} {i + 1}
+                      </span>
+                      <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-accent)" }}>
+                        {currency === "BRL" ? "R$" : "$"}{val.toFixed(2)}
+                      </span>
+                      <span className="font-mono text-[9px]" style={{ color: "var(--portal-text-muted)" }}>
+                        {unitLabel}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Action section */}
         {isBeforeStartDate ? (
