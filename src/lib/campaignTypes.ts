@@ -45,6 +45,7 @@ export interface ReferralConfig {
   id?: string;
   campaign_id?: string | null;
   pool_percent: number;
+  pool_fixed_amount?: number | null;
   cascade_keep_ratio: number;
   max_levels: number;
 }
