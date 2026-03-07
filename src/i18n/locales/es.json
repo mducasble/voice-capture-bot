@@ -47,7 +47,8 @@
     "goalHours": "h meta",
     "myActiveCampaigns": "Mis Campañas Activas",
     "startedOpportunities": "Oportunidades Iniciadas",
-    "noNewOpportunities": "Ninguna nueva oportunidad en este momento."
+    "noNewOpportunities": "Ninguna nueva oportunidad en este momento.",
+    "viewDetails": "DETALLES"
   },
   "campaign": {
     "back": "Volver",
