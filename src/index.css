@@ -129,6 +129,16 @@
     color: hsl(0 0% 95%);
   }
 
+  /* Override shadcn SidebarMenuButton styles inside admin */
+  .admin-theme [data-sidebar="menu-button"] {
+    background: transparent !important;
+    border-radius: 1rem !important;
+    padding: 0 !important;
+  }
+  .admin-theme [data-sidebar="menu-button"]:hover {
+    background: transparent !important;
+  }
+
   /* Search box */
   .admin-theme .admin-search-box {
     display: flex;
