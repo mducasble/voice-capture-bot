@@ -20,6 +20,15 @@ function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 }
 
+const countryNames = new Intl.DisplayNames(["pt-BR"], { type: "region" });
+function resolvePlace(code: string): string {
+  try {
+    // If it looks like a 2-letter country code, resolve it
+    if (/^[A-Z]{2}$/.test(code)) return countryNames.of(code) || code;
+  } catch {}
+  return code;
+}
+
 function getEmbedUrl(url: string): string {
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
