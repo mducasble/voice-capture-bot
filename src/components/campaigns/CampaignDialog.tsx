@@ -1193,14 +1193,14 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                         {promptRulesCatalog
                           .filter(r => r.rule_type === "do" && !globalInstructions.prompt_do.includes(r.rule_text))
                           .map(r => (
-                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-accent"
                               onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, r.rule_text] }))}
                             >✅ {r.rule_text} +</Badge>
                           ))}
                         {promptRulesCatalog
                           .filter(r => r.rule_type === "dont" && !globalInstructions.prompt_dont.includes(r.rule_text))
                           .map(r => (
-                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-destructive/10"
                               onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, r.rule_text] }))}
                             >🚫 {r.rule_text} +</Badge>
                           ))}
