@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle, BookOpen } from "lucide-react";
+import { Calendar, Clock, Coins, ArrowRight, Layers, Bell, CheckCircle, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
@@ -176,7 +176,8 @@ export default function PortalDashboard() {
     }
   };
 
-  const allVisible = campaigns?.filter(c => c.is_active && isCampaignVisibleForCountry(c.geographic_scope, userCountry)) || [];
+  const allActive = campaigns?.filter(c => c.is_active) || [];
+  const allVisible = allActive.filter(c => isCampaignVisibleForCountry(c.geographic_scope, userCountry));
   
   const readyNow = allVisible
     .filter(c => !isWaitlist(c))
@@ -186,14 +187,15 @@ export default function PortalDashboard() {
       return da - db;
     });
 
-  // Split ready campaigns into "not joined" and "already participating"
+  // Split ready campaigns: participated ones show regardless of geo filter
   const { availableCampaigns, myActiveCampaigns } = useMemo(() => {
+    const allReadyActive = allActive.filter(c => !isWaitlist(c));
     if (!userParticipationIds) return { availableCampaigns: readyNow, myActiveCampaigns: [] };
     return {
       availableCampaigns: readyNow.filter(c => !userParticipationIds.has(c.id)),
-      myActiveCampaigns: readyNow.filter(c => userParticipationIds.has(c.id)),
+      myActiveCampaigns: allReadyActive.filter(c => userParticipationIds.has(c.id)),
     };
-  }, [readyNow, userParticipationIds]);
+  }, [allActive, readyNow, userParticipationIds]);
 
   const waitlistCampaigns = allVisible
     .filter(c => isWaitlist(c))
@@ -223,7 +225,7 @@ export default function PortalDashboard() {
 
       {!isLoading && allVisible.length === 0 && (
         <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
-          <Mic2 className="h-12 w-12 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
+          <Coins className="h-12 w-12 mx-auto mb-4" style={{ color: "var(--portal-text-muted)" }} />
           <h3 className="font-mono text-xl font-bold uppercase" style={{ color: "var(--portal-text)" }}>{t("dashboard.noCampaigns")}</h3>
           <p className="font-mono text-base mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.noCampaignsDesc")}</p>
         </div>
@@ -238,7 +240,7 @@ export default function PortalDashboard() {
         </div>
       ) : !isLoading && allVisible.length > 0 && (
         <div className="text-center py-10" style={{ border: "1px solid var(--portal-border)" }}>
-          <Mic2 className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--portal-text-muted)" }} />
+          <Coins className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--portal-text-muted)" }} />
           <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.noNewOpportunities")}</p>
         </div>
       )}
