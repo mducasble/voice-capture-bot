@@ -376,6 +376,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         global_instructions: {
           instructions_title: globalInstructions.instructions_title || "",
           instructions_summary: globalInstructions.instructions_summary || "",
+          instructions_steps: globalInstructions.instructions_steps || [],
           prompt_do: globalInstructions.prompt_do || [],
           prompt_dont: globalInstructions.prompt_dont || [],
         },
