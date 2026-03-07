@@ -13,7 +13,7 @@ export default function AdminLayout() {
 
   if (loading) {
     return (
-      <div className="admin-theme min-h-screen flex items-center justify-center bg-background">
+      <div className="admin-theme min-h-screen flex items-center justify-center" style={{ background: "#000" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           <p className="text-sm text-muted-foreground font-medium">Verificando acesso...</p>
@@ -28,7 +28,7 @@ export default function AdminLayout() {
 
   if (!isAdmin) {
     return (
-      <div className="admin-theme min-h-screen flex items-center justify-center bg-background">
+      <div className="admin-theme min-h-screen flex items-center justify-center" style={{ background: "#000" }}>
         <div className="flex flex-col items-center gap-6 text-center max-w-md px-6">
           <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
             <ShieldAlert className="h-8 w-8 text-destructive" />
@@ -55,13 +55,17 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="admin-theme">
+    <div className="admin-theme" style={{ background: "#000" }}>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <AdminSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Minimal top bar — just sidebar trigger + logout */}
-            <header className="h-12 flex items-center justify-between border-b border-border/40 bg-background px-4 sticky top-0 z-50">
+        <div className="min-h-screen flex w-full p-2 gap-2">
+          {/* Sidebar panel */}
+          <div className="admin-panel-sidebar shrink-0">
+            <AdminSidebar />
+          </div>
+          {/* Main area */}
+          <div className="flex-1 flex flex-col gap-2 min-w-0">
+            {/* Top bar panel */}
+            <header className="admin-panel h-12 flex items-center justify-between px-5 shrink-0">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <button
                 onClick={signOut}
@@ -71,7 +75,8 @@ export default function AdminLayout() {
                 <LogOut className="h-4 w-4" />
               </button>
             </header>
-            <main className="flex-1 p-6 overflow-auto">
+            {/* Content panel */}
+            <main className="admin-panel flex-1 p-6 overflow-auto">
               <Outlet />
             </main>
           </div>

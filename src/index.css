@@ -53,9 +53,9 @@
     --sidebar-ring: 235 86% 65%;
   }
 
-  /* Admin premium dark theme — near-black like the reference */
+  /* Admin premium dark theme — pure black canvas with gray panels */
   .admin-theme {
-    --background: 240 12% 4%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 93%;
     --card: 240 10% 8%;
     --card-foreground: 0 0% 93%;
