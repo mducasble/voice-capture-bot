@@ -230,11 +230,16 @@ export default function PortalDashboard() {
       )}
 
       {/* Available campaigns (not yet joined) */}
-      {availableCampaigns.length > 0 && (
+      {availableCampaigns.length > 0 ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {availableCampaigns.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
           </div>
+        </div>
+      ) : !isLoading && allVisible.length > 0 && (
+        <div className="text-center py-10" style={{ border: "1px solid var(--portal-border)" }}>
+          <Mic2 className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--portal-text-muted)" }} />
+          <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{t("dashboard.noNewOpportunities")}</p>
         </div>
       )}
 
@@ -243,7 +248,7 @@ export default function PortalDashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <BookOpen className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-            <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{t("dashboard.myActiveCampaigns")}</h2>
+            <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{t("dashboard.startedOpportunities")}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {myActiveCampaigns.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
