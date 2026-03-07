@@ -58,10 +58,8 @@ export default function AdminLayout() {
     <div className="admin-theme" style={{ background: "#000" }}>
       <SidebarProvider>
         <div className="min-h-screen flex w-full p-2 gap-2">
-          {/* Sidebar panel */}
-          <div className="admin-panel shrink-0 overflow-hidden">
-            <AdminSidebar />
-          </div>
+          {/* Sidebar — panel styling applied inside the component */}
+          <AdminSidebar />
           {/* Main area */}
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             {/* Top bar panel */}
