@@ -264,9 +264,38 @@ export default function PortalCampaign() {
           )}
         </div>
 
-        {/* Global campaign instructions */}
-        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || (campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0) || (campaign.instructions.required_hardware?.length > 0)) && (
-          <Section title="Instruções Gerais" icon={BookOpen}>
+        {/* SECTION 1: Hardware Necessário */}
+        {campaign.instructions?.required_hardware && campaign.instructions.required_hardware.length > 0 && (
+          <Section title="Hardware Necessário" icon={Wrench}>
+            <div className="flex flex-wrap gap-3">
+              {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
+                const catalogItem = hardwareCatalog.find(h => h.name.toLowerCase() === hwName.toLowerCase());
+                const pascalName = catalogItem ? toPascalCase(catalogItem.icon_name) : null;
+                const LucideIcon = pascalName ? (icons as any)[pascalName] : null;
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
+                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
+                  >
+                    {LucideIcon ? (
+                      <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
+                    ) : (
+                      <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
+                    )}
+                    <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
+                      {hwName}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* SECTION 2: Instruções Passo a Passo / Vídeo / PDF */}
+        {campaign.instructions && (campaign.instructions.instructions_title || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
+          <Section title="Instruções" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {campaign.instructions.instructions_title && (
                 <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
@@ -277,65 +306,6 @@ export default function PortalCampaign() {
                 <p className="font-mono text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
                   {campaign.instructions.instructions_summary}
                 </p>
-              )}
-              {campaign.instructions.prompt_do && campaign.instructions.prompt_do.length > 0 && (
-                <div className="space-y-1">
-                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
-                  <ul className="space-y-1">
-                    {campaign.instructions.prompt_do.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
-                        <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {campaign.instructions.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
-                <div className="space-y-1">
-                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
-                  <ul className="space-y-1">
-                    {campaign.instructions.prompt_dont.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
-                        <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {campaign.instructions.required_hardware && campaign.instructions.required_hardware.length > 0 && (
-                <div className="space-y-2">
-                   <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
-                    <Wrench className="h-4 w-4" /> Hardware Necessário
-                  </span>
-                  <div className="flex flex-wrap gap-3">
-                    {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
-                      const catalogItem = hardwareCatalog.find(h => h.name.toLowerCase() === hwName.toLowerCase());
-                      const pascalName = catalogItem ? toPascalCase(catalogItem.icon_name) : null;
-                      const LucideIcon = pascalName ? (icons as any)[pascalName] : null;
-                      if (catalogItem && !LucideIcon) {
-                        console.warn(`[Hardware] Icon not found: "${catalogItem.icon_name}" → "${pascalName}". Available sample:`, Object.keys(icons).slice(0, 10));
-                      }
-                      return (
-                        <div
-                          key={i}
-                          className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
-                          style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
-                        >
-                          {LucideIcon ? (
-                            <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
-                          ) : (
-                            <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
-                          )}
-                          <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
-                            {hwName}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               )}
               {campaign.instructions.video_url && (
                 <div className="space-y-2">
@@ -367,6 +337,40 @@ export default function PortalCampaign() {
                     <FileText className="h-4 w-4" />
                     Baixar PDF com instruções detalhadas
                   </a>
+                </div>
+              )}
+            </div>
+          </Section>
+        )}
+
+        {/* SECTION 3: O que Fazer / Não Fazer */}
+        {campaign.instructions && ((campaign.instructions.prompt_do?.length > 0) || (campaign.instructions.prompt_dont?.length > 0)) && (
+          <Section title="O que Fazer / Não Fazer" icon={ShieldCheck}>
+            <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+              {campaign.instructions.prompt_do && campaign.instructions.prompt_do.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                  <ul className="space-y-1">
+                    {campaign.instructions.prompt_do.map((item: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                        <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {campaign.instructions.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                  <ul className="space-y-1">
+                    {campaign.instructions.prompt_dont.map((item: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                        <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

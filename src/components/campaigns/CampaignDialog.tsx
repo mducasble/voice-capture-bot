@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X, Wrench, BookOpen, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -126,6 +126,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
   const [hardwareInput, setHardwareInput] = useState("");
   const [hardwareLoading, setHardwareLoading] = useState(false);
+  const [promptRulesCatalog, setPromptRulesCatalog] = useState<{ id: string; rule_text: string; rule_type: string; category: string | null }[]>([]);
   const hardwareAbortRef = useRef<AbortController | null>(null);
 
   // Reward
@@ -212,6 +213,22 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       if (data) setHardwareCatalog(data as any);
     });
   }, []);
+
+  // Load prompt rules catalog
+  useEffect(() => {
+    supabase.from("prompt_rules_catalog").select("*").eq("is_active", true).order("rule_text").then(({ data }) => {
+      if (data) setPromptRulesCatalog(data as any);
+    });
+  }, []);
+
+  const addRuleToCatalog = async (ruleText: string, ruleType: "do" | "dont") => {
+    // Check if already in catalog
+    if (promptRulesCatalog.some(r => r.rule_text.toLowerCase() === ruleText.toLowerCase() && r.rule_type === ruleType)) return;
+    const { data, error } = await supabase.from("prompt_rules_catalog").insert({ rule_text: ruleText, rule_type: ruleType }).select().single();
+    if (!error && data) {
+      setPromptRulesCatalog(prev => [...prev, data as any]);
+    }
+  };
 
   const cancelHardwareLookup = () => {
     if (hardwareAbortRef.current) {
@@ -990,102 +1007,15 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 </div>
               </TabsContent>
 
-              {/* GLOBAL INSTRUCTIONS */}
-              <TabsContent value="instructions" className="space-y-4 pr-4">
+              {/* GLOBAL INSTRUCTIONS — 3 sections */}
+              <TabsContent value="instructions" className="space-y-6 pr-4">
                 <p className="text-xs text-muted-foreground">
-                  Instruções gerais da campanha visíveis para todos os participantes. Instruções específicas por tipo de tarefa podem ser configuradas na aba Tarefas.
+                  Instruções gerais da campanha visíveis para todos os participantes.
                 </p>
-                <div className="space-y-2">
-                  <Label>Título</Label>
-                  <Input
-                    value={globalInstructions.instructions_title || ""}
-                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_title: e.target.value || null }))}
-                    placeholder="Ex: Como participar desta campanha"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Resumo / Descrição detalhada</Label>
-                  <Textarea
-                    value={globalInstructions.instructions_summary || ""}
-                    onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_summary: e.target.value || null }))}
-                    placeholder="Explique ao participante o que ele precisa fazer..."
-                    rows={4}
-                  />
-                </div>
 
-                {/* DO / DONT */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">O que FAZER</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Adicionar item"
-                        id="global-do"
-                        onKeyDown={e => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const v = (e.target as HTMLInputElement).value.trim();
-                            if (v) {
-                              setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, v] }));
-                              (e.target as HTMLInputElement).value = "";
-                            }
-                          }
-                        }}
-                      />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        const el = document.getElementById("global-do") as HTMLInputElement;
-                        if (el?.value.trim()) {
-                          setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, el.value.trim()] }));
-                          el.value = "";
-                        }
-                      }}><Plus className="h-4 w-4" /></Button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {globalInstructions.prompt_do.map((item, i) => (
-                        <Badge key={i} variant="secondary" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: prev.prompt_do.filter((_, ii) => ii !== i) }))}>
-                          ✅ {item} ×
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">O que NÃO fazer</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Adicionar item"
-                        id="global-dont"
-                        onKeyDown={e => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const v = (e.target as HTMLInputElement).value.trim();
-                            if (v) {
-                              setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, v] }));
-                              (e.target as HTMLInputElement).value = "";
-                            }
-                          }
-                        }}
-                      />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        const el = document.getElementById("global-dont") as HTMLInputElement;
-                        if (el?.value.trim()) {
-                          setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, el.value.trim()] }));
-                          el.value = "";
-                        }
-                      }}><Plus className="h-4 w-4" /></Button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {globalInstructions.prompt_dont.map((item, i) => (
-                        <Badge key={i} variant="destructive" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: prev.prompt_dont.filter((_, ii) => ii !== i) }))}>
-                          🚫 {item} ×
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* HARDWARE NECESSÁRIO */}
-                <div className="space-y-2 pt-2 border-t">
-                  <Label className="text-sm">Hardware Necessário</Label>
+                {/* SECTION 1: HARDWARE NECESSÁRIO */}
+                <div className="space-y-3 p-4 border rounded-lg">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Wrench className="h-4 w-4" /> 1. Hardware Necessário</h3>
                   <p className="text-xs text-muted-foreground">
                     Digite o nome do dispositivo e a IA sugere um ícone automaticamente. Itens já cadastrados são reutilizados.
                   </p>
@@ -1107,7 +1037,6 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                       </Button>
                     )}
                   </div>
-                  {/* Suggestions from catalog */}
                   {hardwareCatalog.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {hardwareCatalog
@@ -1141,7 +1070,6 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                         })}
                     </div>
                   )}
-                  {/* Selected hardware */}
                   {globalInstructions.required_hardware.length > 0 && (
                     <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
                       {globalInstructions.required_hardware.map((hwName, i) => {
@@ -1167,73 +1095,191 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   )}
                 </div>
 
-                {/* VÍDEO EMBED */}
-                <div className="space-y-2 pt-2 border-t">
-                  <Label className="text-sm">Vídeo de Instrução (YouTube/Vimeo)</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Cole a URL do YouTube ou Vimeo. O vídeo será embedado na página da campanha.
-                  </p>
-                  <Input
-                    value={globalInstructions.video_url || ""}
-                    onChange={e => setGlobalInstructions(prev => ({ ...prev, video_url: e.target.value || null }))}
-                    placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/..."
-                  />
-                  {globalInstructions.video_url && (
-                    <div className="border rounded-lg overflow-hidden aspect-video">
-                      <iframe
-                        src={getEmbedUrl(globalInstructions.video_url)}
-                        className="w-full h-full"
-                        allowFullScreen
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      />
-                    </div>
-                  )}
+                {/* SECTION 2: INSTRUÇÕES PASSO A PASSO / VÍDEO / PDF */}
+                <div className="space-y-3 p-4 border rounded-lg">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><BookOpen className="h-4 w-4" /> 2. Instruções Passo a Passo</h3>
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Input
+                      value={globalInstructions.instructions_title || ""}
+                      onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_title: e.target.value || null }))}
+                      placeholder="Ex: Como participar desta campanha"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Resumo / Descrição detalhada</Label>
+                    <Textarea
+                      value={globalInstructions.instructions_summary || ""}
+                      onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_summary: e.target.value || null }))}
+                      placeholder="Explique ao participante o que ele precisa fazer..."
+                      rows={4}
+                    />
+                  </div>
+                  {/* VIDEO */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-sm">Vídeo de Instrução (YouTube/Vimeo)</Label>
+                    <Input
+                      value={globalInstructions.video_url || ""}
+                      onChange={e => setGlobalInstructions(prev => ({ ...prev, video_url: e.target.value || null }))}
+                      placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/..."
+                    />
+                    {globalInstructions.video_url && (
+                      <div className="border rounded-lg overflow-hidden aspect-video">
+                        <iframe
+                          src={getEmbedUrl(globalInstructions.video_url)}
+                          className="w-full h-full"
+                          allowFullScreen
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {/* PDF */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-sm">PDF com Instruções Detalhadas</Label>
+                    {globalInstructions.pdf_file_url ? (
+                      <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                        <FileText className="h-5 w-5 text-primary shrink-0" />
+                        <a href={globalInstructions.pdf_file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate flex-1">
+                          {globalInstructions.pdf_file_url.split("/").pop()}
+                        </a>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setGlobalInstructions(prev => ({ ...prev, pdf_file_url: null }))}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept=".pdf"
+                          disabled={pdfUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setPdfUploading(true);
+                            try {
+                              const path = `instructions/${Date.now()}_${file.name}`;
+                              const { error: uploadError } = await supabase.storage.from("campaign-files").upload(path, file, { contentType: "application/pdf" });
+                              if (uploadError) throw uploadError;
+                              const { data: urlData } = supabase.storage.from("campaign-files").getPublicUrl(path);
+                              setGlobalInstructions(prev => ({ ...prev, pdf_file_url: urlData.publicUrl }));
+                              toast({ title: "PDF enviado com sucesso!" });
+                            } catch (err) {
+                              console.error(err);
+                              toast({ title: "Erro ao enviar PDF", variant: "destructive" });
+                            } finally {
+                              setPdfUploading(false);
+                            }
+                          }}
+                        />
+                        {pdfUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* PDF DE INSTRUÇÕES */}
-                <div className="space-y-2 pt-2 border-t">
-                  <Label className="text-sm">PDF com Instruções Detalhadas</Label>
+                {/* SECTION 3: O QUE FAZER / NÃO FAZER — with catalog */}
+                <div className="space-y-3 p-4 border rounded-lg">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> 3. O que Fazer / Não Fazer</h3>
                   <p className="text-xs text-muted-foreground">
-                    Faça upload de um PDF que será disponibilizado para download pelos participantes.
+                    Selecione regras do catálogo global ou adicione novas. Regras adicionadas são salvas no catálogo para reutilização futura.
                   </p>
-                  {globalInstructions.pdf_file_url ? (
-                    <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-                      <FileText className="h-5 w-5 text-primary shrink-0" />
-                      <a href={globalInstructions.pdf_file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate flex-1">
-                        {globalInstructions.pdf_file_url.split("/").pop()}
-                      </a>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setGlobalInstructions(prev => ({ ...prev, pdf_file_url: null }))}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".pdf"
-                        disabled={pdfUploading}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setPdfUploading(true);
-                          try {
-                            const path = `instructions/${Date.now()}_${file.name}`;
-                            const { error: uploadError } = await supabase.storage.from("campaign-files").upload(path, file, { contentType: "application/pdf" });
-                            if (uploadError) throw uploadError;
-                            const { data: urlData } = supabase.storage.from("campaign-files").getPublicUrl(path);
-                            setGlobalInstructions(prev => ({ ...prev, pdf_file_url: urlData.publicUrl }));
-                            toast({ title: "PDF enviado com sucesso!" });
-                          } catch (err) {
-                            console.error(err);
-                            toast({ title: "Erro ao enviar PDF", variant: "destructive" });
-                          } finally {
-                            setPdfUploading(false);
-                          }
-                        }}
-                      />
-                      {pdfUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+
+                  {/* Catalog suggestions */}
+                  {promptRulesCatalog.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Catálogo de regras (clique para adicionar)</Label>
+                      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                        {promptRulesCatalog
+                          .filter(r => r.rule_type === "do" && !globalInstructions.prompt_do.includes(r.rule_text))
+                          .map(r => (
+                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-accent"
+                              onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, r.rule_text] }))}
+                            >✅ {r.rule_text} +</Badge>
+                          ))}
+                        {promptRulesCatalog
+                          .filter(r => r.rule_type === "dont" && !globalInstructions.prompt_dont.includes(r.rule_text))
+                          .map(r => (
+                            <Badge key={r.id} variant="outline" className="cursor-pointer text-xs gap-1 hover:bg-destructive/10"
+                              onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, r.rule_text] }))}
+                            >🚫 {r.rule_text} +</Badge>
+                          ))}
+                      </div>
                     </div>
                   )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">O que FAZER</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Adicionar item"
+                          id="global-do"
+                          onKeyDown={e => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const v = (e.target as HTMLInputElement).value.trim();
+                              if (v) {
+                                setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, v] }));
+                                addRuleToCatalog(v, "do");
+                                (e.target as HTMLInputElement).value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <Button variant="outline" size="icon" onClick={() => {
+                          const el = document.getElementById("global-do") as HTMLInputElement;
+                          if (el?.value.trim()) {
+                            setGlobalInstructions(prev => ({ ...prev, prompt_do: [...prev.prompt_do, el.value.trim()] }));
+                            addRuleToCatalog(el.value.trim(), "do");
+                            el.value = "";
+                          }
+                        }}><Plus className="h-4 w-4" /></Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {globalInstructions.prompt_do.map((item, i) => (
+                          <Badge key={i} variant="secondary" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_do: prev.prompt_do.filter((_, ii) => ii !== i) }))}>
+                            ✅ {item} ×
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">O que NÃO fazer</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Adicionar item"
+                          id="global-dont"
+                          onKeyDown={e => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const v = (e.target as HTMLInputElement).value.trim();
+                              if (v) {
+                                setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, v] }));
+                                addRuleToCatalog(v, "dont");
+                                (e.target as HTMLInputElement).value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <Button variant="outline" size="icon" onClick={() => {
+                          const el = document.getElementById("global-dont") as HTMLInputElement;
+                          if (el?.value.trim()) {
+                            setGlobalInstructions(prev => ({ ...prev, prompt_dont: [...prev.prompt_dont, el.value.trim()] }));
+                            addRuleToCatalog(el.value.trim(), "dont");
+                            el.value = "";
+                          }
+                        }}><Plus className="h-4 w-4" /></Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {globalInstructions.prompt_dont.map((item, i) => (
+                          <Badge key={i} variant="destructive" className="cursor-pointer text-xs" onClick={() => setGlobalInstructions(prev => ({ ...prev, prompt_dont: prev.prompt_dont.filter((_, ii) => ii !== i) }))}>
+                            🚫 {item} ×
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
 
