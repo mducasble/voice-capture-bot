@@ -311,8 +311,12 @@ export default function PortalCampaign() {
                   </span>
                   <div className="flex flex-wrap gap-3">
                     {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
-                      const catalogItem = hardwareCatalog.find(h => h.name === hwName);
-                      const LucideIcon = catalogItem ? (icons as any)[toPascalCase(catalogItem.icon_name)] : null;
+                      const catalogItem = hardwareCatalog.find(h => h.name.toLowerCase() === hwName.toLowerCase());
+                      const pascalName = catalogItem ? toPascalCase(catalogItem.icon_name) : null;
+                      const LucideIcon = pascalName ? (icons as any)[pascalName] : null;
+                      if (catalogItem && !LucideIcon) {
+                        console.warn(`[Hardware] Icon not found: "${catalogItem.icon_name}" → "${pascalName}". Available sample:`, Object.keys(icons).slice(0, 10));
+                      }
                       return (
                         <div
                           key={i}
