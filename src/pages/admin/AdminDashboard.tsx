@@ -94,19 +94,19 @@ function StatCard({
   value,
   change,
   icon: Icon,
-  gradient,
-  iconBg,
+  gradientFrom,
+  gradientTo,
 }: {
   title: string;
   value: string;
   change?: { value: string; positive: boolean };
   icon: React.ElementType;
-  gradient: string;
-  iconBg: string;
+  gradientFrom: string;
+  gradientTo: string;
 }) {
   return (
-    <Card className="group relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300">
-      <div className={cn("absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity", gradient)} />
+    <Card className="group relative overflow-hidden border-border/50 bg-card/70 backdrop-blur-sm hover:bg-card/90 transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(265_80%_60%/0.05)]">
+      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(265_80%_60%/0.04)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       <CardContent className="p-6 relative">
         <div className="flex items-start justify-between">
           <div className="space-y-3">
@@ -119,8 +119,11 @@ function StatCard({
               </div>
             )}
           </div>
-          <div className={cn("p-3 rounded-2xl shadow-lg", iconBg)}>
-            <Icon className="h-5 w-5 text-primary-foreground" />
+          <div className={cn("p-3 rounded-2xl shadow-lg", gradientFrom)} style={{
+            background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
+            boxShadow: `0 8px 24px ${gradientFrom}33`,
+          }}>
+            <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
       </CardContent>
@@ -159,7 +162,7 @@ export default function AdminDashboard() {
   const chartData = useMemo(() => buildDailyData(filteredProfiles, filteredParticipants, range), [filteredProfiles, filteredParticipants, range]);
 
   const chartConfig = {
-    users: { label: "Novos Usuários", color: "hsl(250 80% 55%)" },
+    users: { label: "Novos Usuários", color: "hsl(265 80% 60%)" },
     quests: { label: "Fazendo Quest", color: "hsl(155 72% 42%)" },
   };
 
@@ -173,7 +176,7 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1.5">Visão geral da plataforma KGen</p>
         </div>
-        <p className="text-xs text-muted-foreground font-medium">
+        <p className="text-xs text-muted-foreground/60 font-medium">
           {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
         </p>
       </div>
@@ -184,46 +187,46 @@ export default function AdminDashboard() {
           title="Usuários Inscritos"
           value={totalUsers.toLocaleString("pt-BR")}
           icon={Users}
-          gradient="bg-gradient-to-br from-primary to-[hsl(280_72%_60%)]"
-          iconBg="bg-gradient-to-br from-[hsl(250_80%_55%)] to-[hsl(280_72%_60%)] shadow-primary/30"
+          gradientFrom="hsl(265 80% 60%)"
+          gradientTo="hsl(300 70% 55%)"
         />
         <StatCard
           title="Fazendo Quest"
           value={uniqueQuestUsers.toLocaleString("pt-BR")}
           icon={Zap}
-          gradient="bg-gradient-to-br from-accent to-[hsl(170_60%_45%)]"
-          iconBg="bg-gradient-to-br from-[hsl(155_72%_42%)] to-[hsl(170_60%_45%)] shadow-accent/30"
+          gradientFrom="hsl(155 72% 42%)"
+          gradientTo="hsl(170 60% 45%)"
         />
         <StatCard
           title="Total Distribuído"
           value={`$${totalDistributed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           icon={DollarSign}
-          gradient="bg-gradient-to-br from-[hsl(38_92%_50%)] to-[hsl(25_90%_55%)]"
-          iconBg="bg-gradient-to-br from-[hsl(38_92%_50%)] to-[hsl(25_90%_55%)] shadow-[hsl(38_92%_50%)]/30"
+          gradientFrom="hsl(38 92% 55%)"
+          gradientTo="hsl(25 90% 55%)"
         />
       </div>
 
       {/* Chart */}
-      <Card className="border-0 shadow-md overflow-hidden">
+      <Card className="border-border/50 bg-card/70 backdrop-blur-sm overflow-hidden">
         <CardHeader className="pb-0 pt-6 px-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[hsl(265_80%_60%/0.15)] to-[hsl(265_80%_60%/0.05)] flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </div>
                 Crescimento
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1 ml-[42px]">Novos usuários e participações em quests</p>
             </div>
-            <div className="flex items-center gap-1.5 bg-secondary rounded-xl p-1">
+            <div className="flex items-center gap-1.5 bg-secondary/50 rounded-xl p-1 border border-border/30">
               {presets.map((p) => (
                 <button
                   key={p.days}
                   className={cn(
                     "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200",
                     activeDays === p.days
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-primary/20 text-primary shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   onClick={() => setRange({ from: subDays(new Date(), p.days), to: new Date() })}
@@ -262,24 +265,24 @@ export default function AdminDashboard() {
             <AreaChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: -10 }}>
               <defs>
                 <linearGradient id="fillUsers" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(250 80% 55%)" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="hsl(250 80% 55%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(265 80% 60%)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="hsl(265 80% 60%)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="fillQuests" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(155 72% 42%)" stopOpacity={0.2} />
+                  <stop offset="0%" stopColor="hsl(155 72% 42%)" stopOpacity={0.25} />
                   <stop offset="100%" stopColor="hsl(155 72% 42%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(220 16% 92%)" />
+              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(240 6% 18%)" />
               <XAxis
                 dataKey="date"
                 tickFormatter={(v) => format(new Date(v), "dd/MM")}
-                tick={{ fontSize: 11, fill: "hsl(220 10% 50%)" }}
+                tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "hsl(220 10% 50%)" }}
+                tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -290,8 +293,8 @@ export default function AdminDashboard() {
                   />
                 }
               />
-              <Area type="monotone" dataKey="users" stroke="hsl(250 80% 55%)" strokeWidth={2.5} fill="url(#fillUsers)" dot={false} activeDot={{ r: 5, fill: "hsl(250 80% 55%)", strokeWidth: 2, stroke: "white" }} />
-              <Area type="monotone" dataKey="quests" stroke="hsl(155 72% 42%)" strokeWidth={2.5} fill="url(#fillQuests)" dot={false} activeDot={{ r: 5, fill: "hsl(155 72% 42%)", strokeWidth: 2, stroke: "white" }} />
+              <Area type="monotone" dataKey="users" stroke="hsl(265 80% 60%)" strokeWidth={2.5} fill="url(#fillUsers)" dot={false} activeDot={{ r: 5, fill: "hsl(265 80% 60%)", strokeWidth: 2, stroke: "hsl(240 10% 8%)" }} />
+              <Area type="monotone" dataKey="quests" stroke="hsl(155 72% 42%)" strokeWidth={2.5} fill="url(#fillQuests)" dot={false} activeDot={{ r: 5, fill: "hsl(155 72% 42%)", strokeWidth: 2, stroke: "hsl(240 10% 8%)" }} />
             </AreaChart>
           </ChartContainer>
         </CardContent>
@@ -315,37 +318,37 @@ export default function AdminDashboard() {
           title="Total Gravações"
           value={recStats.totalRecordings.toLocaleString("pt-BR")}
           icon={Mic2}
-          gradient="bg-gradient-to-br from-primary to-[hsl(280_72%_60%)]"
-          iconBg="bg-gradient-to-br from-[hsl(250_80%_55%)] to-[hsl(280_72%_60%)] shadow-primary/30"
+          gradientFrom="hsl(265 80% 60%)"
+          gradientTo="hsl(300 70% 55%)"
         />
         <StatCard
           title="Duração Total"
           value={recStats.totalDuration}
           icon={Clock}
-          gradient="bg-gradient-to-br from-[hsl(200_80%_50%)] to-[hsl(220_70%_55%)]"
-          iconBg="bg-gradient-to-br from-[hsl(200_80%_50%)] to-[hsl(220_70%_55%)] shadow-[hsl(200_80%_50%)]/30"
+          gradientFrom="hsl(200 80% 50%)"
+          gradientTo="hsl(220 70% 55%)"
         />
         <StatCard
           title="Armazenamento"
           value={recStats.totalSize}
           icon={HardDrive}
-          gradient="bg-gradient-to-br from-[hsl(280_60%_55%)] to-[hsl(300_50%_50%)]"
-          iconBg="bg-gradient-to-br from-[hsl(280_60%_55%)] to-[hsl(300_50%_50%)] shadow-[hsl(280_60%_55%)]/30"
+          gradientFrom="hsl(280 60% 55%)"
+          gradientTo="hsl(300 50% 50%)"
         />
         <StatCard
           title="Servidores"
           value={recStats.uniqueServers.toLocaleString("pt-BR")}
           icon={Server}
-          gradient="bg-gradient-to-br from-accent to-[hsl(170_60%_45%)]"
-          iconBg="bg-gradient-to-br from-[hsl(155_72%_42%)] to-[hsl(170_60%_45%)] shadow-accent/30"
+          gradientFrom="hsl(155 72% 42%)"
+          gradientTo="hsl(170 60% 45%)"
         />
       </div>
 
       {/* Storage Breakdown */}
-      <Card className="border-0 shadow-md">
+      <Card className="border-border/50 bg-card/70 backdrop-blur-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[hsl(265_80%_60%/0.15)] to-[hsl(265_80%_60%/0.05)] flex items-center justify-center">
               <Database className="h-4 w-4 text-primary" />
             </div>
             Armazenamento
@@ -370,14 +373,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30 border border-border/30">
               <FileAudio className="h-8 w-8 text-primary opacity-70" />
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Originais (WAV)</p>
                 <p className="text-lg font-bold text-foreground">{formatBytes(recStats.storageStats.totalBytes)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30 border border-border/30">
               <FileArchive className="h-8 w-8 text-accent opacity-70" />
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Comprimidos</p>
@@ -389,7 +392,7 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30 border border-border/30">
               <Mic2 className="h-8 w-8 text-muted-foreground opacity-50" />
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Média por arquivo</p>
@@ -411,6 +414,6 @@ function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
