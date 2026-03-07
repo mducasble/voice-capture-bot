@@ -29,13 +29,17 @@ export default function AdminLogin() {
 
   useEffect(() => {
     const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const isAdmin = await checkAdminAndRedirect(session.user.id);
-        if (isAdmin) {
-          navigate("/admin", { replace: true });
-          return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const isAdmin = await checkAdminAndRedirect(session.user.id);
+          if (isAdmin) {
+            navigate("/admin", { replace: true });
+            return;
+          }
         }
+      } catch {
+        // Network error — just show login form
       }
       setChecking(false);
     };
