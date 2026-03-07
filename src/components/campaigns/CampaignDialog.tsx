@@ -141,7 +141,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   // Referral config (per-campaign override, null = use global default)
   const [referralOverride, setReferralOverride] = useState(false);
   const [referralConfig, setReferralConfig] = useState<ReferralConfig>({
-    pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5,
+    pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5,
   });
 
   // UI state
@@ -185,7 +185,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         setReferralConfig(campaign.referral_config);
       } else {
         setReferralOverride(false);
-        setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+        setReferralConfig({ pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5 });
       }
     } else if (!campaignId && !duplicateFromId) {
       setName(""); setDescription(""); setClientId(""); setStartDate(""); setEndDate("");
@@ -201,7 +201,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
-      setReferralConfig({ pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 });
+      setReferralConfig({ pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5 });
     }
   }, [campaign, campaignId, duplicateFromId]);
 
@@ -1375,7 +1375,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   </p>
                   {referralOverride && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Pool de Referral (%)</Label>
                           <Input
@@ -1386,6 +1386,19 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                           />
                           <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
                         </div>
+                        <div className="space-y-2">
+                          <Label>Valor Fixo do Pool ({reward.currency})</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={referralConfig.pool_fixed_amount ?? ""}
+                            onChange={e => setReferralConfig(p => ({ ...p, pool_fixed_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                            placeholder="Deixe vazio para usar %"
+                          />
+                          <p className="text-xs text-muted-foreground">Se preenchido, prevalece sobre o %</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Proporção de Cascata</Label>
                           <Input
@@ -1416,8 +1429,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 {/* Simulação de Ganhos por Nível */}
                 {(() => {
                   const baseRate = reward.base_rate ?? 0;
-                  const cfg = referralOverride ? referralConfig : { pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 };
-                  const poolAmount = baseRate * (cfg.pool_percent / 100);
+                  const cfg = referralOverride ? referralConfig : { pool_percent: 10, pool_fixed_amount: null as number | null, cascade_keep_ratio: 0.60, max_levels: 5 };
+                  const poolAmount = (cfg.pool_fixed_amount != null && cfg.pool_fixed_amount > 0) ? cfg.pool_fixed_amount : baseRate * (cfg.pool_percent / 100);
+                  const usingFixed = cfg.pool_fixed_amount != null && cfg.pool_fixed_amount > 0;
                   let remaining = poolAmount;
                   const distribution: { level: number; value: number }[] = [];
                   for (let i = 1; i <= cfg.max_levels; i++) {
@@ -1436,7 +1450,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                         Simulação de Ganhos por Nível
                         {baseRate > 0 && <span className="text-muted-foreground font-normal ml-1">(base: {currSymbol}{baseRate.toFixed(2)})</span>}
                       </Label>
-                      {baseRate > 0 ? (
+                      {(usingFixed || baseRate > 0) ? (
                         <>
                           <div className="flex justify-between text-xs font-medium border-b pb-1 mb-1">
                             <span>Nível</span>
@@ -1450,11 +1464,14 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                           ))}
                           <div className="flex justify-between text-xs font-medium border-t pt-1 mt-1">
                             <span>Total pool referral</span>
-                            <span className="font-mono">{currSymbol}{poolAmount.toFixed(4)} ({cfg.pool_percent}%)</span>
+                            <span className="font-mono">
+                              {currSymbol}{poolAmount.toFixed(4)}
+                              {usingFixed ? " (valor fixo)" : ` (${cfg.pool_percent}%)`}
+                            </span>
                           </div>
                         </>
                       ) : (
-                        <p className="text-xs text-muted-foreground italic">Defina a taxa base acima para ver a simulação.</p>
+                        <p className="text-xs text-muted-foreground italic">Defina a taxa base ou um valor fixo de pool para ver a simulação.</p>
                       )}
                     </div>
                   );
