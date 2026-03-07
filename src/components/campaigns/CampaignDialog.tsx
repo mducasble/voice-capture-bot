@@ -1429,8 +1429,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 {/* Simulação de Ganhos por Nível */}
                 {(() => {
                   const baseRate = reward.base_rate ?? 0;
-                  const cfg = referralOverride ? referralConfig : { pool_percent: 10, cascade_keep_ratio: 0.60, max_levels: 5 };
-                  const poolAmount = baseRate * (cfg.pool_percent / 100);
+                  const cfg = referralOverride ? referralConfig : { pool_percent: 10, pool_fixed_amount: null as number | null, cascade_keep_ratio: 0.60, max_levels: 5 };
+                  const poolAmount = (cfg.pool_fixed_amount != null && cfg.pool_fixed_amount > 0) ? cfg.pool_fixed_amount : baseRate * (cfg.pool_percent / 100);
+                  const usingFixed = cfg.pool_fixed_amount != null && cfg.pool_fixed_amount > 0;
                   let remaining = poolAmount;
                   const distribution: { level: number; value: number }[] = [];
                   for (let i = 1; i <= cfg.max_levels; i++) {
