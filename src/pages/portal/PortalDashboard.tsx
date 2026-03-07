@@ -109,7 +109,7 @@ function CampaignCard({ campaign, isOnWaitlist, user, onWaitlistToggle }: { camp
         <KGenButton
           className="flex-1"
           size="sm"
-          variant="ghost"
+          variant="outline"
           onClick={() => navigate(`/campaign/${campaign.id}`)}
           scrambleText={t("dashboard.viewDetails")}
           icon={<BookOpen className="h-4 w-4" />}
