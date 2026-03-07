@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Radio, Users, Clock, ArrowLeft, RefreshCw, Mic, MicOff } from "lucide-react";
+import { Radio, Users, Clock, RefreshCw, Mic, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
@@ -33,16 +33,26 @@ interface RoomWithParticipants {
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   waiting: { label: "Aguardando", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
-  active: { label: "Ativa", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
-  recording: { label: "Gravando", color: "bg-red-500/20 text-red-400 border-red-500/30" },
-  completed: { label: "Finalizada", color: "bg-muted text-muted-foreground border-border" },
-  closed: { label: "Fechada", color: "bg-muted text-muted-foreground border-border" },
+  active: { label: "Aberta", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+  live: { label: "Ao Vivo", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  completed: { label: "Finalizada", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
+  lost: { label: "Perdida", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+  expired: { label: "Expirada", color: "bg-muted text-muted-foreground border-border" },
 };
+
+type FilterKey = "all" | "open" | "closed";
+
+const filterTabs: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "Todas" },
+  { key: "open", label: "Abertas" },
+  { key: "closed", label: "Encerradas" },
+];
 
 const RoomsMonitor = () => {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<RoomWithParticipants[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -83,8 +93,16 @@ const RoomsMonitor = () => {
     fetchRooms();
   }, []);
 
-  const activeRooms = rooms.filter((r) => ["waiting", "active", "recording"].includes(r.status));
-  const closedRooms = rooms.filter((r) => ["completed", "closed"].includes(r.status));
+  const openStatuses = ["waiting", "active", "live"];
+  const closedStatuses = ["completed", "lost", "expired"];
+
+  const filtered = rooms.filter((r) => {
+    if (filter === "open") return openStatuses.includes(r.status);
+    if (filter === "closed") return closedStatuses.includes(r.status);
+    return true;
+  });
+
+  const openCount = rooms.filter((r) => openStatuses.includes(r.status)).length;
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -92,7 +110,7 @@ const RoomsMonitor = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Monitor de Salas</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {activeRooms.length} ativa{activeRooms.length !== 1 ? "s" : ""} · {rooms.length} total
+            {openCount} aberta{openCount !== 1 ? "s" : ""} · {rooms.length} total
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchRooms} disabled={loading}>
@@ -101,38 +119,34 @@ const RoomsMonitor = () => {
         </Button>
       </div>
 
-      <div className="space-y-8">
-        {/* Active rooms */}
-        {activeRooms.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+      {/* Filter tabs */}
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit">
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              filter === tab.key
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+            {tab.key === "open" && openCount > 0 && (
+              <span className="ml-1.5 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                {openCount}
               </span>
-              Salas Ativas
-            </h2>
-            <div className="space-y-3">
-              {activeRooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          </section>
-        )}
+            )}
+          </button>
+        ))}
+      </div>
 
-        {/* Closed rooms */}
-        {closedRooms.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">Salas Encerradas</h2>
-            <div className="space-y-3">
-              {closedRooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          </section>
-        )}
+      <div className="space-y-3">
+        {filtered.map((room) => (
+          <RoomCard key={room.id} room={room} />
+        ))}
 
-        {rooms.length === 0 && !loading && (
+        {filtered.length === 0 && !loading && (
           <div className="text-center py-20 text-muted-foreground">
             <Radio className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <p className="text-lg">Nenhuma sala encontrada</p>
@@ -158,8 +172,8 @@ function RoomCard({ room }: { room: RoomWithParticipants }) {
       <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2">
-            {room.is_recording && (
-              <span className="flex h-2.5 w-2.5">
+            {room.status === "live" && (
+              <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
@@ -171,7 +185,7 @@ function RoomCard({ room }: { room: RoomWithParticipants }) {
           <Badge variant="outline" className={`text-[10px] uppercase tracking-wider border ${cfg.color}`}>
             {cfg.label}
           </Badge>
-          {room.is_recording && (
+          {room.status === "live" && (
             <Badge variant="outline" className="text-[10px] uppercase tracking-wider border bg-red-500/20 text-red-400 border-red-500/30">
               <Mic className="h-3 w-3 mr-1" />
               REC

@@ -430,7 +430,7 @@ const Room = () => {
       .from("rooms")
       .update({ 
         is_recording: true, 
-        status: "recording",
+        status: "live",
         recording_started_at: new Date().toISOString()
       })
       .eq("id", roomId);
@@ -576,6 +576,14 @@ const Room = () => {
         .from("room_participants")
         .update({ is_connected: false, left_at: new Date().toISOString() })
         .eq("id", currentParticipant.id);
+
+      // If creator leaves and room never recorded, mark as "lost"
+      if (currentParticipant.is_creator && room && !room.is_recording && room.status !== "completed") {
+        await supabase
+          .from("rooms")
+          .update({ status: "lost" })
+          .eq("id", room.id);
+      }
     }
 
     if (mediaStreamRef.current) {
