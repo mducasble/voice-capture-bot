@@ -65,12 +65,14 @@ export default function AdminLayout() {
           {/* Main area */}
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             {/* Top bar panel */}
-            <header className="admin-panel h-12 flex items-center justify-between px-5 shrink-0">
-              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+            <header className="admin-panel h-14 flex items-center justify-between px-5 shrink-0">
+              <div className="admin-icon-box h-9 w-9 admin-icon-box-muted cursor-pointer">
+                <SidebarTrigger className="text-current h-4 w-4" />
+              </div>
               <button
                 onClick={signOut}
                 title="Sair"
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="admin-icon-box h-9 w-9 admin-icon-box-muted"
               >
                 <LogOut className="h-4 w-4" />
               </button>
