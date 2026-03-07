@@ -832,8 +832,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
               <TabsTrigger value="geo">Geografia</TabsTrigger>
               <TabsTrigger value="lang">Idiomas</TabsTrigger>
               <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-              <TabsTrigger value="reward">Reward</TabsTrigger>
-              <TabsTrigger value="referral">Referral</TabsTrigger>
+              <TabsTrigger value="valores">Valores</TabsTrigger>
               <TabsTrigger value="quality">Qualidade</TabsTrigger>
             </TabsList>
 
