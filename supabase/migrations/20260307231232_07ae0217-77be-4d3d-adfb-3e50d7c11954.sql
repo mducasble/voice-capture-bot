@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_instructions ADD COLUMN instructions_steps jsonb DEFAULT '[]'::jsonb;
