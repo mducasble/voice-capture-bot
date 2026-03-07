@@ -11,13 +11,17 @@ export function useAdminAuth() {
     let cancelled = false;
 
     const checkAdmin = async (userId: string) => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-      if (!cancelled) setIsAdmin(!!data);
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+        if (!cancelled) setIsAdmin(!!data);
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
