@@ -108,6 +108,38 @@ export function detectBrowserCountry(): string | null {
 }
 
 /**
+ * Common country name → ISO code mapping for resolving free-text country values.
+ */
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  "brasil": "BR", "brazil": "BR",
+  "argentina": "AR",
+  "colombia": "CO",
+  "peru": "PE",
+  "chile": "CL",
+  "venezuela": "VE",
+  "mexico": "MX", "méxico": "MX",
+  "estados unidos": "US", "united states": "US", "usa": "US",
+  "canada": "CA", "canadá": "CA",
+  "portugal": "PT",
+  "espanha": "ES", "españa": "ES", "spain": "ES",
+  "uruguai": "UY", "uruguay": "UY",
+  "paraguai": "PY", "paraguay": "PY",
+  "bolivia": "BO", "bolívia": "BO",
+  "equador": "EC", "ecuador": "EC",
+  "panamá": "PA", "panama": "PA",
+};
+
+/**
+ * Normalize a country value (which could be a name or a code) to ISO code.
+ */
+function normalizeCountry(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  return COUNTRY_NAME_TO_CODE[trimmed.toLowerCase()] || null;
+}
+
+/**
  * Check if a campaign is visible for a given country, based on its geographic scope.
  * - No scope → visible to everyone
  * - restriction_mode "include" → visible only if country is in the list
@@ -119,14 +151,14 @@ export function isCampaignVisibleForCountry(
   userCountry: string | null
 ): boolean {
   if (!geoScope) return true;
-  if (!userCountry) return true; // can't determine → show
+  const normalizedUser = normalizeCountry(userCountry);
+  if (!normalizedUser) return true; // can't determine → show
   if (!geoScope.countries || geoScope.countries.length === 0) return true;
 
   const mode = geoScope.restriction_mode || "include";
   const countries = geoScope.countries.map(c => c.toUpperCase());
-  const uc = userCountry.toUpperCase();
 
-  if (mode === "include") return countries.includes(uc);
-  if (mode === "exclude") return !countries.includes(uc);
+  if (mode === "include") return countries.includes(normalizedUser);
+  if (mode === "exclude") return !countries.includes(normalizedUser);
   return true;
 }
