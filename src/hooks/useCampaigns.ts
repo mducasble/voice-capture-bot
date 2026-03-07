@@ -96,6 +96,7 @@ async function fetchCampaignRelations(campaignId: string) {
     supabase.from("campaign_quality_flow").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_administrative_rules").select("*").eq("campaign_id", campaignId).maybeSingle(),
     (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
+    (supabase as any).from("referral_config").select("*").is("campaign_id", null).maybeSingle(),
     supabase.from("campaign_sections").select("*").eq("campaign_id", campaignId).order("sort_order"),
     (supabase as any).from("campaign_instructions").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
