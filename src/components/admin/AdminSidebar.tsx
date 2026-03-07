@@ -16,6 +16,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -23,7 +24,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -116,25 +116,26 @@ export function AdminSidebar() {
                   const active = isActive(item.url);
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end={item.url === "/admin"}
-                          className={`group/item flex items-center gap-4 px-3 py-3 rounded-2xl text-[17px] transition-all duration-150 ${
-                            active
-                              ? "text-[hsl(0_0%_96%)] font-semibold"
-                              : "text-[hsl(0_0%_72%)] hover:text-[hsl(0_0%_96%)]"
-                          }`}
-                          activeClassName=""
-                        >
-                          <div className={`admin-icon-box h-[3.25rem] w-[3.25rem] min-h-[3.25rem] min-w-[3.25rem] max-h-[3.25rem] max-w-[3.25rem] shrink-0 rounded-[1.05rem] ${
-                            active ? "admin-icon-box-active" : "admin-icon-box-muted"
-                          }`}>
-                            <item.icon className="h-5 w-5" />
-                          </div>
-                          {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/admin"}
+                        className={cn(
+                          "group/item flex items-center transition-colors",
+                          collapsed ? "justify-center py-1.5" : "gap-3 px-3 py-2",
+                          active
+                            ? "text-foreground font-semibold"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        activeClassName=""
+                      >
+                        <div className={cn(
+                          "admin-icon-box h-11 w-11 min-h-11 min-w-11 max-h-11 max-w-11 shrink-0",
+                          active ? "bg-primary text-primary-foreground" : "admin-icon-box-muted"
+                        )}>
+                          <item.icon className="h-5 w-5" />
+                        </div>
+                        {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
+                      </NavLink>
                     </SidebarMenuItem>
                   );
                 })}
