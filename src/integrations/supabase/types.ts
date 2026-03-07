@@ -2151,6 +2151,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_old_rooms: { Args: never; Returns: undefined }
       get_my_campaign_recordings: {
         Args: { p_campaign_ids: string[]; p_user_id: string }
         Returns: {
