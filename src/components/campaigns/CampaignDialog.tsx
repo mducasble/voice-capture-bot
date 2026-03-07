@@ -214,6 +214,22 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     });
   }, []);
 
+  // Load prompt rules catalog
+  useEffect(() => {
+    supabase.from("prompt_rules_catalog").select("*").eq("is_active", true).order("rule_text").then(({ data }) => {
+      if (data) setPromptRulesCatalog(data as any);
+    });
+  }, []);
+
+  const addRuleToCatalog = async (ruleText: string, ruleType: "do" | "dont") => {
+    // Check if already in catalog
+    if (promptRulesCatalog.some(r => r.rule_text.toLowerCase() === ruleText.toLowerCase() && r.rule_type === ruleType)) return;
+    const { data, error } = await supabase.from("prompt_rules_catalog").insert({ rule_text: ruleText, rule_type: ruleType }).select().single();
+    if (!error && data) {
+      setPromptRulesCatalog(prev => [...prev, data as any]);
+    }
+  };
+
   const cancelHardwareLookup = () => {
     if (hardwareAbortRef.current) {
       hardwareAbortRef.current.abort();
