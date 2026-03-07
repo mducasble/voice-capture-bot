@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X, Wrench, BookOpen, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -126,6 +126,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
   const [hardwareInput, setHardwareInput] = useState("");
   const [hardwareLoading, setHardwareLoading] = useState(false);
+  const [promptRulesCatalog, setPromptRulesCatalog] = useState<{ id: string; rule_text: string; rule_type: string; category: string | null }[]>([]);
   const hardwareAbortRef = useRef<AbortController | null>(null);
 
   // Reward
