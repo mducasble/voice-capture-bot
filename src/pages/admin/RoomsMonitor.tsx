@@ -108,7 +108,7 @@ const RoomsMonitor = () => {
     <div className="space-y-8 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Monitor de Salas</h1>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Monitor de Salas</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {openCount} aberta{openCount !== 1 ? "s" : ""} · {rooms.length} total
           </p>
@@ -120,14 +120,14 @@ const RoomsMonitor = () => {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-secondary/30 border border-border/30 rounded-xl w-fit">
         {filterTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
               filter === tab.key
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-primary/20 text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -165,7 +165,7 @@ function RoomCard({ room }: { room: RoomWithParticipants }) {
 
   return (
     <div
-      className="border border-border rounded-lg bg-card/60 hover:bg-card/80 transition-colors cursor-pointer"
+      className="border border-border/50 rounded-xl bg-card/70 backdrop-blur-sm hover:bg-card/90 transition-all duration-200 cursor-pointer"
       onClick={() => navigate(`/admin/room/${room.id}`)}
     >
       {/* Header */}

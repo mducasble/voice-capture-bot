@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus, ArrowLeft, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy, Users } from "lucide-react";
+import { Plus, Building2, Calendar, Target, Mic2, MapPin, Globe, DollarSign, Layers, Copy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,20 +45,16 @@ export default function Campaigns() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link to="/"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
-            <div>
-              <h1 className="text-3xl font-bold">Campanhas</h1>
-              <p className="text-muted-foreground">Gerencie campanhas de coleta de dados</p>
-            </div>
-          </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Nova Campanha
-          </Button>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Campanhas</h1>
+          <p className="text-muted-foreground text-sm mt-1.5">Gerencie campanhas de coleta de dados</p>
         </div>
+        <Button onClick={() => setDialogOpen(true)} className="bg-gradient-to-r from-[hsl(265_80%_60%)] to-[hsl(300_70%_55%)] border-0 shadow-lg shadow-[hsl(265_80%_60%/0.25)] hover:shadow-xl hover:shadow-[hsl(265_80%_60%/0.35)] transition-all">
+          <Plus className="h-4 w-4 mr-2" /> Nova Campanha
+        </Button>
+      </div>
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -89,7 +84,7 @@ export default function Campaigns() {
               const status = STATUS_MAP[campaign.campaign_status || "draft"] || STATUS_MAP.draft;
               const enabledTaskSets = campaign.task_sets?.filter(ts => ts.enabled) || [];
               return (
-                <Card key={campaign.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleEdit(campaign.id)}>
+                <Card key={campaign.id} className="cursor-pointer border-border/50 bg-card/70 backdrop-blur-sm hover:bg-card/90 hover:shadow-xl hover:shadow-[hsl(265_80%_60%/0.05)] transition-all duration-300" onClick={() => handleEdit(campaign.id)}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
@@ -187,7 +182,6 @@ export default function Campaigns() {
             campaignName={waitlistCampaign.name}
           />
         )}
-      </div>
     </div>
   );
 }
