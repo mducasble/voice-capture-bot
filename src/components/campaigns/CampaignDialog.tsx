@@ -120,7 +120,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [expandedTaskSet, setExpandedTaskSet] = useState<number | null>(0);
   const [sections, setSections] = useState<CampaignSection[]>([]);
   const [globalInstructions, setGlobalInstructions] = useState<CampaignInstructions>({
-    instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null,
+    instructions_title: null, instructions_summary: null, instructions_steps: [], prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null,
   });
   const [pdfUploading, setPdfUploading] = useState(false);
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
@@ -176,9 +176,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       if (campaign.task_sets?.length) setTaskSets(campaign.task_sets);
       if (campaign.sections?.length) setSections(campaign.sections); else setSections([]);
       if (campaign.instructions) {
-        setGlobalInstructions(campaign.instructions);
+        setGlobalInstructions({ ...campaign.instructions, instructions_steps: campaign.instructions.instructions_steps || [] });
       } else {
-        setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
+        setGlobalInstructions({ instructions_title: null, instructions_summary: null, instructions_steps: [], prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
       }
       if (campaign.reward_config) setReward(campaign.reward_config);
       if (campaign.quality_flow) setQuality(campaign.quality_flow);
@@ -199,7 +199,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setLangVariants([]);
       setTaskSets([]);
       setSections([]);
-      setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
+      setGlobalInstructions({ instructions_title: null, instructions_summary: null, instructions_steps: [], prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
       setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "", payment_type: "USD" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
