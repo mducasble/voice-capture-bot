@@ -1418,6 +1418,33 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_rules_catalog: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          rule_text: string
+          rule_type: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          rule_text: string
+          rule_type?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          rule_text?: string
+          rule_type?: string
+        }
+        Relationships: []
+      }
       recording_topics: {
         Row: {
           created_at: string
