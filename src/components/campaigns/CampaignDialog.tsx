@@ -1450,7 +1450,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                         Simulação de Ganhos por Nível
                         {baseRate > 0 && <span className="text-muted-foreground font-normal ml-1">(base: {currSymbol}{baseRate.toFixed(2)})</span>}
                       </Label>
-                      {baseRate > 0 ? (
+                      {(usingFixed || baseRate > 0) ? (
                         <>
                           <div className="flex justify-between text-xs font-medium border-b pb-1 mb-1">
                             <span>Nível</span>
@@ -1464,11 +1464,14 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                           ))}
                           <div className="flex justify-between text-xs font-medium border-t pt-1 mt-1">
                             <span>Total pool referral</span>
-                            <span className="font-mono">{currSymbol}{poolAmount.toFixed(4)} ({cfg.pool_percent}%)</span>
+                            <span className="font-mono">
+                              {currSymbol}{poolAmount.toFixed(4)}
+                              {usingFixed ? " (valor fixo)" : ` (${cfg.pool_percent}%)`}
+                            </span>
                           </div>
                         </>
                       ) : (
-                        <p className="text-xs text-muted-foreground italic">Defina a taxa base acima para ver a simulação.</p>
+                        <p className="text-xs text-muted-foreground italic">Defina a taxa base ou um valor fixo de pool para ver a simulação.</p>
                       )}
                     </div>
                   );
