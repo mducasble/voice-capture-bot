@@ -385,6 +385,7 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       campaign_id: campaignId,
       instructions_title: payload.instructions.instructions_title,
       instructions_summary: payload.instructions.instructions_summary,
+      instructions_steps: payload.instructions.instructions_steps || [],
       prompt_do: payload.instructions.prompt_do || [],
       prompt_dont: payload.instructions.prompt_dont || [],
       required_hardware: payload.instructions.required_hardware || [],
