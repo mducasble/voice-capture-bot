@@ -370,6 +370,7 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
     await (supabase as any).from("referral_config").insert({
       campaign_id: campaignId,
       pool_percent: payload.referral_config.pool_percent,
+      pool_fixed_amount: payload.referral_config.pool_fixed_amount ?? null,
       cascade_keep_ratio: payload.referral_config.cascade_keep_ratio,
       max_levels: payload.referral_config.max_levels,
     });
