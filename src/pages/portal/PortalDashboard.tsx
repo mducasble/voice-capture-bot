@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Mic2, ArrowRight, Layers, Bell, CheckCircle, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useUserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
 
 function isWaitlist(c: any) {
@@ -138,6 +138,19 @@ export default function PortalDashboard() {
     enabled: !!user?.id,
   });
 
+  // Fetch user's active participations
+  const { data: userParticipationIds } = useQuery({
+    queryKey: ["user-participations", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("campaign_participants")
+        .select("campaign_id")
+        .eq("user_id", user!.id);
+      return new Set((data || []).map((p: any) => p.campaign_id));
+    },
+    enabled: !!user?.id,
+  });
+
   const handleWaitlistToggle = async (campaignId: string) => {
     if (!user) return;
     const isOn = userWaitlistIds?.has(campaignId);
@@ -173,6 +186,15 @@ export default function PortalDashboard() {
       return da - db;
     });
 
+  // Split ready campaigns into "not joined" and "already participating"
+  const { availableCampaigns, myActiveCampaigns } = useMemo(() => {
+    if (!userParticipationIds) return { availableCampaigns: readyNow, myActiveCampaigns: [] };
+    return {
+      availableCampaigns: readyNow.filter(c => !userParticipationIds.has(c.id)),
+      myActiveCampaigns: readyNow.filter(c => userParticipationIds.has(c.id)),
+    };
+  }, [readyNow, userParticipationIds]);
+
   const waitlistCampaigns = allVisible
     .filter(c => isWaitlist(c))
     .sort((a, b) => {
@@ -207,16 +229,29 @@ export default function PortalDashboard() {
         </div>
       )}
 
-      {/* Active campaigns — listed FIRST */}
-      {readyNow.length > 0 && (
+      {/* Available campaigns (not yet joined) */}
+      {availableCampaigns.length > 0 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-            {readyNow.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
+            {availableCampaigns.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
           </div>
         </div>
       )}
 
-      {/* Waiting list campaigns — listed SECOND */}
+      {/* My active campaigns (already participating) */}
+      {myActiveCampaigns.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <BookOpen className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+            <h2 className="font-mono text-lg font-bold uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>{t("dashboard.myActiveCampaigns")}</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+            {myActiveCampaigns.map(c => <CampaignCard key={c.id} campaign={c} user={user} onWaitlistToggle={handleWaitlistToggle} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Waiting list campaigns */}
       {waitlistCampaigns.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">

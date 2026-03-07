@@ -44,7 +44,8 @@
     "start": "START",
     "waitingList": "WAITING LIST",
     "alreadyOnWaitlist": "ALREADY ON WAITLIST",
-    "goalHours": "h goal"
+    "goalHours": "h goal",
+    "myActiveCampaigns": "My Active Campaigns"
   },
   "campaign": {
     "back": "Back",

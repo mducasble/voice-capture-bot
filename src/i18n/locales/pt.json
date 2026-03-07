@@ -44,7 +44,8 @@
     "start": "INICIAR",
     "waitingList": "WAITING LIST",
     "alreadyOnWaitlist": "JÁ NA WAITING LIST",
-    "goalHours": "h meta"
+    "goalHours": "h meta",
+    "myActiveCampaigns": "Minhas Campanhas Ativas"
   },
   "campaign": {
     "back": "Voltar",
