@@ -129,7 +129,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
-    currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "",
+    currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "", payment_type: "USD",
   });
 
   // Quality flow
@@ -198,7 +198,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setTaskSets([]);
       setSections([]);
       setGlobalInstructions({ instructions_title: null, instructions_summary: null, prompt_do: [], prompt_dont: [], required_hardware: [], video_url: null, pdf_file_url: null });
-      setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "" });
+      setReward({ currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "", payment_type: "USD" });
       setQuality({ review_mode: "hybrid", sampling_rate_value: 10, sampling_rate_unit: "percent", rejection_reasons: [...DEFAULT_REJECTION_REASONS] });
       setReferralOverride(false);
       setReferralConfig({ pool_percent: 10, pool_fixed_amount: null, cascade_keep_ratio: 0.60, max_levels: 5 });
