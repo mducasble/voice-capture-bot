@@ -88,7 +88,7 @@ async function fetchTaskSetValidation(taskSetId: string, category: string): Prom
 
 // --- Fetch campaign relations ---
 async function fetchCampaignRelations(campaignId: string) {
-  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, sectionsRes, instructionsRes] = await Promise.all([
+  const [geoRes, langRes, taskSetsRes, rewardRes, qualityRes, adminRulesRes, referralRes, globalReferralRes, sectionsRes, instructionsRes] = await Promise.all([
     supabase.from("campaign_geographic_scope").select("*").eq("campaign_id", campaignId).maybeSingle(),
     supabase.from("campaign_language_variants").select("*").eq("campaign_id", campaignId),
     supabase.from("campaign_task_sets").select("*").eq("campaign_id", campaignId).order("weight"),
