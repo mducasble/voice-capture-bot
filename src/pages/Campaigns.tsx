@@ -114,23 +114,27 @@ export default function Campaigns() {
       </div>
 
       {/* Status Filters */}
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-3">
         <ToggleGroup
           type="multiple"
           value={statusFilters}
           onValueChange={(val) => setStatusFilters(val as StatusFilter[])}
-          className="gap-1"
+          className="gap-2"
         >
           {(["active", "not_started", "ended"] as StatusFilter[]).map(f => (
-            <ToggleGroupItem key={f} value={f} variant="outline" size="sm" className="text-xs px-3 h-7">
+            <ToggleGroupItem
+              key={f}
+              value={f}
+              className="h-10 px-5 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground data-[state=on]:bg-gradient-to-r data-[state=on]:from-[hsl(265_80%_60%)] data-[state=on]:to-[hsl(300_70%_55%)] data-[state=on]:text-white data-[state=on]:border-0 data-[state=on]:shadow-lg data-[state=on]:shadow-[hsl(265_80%_60%/0.25)] transition-all"
+            >
+              <Filter className="h-4 w-4 mr-2" />
               {filterLabels[f]}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
         {statusFilters.length > 0 && (
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setStatusFilters([])}>
-            Limpar
+          <Button variant="outline" size="default" onClick={() => setStatusFilters([])}>
+            Limpar filtros
           </Button>
         )}
       </div>
