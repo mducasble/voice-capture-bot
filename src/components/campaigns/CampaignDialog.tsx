@@ -1333,6 +1333,17 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label>Tipo de Pagamento</Label>
+                      <Select value={reward.payment_type || "USD"} onValueChange={v => setReward(p => ({ ...p, payment_type: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="KCash">KCash</SelectItem>
+                          <SelectItem value="KPoints">KPoints</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                       <Label>Modelo de Pagamento</Label>
                       <Select value={reward.payout_model} onValueChange={v => setReward(p => ({ ...p, payout_model: v }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
