@@ -119,7 +119,7 @@ async function fetchCampaignRelations(campaignId: string) {
     language_variants: langRes.data || [],
     task_sets: taskSets,
     reward_config: rewardRes.data || null,
-    referral_config: referralRes.data || null,
+    referral_config: referralRes.data || globalReferralRes.data || null,
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
     sections: (sectionsRes.data || []) as CampaignSection[],
