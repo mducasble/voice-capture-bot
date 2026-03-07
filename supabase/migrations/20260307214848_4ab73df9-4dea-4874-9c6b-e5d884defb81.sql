@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_reward_config ADD COLUMN payment_type text NOT NULL DEFAULT 'USD';

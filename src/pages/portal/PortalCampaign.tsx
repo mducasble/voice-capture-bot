@@ -162,7 +162,7 @@ export default function PortalCampaign() {
         <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>Campanha não encontrada.</p>
         <button
           onClick={() => navigate("/")}
-          className="font-mono text-xs uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
+          className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"
           style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
         >
           Voltar
@@ -181,8 +181,8 @@ export default function PortalCampaign() {
   // Helper: render a section with border
   const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
     <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-      <h3 className="font-mono text-sm uppercase tracking-widest mb-4 flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-        <Icon className="h-4 w-4" />
+      <h3 className="font-mono text-base uppercase tracking-widest mb-4 flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+        <Icon className="h-4.5 w-4.5" />
         {title}
       </h3>
       {children}
@@ -194,22 +194,46 @@ export default function PortalCampaign() {
       {/* Back button */}
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 font-mono text-sm uppercase tracking-widest transition-colors"
+        className="flex items-center gap-2 font-mono text-base uppercase tracking-widest transition-colors"
         style={{ color: "var(--portal-text-muted)" }}
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Voltar
       </button>
 
       {/* Campaign card */}
       <div style={{ border: "1px solid var(--portal-border)" }}>
+        {/* Reward hero block */}
+        {campaign.reward_config?.base_rate != null && (
+          <div className="p-6 flex items-center justify-between" style={{ background: "var(--portal-accent)" }}>
+            <div className="flex items-center gap-3">
+              <Coins className="h-6 w-6" style={{ color: "var(--portal-accent-text)" }} />
+              <div>
+                <span className="font-mono text-sm uppercase tracking-widest block" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
+                  Valor por tarefa
+                </span>
+                <span className="font-mono text-3xl font-black" style={{ color: "var(--portal-accent-text)" }}>
+                  {campaign.reward_config.currency === "BRL" ? "R$" : campaign.reward_config.currency === "EUR" ? "€" : "$"}
+                  {campaign.reward_config.base_rate.toFixed(2)}
+                  <span className="text-lg font-bold ml-1">
+                    {campaign.reward_config.payout_model === "per_accepted_unit" || campaign.reward_config.payout_model === "per_unit" ? "/un" : "/h"}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <span className="font-mono text-base font-black uppercase px-3 py-1.5" style={{ background: "var(--portal-accent-text)", color: "var(--portal-accent)", borderRadius: "2px" }}>
+              {(campaign.reward_config as any).payment_type || campaign.reward_config.currency}
+            </span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
-                <span className="font-mono text-sm tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+                <span className="font-mono text-base tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
                   Campanha
                 </span>
               </div>
@@ -217,20 +241,14 @@ export default function PortalCampaign() {
                 {campaign.name}
               </h1>
               {campaign.client && (
-                <span className="inline-block font-mono text-xs uppercase tracking-widest px-2 py-1 mt-2" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                <span className="inline-block font-mono text-sm uppercase tracking-widest px-2 py-1 mt-2" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
                   {campaign.client.name}
                 </span>
               )}
             </div>
-            {rewardCurrency && (
-              <span className="flex items-center gap-1.5 font-mono text-sm px-3 py-1" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
-                <Coins className="h-3 w-3" />
-                {rewardCurrency}
-              </span>
-            )}
           </div>
           {campaign.description && (
-            <p className="font-mono text-sm mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
+            <p className="font-mono text-base mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
               {campaign.description}
             </p>
           )}
@@ -243,7 +261,7 @@ export default function PortalCampaign() {
               {enabledTaskSets.map(ts => (
                 <span
                   key={ts.task_set_id}
-                  className="font-mono text-sm px-3 py-1"
+                  className="font-mono text-base px-3 py-1"
                   style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}
                 >
                   {TASK_TYPE_LABELS[ts.task_type] || ts.task_type}
@@ -258,22 +276,22 @@ export default function PortalCampaign() {
           <Section title="Instruções Gerais" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               {campaign.instructions.instructions_title && (
-                <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
                   {campaign.instructions.instructions_title}
                 </p>
               )}
               {campaign.instructions.instructions_summary && (
-                <p className="font-mono text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
+                <p className="font-mono text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
                   {campaign.instructions.instructions_summary}
                 </p>
               )}
               {campaign.instructions.prompt_do && campaign.instructions.prompt_do.length > 0 && (
                 <div className="space-y-1">
-                  <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
                   <ul className="space-y-1">
                     {campaign.instructions.prompt_do.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 font-mono text-sm" style={{ color: "var(--portal-text)" }}>
-                        <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                        <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                         {item}
                       </li>
                     ))}
@@ -282,11 +300,11 @@ export default function PortalCampaign() {
               )}
               {campaign.instructions.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
                 <div className="space-y-1">
-                  <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                  <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
                   <ul className="space-y-1">
                     {campaign.instructions.prompt_dont.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 font-mono text-sm" style={{ color: "var(--portal-text)" }}>
-                        <XCircle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
+                      <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                        <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                         {item}
                       </li>
                     ))}
@@ -295,8 +313,8 @@ export default function PortalCampaign() {
               )}
               {campaign.instructions.required_hardware && campaign.instructions.required_hardware.length > 0 && (
                 <div className="space-y-2">
-                   <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
-                    <Wrench className="h-3.5 w-3.5" /> Hardware Necessário
+                   <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    <Wrench className="h-4 w-4" /> Hardware Necessário
                   </span>
                   <div className="flex flex-wrap gap-3">
                     {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
@@ -313,7 +331,7 @@ export default function PortalCampaign() {
                           ) : (
                             <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
                           )}
-                          <span className="font-mono text-xs text-center leading-tight" style={{ color: "var(--portal-text)" }}>
+                          <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
                             {hwName}
                           </span>
                         </div>
@@ -324,7 +342,7 @@ export default function PortalCampaign() {
               )}
               {campaign.instructions.video_url && (
                 <div className="space-y-2">
-                  <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                  <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
                     Vídeo de Instrução
                   </span>
                   <div className="aspect-video overflow-hidden" style={{ border: "1px solid var(--portal-border)" }}>
@@ -339,14 +357,14 @@ export default function PortalCampaign() {
               )}
               {campaign.instructions.pdf_file_url && (
                 <div className="space-y-2">
-                  <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
-                    <FileText className="h-3.5 w-3.5" /> Instruções Completas (PDF)
+                  <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1" style={{ color: "var(--portal-text-muted)" }}>
+                    <FileText className="h-4 w-4" /> Instruções Completas (PDF)
                   </span>
                   <a
                     href={campaign.instructions.pdf_file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 font-mono text-sm transition-colors hover:opacity-80"
+                    className="flex items-center gap-2 p-3 font-mono text-base transition-colors hover:opacity-80"
                     style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)", color: "var(--portal-accent)" }}
                   >
                     <FileText className="h-4 w-4" />
@@ -368,30 +386,30 @@ export default function PortalCampaign() {
             <Section key={ts.task_set_id} title={TASK_TYPE_LABELS[ts.task_type] || ts.task_type} icon={BookOpen}>
               <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 {ts.instructions_title && (
-                  <p className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                  <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
                     {ts.instructions_title}
                   </p>
                 )}
                 {ts.instructions_summary && (
-                  <p className="font-mono text-sm leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
+                  <p className="font-mono text-base leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
                     {ts.instructions_summary}
                   </p>
                 )}
                 {ts.prompt_topic && (
                   <div className="p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
                     <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
-                    <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+                    <span className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
                       Tema: {ts.prompt_topic}
                     </span>
                   </div>
                 )}
                 {hasDo && (
                   <div className="space-y-1">
-                    <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
                     <ul className="space-y-1">
                       {ts.prompt_do.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 font-mono text-sm" style={{ color: "var(--portal-text)" }}>
-                          <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
+                        <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                          <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                           {item}
                         </li>
                       ))}
@@ -400,11 +418,11 @@ export default function PortalCampaign() {
                 )}
                 {hasDont && (
                   <div className="space-y-1">
-                    <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
                     <ul className="space-y-1">
                       {ts.prompt_dont.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 font-mono text-sm" style={{ color: "var(--portal-text)" }}>
-                          <XCircle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
+                        <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
+                          <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                           {item}
                         </li>
                       ))}
@@ -420,12 +438,12 @@ export default function PortalCampaign() {
         {geo && geo.restriction_mode && (
           <Section title="Escopo Geográfico" icon={Globe2}>
             <div className="space-y-2">
-              <span className="font-mono text-xs uppercase tracking-widest px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <span className="font-mono text-sm uppercase tracking-widest px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
                 {geo.restriction_mode === "include" ? "Apenas" : "Exceto"}
               </span>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
-                  <span key={i} className="font-mono text-sm px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
+                  <span key={i} className="font-mono text-base px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
                     {place}
                   </span>
                 ))}
@@ -441,12 +459,12 @@ export default function PortalCampaign() {
               {langVariants.map(v => (
                 <div
                   key={v.variant_id}
-                  className="flex items-center gap-3 p-3 font-mono text-sm"
+                  className="flex items-center gap-3 p-3 font-mono text-base"
                   style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
                 >
                   <span style={{ color: "var(--portal-text)" }}>{v.label}</span>
                   {v.is_primary && (
-                    <span className="text-xs uppercase tracking-widest px-1.5 py-0.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                    <span className="text-sm uppercase tracking-widest px-1.5 py-0.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
                       Principal
                     </span>
                   )}
@@ -503,7 +521,7 @@ export default function PortalCampaign() {
           return (
             <Section title={t("campaign.referralDistribution") || "Distribuição Indicação"} icon={Share2}>
               <div className="space-y-3">
-                <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+                <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
                   {t("campaign.referralDistributionDesc") || "Valores pagos por indicação para cada nível da sua rede."}
                 </p>
                 <div className="grid grid-cols-5 gap-2">
@@ -513,13 +531,13 @@ export default function PortalCampaign() {
                       className="flex flex-col items-center gap-1.5 p-3"
                       style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
                     >
-                      <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                         {t("campaign.level") || "Nível"} {i + 1}
                       </span>
-                      <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-accent)" }}>
+                      <span className="font-mono text-base font-bold" style={{ color: "var(--portal-accent)" }}>
                         {currency === "BRL" ? "R$" : "$"}{val.toFixed(2)}
                       </span>
-                      <span className="font-mono text-[11px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-[13px]" style={{ color: "var(--portal-text-muted)" }}>
                         {unitLabel}
                       </span>
                     </div>
@@ -536,7 +554,7 @@ export default function PortalCampaign() {
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <CalendarClock className="h-4 w-4 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
-              <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+              <p className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
                 Esta campanha inicia em{" "}
                 <span className="font-bold" style={{ color: "var(--portal-text)" }}>
                   {new Date(campaign.start_date!).toLocaleDateString("pt-BR")}
@@ -583,7 +601,7 @@ export default function PortalCampaign() {
 
 function RuleBadge({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 p-3 font-mono text-sm" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+    <div className="flex items-center gap-2 p-3 font-mono text-base" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
       <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
       <div className="flex flex-col">
         <span style={{ color: "var(--portal-text-muted)" }}>{label}</span>

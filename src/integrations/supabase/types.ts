@@ -693,6 +693,7 @@ export type Database = {
           created_at: string
           currency: string | null
           id: string
+          payment_type: string
           payout_model: string | null
           updated_at: string
         }
@@ -704,6 +705,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           id?: string
+          payment_type?: string
           payout_model?: string | null
           updated_at?: string
         }
@@ -715,6 +717,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           id?: string
+          payment_type?: string
           payout_model?: string | null
           updated_at?: string
         }

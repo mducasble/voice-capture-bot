@@ -39,6 +39,7 @@ export interface RewardConfig {
   base_rate: number | null;
   bonus_rate: number | null;
   bonus_condition: string | null;
+  payment_type: string;
 }
 
 export interface ReferralConfig {

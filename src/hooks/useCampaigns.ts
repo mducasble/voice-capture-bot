@@ -334,7 +334,8 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
       base_rate: payload.reward_config.base_rate,
       bonus_rate: payload.reward_config.bonus_rate,
       bonus_condition: payload.reward_config.bonus_condition,
-    });
+      payment_type: payload.reward_config.payment_type || "USD",
+    } as any);
   }
 
   // Quality flow
