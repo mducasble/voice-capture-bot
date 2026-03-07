@@ -10,6 +10,8 @@ import {
   Mic2,
   Search,
   MoreHorizontal,
+  Bell,
+  PenSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -19,30 +21,22 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Input } from "@/components/ui/input";
 
-const mainItems = [
+const navItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Gravações", url: "/admin/recordings", icon: Mic2 },
   { title: "Campanhas", url: "/admin/campaigns", icon: FolderOpen },
   { title: "Salas de Áudio", url: "/admin/rooms", icon: Radio },
   { title: "Monitor de Salas", url: "/admin/rooms-monitor", icon: Monitor },
-];
-
-const reviewItems = [
-  { title: "Revisão", url: "/admin/review", icon: FileCheck, dot: "bg-[hsl(265_75%_58%)]" },
-  { title: "Fila de Revisão", url: "/admin/review-queue", icon: ListChecks, dot: "bg-[hsl(45_100%_60%)]" },
-  { title: "Transcrição", url: "/admin/transcription", icon: FileText, dot: "bg-[hsl(0_80%_55%)]" },
-];
-
-const toolItems = [
-  { title: "Social Art", url: "/admin/social-art", icon: Palette, dot: "bg-[hsl(180_60%_50%)]" },
+  { title: "Revisão", url: "/admin/review", icon: FileCheck },
+  { title: "Fila de Revisão", url: "/admin/review-queue", icon: ListChecks },
+  { title: "Transcrição", url: "/admin/transcription", icon: FileText },
+  { title: "Social Art", url: "/admin/social-art", icon: Palette },
 ];
 
 export function AdminSidebar() {
@@ -54,98 +48,84 @@ export function AdminSidebar() {
   const isActive = (url: string) =>
     url === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(url);
 
-  const renderItems = (items: typeof mainItems & { dot?: string }[]) =>
-    items.map((item: any) => {
-      const active = isActive(item.url);
-      return (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild>
-            <NavLink
-              to={item.url}
-              end={item.url === "/admin"}
-              className={`group/item flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60"
-              }`}
-              activeClassName=""
-            >
-              {item.dot && !collapsed && (
-                <span className={`h-2 w-2 rounded-full shrink-0 ${item.dot}`} />
-              )}
-              {!item.dot && (
-                <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-sidebar-accent-foreground" : "opacity-50"}`} />
-              )}
-              {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      );
-    });
-
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarContent className="py-4 bg-sidebar-background flex flex-col">
-        {/* User avatar + actions */}
+    <Sidebar collapsible="icon" className="border-0">
+      <SidebarContent className="py-5 bg-transparent flex flex-col gap-2">
+        {/* Top: Avatar + utility icons */}
         {!collapsed && (
-          <div className="px-4 pb-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[hsl(265_75%_58%)] to-[hsl(300_60%_50%)] flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {user?.email?.charAt(0).toUpperCase() || "A"}
+          <div className="px-4 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Avatar */}
+              <div className="admin-icon-box h-10 w-10 bg-gradient-to-br from-[hsl(265_75%_58%)] to-[hsl(300_60%_50%)] text-white text-sm font-bold">
+                {user?.email?.charAt(0).toUpperCase() || "A"}
+              </div>
+              {/* Notification */}
+              <button className="admin-icon-box h-10 w-10 admin-icon-box-muted">
+                <Bell className="h-4.5 w-4.5" />
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">
-                {user?.email?.split("@")[0] || "Admin"}
-              </p>
-              <p className="text-[11px] text-sidebar-foreground truncate">KGen Admin</p>
-            </div>
-            <button className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            {/* Compose */}
+            <button className="admin-icon-box h-10 w-10 bg-primary text-primary-foreground">
+              <PenSquare className="h-4.5 w-4.5" />
             </button>
           </div>
         )}
 
         {/* Search */}
         {!collapsed && (
-          <div className="px-4 pb-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground" />
-              <Input
-                placeholder="Buscar..."
-                className="pl-8 h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground placeholder:text-sidebar-foreground rounded-lg"
+          <div className="px-4 pb-2">
+            <div className="admin-search-box">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                placeholder="Search"
+                className="bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
               />
             </div>
           </div>
         )}
 
+        {/* Navigation items */}
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu className="px-2 space-y-0.5">{renderItems(mainItems)}</SidebarMenu>
+            <SidebarMenu className="px-3 space-y-1">
+              {navItems.map((item) => {
+                const active = isActive(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/admin"}
+                        className={`group/item flex items-center gap-3.5 px-2 py-1.5 rounded-2xl text-[15px] transition-all duration-150 ${
+                          active
+                            ? "text-foreground font-semibold"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        activeClassName=""
+                      >
+                        {/* Icon in a rounded box */}
+                        <div className={`admin-icon-box h-9 w-9 shrink-0 ${
+                          active ? "admin-icon-box-active" : "admin-icon-box-muted"
+                        }`}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/50 font-semibold px-5 mb-1">
-            Revisão
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="px-2 space-y-0.5">{renderItems(reviewItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/50 font-semibold px-5 mb-1">
-            Ferramentas
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="px-2 space-y-0.5">{renderItems(toolItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* More link */}
+        {/* More */}
         {!collapsed && (
-          <div className="mt-auto px-4 pb-4">
-            <button className="flex items-center gap-2 text-sidebar-foreground text-xs hover:text-sidebar-accent-foreground transition-colors">
-              <MoreHorizontal className="h-4 w-4" />
+          <div className="mt-auto px-4 pb-2">
+            <button className="flex items-center gap-3.5 text-muted-foreground text-[15px] hover:text-foreground transition-colors px-2 py-1.5">
+              <div className="admin-icon-box h-9 w-9 admin-icon-box-muted">
+                <MoreHorizontal className="h-4 w-4" />
+              </div>
               <span>More</span>
             </button>
           </div>
