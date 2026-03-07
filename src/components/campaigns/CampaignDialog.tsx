@@ -1099,21 +1099,57 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 <div className="space-y-3 p-4 border rounded-lg">
                   <h3 className="text-sm font-semibold flex items-center gap-2"><BookOpen className="h-4 w-4" /> 2. Instruções Passo a Passo</h3>
                   <div className="space-y-2">
-                    <Label>Título</Label>
+                    <Label>Título geral</Label>
                     <Input
                       value={globalInstructions.instructions_title || ""}
                       onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_title: e.target.value || null }))}
                       placeholder="Ex: Como participar desta campanha"
                     />
                   </div>
+                  {/* Steps list */}
                   <div className="space-y-2">
-                    <Label>Resumo / Descrição detalhada</Label>
-                    <Textarea
-                      value={globalInstructions.instructions_summary || ""}
-                      onChange={e => setGlobalInstructions(prev => ({ ...prev, instructions_summary: e.target.value || null }))}
-                      placeholder="Explique ao participante o que ele precisa fazer..."
-                      rows={4}
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label>Passos</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setGlobalInstructions(prev => ({ ...prev, instructions_steps: [...prev.instructions_steps, { title: "", description: "" }] }))}>
+                        <Plus className="h-3 w-3 mr-1" /> Adicionar passo
+                      </Button>
+                    </div>
+                    {globalInstructions.instructions_steps.map((step, idx) => (
+                      <div key={idx} className="flex gap-2 items-start p-3 border rounded-md bg-muted/20">
+                        <span className="text-xs font-bold text-muted-foreground mt-2 min-w-[24px]">{idx + 1}.</span>
+                        <div className="flex-1 space-y-1">
+                          <Input
+                            value={step.title}
+                            onChange={e => {
+                              const updated = [...globalInstructions.instructions_steps];
+                              updated[idx] = { ...updated[idx], title: e.target.value };
+                              setGlobalInstructions(prev => ({ ...prev, instructions_steps: updated }));
+                            }}
+                            placeholder="Título do passo"
+                            className="h-8 text-sm"
+                          />
+                          <Textarea
+                            value={step.description}
+                            onChange={e => {
+                              const updated = [...globalInstructions.instructions_steps];
+                              updated[idx] = { ...updated[idx], description: e.target.value };
+                              setGlobalInstructions(prev => ({ ...prev, instructions_steps: updated }));
+                            }}
+                            placeholder="Descrição detalhada..."
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0 mt-1" onClick={() => {
+                          setGlobalInstructions(prev => ({ ...prev, instructions_steps: prev.instructions_steps.filter((_, i) => i !== idx) }));
+                        }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    {globalInstructions.instructions_steps.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhum passo adicionado. Clique em "Adicionar passo" acima.</p>
+                    )}
                   </div>
                   {/* VIDEO */}
                   <div className="space-y-2 pt-2 border-t">
