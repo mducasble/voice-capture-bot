@@ -11,9 +11,9 @@ import { toast } from "sonner";
 
 const AUTH_TIMEOUT_MS = 6000;
 
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> => {
+const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> => {
   return Promise.race([
-    promise,
+    Promise.resolve(promise),
     new Promise<T>((_, reject) => {
       window.setTimeout(() => reject(new Error("timeout")), timeoutMs);
     }),
