@@ -126,7 +126,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
   const [hardwareInput, setHardwareInput] = useState("");
   const [hardwareLoading, setHardwareLoading] = useState(false);
-  const hardwareAbortRef = React.useRef<AbortController | null>(null);
+  const hardwareAbortRef = useRef<AbortController | null>(null);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
