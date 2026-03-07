@@ -105,12 +105,47 @@
     overflow: hidden;
   }
 
-  /* Override sidebar internal bg to transparent since panel handles it */
-  .admin-theme .admin-panel-sidebar [data-sidebar] {
-    background: transparent !important;
-    border: none !important;
+  /* Rounded icon box — the core shape of this design */
+  .admin-theme .admin-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.875rem; /* ~14px, squircle feel */
+    transition: all 0.15s ease;
   }
 
+  .admin-theme .admin-icon-box-muted {
+    background: hsl(0 0% 100% / 0.08);
+    color: hsl(0 0% 70%);
+  }
+
+  .admin-theme .admin-icon-box-muted:hover {
+    background: hsl(0 0% 100% / 0.12);
+    color: hsl(0 0% 90%);
+  }
+
+  .admin-theme .admin-icon-box-active {
+    background: hsl(0 0% 100% / 0.14);
+    color: hsl(0 0% 95%);
+  }
+
+  /* Search box */
+  .admin-theme .admin-search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: hsl(0 0% 100% / 0.06);
+    border-radius: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid hsl(0 0% 100% / 0.04);
+    transition: border-color 0.15s ease;
+  }
+
+  .admin-theme .admin-search-box:focus-within {
+    border-color: hsl(0 0% 100% / 0.12);
+  }
+
+  /* Glass card */
   .admin-theme .admin-glass-card {
     background: hsl(240 6% 13% / 0.8);
     backdrop-filter: blur(16px);
@@ -118,6 +153,7 @@
     box-shadow: 0 4px 24px hsl(0 0% 0% / 0.4);
   }
 
+  /* Gradient stat cards */
   .admin-theme .admin-gradient-card-purple {
     background: linear-gradient(135deg, hsl(280 60% 35%) 0%, hsl(320 50% 28%) 50%, hsl(265 40% 20%) 100%);
     border: 1px solid hsl(280 40% 40% / 0.3);
