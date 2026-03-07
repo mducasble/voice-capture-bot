@@ -45,7 +45,9 @@
     "waitingList": "LISTA DE ESPERA",
     "alreadyOnWaitlist": "YA EN LISTA DE ESPERA",
     "goalHours": "h meta",
-    "myActiveCampaigns": "Mis Campañas Activas"
+    "myActiveCampaigns": "Mis Campañas Activas",
+    "startedOpportunities": "Oportunidades Iniciadas",
+    "noNewOpportunities": "Ninguna nueva oportunidad en este momento."
   },
   "campaign": {
     "back": "Volver",
