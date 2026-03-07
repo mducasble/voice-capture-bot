@@ -1375,7 +1375,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   </p>
                   {referralOverride && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Pool de Referral (%)</Label>
                           <Input
@@ -1386,6 +1386,19 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                           />
                           <p className="text-xs text-muted-foreground">% do valor da atividade destinado ao referral</p>
                         </div>
+                        <div className="space-y-2">
+                          <Label>Valor Fixo do Pool ({reward.currency})</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={referralConfig.pool_fixed_amount ?? ""}
+                            onChange={e => setReferralConfig(p => ({ ...p, pool_fixed_amount: e.target.value ? parseFloat(e.target.value) : null }))}
+                            placeholder="Deixe vazio para usar %"
+                          />
+                          <p className="text-xs text-muted-foreground">Se preenchido, prevalece sobre o %</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Proporção de Cascata</Label>
                           <Input
