@@ -183,7 +183,6 @@ export default function Campaigns() {
             campaignName={waitlistCampaign.name}
           />
         )}
-      </div>
     </div>
   );
 }
