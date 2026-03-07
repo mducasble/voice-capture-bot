@@ -418,45 +418,51 @@ export default function PortalCampaign() {
           );
         })}
 
-        {/* Geographic scope */}
-        {geo && geo.restriction_mode && (
-          <Section title="Escopo Geográfico" icon={Globe2}>
-            <div className="space-y-2">
-              <span className="font-mono text-sm uppercase tracking-widest px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                {geo.restriction_mode === "include" ? "Apenas" : "Exceto"}
-              </span>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
-                  <span key={i} className="font-mono text-base px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
-                    {place}
+        {/* Geographic restrictions (languages + countries) */}
+        {(langVariants.length > 0 || (geo && geo.restriction_mode)) && (
+          <Section title="Restrições Geográficas" icon={Globe2}>
+            <div className="space-y-4">
+              {/* Languages */}
+              {langVariants.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--portal-text-muted)" }}>
+                    <Languages className="h-4 w-4" />
+                    Idioma{langVariants.length > 1 ? "s" : ""}
                   </span>
-                ))}
-              </div>
-            </div>
-          </Section>
-        )}
-
-        {/* Language variants */}
-        {langVariants.length > 0 && (
-          <Section title="Idiomas" icon={Languages}>
-            <div className="space-y-2">
-              {langVariants.map(v => (
-                <div
-                  key={v.variant_id}
-                  className="flex items-center gap-3 p-3 font-mono text-base"
-                  style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
-                >
-                  <span style={{ color: "var(--portal-text)" }}>{v.label}</span>
-                  {v.is_primary && (
-                    <span className="text-sm uppercase tracking-widest px-1.5 py-0.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
-                      Principal
-                    </span>
-                  )}
-                  {v.notes && (
-                    <span style={{ color: "var(--portal-text-muted)" }}>— {v.notes}</span>
-                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {langVariants.map(v => (
+                      <span
+                        key={v.variant_id}
+                        className="font-mono text-base px-2.5 py-1 flex items-center gap-2"
+                        style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)", color: "var(--portal-text)" }}
+                      >
+                        {v.label}
+                        {v.is_primary && (
+                          <span className="text-sm uppercase tracking-widest px-1.5 py-0.5" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+                            Principal
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              )}
+              {/* Countries */}
+              {geo && geo.restriction_mode && (
+                <div className="space-y-2">
+                  <span className="font-mono text-sm uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--portal-text-muted)" }}>
+                    <Users className="h-4 w-4" />
+                    Participantes {geo.restriction_mode === "include" ? "apenas" : "exceto"}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
+                      <span key={i} className="font-mono text-base px-2.5 py-1" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
+                        {place}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </Section>
         )}
