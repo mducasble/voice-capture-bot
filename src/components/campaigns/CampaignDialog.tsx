@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -126,6 +126,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [hardwareCatalog, setHardwareCatalog] = useState<import("@/lib/campaignTypes").HardwareCatalogItem[]>([]);
   const [hardwareInput, setHardwareInput] = useState("");
   const [hardwareLoading, setHardwareLoading] = useState(false);
+  const hardwareAbortRef = useRef<AbortController | null>(null);
 
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
@@ -212,6 +213,14 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     });
   }, []);
 
+  const cancelHardwareLookup = () => {
+    if (hardwareAbortRef.current) {
+      hardwareAbortRef.current.abort();
+      hardwareAbortRef.current = null;
+    }
+    setHardwareLoading(false);
+  };
+
   const addHardwareItem = async () => {
     const val = hardwareInput.trim();
     if (!val) return;
@@ -219,11 +228,21 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       setHardwareInput("");
       return;
     }
+    cancelHardwareLookup();
+    const controller = new AbortController();
+    hardwareAbortRef.current = controller;
     setHardwareLoading(true);
+
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 10000);
+
     try {
       const { data, error } = await supabase.functions.invoke("suggest-hardware-icon", {
         body: { name: val },
       });
+      clearTimeout(timeout);
+      if (controller.signal.aborted) return;
       if (error) throw error;
       const hw = data.hardware;
       if (hw && !hardwareCatalog.find(h => h.id === hw.id)) {
@@ -235,12 +254,38 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         required_hardware: [...prev.required_hardware, hwName],
       }));
       setHardwareInput("");
-    } catch (e) {
-      console.error(e);
-      toast({ title: "Erro ao sugerir ícone", variant: "destructive" });
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (controller.signal.aborted) {
+        // Add item without icon on timeout/cancel
+        setGlobalInstructions(prev => ({
+          ...prev,
+          required_hardware: [...prev.required_hardware, val],
+        }));
+        setHardwareInput("");
+        toast({ title: "Tempo esgotado — item adicionado sem ícone" });
+      } else {
+        console.error(e);
+        toast({ title: "Erro ao sugerir ícone", variant: "destructive" });
+      }
     } finally {
       setHardwareLoading(false);
+      hardwareAbortRef.current = null;
     }
+  };
+
+  const removeHardwareCatalogItem = async (item: import("@/lib/campaignTypes").HardwareCatalogItem) => {
+    const { error } = await supabase.from("hardware_catalog").delete().eq("id", item.id);
+    if (error) {
+      toast({ title: "Erro ao remover item do catálogo", variant: "destructive" });
+      return;
+    }
+    setHardwareCatalog(prev => prev.filter(h => h.id !== item.id));
+    setGlobalInstructions(prev => ({
+      ...prev,
+      required_hardware: prev.required_hardware.filter(n => n !== item.name),
+    }));
+    toast({ title: `"${item.name}" removido do catálogo` });
   };
 
   const handleSave = async () => {
@@ -1051,9 +1096,15 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addHardwareItem(); } }}
                       disabled={hardwareLoading}
                     />
-                    <Button variant="outline" size="icon" onClick={addHardwareItem} disabled={hardwareLoading}>
-                      {hardwareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    </Button>
+                    {hardwareLoading ? (
+                      <Button variant="destructive" size="icon" onClick={cancelHardwareLookup} title="Cancelar pesquisa">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="icon" onClick={addHardwareItem}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   {/* Suggestions from catalog */}
                   {hardwareCatalog.length > 0 && (
@@ -1064,18 +1115,27 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                         .map(h => {
                           const LucideIcon = (icons as any)[toPascalCase(h.icon_name)];
                           return (
-                            <Badge
-                              key={h.id}
-                              variant="outline"
-                              className="cursor-pointer text-xs gap-1 hover:bg-muted"
-                              onClick={() => setGlobalInstructions(prev => ({
-                                ...prev,
-                                required_hardware: [...prev.required_hardware, h.name],
-                              }))}
-                            >
-                              {LucideIcon && <LucideIcon className="h-3 w-3" />}
-                              {h.name} +
-                            </Badge>
+                            <div key={h.id} className="inline-flex items-center gap-0.5">
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer text-xs gap-1 hover:bg-muted rounded-r-none"
+                                onClick={() => setGlobalInstructions(prev => ({
+                                  ...prev,
+                                  required_hardware: [...prev.required_hardware, h.name],
+                                }))}
+                              >
+                                {LucideIcon && <LucideIcon className="h-3 w-3" />}
+                                {h.name} +
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer text-xs px-1 hover:bg-destructive/10 hover:text-destructive rounded-l-none border-l-0"
+                                onClick={() => removeHardwareCatalogItem(h)}
+                                title="Remover do catálogo"
+                              >
+                                ×
+                              </Badge>
+                            </div>
                           );
                         })}
                     </div>
