@@ -61,6 +61,44 @@ const LANG_MAP: Record<string, string> = {
   es: "Spanish",
 };
 
+const HARDWARE_FALLBACK_MAP: Record<string, Record<string, string>> = {
+  es: {
+    "mobile phone": "Teléfono móvil",
+    "smartphone": "Teléfono inteligente",
+    "headset": "Auriculares",
+    "headphones": "Auriculares",
+    "microphone": "Micrófono",
+    "laptop": "Portátil",
+    "desktop": "Computadora de escritorio",
+  },
+  pt: {
+    "mobile phone": "Celular",
+    "smartphone": "Celular",
+    "headset": "Headset",
+    "headphones": "Fones de ouvido",
+    "microphone": "Microfone",
+    "laptop": "Notebook",
+    "desktop": "Computador de mesa",
+  },
+};
+
+function normalizeHardwareNames(original: string[], translated: string[] | undefined, lang: string): string[] {
+  const dict = HARDWARE_FALLBACK_MAP[lang] || {};
+  const source = translated && translated.length === original.length ? translated : original;
+
+  return source.map((value, i) => {
+    const fallbackBase = (original[i] || value || "").trim();
+    const translatedValue = (value || "").trim();
+    const normalizedKey = fallbackBase.toLowerCase();
+
+    if (!translatedValue || translatedValue.toLowerCase() === fallbackBase.toLowerCase()) {
+      return dict[normalizedKey] || fallbackBase;
+    }
+
+    return translatedValue;
+  });
+}
+
 export function useCampaignTranslation(campaign: Campaign | null | undefined) {
   const { i18n } = useTranslation();
   const lang = i18n.language?.substring(0, 2) || "pt";
@@ -74,10 +112,15 @@ export function useCampaignTranslation(campaign: Campaign | null | undefined) {
         body: { texts, target_language: LANG_MAP[lang] || "English" },
       });
       if (error) throw error;
-      // Handle both wrapped and unwrapped response formats
-      const result = data?.translated || data;
-      console.log("[translation] lang=", lang, "result keys=", Object.keys(result || {}));
-      return result as TranslatedContent;
+      const result = (data?.translated || data) as TranslatedContent;
+      return {
+        ...result,
+        required_hardware: normalizeHardwareNames(
+          texts.required_hardware,
+          result?.required_hardware,
+          lang
+        ),
+      };
     },
     enabled: needsTranslation,
     staleTime: 1000 * 60 * 30,
