@@ -227,6 +227,65 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     });
   }, []);
 
+  // Load instruction templates
+  useEffect(() => {
+    supabase.from("instruction_templates").select("*").order("name").then(({ data }) => {
+      if (data) setInstructionTemplates(data as any);
+    });
+  }, []);
+
+  const loadTemplate = (templateId: string) => {
+    const t = instructionTemplates.find(t => t.id === templateId);
+    if (!t) return;
+    setGlobalInstructions({
+      instructions_title: t.instructions_title,
+      instructions_summary: t.instructions_summary,
+      instructions_steps: t.instructions_steps || [],
+      prompt_do: t.prompt_do || [],
+      prompt_dont: t.prompt_dont || [],
+      required_hardware: t.required_hardware || [],
+      video_url: t.video_url,
+      pdf_file_url: t.pdf_file_url,
+    });
+    toast({ title: `Template "${t.name}" carregado!` });
+  };
+
+  const saveAsTemplate = async () => {
+    if (!saveTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const { data, error } = await supabase.from("instruction_templates").insert({
+        name: saveTemplateName.trim(),
+        instructions_title: globalInstructions.instructions_title,
+        instructions_summary: globalInstructions.instructions_summary,
+        instructions_steps: globalInstructions.instructions_steps,
+        prompt_do: globalInstructions.prompt_do,
+        prompt_dont: globalInstructions.prompt_dont,
+        required_hardware: globalInstructions.required_hardware,
+        video_url: globalInstructions.video_url,
+        pdf_file_url: globalInstructions.pdf_file_url,
+      } as any).select().single();
+      if (error) throw error;
+      setInstructionTemplates(prev => [...prev, data as any]);
+      setSaveTemplateName("");
+      setShowSaveTemplate(false);
+      toast({ title: "Template salvo com sucesso!" });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erro ao salvar template", variant: "destructive" });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const deleteTemplate = async (templateId: string) => {
+    const { error } = await supabase.from("instruction_templates").delete().eq("id", templateId);
+    if (!error) {
+      setInstructionTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast({ title: "Template removido" });
+    }
+  };
+
   const addRuleToCatalog = async (ruleText: string, ruleType: "do" | "dont") => {
     // Check if already in catalog
     if (promptRulesCatalog.some(r => r.rule_text.toLowerCase() === ruleText.toLowerCase() && r.rule_type === ruleType)) return;
