@@ -262,12 +262,13 @@ export default function PortalCampaign() {
               )}
             </div>
             <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-              {campaign.name}
+              {tr?.name || campaign.name}
+              {isTranslating && <Loader2 className="inline h-4 w-4 ml-2 animate-spin" style={{ color: "var(--portal-text-muted)" }} />}
             </h1>
           </div>
-          {campaign.description && (
+          {(tr?.description || campaign.description) && (
             <p className="font-mono text-base mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-              {campaign.description}
+              {tr?.description || campaign.description}
             </p>
           )}
         </div>
