@@ -53,6 +53,21 @@ Return ONLY the translated JSON object, no explanation.`;
                 properties: {
                   name: { type: "string" },
                   description: { type: "string" },
+                  instructions_title: { type: "string" },
+                  instructions_summary: { type: "string" },
+                  instructions_steps: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                      },
+                      required: ["title", "description"],
+                    },
+                  },
+                  prompt_do: { type: "array", items: { type: "string" } },
+                  prompt_dont: { type: "array", items: { type: "string" } },
                   task_sets: {
                     type: "array",
                     items: {
