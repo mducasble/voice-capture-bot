@@ -1334,6 +1334,54 @@ export type Database = {
           },
         ]
       }
+      instruction_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          instructions_steps: Json | null
+          instructions_summary: string | null
+          instructions_title: string | null
+          name: string
+          pdf_file_url: string | null
+          prompt_do: string[] | null
+          prompt_dont: string[] | null
+          required_hardware: string[] | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructions_steps?: Json | null
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          name: string
+          pdf_file_url?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          required_hardware?: string[] | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructions_steps?: Json | null
+          instructions_summary?: string | null
+          instructions_title?: string | null
+          name?: string
+          pdf_file_url?: string | null
+          prompt_do?: string[] | null
+          prompt_dont?: string[] | null
+          required_hardware?: string[] | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       languages: {
         Row: {
           code: string
