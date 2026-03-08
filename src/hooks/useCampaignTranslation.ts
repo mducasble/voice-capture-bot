@@ -72,10 +72,13 @@ export function useCampaignTranslation(campaign: Campaign | null | undefined) {
         body: { texts, target_language: LANG_MAP[lang] || "English" },
       });
       if (error) throw error;
-      return data.translated;
+      // Handle both wrapped and unwrapped response formats
+      const result = data?.translated || data;
+      console.log("[translation] lang=", lang, "result keys=", Object.keys(result || {}));
+      return result as TranslatedContent;
     },
     enabled: needsTranslation,
-    staleTime: 1000 * 60 * 30, // cache 30 min
+    staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,
   });
 
