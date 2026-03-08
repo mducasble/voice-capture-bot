@@ -67,13 +67,7 @@ export default function PortalCampaign() {
   const [creating, setCreating] = useState(false);
   const { t, i18n } = useTranslation();
   const [hardwareCatalog, setHardwareCatalog] = useState<HardwareCatalogItem[]>([]);
-  const { translated, isTranslating } = useCampaignTranslation(campaign);
-
-  // Helper to get translated or original value
-  const tr = useMemo(() => {
-    if (!translated) return null;
-    return translated;
-  }, [translated]);
+  const { translated: tr, isTranslating } = useCampaignTranslation(campaign);
 
   // Load hardware catalog
   useEffect(() => {
