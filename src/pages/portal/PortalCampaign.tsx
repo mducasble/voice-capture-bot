@@ -445,7 +445,7 @@ export default function PortalCampaign() {
                       <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
                     )}
                     <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
-                      {tr?.required_hardware?.[i] || hwName}
+                      {getLocalizedHardwareName(hwName, tr?.required_hardware?.[i], i18n.language?.substring(0, 2) || "pt")}
                     </span>
                   </div>
                 );
