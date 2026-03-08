@@ -82,7 +82,8 @@
     "theme": "Tema",
     "referralDistribution": "Distribuição Indicação",
     "referralDistributionDesc": "Valores pagos por indicação para cada nível da sua rede.",
-    "level": "Nível"
+    "level": "Nível",
+    "valuePerTask": "Valor por tarefa"
   },
   "task": {
     "backToCampaign": "Voltar à Campanha",

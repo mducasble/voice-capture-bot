@@ -82,7 +82,8 @@
     "theme": "Tema",
     "referralDistribution": "Distribución de Referidos",
     "referralDistributionDesc": "Valores pagados por referido para cada nivel de tu red.",
-    "level": "Nivel"
+    "level": "Nivel",
+    "valuePerTask": "Valor por tarea"
   },
   "task": {
     "backToCampaign": "Volver a la Campaña",

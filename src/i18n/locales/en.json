@@ -82,7 +82,8 @@
     "theme": "Theme",
     "referralDistribution": "Referral Distribution",
     "referralDistributionDesc": "Amounts paid per referral for each level in your network.",
-    "level": "Level"
+    "level": "Level",
+    "valuePerTask": "Value per task"
   },
   "task": {
     "backToCampaign": "Back to Campaign",

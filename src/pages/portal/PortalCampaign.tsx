@@ -289,7 +289,7 @@ export default function PortalCampaign() {
                 </span>
               </span>
               <span className="font-mono text-sm font-bold uppercase tracking-widest" style={{ color: "var(--portal-accent-text)", opacity: 0.8 }}>
-                Valor por tarefa
+                {t("campaign.valuePerTask")}
               </span>
             </div>
             <span className="font-mono text-xs font-black uppercase px-2 py-1" style={{ background: "var(--portal-accent-text)", color: "var(--portal-accent)", borderRadius: "2px" }}>
