@@ -129,6 +129,12 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [promptRulesCatalog, setPromptRulesCatalog] = useState<{ id: string; rule_text: string; rule_type: string; category: string | null }[]>([]);
   const hardwareAbortRef = useRef<AbortController | null>(null);
 
+  // Instruction templates
+  const [instructionTemplates, setInstructionTemplates] = useState<{ id: string; name: string; description: string | null; instructions_title: string | null; instructions_summary: string | null; instructions_steps: any; prompt_do: string[]; prompt_dont: string[]; required_hardware: string[]; video_url: string | null; pdf_file_url: string | null }[]>([]);
+  const [saveTemplateName, setSaveTemplateName] = useState("");
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
     currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "", payment_type: "USD",
