@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X, Wrench, BookOpen, ShieldCheck } from "lucide-react";
+import { Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Copy, Languages, Loader2, Check, icons, FileText, X, Wrench, BookOpen, ShieldCheck, Save, FolderOpen } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -129,6 +129,12 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
   const [promptRulesCatalog, setPromptRulesCatalog] = useState<{ id: string; rule_text: string; rule_type: string; category: string | null }[]>([]);
   const hardwareAbortRef = useRef<AbortController | null>(null);
 
+  // Instruction templates
+  const [instructionTemplates, setInstructionTemplates] = useState<{ id: string; name: string; description: string | null; instructions_title: string | null; instructions_summary: string | null; instructions_steps: any; prompt_do: string[]; prompt_dont: string[]; required_hardware: string[]; video_url: string | null; pdf_file_url: string | null }[]>([]);
+  const [saveTemplateName, setSaveTemplateName] = useState("");
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   // Reward
   const [reward, setReward] = useState<RewardConfig>({
     currency: "USD", payout_model: "per_accepted_unit", base_rate: null, bonus_rate: null, bonus_condition: "", payment_type: "USD",
@@ -220,6 +226,65 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
       if (data) setPromptRulesCatalog(data as any);
     });
   }, []);
+
+  // Load instruction templates
+  useEffect(() => {
+    supabase.from("instruction_templates").select("*").order("name").then(({ data }) => {
+      if (data) setInstructionTemplates(data as any);
+    });
+  }, []);
+
+  const loadTemplate = (templateId: string) => {
+    const t = instructionTemplates.find(t => t.id === templateId);
+    if (!t) return;
+    setGlobalInstructions({
+      instructions_title: t.instructions_title,
+      instructions_summary: t.instructions_summary,
+      instructions_steps: t.instructions_steps || [],
+      prompt_do: t.prompt_do || [],
+      prompt_dont: t.prompt_dont || [],
+      required_hardware: t.required_hardware || [],
+      video_url: t.video_url,
+      pdf_file_url: t.pdf_file_url,
+    });
+    toast({ title: `Template "${t.name}" carregado!` });
+  };
+
+  const saveAsTemplate = async () => {
+    if (!saveTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const { data, error } = await supabase.from("instruction_templates").insert({
+        name: saveTemplateName.trim(),
+        instructions_title: globalInstructions.instructions_title,
+        instructions_summary: globalInstructions.instructions_summary,
+        instructions_steps: globalInstructions.instructions_steps,
+        prompt_do: globalInstructions.prompt_do,
+        prompt_dont: globalInstructions.prompt_dont,
+        required_hardware: globalInstructions.required_hardware,
+        video_url: globalInstructions.video_url,
+        pdf_file_url: globalInstructions.pdf_file_url,
+      } as any).select().single();
+      if (error) throw error;
+      setInstructionTemplates(prev => [...prev, data as any]);
+      setSaveTemplateName("");
+      setShowSaveTemplate(false);
+      toast({ title: "Template salvo com sucesso!" });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erro ao salvar template", variant: "destructive" });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const deleteTemplate = async (templateId: string) => {
+    const { error } = await supabase.from("instruction_templates").delete().eq("id", templateId);
+    if (!error) {
+      setInstructionTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast({ title: "Template removido" });
+    }
+  };
 
   const addRuleToCatalog = async (ruleText: string, ruleType: "do" | "dont") => {
     // Check if already in catalog
@@ -1013,6 +1078,67 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                 <p className="text-xs text-muted-foreground">
                   Instruções gerais da campanha visíveis para todos os participantes.
                 </p>
+
+                {/* TEMPLATE LOAD / SAVE BAR */}
+                <div className="flex flex-wrap items-center gap-2 p-3 border border-dashed rounded-lg bg-muted/30">
+                  <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Select onValueChange={loadTemplate}>
+                    <SelectTrigger className="h-8 w-56 text-xs">
+                      <SelectValue placeholder="Carregar template salvo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructionTemplates.length === 0 ? (
+                        <SelectItem value="__none" disabled>Nenhum template salvo</SelectItem>
+                      ) : (
+                        instructionTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  {instructionTemplates.length > 0 && (
+                    <Select onValueChange={deleteTemplate}>
+                      <SelectTrigger className="h-8 w-8 p-0 text-xs text-destructive border-destructive/30">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instructionTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id} className="text-xs text-destructive">
+                            Excluir: {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <div className="ml-auto flex items-center gap-2">
+                    {showSaveTemplate ? (
+                      <>
+                        <Input
+                          value={saveTemplateName}
+                          onChange={e => setSaveTemplateName(e.target.value)}
+                          placeholder="Nome do template..."
+                          className="h-8 w-48 text-xs"
+                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); saveAsTemplate(); } }}
+                        />
+                        <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={saveAsTemplate} disabled={!saveTemplateName.trim() || savingTemplate}>
+                          {savingTemplate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          Salvar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setShowSaveTemplate(false)}>
+                          Cancelar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setShowSaveTemplate(true)}>
+                        <Save className="h-3 w-3" /> Salvar como template
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
                 {/* SECTION 1: HARDWARE NECESSÁRIO */}
                 <div className="space-y-3 p-4 border rounded-lg">
