@@ -496,7 +496,7 @@ export default function PortalCampaign() {
                   <div className="flex flex-wrap gap-1.5">
                     {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
                       <span key={i} className="font-mono text-base px-2.5 py-1" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
-                        {resolvePlace(place)}
+                        {resolvePlace(place, i18n.language?.substring(0, 2) || "pt")}
                       </span>
                     ))}
                   </div>
