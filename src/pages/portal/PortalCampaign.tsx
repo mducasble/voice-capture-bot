@@ -15,16 +15,17 @@ import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import type { HardwareCatalogItem } from "@/lib/campaignTypes";
 import { useTranslation } from "react-i18next";
+import { useCampaignTranslation } from "@/hooks/useCampaignTranslation";
 
 function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 }
 
-const countryNames = new Intl.DisplayNames(["pt-BR"], { type: "region" });
-function resolvePlace(code: string): string {
+function resolvePlace(code: string, lang: string): string {
   try {
-    // If it looks like a 2-letter country code, resolve it
-    if (/^[A-Z]{2}$/.test(code)) return countryNames.of(code) || code;
+    const locale = lang === "es" ? "es" : lang === "en" ? "en" : "pt-BR";
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    if (/^[A-Z]{2}$/.test(code)) return names.of(code) || code;
   } catch {}
   return code;
 }
@@ -64,8 +65,15 @@ export default function PortalCampaign() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [hardwareCatalog, setHardwareCatalog] = useState<HardwareCatalogItem[]>([]);
+  const { translated, isTranslating } = useCampaignTranslation(campaign);
+
+  // Helper to get translated or original value
+  const tr = useMemo(() => {
+    if (!translated) return null;
+    return translated;
+  }, [translated]);
 
   // Load hardware catalog
   useEffect(() => {
@@ -254,12 +262,13 @@ export default function PortalCampaign() {
               )}
             </div>
             <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-              {campaign.name}
+              {tr?.name || campaign.name}
+              {isTranslating && <Loader2 className="inline h-4 w-4 ml-2 animate-spin" style={{ color: "var(--portal-text-muted)" }} />}
             </h1>
           </div>
-          {campaign.description && (
+          {(tr?.description || campaign.description) && (
             <p className="font-mono text-base mt-4 leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-              {campaign.description}
+              {tr?.description || campaign.description}
             </p>
           )}
         </div>
@@ -271,14 +280,14 @@ export default function PortalCampaign() {
         {campaign.instructions && (campaign.instructions.instructions_title || (campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0) || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
           <Section title="Instruções" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-              {campaign.instructions.instructions_title && (
+              {(tr?.instructions_title || campaign.instructions.instructions_title) && (
                 <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                  {campaign.instructions.instructions_title}
+                  {tr?.instructions_title || campaign.instructions.instructions_title}
                 </p>
               )}
               {campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0 && (
                 <ol className="space-y-2">
-                  {(campaign.instructions.instructions_steps as Array<{ title: string; description: string }>).map((step, idx) => (
+                  {((tr?.instructions_steps || campaign.instructions.instructions_steps) as Array<{ title: string; description: string }>).map((step, idx) => (
                     <li key={idx} className="flex gap-3 p-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
                       <span className="font-mono text-lg font-bold shrink-0" style={{ color: "var(--portal-accent)" }}>{idx + 1}.</span>
                       <div className="space-y-0.5">
@@ -289,9 +298,9 @@ export default function PortalCampaign() {
                   ))}
                 </ol>
               )}
-              {campaign.instructions.instructions_summary && (
+              {(tr?.instructions_summary || campaign.instructions.instructions_summary) && (
                 <p className="font-mono text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
-                  {campaign.instructions.instructions_summary}
+                  {tr?.instructions_summary || campaign.instructions.instructions_summary}
                 </p>
               )}
               {campaign.instructions.video_url && (
@@ -332,10 +341,10 @@ export default function PortalCampaign() {
 
         {/* SECTION 3: O que Fazer */}
         {campaign.instructions?.prompt_do && campaign.instructions.prompt_do.length > 0 && (
-          <Section title="O que Fazer" icon={CheckCircle2}>
+          <Section title={t("campaign.whatToDo")} icon={CheckCircle2}>
             <div className="space-y-1 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <ul className="space-y-1.5">
-                {campaign.instructions.prompt_do.map((item: string, i: number) => (
+                {(tr?.prompt_do || campaign.instructions.prompt_do).map((item: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                     <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                     {item}
@@ -348,10 +357,10 @@ export default function PortalCampaign() {
 
         {/* SECTION 4: O que NÃO Fazer */}
         {campaign.instructions?.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
-          <Section title="O que NÃO Fazer" icon={XCircle}>
+          <Section title={t("campaign.whatNotToDo")} icon={XCircle}>
             <div className="space-y-1 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <ul className="space-y-1.5">
-                {campaign.instructions.prompt_dont.map((item: string, i: number) => (
+                {(tr?.prompt_dont || campaign.instructions.prompt_dont).map((item: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                     <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                     {item}
@@ -392,37 +401,38 @@ export default function PortalCampaign() {
         )}
 
         {/* Task instructions — one block per enabled task set */}
-        {enabledTaskSets.map(ts => {
+        {enabledTaskSets.map((ts, tsIdx) => {
           const hasDo = ts.prompt_do && ts.prompt_do.length > 0;
           const hasDont = ts.prompt_dont && ts.prompt_dont.length > 0;
           const hasContent = ts.instructions_title || ts.instructions_summary || ts.prompt_topic || hasDo || hasDont;
           if (!hasContent) return null;
+          const trTs = tr?.task_sets?.[tsIdx];
           return (
             <Section key={ts.task_set_id} title={TASK_TYPE_LABELS[ts.task_type] || ts.task_type} icon={BookOpen}>
               <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 {ts.instructions_title && (
                   <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                    {ts.instructions_title}
+                    {trTs?.instructions_title || ts.instructions_title}
                   </p>
                 )}
                 {ts.instructions_summary && (
                   <p className="font-mono text-base leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                    {ts.instructions_summary}
+                    {trTs?.instructions_summary || ts.instructions_summary}
                   </p>
                 )}
                 {ts.prompt_topic && (
                   <div className="p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
                     <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
                     <span className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
-                      Tema: {ts.prompt_topic}
+                      {t("campaign.theme")}: {trTs?.prompt_topic || ts.prompt_topic}
                     </span>
                   </div>
                 )}
                 {hasDo && (
                   <div className="space-y-1">
-                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>{t("campaign.whatToDo")}</span>
                     <ul className="space-y-1">
-                      {ts.prompt_do.map((item, i) => (
+                      {(trTs?.prompt_do || ts.prompt_do).map((item, i) => (
                         <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                           <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                           {item}
@@ -433,9 +443,9 @@ export default function PortalCampaign() {
                 )}
                 {hasDont && (
                   <div className="space-y-1">
-                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>{t("campaign.whatNotToDo")}</span>
                     <ul className="space-y-1">
-                      {ts.prompt_dont.map((item, i) => (
+                      {(trTs?.prompt_dont || ts.prompt_dont).map((item, i) => (
                         <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                           <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                           {item}
@@ -488,7 +498,7 @@ export default function PortalCampaign() {
                   <div className="flex flex-wrap gap-1.5">
                     {[...(geo.continents || []), ...(geo.countries || []), ...(geo.regions || []), ...(geo.states || []), ...(geo.cities || [])].map((place, i) => (
                       <span key={i} className="font-mono text-base px-2.5 py-1" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}>
-                        {resolvePlace(place)}
+                        {resolvePlace(place, i18n.language?.substring(0, 2) || "pt")}
                       </span>
                     ))}
                   </div>
