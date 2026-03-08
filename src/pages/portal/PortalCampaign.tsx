@@ -341,10 +341,10 @@ export default function PortalCampaign() {
 
         {/* SECTION 3: O que Fazer */}
         {campaign.instructions?.prompt_do && campaign.instructions.prompt_do.length > 0 && (
-          <Section title="O que Fazer" icon={CheckCircle2}>
+          <Section title={t("campaign.whatToDo")} icon={CheckCircle2}>
             <div className="space-y-1 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <ul className="space-y-1.5">
-                {campaign.instructions.prompt_do.map((item: string, i: number) => (
+                {(tr?.prompt_do || campaign.instructions.prompt_do).map((item: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                     <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                     {item}
@@ -357,10 +357,10 @@ export default function PortalCampaign() {
 
         {/* SECTION 4: O que NÃO Fazer */}
         {campaign.instructions?.prompt_dont && campaign.instructions.prompt_dont.length > 0 && (
-          <Section title="O que NÃO Fazer" icon={XCircle}>
+          <Section title={t("campaign.whatNotToDo")} icon={XCircle}>
             <div className="space-y-1 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <ul className="space-y-1.5">
-                {campaign.instructions.prompt_dont.map((item: string, i: number) => (
+                {(tr?.prompt_dont || campaign.instructions.prompt_dont).map((item: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                     <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                     {item}
