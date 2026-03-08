@@ -401,37 +401,38 @@ export default function PortalCampaign() {
         )}
 
         {/* Task instructions — one block per enabled task set */}
-        {enabledTaskSets.map(ts => {
+        {enabledTaskSets.map((ts, tsIdx) => {
           const hasDo = ts.prompt_do && ts.prompt_do.length > 0;
           const hasDont = ts.prompt_dont && ts.prompt_dont.length > 0;
           const hasContent = ts.instructions_title || ts.instructions_summary || ts.prompt_topic || hasDo || hasDont;
           if (!hasContent) return null;
+          const trTs = tr?.task_sets?.[tsIdx];
           return (
             <Section key={ts.task_set_id} title={TASK_TYPE_LABELS[ts.task_type] || ts.task_type} icon={BookOpen}>
               <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 {ts.instructions_title && (
                   <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                    {ts.instructions_title}
+                    {trTs?.instructions_title || ts.instructions_title}
                   </p>
                 )}
                 {ts.instructions_summary && (
                   <p className="font-mono text-base leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                    {ts.instructions_summary}
+                    {trTs?.instructions_summary || ts.instructions_summary}
                   </p>
                 )}
                 {ts.prompt_topic && (
                   <div className="p-3 flex items-start gap-2" style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}>
                     <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
                     <span className="font-mono text-base" style={{ color: "var(--portal-text-muted)" }}>
-                      Tema: {ts.prompt_topic}
+                      {t("campaign.theme")}: {trTs?.prompt_topic || ts.prompt_topic}
                     </span>
                   </div>
                 )}
                 {hasDo && (
                   <div className="space-y-1">
-                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>O que fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>{t("campaign.whatToDo")}</span>
                     <ul className="space-y-1">
-                      {ts.prompt_do.map((item, i) => (
+                      {(trTs?.prompt_do || ts.prompt_do).map((item, i) => (
                         <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                           <CheckCircle2 className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "var(--portal-accent)" }} />
                           {item}
@@ -442,9 +443,9 @@ export default function PortalCampaign() {
                 )}
                 {hasDont && (
                   <div className="space-y-1">
-                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>O que NÃO fazer</span>
+                    <span className="font-mono text-sm uppercase tracking-widest" style={{ color: "hsl(0 72% 51%)" }}>{t("campaign.whatNotToDo")}</span>
                     <ul className="space-y-1">
-                      {ts.prompt_dont.map((item, i) => (
+                      {(trTs?.prompt_dont || ts.prompt_dont).map((item, i) => (
                         <li key={i} className="flex items-start gap-2 font-mono text-base" style={{ color: "var(--portal-text)" }}>
                           <XCircle className="h-4.5 w-4.5 mt-0.5 shrink-0" style={{ color: "hsl(0 72% 51%)" }} />
                           {item}
