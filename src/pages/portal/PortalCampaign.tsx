@@ -15,6 +15,7 @@ import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
 import type { HardwareCatalogItem } from "@/lib/campaignTypes";
 import { useTranslation } from "react-i18next";
+import { useCampaignTranslation } from "@/hooks/useCampaignTranslation";
 
 function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
