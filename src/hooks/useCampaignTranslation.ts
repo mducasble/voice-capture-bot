@@ -25,6 +25,7 @@ interface TranslatedContent {
   instructions_steps?: Array<{ title: string; description: string }>;
   prompt_do?: string[];
   prompt_dont?: string[];
+  required_hardware?: string[];
 }
 
 function buildTextsPayload(campaign: Campaign) {
@@ -50,6 +51,7 @@ function buildTextsPayload(campaign: Campaign) {
     instructions_steps: campaign.instructions?.instructions_steps || [],
     prompt_do: campaign.instructions?.prompt_do || [],
     prompt_dont: campaign.instructions?.prompt_dont || [],
+    required_hardware: campaign.instructions?.required_hardware || [],
   };
 }
 
