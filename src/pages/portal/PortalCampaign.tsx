@@ -226,7 +226,7 @@ export default function PortalCampaign() {
                   {campaign.reward_config.payout_model === "per_accepted_unit" || campaign.reward_config.payout_model === "per_unit" ? "/un" : "/h"}
                 </span>
               </span>
-              <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
+              <span className="font-mono text-sm font-bold uppercase tracking-widest" style={{ color: "var(--portal-accent-text)", opacity: 0.8 }}>
                 Valor por tarefa
               </span>
             </div>
