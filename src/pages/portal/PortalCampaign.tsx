@@ -216,23 +216,21 @@ export default function PortalCampaign() {
       <div style={{ border: "1px solid var(--portal-border)" }}>
         {/* Reward hero block */}
         {campaign.reward_config?.base_rate != null && (
-          <div className="p-6 flex items-center justify-between" style={{ background: "var(--portal-accent)" }}>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: "var(--portal-accent)" }}>
             <div className="flex items-center gap-3">
-              <Coins className="h-6 w-6" style={{ color: "var(--portal-accent-text)" }} />
-              <div>
-                <span className="font-mono text-sm uppercase tracking-widest block" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
-                  Valor por tarefa
+              <Coins className="h-5 w-5" style={{ color: "var(--portal-accent-text)" }} />
+              <span className="font-mono text-2xl font-black" style={{ color: "var(--portal-accent-text)" }}>
+                {campaign.reward_config.currency === "BRL" ? "R$" : campaign.reward_config.currency === "EUR" ? "€" : "$"}
+                {campaign.reward_config.base_rate.toFixed(2)}
+                <span className="text-sm font-bold ml-1">
+                  {campaign.reward_config.payout_model === "per_accepted_unit" || campaign.reward_config.payout_model === "per_unit" ? "/un" : "/h"}
                 </span>
-                <span className="font-mono text-3xl font-black" style={{ color: "var(--portal-accent-text)" }}>
-                  {campaign.reward_config.currency === "BRL" ? "R$" : campaign.reward_config.currency === "EUR" ? "€" : "$"}
-                  {campaign.reward_config.base_rate.toFixed(2)}
-                  <span className="text-lg font-bold ml-1">
-                    {campaign.reward_config.payout_model === "per_accepted_unit" || campaign.reward_config.payout_model === "per_unit" ? "/un" : "/h"}
-                  </span>
-                </span>
-              </div>
+              </span>
+              <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent-text)", opacity: 0.7 }}>
+                Valor por tarefa
+              </span>
             </div>
-            <span className="font-mono text-base font-black uppercase px-3 py-1.5" style={{ background: "var(--portal-accent-text)", color: "var(--portal-accent)", borderRadius: "2px" }}>
+            <span className="font-mono text-xs font-black uppercase px-2 py-1" style={{ background: "var(--portal-accent-text)", color: "var(--portal-accent)", borderRadius: "2px" }}>
               {(campaign.reward_config as any).payment_type || campaign.reward_config.currency}
             </span>
           </div>
