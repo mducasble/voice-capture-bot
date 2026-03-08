@@ -280,14 +280,14 @@ export default function PortalCampaign() {
         {campaign.instructions && (campaign.instructions.instructions_title || (campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0) || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
           <Section title="Instruções" icon={BookOpen}>
             <div className="space-y-3 p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-              {campaign.instructions.instructions_title && (
+              {(tr?.instructions_title || campaign.instructions.instructions_title) && (
                 <p className="font-mono text-base font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                  {campaign.instructions.instructions_title}
+                  {tr?.instructions_title || campaign.instructions.instructions_title}
                 </p>
               )}
               {campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0 && (
                 <ol className="space-y-2">
-                  {(campaign.instructions.instructions_steps as Array<{ title: string; description: string }>).map((step, idx) => (
+                  {((tr?.instructions_steps || campaign.instructions.instructions_steps) as Array<{ title: string; description: string }>).map((step, idx) => (
                     <li key={idx} className="flex gap-3 p-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
                       <span className="font-mono text-lg font-bold shrink-0" style={{ color: "var(--portal-accent)" }}>{idx + 1}.</span>
                       <div className="space-y-0.5">
@@ -298,9 +298,9 @@ export default function PortalCampaign() {
                   ))}
                 </ol>
               )}
-              {campaign.instructions.instructions_summary && (
+              {(tr?.instructions_summary || campaign.instructions.instructions_summary) && (
                 <p className="font-mono text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--portal-text-muted)" }}>
-                  {campaign.instructions.instructions_summary}
+                  {tr?.instructions_summary || campaign.instructions.instructions_summary}
                 </p>
               )}
               {campaign.instructions.video_url && (
