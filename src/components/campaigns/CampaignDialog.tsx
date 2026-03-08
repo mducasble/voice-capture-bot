@@ -1079,6 +1079,67 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                   Instruções gerais da campanha visíveis para todos os participantes.
                 </p>
 
+                {/* TEMPLATE LOAD / SAVE BAR */}
+                <div className="flex flex-wrap items-center gap-2 p-3 border border-dashed rounded-lg bg-muted/30">
+                  <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Select onValueChange={loadTemplate}>
+                    <SelectTrigger className="h-8 w-56 text-xs">
+                      <SelectValue placeholder="Carregar template salvo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructionTemplates.length === 0 ? (
+                        <SelectItem value="__none" disabled>Nenhum template salvo</SelectItem>
+                      ) : (
+                        instructionTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  {instructionTemplates.length > 0 && (
+                    <Select onValueChange={deleteTemplate}>
+                      <SelectTrigger className="h-8 w-8 p-0 text-xs text-destructive border-destructive/30">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instructionTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id} className="text-xs text-destructive">
+                            Excluir: {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <div className="ml-auto flex items-center gap-2">
+                    {showSaveTemplate ? (
+                      <>
+                        <Input
+                          value={saveTemplateName}
+                          onChange={e => setSaveTemplateName(e.target.value)}
+                          placeholder="Nome do template..."
+                          className="h-8 w-48 text-xs"
+                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); saveAsTemplate(); } }}
+                        />
+                        <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={saveAsTemplate} disabled={!saveTemplateName.trim() || savingTemplate}>
+                          {savingTemplate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          Salvar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setShowSaveTemplate(false)}>
+                          Cancelar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setShowSaveTemplate(true)}>
+                        <Save className="h-3 w-3" /> Salvar como template
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
                 {/* SECTION 1: HARDWARE NECESSÁRIO */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <h3 className="text-sm font-semibold flex items-center gap-2"><Wrench className="h-4 w-4" /> 1. Hardware Necessário</h3>
