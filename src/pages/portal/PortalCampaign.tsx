@@ -264,34 +264,8 @@ export default function PortalCampaign() {
           )}
         </div>
 
-        {/* SECTION 1: Hardware Necessário */}
-        {campaign.instructions?.required_hardware && campaign.instructions.required_hardware.length > 0 && (
-          <Section title="Hardware Necessário" icon={Wrench}>
-            <div className="flex flex-wrap gap-3">
-              {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
-                const catalogItem = hardwareCatalog.find(h => h.name.toLowerCase() === hwName.toLowerCase());
-                const pascalName = catalogItem ? toPascalCase(catalogItem.icon_name) : null;
-                const LucideIcon = pascalName ? (icons as any)[pascalName] : null;
-                return (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
-                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
-                  >
-                    {LucideIcon ? (
-                      <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
-                    ) : (
-                      <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
-                    )}
-                    <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
-                      {hwName}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
+
+
 
         {/* SECTION 2: Instruções Passo a Passo / Vídeo / PDF */}
         {campaign.instructions && (campaign.instructions.instructions_title || (campaign.instructions.instructions_steps && campaign.instructions.instructions_steps.length > 0) || campaign.instructions.instructions_summary || campaign.instructions.video_url || campaign.instructions.pdf_file_url) && (
@@ -384,6 +358,35 @@ export default function PortalCampaign() {
                   </li>
                 ))}
               </ul>
+            </div>
+          </Section>
+        )}
+
+        {/* SECTION: Hardware Necessário */}
+        {campaign.instructions?.required_hardware && campaign.instructions.required_hardware.length > 0 && (
+          <Section title="Hardware Necessário" icon={Wrench}>
+            <div className="flex flex-wrap gap-3">
+              {campaign.instructions.required_hardware.map((hwName: string, i: number) => {
+                const catalogItem = hardwareCatalog.find(h => h.name.toLowerCase() === hwName.toLowerCase());
+                const pascalName = catalogItem ? toPascalCase(catalogItem.icon_name) : null;
+                const LucideIcon = pascalName ? (icons as any)[pascalName] : null;
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-1.5 p-3 min-w-[72px]"
+                    style={{ border: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}
+                  >
+                    {LucideIcon ? (
+                      <LucideIcon className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
+                    ) : (
+                      <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
+                    )}
+                    <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
+                      {hwName}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </Section>
         )}
