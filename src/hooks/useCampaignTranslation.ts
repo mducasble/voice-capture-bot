@@ -67,7 +67,7 @@ export function useCampaignTranslation(campaign: Campaign | null | undefined) {
   const needsTranslation = lang !== "pt" && !!campaign;
 
   const { data: translated, isLoading } = useQuery({
-    queryKey: ["campaign-translation", campaign?.id, lang],
+    queryKey: ["campaign-translation", "v2", campaign?.id, lang],
     queryFn: async (): Promise<TranslatedContent> => {
       const texts = buildTextsPayload(campaign!);
       const { data, error } = await supabase.functions.invoke("translate-campaign", {

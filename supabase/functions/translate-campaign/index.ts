@@ -27,6 +27,7 @@ serve(async (req) => {
     const systemPrompt = `You are a professional translator. Translate the provided JSON object values to ${target_language}. 
 Keep all JSON keys exactly the same. Only translate the string values. 
 For arrays of strings, translate each item. 
+Translate generic hardware/device names (e.g., "Mobile Phone", "Headset", "Laptop") to natural terms in the target language.
 Keep proper nouns, technical terms, and brand names unchanged.
 Return ONLY the translated JSON object, no explanation.`;
 
@@ -95,8 +96,9 @@ Return ONLY the translated JSON object, no explanation.`;
                     },
                   },
                   rejection_reasons: { type: "array", items: { type: "string" } },
+                  required_hardware: { type: "array", items: { type: "string" } },
                 },
-                required: ["name", "description", "task_sets", "sections", "rejection_reasons"],
+                required: ["name", "description", "task_sets", "sections", "rejection_reasons", "required_hardware"],
                 additionalProperties: false,
               },
             },
