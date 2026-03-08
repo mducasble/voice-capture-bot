@@ -16,6 +16,7 @@ import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useMixedRecorder } from "@/hooks/useMixedRecorder";
+import { RecordingGuidelinesSidebar } from "@/components/rooms/RecordingGuidelinesSidebar";
 import type { AudioProfile } from "@/lib/audioProfile";
 
 interface Room {
@@ -804,6 +805,7 @@ const Room = () => {
     // Portal-themed room view
     return (
       <div className="space-y-6">
+        <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
         <div className="flex items-center justify-between">
           <div>
