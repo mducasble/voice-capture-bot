@@ -21,11 +21,11 @@ function toPascalCase(str: string): string {
   return str.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 }
 
-const countryNames = new Intl.DisplayNames(["pt-BR"], { type: "region" });
-function resolvePlace(code: string): string {
+function resolvePlace(code: string, lang: string): string {
   try {
-    // If it looks like a 2-letter country code, resolve it
-    if (/^[A-Z]{2}$/.test(code)) return countryNames.of(code) || code;
+    const locale = lang === "es" ? "es" : lang === "en" ? "en" : "pt-BR";
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    if (/^[A-Z]{2}$/.test(code)) return names.of(code) || code;
   } catch {}
   return code;
 }
