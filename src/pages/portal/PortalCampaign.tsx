@@ -38,6 +38,68 @@ function getEmbedUrl(url: string): string {
   return url;
 }
 
+const HARDWARE_LOCALIZATION_MAP: Record<string, Record<string, string>> = {
+  es: {
+    "mobile phone": "Teléfono móvil",
+    "cell phone": "Teléfono móvil",
+    cellphone: "Teléfono móvil",
+    smartphone: "Teléfono móvil",
+    phone: "Teléfono",
+    headset: "Auriculares",
+    headphones: "Auriculares",
+    earphones: "Auriculares",
+    microphone: "Micrófono",
+    mic: "Micrófono",
+    laptop: "Portátil",
+    notebook: "Portátil",
+    desktop: "Computadora de escritorio",
+    "desktop pc": "Computadora de escritorio",
+    computer: "Computadora",
+    tablet: "Tableta",
+    webcam: "Cámara web",
+  },
+  pt: {
+    "mobile phone": "Celular",
+    "cell phone": "Celular",
+    cellphone: "Celular",
+    smartphone: "Celular",
+    phone: "Telefone",
+    headset: "Headset",
+    headphones: "Fones de ouvido",
+    earphones: "Fones de ouvido",
+    microphone: "Microfone",
+    mic: "Microfone",
+    laptop: "Notebook",
+    notebook: "Notebook",
+    desktop: "Computador de mesa",
+    "desktop pc": "Computador de mesa",
+    computer: "Computador",
+    tablet: "Tablet",
+    webcam: "Webcam",
+  },
+};
+
+function normalizeHardwareKey(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getLocalizedHardwareName(original: string, translated: string | undefined, lang: string): string {
+  const normalizedOriginal = normalizeHardwareKey(original || "");
+  const normalizedTranslated = normalizeHardwareKey(translated || "");
+  const dict = HARDWARE_LOCALIZATION_MAP[lang] || {};
+
+  if (translated && normalizedTranslated && normalizedTranslated !== normalizedOriginal) {
+    return translated;
+  }
+
+  return dict[normalizedOriginal] || translated || original;
+}
+
 
 
 function useWaitlistStatus(campaignId: string | undefined, userId: string | undefined) {
@@ -383,7 +445,7 @@ export default function PortalCampaign() {
                       <Wrench className="h-6 w-6" style={{ color: "var(--portal-text-muted)" }} />
                     )}
                     <span className="font-mono text-sm text-center leading-tight" style={{ color: "var(--portal-text)" }}>
-                      {tr?.required_hardware?.[i] || hwName}
+                      {getLocalizedHardwareName(hwName, tr?.required_hardware?.[i], i18n.language?.substring(0, 2) || "pt")}
                     </span>
                   </div>
                 );
