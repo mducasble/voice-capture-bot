@@ -16,6 +16,7 @@ import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useMixedRecorder } from "@/hooks/useMixedRecorder";
+import { RecordingGuidelinesSidebar } from "@/components/rooms/RecordingGuidelinesSidebar";
 import type { AudioProfile } from "@/lib/audioProfile";
 
 interface Room {
