@@ -545,32 +545,32 @@ export const AudioTestFlow = ({
                   )}
                   {editedProfile.enableRnnoise && (
                     <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                      RNNoise
+                      {t("audioTest.features.rnnoise")}
                     </Badge>
                   )}
                   {editedProfile.enableKoala && (
                     <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
-                      Koala
+                      {t("audioTest.features.koala")}
                     </Badge>
                   )}
                   {editedProfile.enableNoiseGate && (
                     <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                      Noise Gate
+                      {t("audioTest.features.noiseGate")}
                     </Badge>
                   )}
                   {editedProfile.enableEchoCancellation && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      Echo
+                      {t("audioTest.features.echoCancellation")}
                     </Badge>
                   )}
                   {editedProfile.enableNoiseSuppression && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      NoiseSup
+                      {t("audioTest.features.noiseSuppression")}
                     </Badge>
                   )}
                   {editedProfile.enableAutoGainControl && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      AGC
+                      {t("audioTest.features.autoGainControl")}
                     </Badge>
                   )}
                 </div>
