@@ -245,7 +245,9 @@ export const AudioTestFlow = ({
           localStorage.setItem(STORAGE_KEY, JSON.stringify({ results, profile: editedProfile }));
         } catch { /* quota exceeded */ }
       }
-      toast.success("Configuração de áudio aplicada! 🎛️");
+      toast.success(t("audioTest.configUpdated"));
+      setPhase("idle");
+      setShowProfileDetails(false);
     }
   };
 
