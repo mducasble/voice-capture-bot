@@ -511,7 +511,11 @@ export const AudioTestFlow = ({
                       )}
                       {t(`audioTest.issues.${issue.metric}.label`, { defaultValue: issue.label })}
                     </div>
-                    <p className="text-xs opacity-90">{t(`audioTest.issues.${issue.metric}.guidance`, { defaultValue: issue.guidance })}</p>
+                    <p className="text-xs opacity-90">
+                      {issue.metric === "rms" && issue.guidance.includes("alto")
+                        ? t(`audioTest.issues.rms.guidanceHigh`, { defaultValue: issue.guidance })
+                        : t(`audioTest.issues.${issue.metric}.guidance`, { defaultValue: issue.guidance })}
+                    </p>
                   </div>
                 ))}
               </div>
