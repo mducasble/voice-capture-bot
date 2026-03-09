@@ -191,8 +191,8 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
 
   return (
     <div className="space-y-4">
-      <input ref={fileInputRef} type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg" onChange={handleFileSelect} className="hidden" />
-      <input ref={mixedFileInputRef} type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg" onChange={handleMixedFileSelect} className="hidden" />
+      <input ref={fileInputRef} type="file" accept=".wav,audio/wav,audio/x-wav" onChange={handleFileSelect} className="hidden" />
+      <input ref={mixedFileInputRef} type="file" accept=".wav,audio/wav,audio/x-wav" onChange={handleMixedFileSelect} className="hidden" />
 
       {/* Speaker list */}
       {speakerFiles.length === 0 ? (

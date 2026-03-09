@@ -453,7 +453,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
         <input
           ref={mixedFileInputRef}
           type="file"
-          accept="audio/*,video/x-matroska,.wav,.mp3,.m4a,.ogg,.mkv"
+          accept=".wav,audio/wav,audio/x-wav"
           onChange={handleMixedFileSelect}
           className="hidden"
         />
