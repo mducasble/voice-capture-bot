@@ -252,6 +252,12 @@ export const AudioTestFlow = ({
     }
   };
 
+  const skipProfile = () => {
+    setShowProfileDetails(false);
+    setShowResultDetails(false);
+    setPhase("idle");
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "good": return "bg-green-500/20 text-green-400 border-green-500/30";
