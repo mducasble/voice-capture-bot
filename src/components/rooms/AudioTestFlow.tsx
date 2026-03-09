@@ -685,7 +685,7 @@ export const AudioTestFlow = ({
                         className="w-full text-xs"
                         onClick={() => setEditedProfile(recommendedProfile)}
                       >
-                        Restaurar recomendação original
+                        {t("audioTest.restoreOriginal")}
                       </Button>
                     )}
                   </div>
