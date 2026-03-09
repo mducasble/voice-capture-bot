@@ -44,7 +44,7 @@ const Rooms = () => {
 
       // Store creator participant ID so Room page recognises them
       if (participant) {
-        sessionStorage.setItem(`room_${room.id}_participant`, participant.id);
+        localStorage.setItem(`room_${room.id}_participant`, participant.id);
       }
 
       toast.success("Sala criada com sucesso!");
