@@ -86,20 +86,14 @@ export const AudioTestFlow = ({
 
   const STORAGE_KEY = `audio_test_profile`;
 
-  // Restore cached results from localStorage on mount
+  // Restore cached profile from localStorage on mount — apply silently, stay idle
   useEffect(() => {
     if (initialResults) return; // server data takes priority
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached) as { results: TestResults; profile: AudioProfile };
-        setResults(parsed.results);
-        setRecommendedProfile(parsed.profile);
-        setEditedProfile(parsed.profile);
-        setPhase("results");
-        setFromCache(true);
-        setShowResultDetails(false); // collapsed when from cache
-        // Auto-apply cached profile
+        // Auto-apply cached profile without showing results UI
         if (onProfileRecommended) onProfileRecommended(parsed.profile);
       }
     } catch { /* ignore corrupt data */ }
