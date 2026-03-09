@@ -76,7 +76,7 @@ export default function PortalCampaignTask() {
       if (partError) throw partError;
 
       // Store participant ID for Room.tsx auto-connect
-      sessionStorage.setItem(`room_${room.id}_participant`, participant.id);
+      localStorage.setItem(`room_${room.id}_participant`, participant.id);
       navigate(`/room/${room.id}?campaign=${campaign.id}`);
     } catch (err: any) {
       toast.error("Erro ao criar sala: " + err.message);
