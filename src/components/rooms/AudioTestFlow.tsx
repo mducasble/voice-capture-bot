@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
 import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 import KGenButton from "@/components/portal/KGenButton";
+import { useTranslation } from "react-i18next";
 
 interface MetricResult {
   value: number | null;
@@ -72,6 +73,7 @@ export const AudioTestFlow = ({
   const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
   const testBlobUrlRef = useRef<string | null>(null);
+  const { t } = useTranslation("translation");
 
   // Test uses no profile (raw capture for accurate measurement)
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
@@ -139,7 +141,7 @@ export const AudioTestFlow = ({
 
   const startTest = useCallback(async () => {
     if (!stream) {
-      toast.error("Microfone não disponível");
+      toast.error(t("audioTest.micNotAvailable"));
       return;
     }
     setPhase("recording");
@@ -158,7 +160,7 @@ export const AudioTestFlow = ({
 
     const wavBlob = await wavRecorder.stopRecording();
     if (!wavBlob || wavBlob.size === 0) {
-      toast.error("Nenhum áudio capturado");
+      toast.error(t("audioTest.noAudioCaptured"));
       setPhase("idle");
       return;
     }
@@ -210,16 +212,16 @@ export const AudioTestFlow = ({
       setEditedProfile(profile);
 
       if (data.overall_status === "passed") {
-        toast.success("Teste de áudio aprovado! ✅");
+        toast.success(t("audioTest.testPassed"));
       } else {
-        toast.warning("Teste de áudio com problemas. Veja as orientações abaixo.");
+        toast.warning(t("audioTest.testFailed"));
       }
     } catch (error) {
       console.error("Test error:", error);
-      toast.error("Erro ao analisar áudio de teste");
+      toast.error(t("audioTest.analysisError"));
       setPhase("idle");
     }
-  }, [wavRecorder, participantId, roomId, onTestComplete]);
+  }, [wavRecorder, participantId, roomId, onTestComplete, t]);
 
   const retryTest = () => {
     setPhase("idle");
@@ -243,7 +245,9 @@ export const AudioTestFlow = ({
           localStorage.setItem(STORAGE_KEY, JSON.stringify({ results, profile: editedProfile }));
         } catch { /* quota exceeded */ }
       }
-      toast.success("Configuração de áudio aplicada! 🎛️");
+      toast.success(t("audioTest.configUpdated"));
+      setPhase("idle");
+      setShowProfileDetails(false);
     }
   };
 
@@ -279,12 +283,12 @@ export const AudioTestFlow = ({
     if (isPortal) {
       return (
         <div className="p-6 text-center space-y-4" style={{ border: "2px dashed var(--portal-border)", background: "var(--portal-input-bg)" }}>
-          <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>🎙️ Teste de Áudio</p>
+          <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>🎙️ {t("audioTest.title")}</p>
           <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-            Grave {TEST_DURATION}s falando normalmente para avaliar a qualidade do seu setup
+            {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </p>
           <div className="flex justify-center">
-            <KGenButton onClick={startTest} scrambleText="INICIAR TESTE" icon={<Mic className="h-4 w-4" />} />
+            <KGenButton onClick={startTest} scrambleText={t("audioTest.startTest")} icon={<Mic className="h-4 w-4" />} />
           </div>
         </div>
       );
@@ -292,15 +296,15 @@ export const AudioTestFlow = ({
     return (
       <Card className="border-dashed border-2 border-primary/30">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-base">🎙️ Teste de Áudio</CardTitle>
+          <CardTitle className="text-base">🎙️ {t("audioTest.title")}</CardTitle>
           <CardDescription>
-            Grave {TEST_DURATION}s falando normalmente para avaliar a qualidade do seu setup
+            {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
           <Button onClick={startTest} size="lg" className="gap-2">
             <Mic className="h-5 w-5" />
-            Iniciar Teste
+            {t("audioTest.startTest")}
           </Button>
         </CardContent>
       </Card>
@@ -318,7 +322,7 @@ export const AudioTestFlow = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "hsl(0 84% 60%)" }} />
               <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "hsl(0 84% 60%)" }} />
             </span>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Gravando Teste...</span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("audioTest.recordingTest")}</span>
           </div>
           <p className="font-mono text-4xl font-black" style={{ color: "var(--portal-text)" }}>
             {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
@@ -327,7 +331,7 @@ export const AudioTestFlow = ({
             <div className="h-full transition-all" style={{ width: `${progress}%`, background: "hsl(0 84% 60%)" }} />
           </div>
           <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-            Fale como se estivesse gravando normalmente. Evite pausas muito longas.
+            {t("audioTest.recordingDesc")}
           </p>
         </div>
       );
@@ -340,17 +344,14 @@ export const AudioTestFlow = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
             </span>
-            Gravando Teste...
+            {t("audioTest.recordingTest")}
           </CardTitle>
-          <CardDescription>Fale normalmente por {countdown}s</CardDescription>
+          <CardDescription>{t("audioTest.recordingDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={progress} className="h-2" />
           <p className="text-center text-2xl font-mono font-bold text-foreground">
             {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
-          </p>
-          <p className="text-center text-xs text-muted-foreground">
-            Fale como se estivesse gravando normalmente. Evite pausas muito longas.
           </p>
         </CardContent>
       </Card>
@@ -364,9 +365,9 @@ export const AudioTestFlow = ({
         <div className="p-6 text-center space-y-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
           <div className="flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--portal-accent)" }} />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Analisando áudio...</span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("audioTest.analyzing")}</span>
           </div>
-          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>Calculando métricas de qualidade. Isso pode levar até 30s.</p>
+          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>{t("audioTest.analyzingDesc")}</p>
           <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
             <div className="h-full transition-all" style={{ width: `${analysisProgress}%`, background: "var(--portal-accent)" }} />
           </div>
@@ -378,9 +379,9 @@ export const AudioTestFlow = ({
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-base flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Analisando áudio...
+            {t("audioTest.analyzing")}
           </CardTitle>
-          <CardDescription>Calculando métricas de qualidade. Isso pode levar até 30s.</CardDescription>
+          <CardDescription>{t("audioTest.analyzingDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Progress value={analysisProgress} className="h-2" />
@@ -408,12 +409,12 @@ export const AudioTestFlow = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
-                  Resultado do Teste
+                  {t("audioTest.testResult")}
                 </span>
-                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>(sessão anterior)</span>}
+                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>{t("audioTest.previousSession")}</span>}
               </div>
               <span className="font-mono text-[10px] font-bold uppercase px-2 py-1" style={{ background: passed ? "var(--portal-accent)" : "hsl(45 93% 47%)", color: passed ? "var(--portal-accent-text)" : "hsl(168,28%,10%)" }}>
-                {passed ? "APROVADO" : "REPROVADO"}
+                {passed ? t("audioTest.passed") : t("audioTest.failed")}
               </span>
             </div>
             
@@ -423,9 +424,9 @@ export const AudioTestFlow = ({
             {/* Actions row */}
             <div className="flex gap-2">
               {testBlobUrlRef.current && (
-                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? "PAUSAR" : "OUVIR TESTE"} />
+                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? t("audioTest.pause") : t("audioTest.listenTest")} />
               )}
-              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText="REFAZER TESTE" />
+              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText={t("audioTest.retryTest")} />
             </div>
 
             {/* Toggle details */}
@@ -434,7 +435,7 @@ export const AudioTestFlow = ({
               className="font-mono text-[10px] text-center w-full uppercase flex justify-center items-center gap-1 mt-2 transition-colors hover:text-white"
               style={{ color: "var(--portal-text-muted)" }}
             >
-              {showResultDetails ? "Ocultar detalhes" : "Ver detalhes métricas"}
+              {showResultDetails ? t("audioTest.hideDetails") : t("audioTest.showDetails")}
               {showResultDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
           </div>
@@ -447,14 +448,14 @@ export const AudioTestFlow = ({
                 ) : (
                   <AlertTriangle className="h-5 w-5 text-yellow-500" />
                 )}
-                Resultado do Teste
+                {t("audioTest.testResult")}
                 {fromCache && (
-                  <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
+                  <span className="text-xs font-normal text-muted-foreground">{t("audioTest.previousSession")}</span>
                 )}
               </span>
               <div className="flex items-center gap-2">
                 <Badge variant={passed ? "default" : "destructive"}>
-                  {passed ? "Aprovado ✅" : "Reprovado ❌"}
+                  {passed ? `✅ ${t("audioTest.passed")}` : `❌ ${t("audioTest.failed")}`}
                 </Badge>
                 {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </div>
@@ -491,7 +492,7 @@ export const AudioTestFlow = ({
             {/* Issues & Guidance */}
             {results.issues.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Orientações para melhorar:</p>
+                <p className="text-sm font-medium text-foreground">{t("audioTest.guidelines")}</p>
                 {results.issues.map((issue, i) => (
                   <div key={i} className={`p-3 rounded-lg border text-sm ${getStatusColor(issue.status)}`}>
                     <div className="font-medium mb-1 flex items-center gap-1.5">
@@ -514,7 +515,7 @@ export const AudioTestFlow = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Settings2 className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">Configuração Recomendada</span>
+                    <span className="text-sm font-medium text-foreground">{t("audioTest.recommendedConfig")}</span>
                   </div>
                   <Button
                     variant="ghost"
@@ -529,7 +530,7 @@ export const AudioTestFlow = ({
                 {/* Summary badges */}
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="text-xs">
-                    Ganho: {editedProfile.gain.toFixed(1)}x
+                    {t("audioTest.gain")}: {editedProfile.gain.toFixed(1)}x
                   </Badge>
                   {editedProfile.highpassFreq > 0 && (
                     <Badge variant="outline" className="text-xs">
@@ -579,7 +580,7 @@ export const AudioTestFlow = ({
                     {/* Gain slider */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Ganho</span>
+                        <span className="text-muted-foreground">{t("audioTest.gain")}</span>
                         <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
                       </div>
                       <Slider
@@ -684,7 +685,7 @@ export const AudioTestFlow = ({
                         className="w-full text-xs"
                         onClick={() => setEditedProfile(recommendedProfile)}
                       >
-                        Restaurar recomendação original
+                        {t("audioTest.restoreOriginal")}
                       </Button>
                     )}
                   </div>
@@ -697,7 +698,7 @@ export const AudioTestFlow = ({
                       size="sm"
                       className="flex-1"
                       onClick={applyProfile}
-                      scrambleText={profileApplied ? "ATUALIZAR CONFIGURAÇÃO" : "APLICAR CONFIGURAÇÃO"}
+                      scrambleText={profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
                       icon={<Settings2 className="h-4 w-4" />}
                     />
                   ) : (
@@ -707,7 +708,7 @@ export const AudioTestFlow = ({
                       onClick={applyProfile}
                     >
                       <Settings2 className="h-4 w-4 mr-1.5" />
-                      {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
+                      {profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
                     </Button>
                   )}
                 </div>
@@ -720,12 +721,12 @@ export const AudioTestFlow = ({
                 {testBlobUrlRef.current && (
                   <Button variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="gap-1.5">
                     {audioPlayer.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {audioPlayer.isPlaying ? "Pausar" : "Ouvir Teste"}
+                    {audioPlayer.isPlaying ? t("audioTest.pause") : t("audioTest.listenTest")}
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
                   <RotateCcw className="h-4 w-4" />
-                  Refazer Teste
+                  {t("audioTest.retryTest")}
                 </Button>
               </div>
             )}
@@ -737,7 +738,7 @@ export const AudioTestFlow = ({
           <div className="p-6 pt-0 flex justify-center gap-3">
             <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
               <RotateCcw className="h-4 w-4" />
-              Refazer Teste
+              {t("audioTest.retryTest")}
             </Button>
           </div>
         )}
