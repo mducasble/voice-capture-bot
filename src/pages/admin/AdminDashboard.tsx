@@ -287,6 +287,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Users by Country */}
+      <CountryBreakdown profiles={profiles} />
+
       {/* Infrastructure — smaller gradient cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
