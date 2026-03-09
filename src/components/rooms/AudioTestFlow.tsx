@@ -141,7 +141,7 @@ export const AudioTestFlow = ({
 
   const startTest = useCallback(async () => {
     if (!stream) {
-      toast.error("Microfone não disponível");
+      toast.error(t("audioTest.micNotAvailable"));
       return;
     }
     setPhase("recording");
