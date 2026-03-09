@@ -283,12 +283,12 @@ export const AudioTestFlow = ({
     if (isPortal) {
       return (
         <div className="p-6 text-center space-y-4" style={{ border: "2px dashed var(--portal-border)", background: "var(--portal-input-bg)" }}>
-          <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>🎙️ Teste de Áudio</p>
+          <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>🎙️ {t("audioTest.title")}</p>
           <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-            Grave {TEST_DURATION}s falando normalmente para avaliar a qualidade do seu setup
+            {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </p>
           <div className="flex justify-center">
-            <KGenButton onClick={startTest} scrambleText="INICIAR TESTE" icon={<Mic className="h-4 w-4" />} />
+            <KGenButton onClick={startTest} scrambleText={t("audioTest.startTest")} icon={<Mic className="h-4 w-4" />} />
           </div>
         </div>
       );
@@ -296,15 +296,15 @@ export const AudioTestFlow = ({
     return (
       <Card className="border-dashed border-2 border-primary/30">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-base">🎙️ Teste de Áudio</CardTitle>
+          <CardTitle className="text-base">🎙️ {t("audioTest.title")}</CardTitle>
           <CardDescription>
-            Grave {TEST_DURATION}s falando normalmente para avaliar a qualidade do seu setup
+            {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
           <Button onClick={startTest} size="lg" className="gap-2">
             <Mic className="h-5 w-5" />
-            Iniciar Teste
+            {t("audioTest.startTest")}
           </Button>
         </CardContent>
       </Card>
