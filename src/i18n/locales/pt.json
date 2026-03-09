@@ -143,7 +143,12 @@
     "linkCopied": "Link copiado!",
     "invalidCode": "Código inválido",
     "codeTooShort": "Código deve ter pelo menos 3 caracteres",
-    "codeInUse": "Este código já está em uso"
+    "codeInUse": "Este código já está em uso",
+    "activityAudio": "Áudio",
+    "activityVideo": "Vídeo",
+    "activityImage": "Imagem",
+    "activityAnnotation": "Data Labelling",
+    "activityText": "Texto"
   },
   "profile": {
     "title": "Meu Perfil",

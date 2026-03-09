@@ -1025,6 +1025,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          accumulated_value: number
           audio_bit_depth: number | null
           audio_channels: number | null
           audio_format: string | null
@@ -1053,6 +1054,7 @@ export type Database = {
           visibility_is_public: boolean | null
         }
         Insert: {
+          accumulated_value?: number
           audio_bit_depth?: number | null
           audio_channels?: number | null
           audio_format?: string | null
@@ -1081,6 +1083,7 @@ export type Database = {
           visibility_is_public?: boolean | null
         }
         Update: {
+          accumulated_value?: number
           audio_bit_depth?: number | null
           audio_channels?: number | null
           audio_format?: string | null

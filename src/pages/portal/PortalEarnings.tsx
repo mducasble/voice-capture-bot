@@ -6,12 +6,12 @@ import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Imag
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-const ACTIVITY_TYPES = [
-  { key: "audio", label: "Áudio", icon: Mic },
-  { key: "video", label: "Vídeo", icon: Video },
-  { key: "image", label: "Imagem", icon: Image },
-  { key: "annotation", label: "Data Labelling", icon: Tag },
-  { key: "text", label: "Texto", icon: FileText },
+const ACTIVITY_KEYS = [
+  { key: "audio", i18n: "earnings.activityAudio", icon: Mic },
+  { key: "video", i18n: "earnings.activityVideo", icon: Video },
+  { key: "image", i18n: "earnings.activityImage", icon: Image },
+  { key: "annotation", i18n: "earnings.activityAnnotation", icon: Tag },
+  { key: "text", i18n: "earnings.activityText", icon: FileText },
 ];
 
 function fmt(v: number) {
@@ -54,7 +54,7 @@ export default function PortalEarnings() {
   const stats = useMemo(() => {
     const rows = ledgerRows || [];
     const byActivity: Record<string, { direct: number; referral: number; pending: number; tasks: number; total: number }> = {};
-    ACTIVITY_TYPES.forEach(a => { byActivity[a.key] = { direct: 0, referral: 0, pending: 0, tasks: 0, total: 0 }; });
+    ACTIVITY_KEYS.forEach(a => { byActivity[a.key] = { direct: 0, referral: 0, pending: 0, tasks: 0, total: 0 }; });
 
     let totalAccumulated = 0;
     let totalCredited = 0;
@@ -109,7 +109,7 @@ export default function PortalEarnings() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {ACTIVITY_TYPES.map(activity => {
+          {ACTIVITY_KEYS.map(activity => {
             const s = stats.byActivity[activity.key];
             return (
               <div key={activity.key} className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
@@ -117,7 +117,7 @@ export default function PortalEarnings() {
                   <div className="p-2" style={{ background: "hsl(0 0% 15%)" }}>
                     <activity.icon className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
                   </div>
-                  <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{activity.label}</p>
+                  <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{t(activity.i18n)}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
@@ -126,7 +126,7 @@ export default function PortalEarnings() {
                   </div>
                   <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
                     <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.referral)}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Referral</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.referralEarnings")}</p>
                   </div>
                 </div>
                 {s.pending > 0 && (
