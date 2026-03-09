@@ -126,10 +126,14 @@ const Rooms = () => {
                 onChange={(e) => setRoomName(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Campanha *</label>
+              <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} />
+            </div>
             <Button 
               className="w-full" 
               onClick={handleCreateRoom}
-              disabled={isCreating}
+              disabled={isCreating || !selectedCampaignId}
             >
               <Mic2 className="h-4 w-4 mr-2" />
               {isCreating ? "Criando..." : "Criar Sala"}
