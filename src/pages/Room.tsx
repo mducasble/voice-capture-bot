@@ -894,15 +894,15 @@ const Room = () => {
                     <KGenButton
                       onClick={handleStartRecording}
                       disabled={room.status === "completed"}
-                      scrambleText="INICIAR GRAVAÇÃO"
-                      icon={<Circle className="h-4 w-4 fill-current" />}
+                      scrambleText={t("room.startRecording")}
+                      icon={<Circle className="h-5 w-5 fill-red-500 text-red-500" />}
                       className="w-full"
                     />
                   ) : (
                     <KGenButton
                       variant="dark"
                       onClick={handleStopRecording}
-                      scrambleText="PARAR GRAVAÇÃO"
+                      scrambleText={t("room.stopRecording")}
                       icon={<Square className="h-4 w-4 fill-current" />}
                       className="w-full"
                     />

@@ -269,6 +269,54 @@
       "sigmos_reverb": { "label": "SIGMOS (reverb)" },
       "vqscore": { "label": "VQScore" },
       "mic_sr": { "label": "Sample Rate" }
+    },
+    "profileDesc": {
+      "gain": {
+        "label": "Gain",
+        "noAmp": "No amplification",
+        "amplify": "Amplifies to reach ~-23 dBFS",
+        "reduce": "Reduces to avoid distortion"
+      },
+      "highPass": {
+        "label": "High-pass",
+        "active": "Removes frequencies below {{value}} (rumble/reverb)",
+        "off": "No low-frequency filter applied"
+      },
+      "lowPass": {
+        "label": "Low-pass",
+        "active": "Cuts above {{value}} (mic bandwidth limit)",
+        "off": "No high-frequency cut"
+      },
+      "rnnoise": {
+        "label": "RNNoise",
+        "active": "Background noise suppression via neural network",
+        "off": "SNR sufficient, not needed"
+      },
+      "koala": {
+        "label": "Koala",
+        "active": "Advanced noise suppression via Picovoice Koala (post-processing)",
+        "off": "Koala disabled"
+      },
+      "noiseGate": {
+        "label": "Noise Gate",
+        "active": "Silences non-speech segments to reduce residual noise",
+        "off": "SNR adequate, gate unnecessary"
+      },
+      "echoCancellation": {
+        "label": "Echo Cancel.",
+        "active": "Browser echo cancellation active",
+        "off": "Echo cancellation disabled"
+      },
+      "noiseSuppression": {
+        "label": "Noise Suppr.",
+        "active": "Browser native noise suppression active",
+        "off": "Native noise suppression disabled"
+      },
+      "autoGain": {
+        "label": "Auto Gain",
+        "active": "Browser automatic gain control active",
+        "off": "Automatic gain control disabled"
+      }
     }
   },
   "common": {

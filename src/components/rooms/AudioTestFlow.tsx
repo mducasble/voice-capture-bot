@@ -10,7 +10,7 @@ import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
-import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
+import { computeAudioProfile, getProfileDescriptionKeys, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
 
@@ -408,7 +408,7 @@ export const AudioTestFlow = ({
   if (phase === "results" && results) {
     const passed = results.overall_status === "passed";
     const profileApplied = currentProfile != null && editedProfile != null;
-    const descriptions = editedProfile ? getProfileDescriptions(editedProfile) : [];
+    const descriptions = editedProfile ? getProfileDescriptionKeys(editedProfile) : [];
 
     const Wrapper = isPortal ? "div" : Card;
     const wrapperProps = isPortal
@@ -687,10 +687,10 @@ export const AudioTestFlow = ({
                     </div>
 
                     {/* Descriptions */}
-                    <div className="space-y-1.5">
+                     <div className="space-y-1.5">
                       {descriptions.map((d, i) => (
                         <div key={i} className="text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">{d.label}:</span> {d.detail}
+                          <span className="font-medium text-foreground">{t(`audioTest.profileDesc.${d.key}.label`)}:</span> {t(`audioTest.profileDesc.${d.key}.${d.detailKey}`, { value: d.value })}
                         </div>
                       ))}
                     </div>
