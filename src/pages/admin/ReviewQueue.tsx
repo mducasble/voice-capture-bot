@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Clock, FileAudio, Users, Play, Pause, ChevronDown, ArrowLeft,
-  CheckCircle2, XCircle, AlertCircle, Volume2, Loader2,
+  Clock, FileAudio, Users, Play, Pause, ChevronDown,
+  CheckCircle2, XCircle, AlertCircle,
 } from "lucide-react";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -54,6 +53,18 @@ interface RoomInfo {
   creator_name: string;
 }
 
+type ReviewField = "quality_status" | "validation_status";
+
+interface SessionGroup {
+  sessionId: string;
+  recordings: Recording[];
+  mixed: Recording | undefined;
+  individuals: Recording[];
+  createdAt: string;
+  topic: string | null;
+  creatorName: string | null;
+}
+
 // ---- helpers ----
 
 function formatDuration(seconds: number) {
@@ -71,7 +82,7 @@ function snrColor(snr: number | null) {
   return "hsl(0 70% 50%)";
 }
 
-type ReviewField = "quality_status" | "validation_status";
+// ---- small UI pieces ----
 
 function StatusPill({ status }: { status: string | null }) {
   const s = status || "pending";
@@ -91,7 +102,7 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-// ---- Track Row with approval ----
+// ---- Track Row ----
 
 function TrackRow({
   rec,
@@ -122,7 +133,6 @@ function TrackRow({
 
   return (
     <div className="px-4 py-3 border-b border-border/30 space-y-2">
-      {/* Main row */}
       <div className="flex items-center gap-3">
         {rec.file_url && (
           <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
@@ -149,29 +159,17 @@ function TrackRow({
         )}
       </div>
 
-      {/* Approval controls */}
       <div className="flex items-center gap-4 pl-7 flex-wrap">
-        {/* Quality */}
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">QA</span>
           <StatusPill status={rec.quality_status} />
           {rec.quality_status !== "approved" && (
-            <button
-              onClick={() => onApprove(rec.id, "quality_status", "approved")}
-              disabled={isPending}
-              className="p-1 rounded hover:bg-accent/10 transition-colors"
-              title="Aprovar QA"
-            >
+            <button onClick={() => onApprove(rec.id, "quality_status", "approved")} disabled={isPending} className="p-1 rounded hover:bg-accent/10 transition-colors" title="Aprovar QA">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
             </button>
           )}
           {rec.quality_status !== "rejected" && (
-            <button
-              onClick={() => onApprove(rec.id, "quality_status", "rejected")}
-              disabled={isPending}
-              className="p-1 rounded hover:bg-destructive/10 transition-colors"
-              title="Rejeitar QA"
-            >
+            <button onClick={() => onApprove(rec.id, "quality_status", "rejected")} disabled={isPending} className="p-1 rounded hover:bg-destructive/10 transition-colors" title="Rejeitar QA">
               <XCircle className="h-3.5 w-3.5 text-red-500" />
             </button>
           )}
@@ -179,27 +177,16 @@ function TrackRow({
 
         <div className="w-px h-4 bg-border" />
 
-        {/* Validation */}
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">VAL</span>
           <StatusPill status={rec.validation_status} />
           {rec.validation_status !== "approved" && (
-            <button
-              onClick={() => onApprove(rec.id, "validation_status", "approved")}
-              disabled={isPending}
-              className="p-1 rounded hover:bg-accent/10 transition-colors"
-              title="Aprovar VAL"
-            >
+            <button onClick={() => onApprove(rec.id, "validation_status", "approved")} disabled={isPending} className="p-1 rounded hover:bg-accent/10 transition-colors" title="Aprovar VAL">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
             </button>
           )}
           {rec.validation_status !== "rejected" && (
-            <button
-              onClick={() => onApprove(rec.id, "validation_status", "rejected")}
-              disabled={isPending}
-              className="p-1 rounded hover:bg-destructive/10 transition-colors"
-              title="Rejeitar VAL"
-            >
+            <button onClick={() => onApprove(rec.id, "validation_status", "rejected")} disabled={isPending} className="p-1 rounded hover:bg-destructive/10 transition-colors" title="Rejeitar VAL">
               <XCircle className="h-3.5 w-3.5 text-red-500" />
             </button>
           )}
@@ -218,17 +205,7 @@ function TrackRow({
   );
 }
 
-// ---- Session group within a campaign ----
-
-interface SessionGroup {
-  sessionId: string;
-  recordings: Recording[];
-  mixed: Recording | undefined;
-  individuals: Recording[];
-  createdAt: string;
-  topic: string | null;
-  creatorName: string | null;
-}
+// ---- Session card ----
 
 function SessionCard({
   session,
@@ -260,12 +237,8 @@ function SessionCard({
             <span className="font-mono text-xs px-1.5 py-0.5 bg-secondary text-muted-foreground">
               {session.sessionId.slice(0, 8)}
             </span>
-            {session.topic && (
-              <span className="text-xs text-muted-foreground">· {session.topic}</span>
-            )}
-            {session.creatorName && (
-              <span className="text-xs text-muted-foreground">· {session.creatorName}</span>
-            )}
+            {session.topic && <span className="text-xs text-muted-foreground">· {session.topic}</span>}
+            {session.creatorName && <span className="text-xs text-muted-foreground">· {session.creatorName}</span>}
             <span className="text-[10px] text-muted-foreground">
               {new Date(session.createdAt).toLocaleDateString("pt-BR")}{" "}
               {new Date(session.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -322,69 +295,39 @@ function SessionCard({
   );
 }
 
-// ---- Campaign group ----
+// ---- Campaign tab content ----
 
-function CampaignGroup({
-  campaign,
+function CampaignTabContent({
   sessions,
-  roomMap,
   profileMap,
   onApprove,
   isPending,
 }: {
-  campaign: CampaignInfo;
   sessions: SessionGroup[];
-  roomMap: Map<string, RoomInfo>;
   profileMap: Map<string, string>;
   onApprove: (id: string, field: ReviewField, status: "approved" | "rejected") => void;
   isPending: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const totalPending = sessions.reduce(
-    (acc, s) => acc + s.recordings.filter(r => r.quality_status === "pending" || r.validation_status === "pending").length,
-    0
-  );
+  if (sessions.length === 0) {
+    return (
+      <div className="text-center py-12 border border-border bg-card">
+        <FileAudio className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Nenhuma sessão nesta campanha.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="border border-border bg-card">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="w-full text-left p-4 flex items-center gap-4 hover:bg-secondary/20 transition-colors"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-base font-bold text-foreground">{campaign.name}</h2>
-            {totalPending > 0 && (
-              <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-500">
-                {totalPending} pendente(s)
-              </Badge>
-            )}
-          </div>
-          {campaign.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{campaign.description}</p>
-          )}
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"} · {sessions.reduce((a, s) => a + s.recordings.length, 0)} arquivos
-          </p>
-        </div>
-        <ChevronDown
-          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform"
-          style={{ transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+    <div className="space-y-2">
+      {sessions.map(session => (
+        <SessionCard
+          key={session.sessionId}
+          session={session}
+          profileMap={profileMap}
+          onApprove={onApprove}
+          isPending={isPending}
         />
-      </button>
-      {!collapsed && (
-        <div className="border-t border-border p-3 space-y-2">
-          {sessions.map(session => (
-            <SessionCard
-              key={session.sessionId}
-              session={session}
-              profileMap={profileMap}
-              onApprove={onApprove}
-              isPending={isPending}
-            />
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -394,7 +337,6 @@ function CampaignGroup({
 export default function ReviewQueue() {
   const queryClient = useQueryClient();
 
-  // Fetch recordings with review fields
   const { data: recordings, isLoading } = useQuery({
     queryKey: ["admin_review_queue"],
     queryFn: async () => {
@@ -408,7 +350,6 @@ export default function ReviewQueue() {
     },
   });
 
-  // Campaign info
   const campaignIds = useMemo(
     () => [...new Set((recordings || []).map(r => r.campaign_id).filter(Boolean))] as string[],
     [recordings]
@@ -428,7 +369,6 @@ export default function ReviewQueue() {
     enabled: campaignIds.length > 0,
   });
 
-  // Profiles for user names
   const userIds = useMemo(
     () => [...new Set((recordings || []).map(r => r.user_id).filter(Boolean))] as string[],
     [recordings]
@@ -448,7 +388,6 @@ export default function ReviewQueue() {
     enabled: userIds.length > 0,
   });
 
-  // Rooms for topic/creator
   const sessionIds = useMemo(
     () => [...new Set((recordings || []).map(r => r.session_id).filter(Boolean))] as string[],
     [recordings]
@@ -486,26 +425,28 @@ export default function ReviewQueue() {
     return m;
   }, [rooms]);
 
-  // Group: campaign → sessions → recordings
-  const campaignGroups = useMemo(() => {
-    if (!recordings) return [];
+  // Build sessions grouped by campaign
+  const { campaignTabs, noCampaignSessions } = useMemo(() => {
+    if (!recordings) return { campaignTabs: [], noCampaignSessions: [] };
+
     const byCampaign = new Map<string, Map<string, Recording[]>>();
+    const noCampaignMap = new Map<string, Recording[]>();
 
     for (const r of recordings) {
-      const cid = r.campaign_id || "__none__";
       const sid = r.session_id || r.id;
-      if (!byCampaign.has(cid)) byCampaign.set(cid, new Map());
-      const sessionMap = byCampaign.get(cid)!;
-      if (!sessionMap.has(sid)) sessionMap.set(sid, []);
-      sessionMap.get(sid)!.push(r);
+      if (!r.campaign_id) {
+        if (!noCampaignMap.has(sid)) noCampaignMap.set(sid, []);
+        noCampaignMap.get(sid)!.push(r);
+      } else {
+        if (!byCampaign.has(r.campaign_id)) byCampaign.set(r.campaign_id, new Map());
+        const sessionMap = byCampaign.get(r.campaign_id)!;
+        if (!sessionMap.has(sid)) sessionMap.set(sid, []);
+        sessionMap.get(sid)!.push(r);
+      }
     }
 
-    const result: { campaign: CampaignInfo; sessions: SessionGroup[] }[] = [];
-
-    for (const [cid, sessionMap] of byCampaign) {
-      const campaign = campaignMap.get(cid) || { id: cid, name: "Sem campanha", description: null, campaign_type: null };
+    const buildSessions = (sessionMap: Map<string, Recording[]>): SessionGroup[] => {
       const sessions: SessionGroup[] = [];
-
       for (const [sid, recs] of sessionMap) {
         const mixed = recs.find(r => r.recording_type === "mixed");
         const individuals = recs.filter(r => r.recording_type !== "mixed");
@@ -520,28 +461,33 @@ export default function ReviewQueue() {
           creatorName: room?.creator_name || null,
         });
       }
-
       sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      result.push({ campaign, sessions });
+      return sessions;
+    };
+
+    const tabs: { campaign: CampaignInfo; sessions: SessionGroup[]; pendingCount: number }[] = [];
+    for (const [cid, sessionMap] of byCampaign) {
+      const campaign = campaignMap.get(cid) || { id: cid, name: cid.slice(0, 8), description: null, campaign_type: null };
+      const sessions = buildSessions(sessionMap);
+      const pendingCount = sessions.reduce(
+        (acc, s) => acc + s.recordings.filter(r => r.quality_status === "pending" || r.validation_status === "pending").length, 0
+      );
+      tabs.push({ campaign, sessions, pendingCount });
     }
+    tabs.sort((a, b) => b.pendingCount - a.pendingCount);
 
-    // Sort campaigns: most pending first
-    result.sort((a, b) => {
-      const pendingA = a.sessions.reduce((acc, s) => acc + s.recordings.filter(r => r.quality_status === "pending" || r.validation_status === "pending").length, 0);
-      const pendingB = b.sessions.reduce((acc, s) => acc + s.recordings.filter(r => r.quality_status === "pending" || r.validation_status === "pending").length, 0);
-      return pendingB - pendingA;
-    });
-
-    return result;
+    return {
+      campaignTabs: tabs,
+      noCampaignSessions: buildSessions(noCampaignMap),
+    };
   }, [recordings, campaignMap, roomMap]);
 
-  // Approve/reject mutation
+  // Mutation
   const approveMutation = useMutation({
     mutationFn: async ({ id, field, status }: { id: string; field: ReviewField; status: string }) => {
       const reviewedField = field === "quality_status" ? "quality_reviewed_at" : "validation_reviewed_at";
       const reviewerField = field === "quality_status" ? "quality_reviewed_by" : "validation_reviewed_by";
       const { data: { user } } = await supabase.auth.getUser();
-
       const { error } = await supabase
         .from("voice_recordings")
         .update({
@@ -565,27 +511,27 @@ export default function ReviewQueue() {
     approveMutation.mutate({ id, field, status });
   };
 
-  const totalSessions = campaignGroups.reduce((a, g) => a + g.sessions.length, 0);
+  const hasNoCampaign = noCampaignSessions.length > 0;
+  const allTabs = campaignTabs;
+  const defaultTab = allTabs.length > 0 ? allTabs[0].campaign.id : (hasNoCampaign ? "__none__" : "");
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Fila de Aprovação</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {campaignGroups.length} {campaignGroups.length === 1 ? "campanha" : "campanhas"} · {totalSessions} {totalSessions === 1 ? "sessão" : "sessões"}
+          {allTabs.length} {allTabs.length === 1 ? "campanha" : "campanhas"}
+          {hasNoCampaign && " + legados sem campanha"}
         </p>
       </div>
 
-      {/* Loading */}
       {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
       )}
 
-      {/* Empty */}
-      {!isLoading && campaignGroups.length === 0 && (
+      {!isLoading && allTabs.length === 0 && !hasNoCampaign && (
         <div className="text-center py-16 border border-border bg-card">
           <FileAudio className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold text-foreground">Nenhuma sessão encontrada</h3>
@@ -593,20 +539,65 @@ export default function ReviewQueue() {
         </div>
       )}
 
-      {/* Campaign groups */}
-      <div className="space-y-4">
-        {campaignGroups.map(({ campaign, sessions }) => (
-          <CampaignGroup
-            key={campaign.id}
-            campaign={campaign}
-            sessions={sessions}
-            roomMap={roomMap}
-            profileMap={profileMap}
-            onApprove={handleApprove}
-            isPending={approveMutation.isPending}
-          />
-        ))}
-      </div>
+      {!isLoading && (allTabs.length > 0 || hasNoCampaign) && (
+        <Tabs defaultValue={defaultTab} className="w-full">
+          <TabsList className="w-full flex-wrap h-auto gap-1 bg-secondary/50 p-1">
+            {allTabs.map(({ campaign, pendingCount }) => (
+              <TabsTrigger key={campaign.id} value={campaign.id} className="text-xs gap-1.5 data-[state=active]:bg-background">
+                <span className="truncate max-w-[120px]">{campaign.name}</span>
+                {pendingCount > 0 && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-500/40 text-amber-500 ml-1">
+                    {pendingCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
+            {hasNoCampaign && (
+              <TabsTrigger value="__none__" className="text-xs gap-1.5 data-[state=active]:bg-background text-muted-foreground">
+                Sem campanha
+                <Badge variant="outline" className="text-[9px] px-1 py-0 border-border ml-1">
+                  {noCampaignSessions.reduce((a, s) => a + s.recordings.length, 0)}
+                </Badge>
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {allTabs.map(({ campaign, sessions }) => (
+            <TabsContent key={campaign.id} value={campaign.id} className="mt-4">
+              <div className="mb-3">
+                <h2 className="text-base font-bold text-foreground">{campaign.name}</h2>
+                {campaign.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{campaign.description}</p>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"} · {sessions.reduce((a, s) => a + s.recordings.length, 0)} arquivos
+                </p>
+              </div>
+              <CampaignTabContent
+                sessions={sessions}
+                profileMap={profileMap}
+                onApprove={handleApprove}
+                isPending={approveMutation.isPending}
+              />
+            </TabsContent>
+          ))}
+
+          {hasNoCampaign && (
+            <TabsContent value="__none__" className="mt-4">
+              <div className="mb-3">
+                <h2 className="text-base font-bold text-foreground">Sem campanha</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Gravações legadas sem vínculo de campanha.</p>
+              </div>
+              <CampaignTabContent
+                sessions={noCampaignSessions}
+                profileMap={profileMap}
+                onApprove={handleApprove}
+                isPending={approveMutation.isPending}
+              />
+            </TabsContent>
+          )}
+        </Tabs>
+      )}
     </div>
   );
 }
