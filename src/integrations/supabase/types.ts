@@ -1779,6 +1779,30 @@ export type Database = {
         }
         Relationships: []
       }
+      short_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          slug: string
+          target_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slug: string
+          target_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slug?: string
+          target_path?: string
+        }
+        Relationships: []
+      }
       task_type_catalog: {
         Row: {
           category: string
