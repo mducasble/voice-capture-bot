@@ -2,10 +2,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
-import { Camera, Save, Loader2, X } from "lucide-react";
+import { Camera, Save, Loader2, X, AlertTriangle } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 
 const OPPORTUNITY_OPTIONS = [
   { value: "audio_capture_solo", label: "Áudio (Solo)" },
