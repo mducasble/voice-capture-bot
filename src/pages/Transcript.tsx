@@ -10,6 +10,7 @@ import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Transcript = () => {
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const { data: allRecordings, isLoading, error } = useRecordings();
 
   // Filter only transcription-only recordings
