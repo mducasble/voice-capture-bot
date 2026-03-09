@@ -86,49 +86,48 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
   return { sampleRate, channels, bitsPerSample, dataOffset, dataSize };
 }
 
-// Decode MP3 to PCM samples
+// Decode MP3 to PCM samples using pure JS decoder (no Worker/WASM deps)
 async function decodeMp3ToPcm(mp3Buffer: ArrayBuffer): Promise<{ samples: Int16Array; sampleRate: number; channels: number }> {
-  const { MPEGDecoder } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+  const JsMp3 = (await import("https://esm.sh/js-mp3@0.0.1")).default;
   
-  const decoder = new MPEGDecoder();
-  await decoder.ready;
+  const decoder = JsMp3.newDecoder(mp3Buffer);
+  const pcmBuffer = decoder.decode();
   
-  const decoded = await decoder.decode(new Uint8Array(mp3Buffer));
-  await decoder.free();
-  
-  if (!decoded || !decoded.channelData || decoded.channelData.length === 0) {
+  if (!pcmBuffer || pcmBuffer.byteLength === 0) {
     throw new Error('Failed to decode MP3');
   }
   
-  const inputSampleRate = decoded.sampleRate;
-  const inputChannels = decoded.channelData.length;
-  const inputSamples = decoded.samplesDecoded;
+  // js-mp3 outputs interleaved 16-bit PCM at the source sample rate
+  // Default MP3 sample rates: 44100, 48000, 32000, etc.
+  const inputSampleRate = decoder.sampleRate || 44100;
+  const inputChannels = decoder.channels || 2;
+  const inputPcm = new Int16Array(pcmBuffer);
+  const inputSamplesPerChannel = Math.floor(inputPcm.length / inputChannels);
   
-  console.log(`MP3 decoded: ${inputSamples} samples, ${inputSampleRate}Hz, ${inputChannels} channels`);
+  console.log(`MP3 decoded: ${inputSamplesPerChannel} samples/ch, ${inputSampleRate}Hz, ${inputChannels} channels, PCM size: ${pcmBuffer.byteLength}`);
   
   // Convert to mono Int16Array at target sample rate
   const resampleRatio = TARGET_SAMPLE_RATE / inputSampleRate;
-  const outputSamples = Math.floor(inputSamples * resampleRatio);
+  const outputSamples = Math.floor(inputSamplesPerChannel * resampleRatio);
   const samples = new Int16Array(outputSamples);
   
   for (let i = 0; i < outputSamples; i++) {
     const srcPos = i / resampleRatio;
     const srcIndex = Math.floor(srcPos);
     const frac = srcPos - srcIndex;
-    const nextIndex = Math.min(srcIndex + 1, inputSamples - 1);
+    const nextIndex = Math.min(srcIndex + 1, inputSamplesPerChannel - 1);
     
     // Mix all channels to mono with linear interpolation
     let monoSample = 0;
     for (let ch = 0; ch < inputChannels; ch++) {
-      const channelData = decoded.channelData[ch];
-      const sample1 = channelData[srcIndex] || 0;
-      const sample2 = channelData[nextIndex] || 0;
+      const sample1 = inputPcm[srcIndex * inputChannels + ch] || 0;
+      const sample2 = inputPcm[nextIndex * inputChannels + ch] || 0;
       monoSample += sample1 + (sample2 - sample1) * frac;
     }
     monoSample /= inputChannels;
     
-    // Convert float [-1, 1] to 16-bit signed integer
-    samples[i] = Math.max(-32768, Math.min(32767, Math.round(monoSample * 32767)));
+    // Already Int16, just clamp
+    samples[i] = Math.max(-32768, Math.min(32767, Math.round(monoSample)));
   }
   
   console.log(`Resampled to ${outputSamples} samples at ${TARGET_SAMPLE_RATE}Hz mono`);

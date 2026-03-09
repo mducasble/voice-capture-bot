@@ -44,22 +44,20 @@ serve(async (req) => {
 
     console.log('Decoding MP3...');
     
-    // Dynamic import of mpg123-decoder (non-Worker version for Deno compatibility)
-    const { MPEGDecoder } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+    // Pure JS MP3 decoder (no Worker/WASM deps, Deno-compatible)
+    const JsMp3 = (await import("https://esm.sh/js-mp3@0.0.1")).default;
     
-    const decoder = new MPEGDecoder();
-    await decoder.ready;
-
-    const decoded = await decoder.decode(new Uint8Array(mp3Buffer));
-    await decoder.free();
+    const decoder = JsMp3.newDecoder(mp3Buffer);
+    const pcmBuffer = decoder.decode();
     
-    if (!decoded || !decoded.channelData || decoded.channelData.length === 0) {
+    if (!pcmBuffer || pcmBuffer.byteLength === 0) {
       throw new Error('Failed to decode MP3');
     }
 
-    const inputSampleRate = decoded.sampleRate;
-    const inputChannels = decoded.channelData.length;
-    const inputSamples = decoded.samplesDecoded;
+    const inputSampleRate = decoder.sampleRate || 44100;
+    const inputChannels = decoder.channels || 2;
+    const inputPcm = new Int16Array(pcmBuffer);
+    const inputSamples = Math.floor(inputPcm.length / inputChannels);
 
     console.log(`Decoded: ${inputSamples} samples, ${inputSampleRate}Hz, ${inputChannels} channels`);
 
