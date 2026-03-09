@@ -10,7 +10,7 @@ import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
-import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
+import { computeAudioProfile, getProfileDescriptionKeys, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
 
@@ -408,7 +408,7 @@ export const AudioTestFlow = ({
   if (phase === "results" && results) {
     const passed = results.overall_status === "passed";
     const profileApplied = currentProfile != null && editedProfile != null;
-    const descriptions = editedProfile ? getProfileDescriptionKeys(editedProfile) : [];
+    const descriptions = editedProfile ? getProfileDescriptionKeyKeys(editedProfile) : [];
 
     const Wrapper = isPortal ? "div" : Card;
     const wrapperProps = isPortal
