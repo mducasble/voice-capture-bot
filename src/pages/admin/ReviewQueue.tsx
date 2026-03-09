@@ -158,36 +158,128 @@ function TrackRow({ rec }: { rec: Recording }) {
     }
   }, [playing, rec.file_url]);
 
+  const m = rec.metadata;
+
   return (
-    <div className="px-4 py-2.5 border-b border-border/30 flex items-center gap-3">
-      {rec.file_url && (
-        <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        </button>
-      )}
-      <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm shrink-0">
-        {rec.recording_type === "mixed" ? "MIX" : "IND"}
-      </span>
-      <div className="flex-1 min-w-0">
-        <span className="font-mono text-sm truncate block text-foreground">
-          {rec.discord_username || rec.filename}
+    <div className="px-4 py-3 border-b border-border/30 space-y-2">
+      {/* Row 1: play + name + duration */}
+      <div className="flex items-center gap-3">
+        {rec.file_url && (
+          <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </button>
+        )}
+        <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm shrink-0">
+          {rec.recording_type === "mixed" ? "MIX" : "IND"}
         </span>
+        <div className="flex-1 min-w-0">
+          <span className="font-mono text-sm truncate block text-foreground">
+            {rec.discord_username || rec.filename}
+          </span>
+        </div>
+        {rec.duration_seconds != null && (
+          <span className="font-mono text-xs text-muted-foreground shrink-0">
+            {formatDuration(rec.duration_seconds)}
+          </span>
+        )}
       </div>
-      {rec.snr_db != null && (
-        <span className="font-mono text-[10px] font-bold shrink-0" style={{ color: snrColor(rec.snr_db) }}>
-          SNR {rec.snr_db.toFixed(1)}dB
-        </span>
-      )}
-      {rec.duration_seconds != null && (
-        <span className="font-mono text-xs text-muted-foreground shrink-0">
-          {formatDuration(rec.duration_seconds)}
-        </span>
-      )}
-      {rec.transcription_status && (
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground shrink-0">
-          TR: {rec.transcription_status}
-        </span>
-      )}
+
+      {/* Row 2: Technical specs */}
+      <div className="flex items-center gap-3 pl-7 flex-wrap">
+        {/* Format specs */}
+        <div className="flex items-center gap-1.5">
+          {rec.format && (
+            <span className="font-mono text-[9px] px-1.5 py-0.5 bg-secondary/80 text-muted-foreground rounded-sm uppercase">
+              {rec.format}
+            </span>
+          )}
+          {rec.sample_rate && (
+            <span className="font-mono text-[9px] text-muted-foreground">
+              {(rec.sample_rate / 1000).toFixed(rec.sample_rate % 1000 === 0 ? 0 : 1)}kHz
+            </span>
+          )}
+          {rec.bit_depth && (
+            <span className="font-mono text-[9px] text-muted-foreground">{rec.bit_depth}bit</span>
+          )}
+          {rec.channels != null && (
+            <span className="font-mono text-[9px] text-muted-foreground">
+              {rec.channels === 1 ? "mono" : rec.channels === 2 ? "stereo" : `${rec.channels}ch`}
+            </span>
+          )}
+          {rec.file_size_bytes != null && (
+            <span className="font-mono text-[9px] text-muted-foreground">
+              {formatBytes(rec.file_size_bytes)}
+            </span>
+          )}
+        </div>
+
+        <div className="w-px h-3 bg-border" />
+
+        {/* Quality metrics */}
+        <div className="flex items-center gap-2">
+          {rec.snr_db != null && (
+            <span className="font-mono text-[10px] font-bold" style={{ color: snrColor(rec.snr_db) }}>
+              SNR {rec.snr_db.toFixed(1)}dB
+            </span>
+          )}
+          {m?.rms_level_db != null && (
+            <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.rms_level_db, -26, -35) }}>
+              RMS {m.rms_level_db.toFixed(1)}dBFS
+            </span>
+          )}
+          {m?.srmr != null && (
+            <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.srmr, 6, 4) }}>
+              SRMR {m.srmr.toFixed(2)}
+            </span>
+          )}
+        </div>
+
+        {(m?.sigmos_ovrl != null || m?.wvmos != null) && (
+          <>
+            <div className="w-px h-3 bg-border" />
+            <div className="flex items-center gap-2">
+              {m?.sigmos_ovrl != null && (
+                <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.sigmos_ovrl, 3.5, 2.5) }}>
+                  SigMOS {m.sigmos_ovrl.toFixed(2)}
+                </span>
+              )}
+              {m?.sigmos_sig != null && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  SIG {m.sigmos_sig.toFixed(2)}
+                </span>
+              )}
+              {m?.sigmos_bak != null && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  BAK {m.sigmos_bak.toFixed(2)}
+                </span>
+              )}
+              {m?.wvmos != null && (
+                <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.wvmos, 3.0, 2.0) }}>
+                  WVMOS {m.wvmos.toFixed(2)}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+
+        {m?.effective_bandwidth_hz != null && (
+          <>
+            <div className="w-px h-3 bg-border" />
+            <span className="font-mono text-[10px] text-muted-foreground">
+              BW {(m.effective_bandwidth_hz / 1000).toFixed(1)}kHz
+            </span>
+          </>
+        )}
+
+        {rec.transcription_status && (
+          <>
+            <div className="w-px h-3 bg-border" />
+            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              TR: {rec.transcription_status}
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
