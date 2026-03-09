@@ -204,6 +204,9 @@
     "yourAudio": "Tu Audio",
     "timeRemaining": "Tiempo restante",
     "conversationTime": "Tiempo de conversación",
+    "conversationTopicLabel": "Tema de la Conversación",
+    "talkingPointsTitle": "Guion / Puntos de Conversación",
+    "talkingPointsEmpty": "No hay guion definido para esta sala.",
     "startRecording": "INICIAR GRABACIÓN",
     "stopRecording": "DETENER GRABACIÓN"
   },
@@ -236,7 +239,30 @@
     "testFailed": "La prueba de audio tuvo problemas. Vea las pautas a continuación.",
     "analysisError": "Error al analizar el audio de prueba",
     "gain": "Ganancia",
-    "restoreOriginal": "Restaurar recomendación original"
+    "restoreOriginal": "Restaurar recomendación original",
+    "off": "Desactivado",
+    "highPass": "Filtro pasa-altas",
+    "lowPass": "Filtro pasa-bajas",
+    "features": {
+      "rnnoise": "RNNoise",
+      "koala": "Koala",
+      "noiseGate": "Noise Gate",
+      "echoCancellation": "Echo",
+      "noiseSuppression": "Noise Suppression",
+      "autoGainControl": "AGC"
+    },
+    "metrics": {
+      "snr": { "label": "SNR (Ruido)" },
+      "rms": { "label": "Nivel (RMS)" },
+      "srmr": { "label": "Reverb (SRMR)" },
+      "wvmos": { "label": "Calidad (WV-MOS)" },
+      "utmos": { "label": "Calidad (UT-MOS)" },
+      "sigmos_ovrl": { "label": "SIGMOS (general)" },
+      "sigmos_disc": { "label": "SIGMOS (distorsión)" },
+      "sigmos_reverb": { "label": "SIGMOS (reverb)" },
+      "vqscore": { "label": "VQScore" },
+      "mic_sr": { "label": "Sample Rate" }
+    }
   },
   "common": {
     "error": "Error",
