@@ -61,14 +61,19 @@ export const AudioTestFlow = ({
   currentProfile,
   isPortal = false,
 }: AudioTestFlowProps) => {
+  const dismissedKey = `audio_test_dismissed_${roomId}_${participantId}`;
+  const wasDismissed = () => {
+    try { return localStorage.getItem(dismissedKey) === "1"; } catch { return false; }
+  };
+
   const [phase, setPhase] = useState<"idle" | "recording" | "analyzing" | "results">(
-    initialResults ? "results" : "idle"
+    initialResults && !wasDismissed() ? "results" : "idle"
   );
   const [countdown, setCountdown] = useState(TEST_DURATION);
   const [results, setResults] = useState<TestResults | null>(initialResults);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
-  const [showResultDetails, setShowResultDetails] = useState(!false); // expanded by default for fresh tests
+  const [showResultDetails, setShowResultDetails] = useState(initialResults && !wasDismissed());
   const [fromCache, setFromCache] = useState(false);
   const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
@@ -249,6 +254,7 @@ export const AudioTestFlow = ({
       setShowProfileDetails(false);
       setShowResultDetails(false);
       setPhase("idle");
+      try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
     }
   };
 
@@ -256,6 +262,7 @@ export const AudioTestFlow = ({
     setShowProfileDetails(false);
     setShowResultDetails(false);
     setPhase("idle");
+    try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
   };
 
   const getStatusColor = (status: string) => {
