@@ -190,6 +190,23 @@
     "noName": "Sin nombre",
     "empty": "Nadie en la lista de espera"
   },
+  "room": {
+    "recording": "Grabando",
+    "waiting": "Esperando",
+    "completed": "Finalizada",
+    "participants": "participante(s)",
+    "inviteOther": "INVITAR OTRO PARTICIPANTE",
+    "leave": "SALIR",
+    "copied": "¡COPIADO!",
+    "participantsTitle": "Participantes",
+    "creator": "Creador",
+    "you": "Tú",
+    "yourAudio": "Tu Audio",
+    "timeRemaining": "Tiempo restante",
+    "conversationTime": "Tiempo de conversación",
+    "startRecording": "INICIAR GRABACIÓN",
+    "stopRecording": "DETENER GRABACIÓN"
+  },
   "common": {
     "error": "Error",
     "loading": "Cargando...",

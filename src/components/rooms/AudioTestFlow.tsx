@@ -400,32 +400,47 @@ export const AudioTestFlow = ({
       ? { style: { border: `2px solid ${passed ? "var(--portal-accent)" : "hsl(45 93% 47%)"}`, background: "var(--portal-input-bg)" } }
       : { className: `border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}` };
 
-    return (
-      <Wrapper {...wrapperProps as any}>
-        <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowResultDetails(v => !v)}>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              {passed ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              )}
-              Resultado do Teste
-              {fromCache && (
-                <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
-              )}
-            </span>
-            <div className="flex items-center gap-2">
-              <Badge variant={passed ? "default" : "destructive"}>
-                {passed ? "Aprovado ✅" : "Reprovado ❌"}
-              </Badge>
-              {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+    if (isPortal) {
+      return (
+        <div {...wrapperProps as any} className="flex flex-col">
+          <div className="p-4 flex flex-col gap-4">
+            {/* Header row: Left Title, Right Badge */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
+                  Resultado do Teste
+                </span>
+                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>(sessão anterior)</span>}
+              </div>
+              <span className="font-mono text-[10px] font-bold uppercase px-2 py-1" style={{ background: passed ? "var(--portal-accent)" : "hsl(45 93% 47%)", color: passed ? "var(--portal-accent-text)" : "hsl(168,28%,10%)" }}>
+                {passed ? "APROVADO" : "REPROVADO"}
+              </span>
             </div>
-          </CardTitle>
-        </CardHeader>
-        {showResultDetails && (
-        <CardContent className="space-y-4">
-          {/* Metrics Table */}
+            
+            {/* Divider line */}
+            <div className="w-full h-px" style={{ background: "var(--portal-border)" }} />
+
+            {/* Actions row */}
+            <div className="flex gap-2">
+              {testBlobUrlRef.current && (
+                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? "PAUSAR" : "OUVIR TESTE"} />
+              )}
+              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText="REFAZER TESTE" />
+            </div>
+
+            {/* Toggle details */}
+            <button 
+              onClick={() => setShowResultDetails(v => !v)}
+              className="font-mono text-[10px] text-center w-full uppercase flex justify-center items-center gap-1 mt-2 transition-colors hover:text-white"
+              style={{ color: "var(--portal-text-muted)" }}
+            >
+              {showResultDetails ? "Ocultar detalhes" : "Ver detalhes métricas"}
+              {showResultDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+            
+            {showResultDetails && (
+              <div className="space-y-4 pt-2">
+                {/* Metrics Table */}
           <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
