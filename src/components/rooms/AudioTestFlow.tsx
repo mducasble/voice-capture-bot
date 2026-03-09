@@ -502,9 +502,9 @@ export const AudioTestFlow = ({
                       ) : (
                         <AlertTriangle className="h-4 w-4 shrink-0" />
                       )}
-                      {issue.label}
+                      {t(`audioTest.issues.${issue.metric}.label`, { defaultValue: issue.label })}
                     </div>
-                    <p className="text-xs opacity-90">{issue.guidance}</p>
+                    <p className="text-xs opacity-90">{t(`audioTest.issues.${issue.metric}.guidance`, { defaultValue: issue.guidance })}</p>
                   </div>
                 ))}
               </div>
