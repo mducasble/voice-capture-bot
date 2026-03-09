@@ -708,7 +708,7 @@ export const AudioTestFlow = ({
                       onClick={applyProfile}
                     >
                       <Settings2 className="h-4 w-4 mr-1.5" />
-                      {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
+                      {profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
                     </Button>
                   )}
                 </div>
