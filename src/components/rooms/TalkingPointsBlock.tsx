@@ -93,10 +93,9 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
 
   // Auto-generate on mount
   useEffect(() => {
-    if (!hasGenerated && !loading) {
-      generate();
-    }
-  }, [topic]);
+    if (!locationLoaded || hasGenerated || loading) return;
+    generate();
+  }, [topic, locationLoaded]);
 
   const locationLabel = userLocation.country || t("room.talkingPointsLocal");
 

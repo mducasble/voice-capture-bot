@@ -61,6 +61,7 @@ Each bullet should be a short phrase or provocative question that sparks natural
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 0.2,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: isGeneric ? "Suggest interesting conversation topics." : `Topic: "${topic}"` },
