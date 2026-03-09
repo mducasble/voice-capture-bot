@@ -455,7 +455,7 @@ export const AudioTestFlow = ({
               </span>
               <div className="flex items-center gap-2">
                 <Badge variant={passed ? "default" : "destructive"}>
-                  {passed ? "Aprovado ✅" : "Reprovado ❌"}
+                  {passed ? `✅ ${t("audioTest.passed")}` : `❌ ${t("audioTest.failed")}`}
                 </Badge>
                 {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </div>
