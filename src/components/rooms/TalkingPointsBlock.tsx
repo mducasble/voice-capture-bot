@@ -146,7 +146,7 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
       )}
 
       {!loading && !error && (data.local_points.length > 0 || data.global_points.length > 0) && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`grid gap-4 ${data.local_points.length > 0 && data.global_points.length > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
           {/* Local block */}
           {data.local_points.length > 0 && (
             <div className="p-5" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
