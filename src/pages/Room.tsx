@@ -484,7 +484,7 @@ const Room = () => {
       formData.append("participant_name", "Mixed");
       formData.append("recording_type", "mixed");
       formData.append("format", "wav");
-      if (campaignId) formData.append("campaign_id", campaignId);
+      formData.append("campaign_id", campaignId || "");
 
       setMixedUploadProgress(30);
       const { data: { session } } = await supabase.auth.getSession();
