@@ -36,8 +36,9 @@ export default function PortalLayout() { // layout-root
     return <Navigate to="/auth" replace />;
   }
 
-  // Force profile completion — allow only /profile route
-  if (!profileComplete && location.pathname !== "/profile") {
+  // Force profile completion — but allow direct invites (rooms, tasks) without it
+  const bypassProfileRoutes = location.pathname.startsWith("/room/") || location.pathname.match(/^\/campaign\/[^/]+\/task$/);
+  if (!profileComplete && !bypassProfileRoutes && location.pathname !== "/profile") {
     return <Navigate to="/profile" replace />;
   }
 
