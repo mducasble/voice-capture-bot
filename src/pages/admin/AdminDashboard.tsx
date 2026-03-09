@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive } from "lucide-react";
+import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
@@ -29,7 +29,7 @@ function useProfiles() {
   return useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, created_at");
+      const { data, error } = await supabase.from("profiles").select("id, created_at, country");
       if (error) throw error;
       return data || [];
     },
@@ -287,6 +287,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Users by Country */}
+      <CountryBreakdown profiles={profiles} />
+
       {/* Infrastructure — smaller gradient cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
@@ -352,6 +355,54 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CountryBreakdown({ profiles }: { profiles: { country?: string | null }[] }) {
+  const countryData = useMemo(() => {
+    const map: Record<string, number> = {};
+    profiles.forEach((p) => {
+      const country = p.country?.trim() || "Não informado";
+      map[country] = (map[country] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [profiles]);
+
+  const total = profiles.length;
+
+  return (
+    <Card className="border-border/40 bg-card">
+      <CardHeader className="pb-2 pt-5 px-5">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Globe className="h-4 w-4 text-primary" />
+          Usuários por País
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          {countryData.map(({ country, count }) => {
+            const pct = total > 0 ? (count / total) * 100 : 0;
+            return (
+              <div key={country} className="flex items-center gap-3">
+                <span className="text-xs text-foreground font-medium w-36 truncate" title={country}>
+                  {country}
+                </span>
+                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-foreground w-10 text-right">{count}</span>
+                <span className="text-[10px] text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
