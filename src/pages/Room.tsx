@@ -612,8 +612,8 @@ const Room = () => {
     );
   }
 
-    // Check if user might be the creator via sessionStorage
-    const storedParticipantId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
+    // Check if user might be the creator via localStorage
+    const storedParticipantId = roomId ? localStorage.getItem(`room_${roomId}_participant`) : null;
     // Check participants list first, but also check DB-fetched creator (may be disconnected)
     const creatorParticipant = participants.find(p => p.is_creator) || dbCreatorParticipant;
     const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
