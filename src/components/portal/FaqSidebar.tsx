@@ -143,7 +143,7 @@ export function FaqSidebar() {
                           onClick={() => setExpandedId(isExpanded ? null : item.id)}
                           className="w-full p-3 flex items-start gap-2 text-left"
                         >
-                          <span className="flex-1 font-mono text-sm font-bold leading-relaxed" style={{ color: "var(--portal-text)" }}>
+                          <span className="flex-1 font-mono text-base font-bold leading-relaxed" style={{ color: "var(--portal-text)" }}>
                             {getQuestion(item)}
                           </span>
                           {isExpanded ? (
