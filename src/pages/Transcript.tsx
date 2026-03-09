@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, FileText, Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
 import { AudioUpload } from "@/components/AudioUpload";
+import { CampaignSelector } from "@/components/CampaignSelector";
 import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
