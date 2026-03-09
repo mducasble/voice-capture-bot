@@ -134,77 +134,68 @@ export const DEFAULT_PROFILE: AudioProfile = {
  */
 export function getProfileDescriptions(profile: AudioProfile): { label: string; value: string; detail: string }[] {
   const items: { label: string; value: string; detail: string }[] = [];
+  // kept for backward compat but prefer getProfileDescriptionKeys + i18n
+  return items;
+}
+
+/**
+ * Returns i18n-friendly keys for each profile setting description.
+ */
+export function getProfileDescriptionKeys(profile: AudioProfile): { key: string; value: string; detailKey: string }[] {
+  const items: { key: string; value: string; detailKey: string }[] = [];
 
   items.push({
-    label: "Ganho",
+    key: "gain",
     value: `${profile.gain.toFixed(2)}x`,
-    detail: profile.gain === 1.0 ? "Sem amplificação" : 
-            profile.gain > 1 ? `Amplifica ${((profile.gain - 1) * 100).toFixed(0)}% para atingir ~-23 dBFS` :
-            `Reduz ${((1 - profile.gain) * 100).toFixed(0)}% para evitar distorção`,
+    detailKey: profile.gain === 1.0 ? "noAmp" : profile.gain > 1 ? "amplify" : "reduce",
   });
 
   items.push({
-    label: "High-pass",
-    value: profile.highpassFreq > 0 ? `${profile.highpassFreq} Hz` : "Desativado",
-    detail: profile.highpassFreq > 0 
-      ? `Remove frequências abaixo de ${profile.highpassFreq}Hz (rumble/reverb)` 
-      : "Nenhum filtro de graves aplicado",
+    key: "highPass",
+    value: profile.highpassFreq > 0 ? `${profile.highpassFreq} Hz` : "",
+    detailKey: profile.highpassFreq > 0 ? "active" : "off",
   });
 
   items.push({
-    label: "Low-pass",
-    value: profile.lowpassFreq > 0 ? `${(profile.lowpassFreq / 1000).toFixed(0)} kHz` : "Desativado",
-    detail: profile.lowpassFreq > 0 
-      ? `Corta acima de ${(profile.lowpassFreq / 1000).toFixed(0)}kHz (limite do microfone)` 
-      : "Sem corte de altas frequências",
+    key: "lowPass",
+    value: profile.lowpassFreq > 0 ? `${(profile.lowpassFreq / 1000).toFixed(0)} kHz` : "",
+    detailKey: profile.lowpassFreq > 0 ? "active" : "off",
   });
 
   items.push({
-    label: "RNNoise",
-    value: profile.enableRnnoise ? "Ativado" : "Desativado",
-    detail: profile.enableRnnoise 
-      ? "Supressão de ruído de fundo via rede neural" 
-      : "SNR suficiente, sem necessidade",
+    key: "rnnoise",
+    value: "",
+    detailKey: profile.enableRnnoise ? "active" : "off",
   });
 
   items.push({
-    label: "Koala",
-    value: profile.enableKoala ? "Ativado" : "Desativado",
-    detail: profile.enableKoala 
-      ? "Supressão de ruído avançada via Picovoice Koala (pós-processamento)" 
-      : "Koala desativado",
+    key: "koala",
+    value: "",
+    detailKey: profile.enableKoala ? "active" : "off",
   });
 
   items.push({
-    label: "Noise Gate",
-    value: profile.enableNoiseGate ? "Ativado" : "Desativado",
-    detail: profile.enableNoiseGate 
-      ? "Silencia trechos sem fala para reduzir ruído residual" 
-      : "SNR adequado, gate desnecessário",
+    key: "noiseGate",
+    value: "",
+    detailKey: profile.enableNoiseGate ? "active" : "off",
   });
 
   items.push({
-    label: "Echo Cancel.",
-    value: profile.enableEchoCancellation ? "Ativado" : "Desativado",
-    detail: profile.enableEchoCancellation 
-      ? "Cancelamento de eco do navegador ativo" 
-      : "Cancelamento de eco desativado",
+    key: "echoCancellation",
+    value: "",
+    detailKey: profile.enableEchoCancellation ? "active" : "off",
   });
 
   items.push({
-    label: "Noise Suppr.",
-    value: profile.enableNoiseSuppression ? "Ativado" : "Desativado",
-    detail: profile.enableNoiseSuppression 
-      ? "Supressão de ruído nativa do navegador ativa" 
-      : "Supressão de ruído nativa desativada",
+    key: "noiseSuppression",
+    value: "",
+    detailKey: profile.enableNoiseSuppression ? "active" : "off",
   });
 
   items.push({
-    label: "Auto Gain",
-    value: profile.enableAutoGainControl ? "Ativado" : "Desativado",
-    detail: profile.enableAutoGainControl 
-      ? "Controle automático de ganho do navegador ativo" 
-      : "Controle automático de ganho desativado",
+    key: "autoGain",
+    value: "",
+    detailKey: profile.enableAutoGainControl ? "active" : "off",
   });
 
   return items;

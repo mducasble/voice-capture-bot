@@ -269,6 +269,54 @@
       "sigmos_reverb": { "label": "SIGMOS (reverb)" },
       "vqscore": { "label": "VQScore" },
       "mic_sr": { "label": "Sample Rate" }
+    },
+    "profileDesc": {
+      "gain": {
+        "label": "Ganho",
+        "noAmp": "Sem amplificação",
+        "amplify": "Amplifica para atingir ~-23 dBFS",
+        "reduce": "Reduz para evitar distorção"
+      },
+      "highPass": {
+        "label": "Filtro passa-altas",
+        "active": "Remove frequências abaixo de {{value}} (rumble/reverb)",
+        "off": "Nenhum filtro de graves aplicado"
+      },
+      "lowPass": {
+        "label": "Filtro passa-baixas",
+        "active": "Corta acima de {{value}} (limite do microfone)",
+        "off": "Sem corte de altas frequências"
+      },
+      "rnnoise": {
+        "label": "RNNoise",
+        "active": "Supressão de ruído de fundo via rede neural",
+        "off": "SNR suficiente, sem necessidade"
+      },
+      "koala": {
+        "label": "Koala",
+        "active": "Supressão de ruído avançada via Picovoice Koala (pós-processamento)",
+        "off": "Koala desativado"
+      },
+      "noiseGate": {
+        "label": "Noise Gate",
+        "active": "Silencia trechos sem fala para reduzir ruído residual",
+        "off": "SNR adequado, gate desnecessário"
+      },
+      "echoCancellation": {
+        "label": "Canc. de Eco",
+        "active": "Cancelamento de eco do navegador ativo",
+        "off": "Cancelamento de eco desativado"
+      },
+      "noiseSuppression": {
+        "label": "Supr. de Ruído",
+        "active": "Supressão de ruído nativa do navegador ativa",
+        "off": "Supressão de ruído nativa desativada"
+      },
+      "autoGain": {
+        "label": "Ganho Auto",
+        "active": "Controle automático de ganho do navegador ativo",
+        "off": "Controle automático de ganho desativado"
+      }
     }
   },
   "common": {
