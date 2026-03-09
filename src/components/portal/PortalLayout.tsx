@@ -148,8 +148,11 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
                   <Link
                     to="/profile"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 font-mono text-xs uppercase tracking-widest"
-                    style={{ color: location.pathname === "/profile" ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
+                    className={`flex items-center gap-3 px-4 py-3 font-mono text-xs uppercase tracking-widest ${!profileComplete ? "profile-glow" : ""}`}
+                    style={{
+                      color: location.pathname === "/profile" ? "var(--portal-accent)" : "var(--portal-text-muted)",
+                      borderRadius: !profileComplete ? "4px" : undefined,
+                    }}
                   >
                     <User className="h-4 w-4" />
                     {t("nav.profile") || "Profile"}
