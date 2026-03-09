@@ -160,7 +160,7 @@ export const AudioTestFlow = ({
 
     const wavBlob = await wavRecorder.stopRecording();
     if (!wavBlob || wavBlob.size === 0) {
-      toast.error("Nenhum áudio capturado");
+      toast.error(t("audioTest.noAudioCaptured"));
       setPhase("idle");
       return;
     }
