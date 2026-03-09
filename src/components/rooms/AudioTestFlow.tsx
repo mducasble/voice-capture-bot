@@ -448,9 +448,9 @@ export const AudioTestFlow = ({
                 ) : (
                   <AlertTriangle className="h-5 w-5 text-yellow-500" />
                 )}
-                Resultado do Teste
+                {t("audioTest.testResult")}
                 {fromCache && (
-                  <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
+                  <span className="text-xs font-normal text-muted-foreground">{t("audioTest.previousSession")}</span>
                 )}
               </span>
               <div className="flex items-center gap-2">
