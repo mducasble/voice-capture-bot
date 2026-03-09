@@ -29,7 +29,7 @@ function useProfiles() {
   return useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, created_at");
+      const { data, error } = await supabase.from("profiles").select("id, created_at, country");
       if (error) throw error;
       return data || [];
     },
