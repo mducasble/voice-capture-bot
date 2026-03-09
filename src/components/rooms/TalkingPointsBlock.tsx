@@ -27,17 +27,24 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
   // Fetch user profile location
   useEffect(() => {
     const fetchLocation = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("country, city")
-        .eq("id", user.id)
-        .single();
-      if (profile) {
-        setUserLocation({ country: profile.country, city: profile.city });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("country, city")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          setUserLocation({ country: profile.country, city: profile.city });
+        }
+      } finally {
+        setLocationLoaded(true);
       }
     };
+
     fetchLocation();
   }, []);
 
