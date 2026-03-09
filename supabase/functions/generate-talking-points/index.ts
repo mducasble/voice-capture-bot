@@ -33,11 +33,9 @@ serve(async (req) => {
     const countryLang = country ? countryLangMap[country] : null;
     const lang = countryLang || language || "pt-BR";
     const today = new Date().toISOString().split("T")[0];
-    const locationCtx = city && country
-      ? `The user is located in ${city}, ${country}.`
-      : country
-        ? `The user is located in ${country}.`
-        : "The user's location is unknown.";
+    const locationCtx = country
+      ? `The user is located in ${country}. Focus local points on national-level context (country-wide trends, culture, events). Do NOT narrow to a specific city.`
+      : "The user's location is unknown.";
 
     const langName = lang.startsWith("pt") ? "Portuguese (Brazil)" : lang.startsWith("es") ? "Spanish" : "English";
 
