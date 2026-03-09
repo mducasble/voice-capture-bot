@@ -32,7 +32,21 @@ interface Recording {
   validation_rejection_reason: string | null;
   snr_db: number | null;
   sample_rate: number | null;
+  bit_depth: number | null;
+  channels: number | null;
+  format: string | null;
+  file_size_bytes: number | null;
   transcription_status: string | null;
+  metadata: {
+    rms_level_db?: number;
+    effective_bandwidth_hz?: number;
+    srmr?: number;
+    sigmos_sig?: number;
+    sigmos_bak?: number;
+    sigmos_ovrl?: number;
+    wvmos?: number;
+    analysis_mode?: string;
+  } | null;
 }
 
 interface CampaignInfo {
