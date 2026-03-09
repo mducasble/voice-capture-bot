@@ -207,6 +207,9 @@
     "conversationTopicLabel": "Tema de la Conversación",
     "talkingPointsTitle": "Guion / Puntos de Conversación",
     "talkingPointsEmpty": "No hay guion definido para esta sala.",
+    "talkingPointsGenerating": "Generando puntos de conversación con IA...",
+    "talkingPointsRegenerate": "Generar nuevos puntos",
+    "talkingPointsRetry": "INTENTAR DE NUEVO",
     "startRecording": "INICIAR GRABACIÓN",
     "stopRecording": "DETENER GRABACIÓN"
   },
