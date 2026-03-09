@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Clock, FileAudio, Users, Play, Pause, ChevronDown,
-  CheckCircle2, XCircle, User,
+  CheckCircle2, XCircle, User, BarChart3, ShieldCheck, ShieldX, AlertTriangle, Hourglass,
 } from "lucide-react";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -474,6 +475,155 @@ function HostBlock({
   );
 }
 
+// ---- Submission Summary Dashboard ----
+
+interface CampaignStats {
+  campaignName: string;
+  campaignType: string | null;
+  total: number;
+  approved: number;
+  rejected: number;
+  pendingQuality: number;
+  pendingValidation: number;
+  goodQuality: number;
+  badQuality: number;
+}
+
+function SubmissionSummary({
+  recordings,
+  campaignMap,
+}: {
+  recordings: Recording[];
+  campaignMap: Map<string, CampaignInfo>;
+}) {
+  const stats = useMemo(() => {
+    const byCampaign = new Map<string, Recording[]>();
+    for (const r of recordings) {
+      const key = r.campaign_id || "__none__";
+      if (!byCampaign.has(key)) byCampaign.set(key, []);
+      byCampaign.get(key)!.push(r);
+    }
+
+    const result: CampaignStats[] = [];
+    for (const [cid, recs] of byCampaign) {
+      const campaign = cid !== "__none__" ? campaignMap.get(cid) : null;
+      const approved = recs.filter(r => r.quality_status === "approved" && r.validation_status === "approved").length;
+      const rejected = recs.filter(r => r.quality_status === "rejected" || r.validation_status === "rejected").length;
+      const pendingQuality = recs.filter(r => r.quality_status === "pending" || !r.quality_status).length;
+      const pendingValidation = recs.filter(r => r.quality_status === "approved" && (r.validation_status === "pending" || !r.validation_status)).length;
+      const goodQuality = recs.filter(r => {
+        const snr = r.snr_db;
+        const ovrl = r.metadata?.sigmos_ovrl;
+        return (snr != null && snr >= 25) || (ovrl != null && ovrl >= 3.5);
+      }).length;
+      const badQuality = recs.filter(r => {
+        const snr = r.snr_db;
+        const ovrl = r.metadata?.sigmos_ovrl;
+        return (snr != null && snr < 15) || (ovrl != null && ovrl < 2.5);
+      }).length;
+
+      result.push({
+        campaignName: campaign?.name || "Sem campanha",
+        campaignType: campaign?.campaign_type || null,
+        total: recs.length,
+        approved,
+        rejected,
+        pendingQuality,
+        pendingValidation,
+        goodQuality,
+        badQuality,
+      });
+    }
+    result.sort((a, b) => b.total - a.total);
+    return result;
+  }, [recordings, campaignMap]);
+
+  const totals = useMemo(() => ({
+    total: stats.reduce((a, s) => a + s.total, 0),
+    approved: stats.reduce((a, s) => a + s.approved, 0),
+    rejected: stats.reduce((a, s) => a + s.rejected, 0),
+    pendingQuality: stats.reduce((a, s) => a + s.pendingQuality, 0),
+    pendingValidation: stats.reduce((a, s) => a + s.pendingValidation, 0),
+    goodQuality: stats.reduce((a, s) => a + s.goodQuality, 0),
+    badQuality: stats.reduce((a, s) => a + s.badQuality, 0),
+  }), [stats]);
+
+  return (
+    <Card className="border-border/40 bg-card">
+      <CardHeader className="pb-2 pt-5 px-5">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          Resumo de Materiais
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5 space-y-4">
+        {/* Global counters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          <SummaryPill icon={FileAudio} label="Total" value={totals.total} color="text-foreground" />
+          <SummaryPill icon={CheckCircle2} label="Aprovados" value={totals.approved} color="text-green-500" />
+          <SummaryPill icon={XCircle} label="Rejeitados" value={totals.rejected} color="text-destructive" />
+          <SummaryPill icon={Hourglass} label="Pend. Qualidade" value={totals.pendingQuality} color="text-amber-500" />
+          <SummaryPill icon={AlertTriangle} label="Pend. Validação" value={totals.pendingValidation} color="text-orange-400" />
+          <SummaryPill icon={ShieldCheck} label="Boa Qualidade" value={totals.goodQuality} color="text-emerald-500" />
+          <SummaryPill icon={ShieldX} label="Baixa Qualidade" value={totals.badQuality} color="text-red-400" />
+        </div>
+
+        {/* Per-campaign table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/40">
+                <th className="text-left py-2 text-muted-foreground font-medium">Campanha</th>
+                <th className="text-left py-2 text-muted-foreground font-medium">Tipo</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Total</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Aprovados</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Rejeitados</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Pend. QA</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Pend. VAL</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Boa Qual.</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Baixa Qual.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((s, i) => (
+                <tr key={i} className="border-b border-border/20 hover:bg-secondary/20 transition-colors">
+                  <td className="py-2 font-medium text-foreground truncate max-w-[200px]">{s.campaignName}</td>
+                  <td className="py-2 text-muted-foreground">
+                    {s.campaignType && (
+                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-secondary rounded-sm uppercase">
+                        {s.campaignType.replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2 text-right font-bold text-foreground">{s.total}</td>
+                  <td className="py-2 text-right font-bold text-green-500">{s.approved}</td>
+                  <td className="py-2 text-right font-bold text-destructive">{s.rejected}</td>
+                  <td className="py-2 text-right font-bold text-amber-500">{s.pendingQuality}</td>
+                  <td className="py-2 text-right font-bold text-orange-400">{s.pendingValidation}</td>
+                  <td className="py-2 text-right font-bold text-emerald-500">{s.goodQuality}</td>
+                  <td className="py-2 text-right font-bold text-red-400">{s.badQuality}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryPill({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 border border-border/30">
+      <Icon className={`h-4 w-4 ${color} opacity-70 shrink-0`} />
+      <div className="min-w-0">
+        <p className="text-[9px] text-muted-foreground uppercase tracking-wider truncate">{label}</p>
+        <p className={`text-lg font-bold ${color}`}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
 // ---- Campaign tab content ----
 
 function CampaignTabContent({
@@ -516,7 +666,6 @@ function CampaignTabContent({
 
 // ---- Main page ----
 
-export default function ReviewQueue() {
   const queryClient = useQueryClient();
 
   const { data: recordings, isLoading } = useQuery({
@@ -756,6 +905,10 @@ export default function ReviewQueue() {
           {hasNoCampaign && " + legados sem campanha"}
         </p>
       </div>
+
+      {!isLoading && recordings && recordings.length > 0 && (
+        <SubmissionSummary recordings={recordings} campaignMap={campaignMap} />
+      )}
 
       {isLoading && (
         <div className="space-y-3">
