@@ -212,6 +212,7 @@
     "talkingPointsRetry": "TRY AGAIN",
     "talkingPointsLocal": "Local Context",
     "talkingPointsGlobal": "Global Context",
+    "talkingPointsSuggestion": "Suggestion",
     "startRecording": "START RECORDING",
     "stopRecording": "STOP RECORDING"
   },

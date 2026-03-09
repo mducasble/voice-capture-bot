@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Sparkles, RefreshCw, Globe, MapPin } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, Globe, MapPin, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import KGenButton from "@/components/portal/KGenButton";
 
@@ -21,6 +21,8 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [userLocation, setUserLocation] = useState<{ country: string | null; city: string | null }>({ country: null, city: null });
 
+  const isSuggestion = !topic;
+
   // Fetch user profile location
   useEffect(() => {
     const fetchLocation = async () => {
@@ -39,7 +41,6 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
   }, []);
 
   const generate = async () => {
-    if (!topic) return;
     setLoading(true);
     setError(null);
     try {
@@ -55,7 +56,7 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
             Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
-            topic,
+            topic: topic || "__generic__",
             language: i18n.language,
             country: userLocation.country,
             city: userLocation.city,
@@ -82,41 +83,38 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
     }
   };
 
-  // Auto-generate on mount if topic exists
+  // Auto-generate on mount
   useEffect(() => {
-    if (topic && !hasGenerated && !loading) {
+    if (!hasGenerated && !loading) {
       generate();
     }
   }, [topic]);
 
-  if (!topic) {
-    return (
-      <div
-        className="p-5 flex-1"
-        style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-card-bg)", minHeight: "200px" }}
-      >
-        <span className="font-mono text-xs uppercase tracking-widest block mb-3" style={{ color: "var(--portal-text-muted)" }}>
-          {t("room.talkingPointsTitle")}
-        </span>
-        <p className="font-mono text-sm leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-          {t("room.talkingPointsEmpty")}
-        </p>
-      </div>
-    );
-  }
-
-  const locationLabel = userLocation.city && userLocation.country
-    ? `${userLocation.city}, ${userLocation.country}`
-    : userLocation.country || t("room.talkingPointsLocal");
+  const locationLabel = userLocation.country || t("room.talkingPointsLocal");
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-          <Sparkles className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-          {t("room.talkingPointsTitle")}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+            <Sparkles className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+            {t("room.talkingPointsTitle")}
+          </span>
+          {isSuggestion && hasGenerated && !loading && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider"
+              style={{
+                background: "hsl(45 93% 47% / 0.15)",
+                color: "hsl(45 93% 47%)",
+                border: "1px solid hsl(45 93% 47% / 0.3)",
+              }}
+            >
+              <Lightbulb className="h-3 w-3" />
+              {t("room.talkingPointsSuggestion")}
+            </span>
+          )}
+        </div>
         {hasGenerated && !loading && (
           <button
             onClick={generate}

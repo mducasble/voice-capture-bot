@@ -39,10 +39,15 @@ serve(async (req) => {
 
     const langName = lang.startsWith("pt") ? "Portuguese (Brazil)" : lang.startsWith("es") ? "Spanish" : "English";
 
-    const systemPrompt = `You are a conversation coach. Given a topic, generate two sets of talking points for a natural conversation between two people.
+    const isGeneric = topic === "__generic__";
+    const topicInstruction = isGeneric
+      ? `No specific topic was provided. Generate broad, interesting conversation starters that would work for any casual conversation between two people. Include trending cultural topics, fun debates, and thought-provoking questions.`
+      : `Given a topic, generate two sets of talking points for a natural conversation between two people.`;
 
-1. "local_points": 4-5 bullets about the topic contextualized to the user's local region/country, referencing local events, culture, or trends as of ${today}.
-2. "global_points": 4-5 bullets about the topic from a global/international perspective, referencing world trends and events as of ${today}.
+    const systemPrompt = `You are a conversation coach. ${topicInstruction}
+
+1. "local_points": 4-5 bullets ${isGeneric ? "about popular current topics" : "about the topic"} contextualized to the user's local region/country, referencing local events, culture, or trends as of ${today}.
+2. "global_points": 4-5 bullets ${isGeneric ? "about popular current topics" : "about the topic"} from a global/international perspective, referencing world trends and events as of ${today}.
 
 ${locationCtx}
 
@@ -58,7 +63,7 @@ Each bullet should be a short phrase or provocative question that sparks natural
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Topic: "${topic}"` },
+          { role: "user", content: isGeneric ? "Suggest interesting conversation topics." : `Topic: "${topic}"` },
         ],
         tools: [
           {
