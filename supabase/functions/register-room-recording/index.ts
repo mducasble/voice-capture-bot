@@ -56,6 +56,7 @@ serve(async (req) => {
         discord_user_id: participant_id,
         discord_username: participant_name,
         user_id: authUserId,
+        campaign_id,
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
@@ -68,7 +69,7 @@ serve(async (req) => {
         recording_type,
         transcription_status: 'pending',
         language,
-        metadata: { source: 'webapp', participant_id },
+        metadata: { source: 'webapp', participant_id, campaign_id },
       })
       .select()
       .single();

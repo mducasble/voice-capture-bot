@@ -71,6 +71,7 @@ serve(async (req) => {
         discord_channel_name: "Upload",
         discord_user_id: "upload",
         discord_username: "Upload",
+        campaign_id,
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
