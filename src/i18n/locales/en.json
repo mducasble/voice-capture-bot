@@ -210,6 +210,8 @@
     "talkingPointsGenerating": "Generating talking points with AI...",
     "talkingPointsRegenerate": "Generate new points",
     "talkingPointsRetry": "TRY AGAIN",
+    "talkingPointsLocal": "Local Context",
+    "talkingPointsGlobal": "Global Context",
     "startRecording": "START RECORDING",
     "stopRecording": "STOP RECORDING"
   },
