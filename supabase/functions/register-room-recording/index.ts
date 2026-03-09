@@ -39,9 +39,9 @@ serve(async (req) => {
       campaign_id,
     } = await req.json();
 
-    if (!filename || !file_url || !session_id) {
+    if (!filename || !file_url || !session_id || !campaign_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: filename, file_url, session_id' }),
+        JSON.stringify({ error: 'Missing required fields: filename, file_url, session_id, campaign_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
