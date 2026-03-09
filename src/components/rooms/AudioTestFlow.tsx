@@ -473,7 +473,7 @@ export const AudioTestFlow = ({
                   <TableRow>
                     {Object.entries(results.metrics).map(([key, m]) => (
                       <TableHead key={key} className={`text-center text-xs py-1.5 px-2 ${getHeaderBg(m.status)}`}>
-                        {m.label}
+                        {t(`audioTest.metrics.${key}.label`, { defaultValue: m.label })}
                       </TableHead>
                     ))}
                   </TableRow>
