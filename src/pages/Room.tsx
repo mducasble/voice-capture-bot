@@ -42,6 +42,7 @@ interface Participant {
   joined_at: string;
   audio_test_status: string;
   audio_test_results: any;
+  user_id?: string | null;
 }
 
 const Room = () => {
