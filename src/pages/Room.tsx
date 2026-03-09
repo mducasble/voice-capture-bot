@@ -811,37 +811,42 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-2">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
                 {room.is_recording ? `Gravando ${formatDuration(recordingDuration)}` : room.status === "completed" ? "Finalizada" : "Aguardando"}
               </span>
             </div>
-            <h1 className="font-mono text-2xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+            <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
-            <div className="flex items-center gap-4 mt-1">
-              <p className="font-mono text-xs flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                <Users className="h-3 w-3" /> {participants.length} participante(s)
+            <div className="flex items-center gap-6 mt-2">
+              <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                <Users className="h-4 w-4" /> {participants.length} participante(s)
               </p>
               {room.topic && (
-                <p className="font-mono text-xs flex items-center gap-1.5" style={{ color: "var(--portal-accent)" }}>
-                  <MessageSquare className="h-3 w-3" /> {room.topic}
+                <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-accent)" }}>
+                  <MessageSquare className="h-4 w-4" /> {room.topic}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
+          <div className="flex items-center gap-3">
+            <KGenButton
+              variant="primary"
+              size="sm"
               onClick={copyLink}
-              className="p-2 font-mono text-xs uppercase transition-colors"
-              style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </button>
-            <KGenButton variant="dark" size="sm" onClick={handleLeave} scrambleText="SAIR" />
+              scrambleText={copied ? "COPIADO!" : "CONVIDAR OUTRO PARTICIPANTE"}
+              icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            />
+            <KGenButton
+              size="sm"
+              onClick={handleLeave}
+              scrambleText="SAIR"
+              className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
+            />
           </div>
         </div>
 
