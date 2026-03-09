@@ -11,6 +11,7 @@ import LanguageSelector from "./LanguageSelector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { FaqSidebar } from "./FaqSidebar";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
