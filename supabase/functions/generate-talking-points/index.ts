@@ -63,7 +63,7 @@ Each bullet should be a short phrase or provocative question that sparks natural
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Topic: "${topic}"` },
+          { role: "user", content: isGeneric ? "Suggest interesting conversation topics." : `Topic: "${topic}"` },
         ],
         tools: [
           {
