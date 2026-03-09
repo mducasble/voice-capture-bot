@@ -106,6 +106,19 @@ function snrColor(snr: number | null) {
   return "hsl(0 70% 50%)";
 }
 
+function metricColor(value: number | null | undefined, good: number, warn: number) {
+  if (value == null) return "hsl(0 0% 50%)";
+  if (value >= good) return "hsl(120 60% 45%)";
+  if (value >= warn) return "hsl(40 80% 50%)";
+  return "hsl(0 70% 50%)";
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 function StatusPill({ status }: { status: string | null }) {
   const s = status || "pending";
   const map: Record<string, { bg: string; fg: string; label: string }> = {
