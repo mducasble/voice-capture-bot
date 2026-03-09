@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SessionGroup } from "@/components/SessionGroup";
 import { AudioUpload } from "@/components/AudioUpload";
 import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
+import { CampaignSelector } from "@/components/CampaignSelector";
 import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const { data: recordings, isLoading, error } = useRecordings();
 
   // Group recordings by session_id
