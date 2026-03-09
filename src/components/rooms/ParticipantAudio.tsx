@@ -140,7 +140,7 @@ export const ParticipantAudio = ({
       formData.append("recording_type", "individual");
       formData.append("format", "wav");
       formData.append("noise_gate_enabled", noiseGateEnabled ? "true" : "false");
-      if (campaignId) formData.append("campaign_id", campaignId);
+      formData.append("campaign_id", campaignId || "");
 
       setUploadProgress(30);
       const { data: { session } } = await supabase.auth.getSession();

@@ -4,6 +4,7 @@ import { Radio, Plus, Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CampaignSelector } from "@/components/CampaignSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -11,11 +12,16 @@ const Rooms = () => {
   const navigate = useNavigate();
   const [creatorName, setCreatorName] = useState("");
   const [roomName, setRoomName] = useState("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateRoom = async () => {
     if (!creatorName.trim()) {
       toast.error("Digite seu nome para criar a sala");
+      return;
+    }
+    if (!selectedCampaignId) {
+      toast.error("Selecione uma campanha");
       return;
     }
 
@@ -48,7 +54,7 @@ const Rooms = () => {
       }
 
       toast.success("Sala criada com sucesso!");
-      navigate(`/room/${room.id}`);
+      navigate(`/room/${room.id}?campaign=${selectedCampaignId}`);
     } catch (error) {
       console.error("Error creating room:", error);
       toast.error("Erro ao criar sala");
@@ -120,10 +126,14 @@ const Rooms = () => {
                 onChange={(e) => setRoomName(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Campanha *</label>
+              <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} />
+            </div>
             <Button 
               className="w-full" 
               onClick={handleCreateRoom}
-              disabled={isCreating}
+              disabled={isCreating || !selectedCampaignId}
             >
               <Mic2 className="h-4 w-4 mr-2" />
               {isCreating ? "Criando..." : "Criar Sala"}
