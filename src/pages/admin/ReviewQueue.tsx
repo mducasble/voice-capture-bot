@@ -666,6 +666,7 @@ function CampaignTabContent({
 
 // ---- Main page ----
 
+export default function ReviewQueue() {
   const queryClient = useQueryClient();
 
   const { data: recordings, isLoading } = useQuery({
