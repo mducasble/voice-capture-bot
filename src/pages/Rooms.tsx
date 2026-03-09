@@ -20,6 +20,10 @@ const Rooms = () => {
       toast.error("Digite seu nome para criar a sala");
       return;
     }
+    if (!selectedCampaignId) {
+      toast.error("Selecione uma campanha");
+      return;
+    }
 
     setIsCreating(true);
     try {
