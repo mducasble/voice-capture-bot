@@ -698,7 +698,7 @@ export const AudioTestFlow = ({
                       size="sm"
                       className="flex-1"
                       onClick={applyProfile}
-                      scrambleText={profileApplied ? "ATUALIZAR CONFIGURAÇÃO" : "APLICAR CONFIGURAÇÃO"}
+                      scrambleText={profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
                       icon={<Settings2 className="h-4 w-4" />}
                     />
                   ) : (
