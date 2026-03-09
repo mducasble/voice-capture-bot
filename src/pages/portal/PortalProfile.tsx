@@ -41,6 +41,7 @@ export default function PortalProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const { t } = useTranslation();
+  const { isComplete: profileComplete } = useProfileCompletion();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
