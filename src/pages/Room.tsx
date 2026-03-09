@@ -58,10 +58,18 @@ const Room = () => {
   const campaignId = searchParams.get("campaign") || undefined;
   const refCode = searchParams.get("ref") || undefined;
 
-  // Store referral code from room invite link
+  // Store referral code from room invite link and process immediately if user is already logged in
   useEffect(() => {
     if (refCode) {
       localStorage.setItem("referral_code", refCode);
+      // If user is already authenticated, process referral now
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          import("@/hooks/useReferral").then(({ processReferralOnSignup }) => {
+            processReferralOnSignup(user.id);
+          });
+        }
+      });
     }
   }, [refCode]);
   
