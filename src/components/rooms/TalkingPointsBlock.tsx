@@ -20,6 +20,7 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [userLocation, setUserLocation] = useState<{ country: string | null; city: string | null }>({ country: null, city: null });
+  const [locationLoaded, setLocationLoaded] = useState(false);
 
   const isSuggestion = !topic;
 
