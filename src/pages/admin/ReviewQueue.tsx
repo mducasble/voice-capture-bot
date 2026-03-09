@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Clock, FileAudio, Users, Play, Pause, ChevronDown,
   CheckCircle2, XCircle, AlertCircle,
@@ -53,8 +55,6 @@ interface RoomInfo {
   creator_name: string;
 }
 
-type ReviewField = "quality_status" | "validation_status";
-
 interface SessionGroup {
   sessionId: string;
   recordings: Recording[];
@@ -64,6 +64,16 @@ interface SessionGroup {
   topic: string | null;
   creatorName: string | null;
 }
+
+const REJECTION_REASONS = [
+  "Número insuficiente de participantes",
+  "Áudio abaixo do padrão mínimo de qualidade",
+  "Desvio do tema superior a 20%",
+  "Participante infringiu as regras de produção ou envio de material",
+  "Duração menor que o tempo previsto",
+  "Material inconsistente (Upload de arquivos de duração diferentes)",
+  "Um dos participantes já ultrapassou a cota máxima dessa campanha",
+];
 
 // ---- helpers ----
 
@@ -81,8 +91,6 @@ function snrColor(snr: number | null) {
   if (snr >= 15) return "hsl(40 80% 50%)";
   return "hsl(0 70% 50%)";
 }
-
-// ---- small UI pieces ----
 
 function StatusPill({ status }: { status: string | null }) {
   const s = status || "pending";
@@ -102,17 +110,9 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-// ---- Track Row ----
+// ---- Track Row (read-only, no individual approve buttons) ----
 
-function TrackRow({
-  rec,
-  onApprove,
-  isPending,
-}: {
-  rec: Recording;
-  onApprove: (id: string, field: ReviewField, status: "approved" | "rejected") => void;
-  isPending: boolean;
-}) {
+function TrackRow({ rec }: { rec: Recording }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -132,99 +132,66 @@ function TrackRow({
   }, [playing, rec.file_url]);
 
   return (
-    <div className="px-4 py-3 border-b border-border/30 space-y-2">
-      <div className="flex items-center gap-3">
-        {rec.file_url && (
-          <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
-            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </button>
-        )}
-        <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm shrink-0">
-          {rec.recording_type === "mixed" ? "MIX" : "IND"}
+    <div className="px-4 py-2.5 border-b border-border/30 flex items-center gap-3">
+      {rec.file_url && (
+        <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
+          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </button>
+      )}
+      <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm shrink-0">
+        {rec.recording_type === "mixed" ? "MIX" : "IND"}
+      </span>
+      <div className="flex-1 min-w-0">
+        <span className="font-mono text-sm truncate block text-foreground">
+          {rec.discord_username || rec.filename}
         </span>
-        <div className="flex-1 min-w-0">
-          <span className="font-mono text-sm truncate block text-foreground">
-            {rec.discord_username || rec.filename}
-          </span>
-        </div>
-        {rec.snr_db != null && (
-          <span className="font-mono text-[10px] font-bold shrink-0" style={{ color: snrColor(rec.snr_db) }}>
-            SNR {rec.snr_db.toFixed(1)}dB
-          </span>
-        )}
-        {rec.duration_seconds != null && (
-          <span className="font-mono text-xs text-muted-foreground shrink-0">
-            {formatDuration(rec.duration_seconds)}
-          </span>
-        )}
       </div>
-
-      <div className="flex items-center gap-4 pl-7 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">QA</span>
-          <StatusPill status={rec.quality_status} />
-          {rec.quality_status !== "approved" && (
-            <button onClick={() => onApprove(rec.id, "quality_status", "approved")} disabled={isPending} className="p-1 rounded hover:bg-accent/10 transition-colors" title="Aprovar QA">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-            </button>
-          )}
-          {rec.quality_status !== "rejected" && (
-            <button onClick={() => onApprove(rec.id, "quality_status", "rejected")} disabled={isPending} className="p-1 rounded hover:bg-destructive/10 transition-colors" title="Rejeitar QA">
-              <XCircle className="h-3.5 w-3.5 text-red-500" />
-            </button>
-          )}
-        </div>
-
-        <div className="w-px h-4 bg-border" />
-
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">VAL</span>
-          <StatusPill status={rec.validation_status} />
-          {rec.validation_status !== "approved" && (
-            <button onClick={() => onApprove(rec.id, "validation_status", "approved")} disabled={isPending} className="p-1 rounded hover:bg-accent/10 transition-colors" title="Aprovar VAL">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-            </button>
-          )}
-          {rec.validation_status !== "rejected" && (
-            <button onClick={() => onApprove(rec.id, "validation_status", "rejected")} disabled={isPending} className="p-1 rounded hover:bg-destructive/10 transition-colors" title="Rejeitar VAL">
-              <XCircle className="h-3.5 w-3.5 text-red-500" />
-            </button>
-          )}
-        </div>
-
-        {rec.transcription_status && (
-          <>
-            <div className="w-px h-4 bg-border" />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-              Transcrição: {rec.transcription_status}
-            </span>
-          </>
-        )}
-      </div>
+      {rec.snr_db != null && (
+        <span className="font-mono text-[10px] font-bold shrink-0" style={{ color: snrColor(rec.snr_db) }}>
+          SNR {rec.snr_db.toFixed(1)}dB
+        </span>
+      )}
+      {rec.duration_seconds != null && (
+        <span className="font-mono text-xs text-muted-foreground shrink-0">
+          {formatDuration(rec.duration_seconds)}
+        </span>
+      )}
+      {rec.transcription_status && (
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground shrink-0">
+          TR: {rec.transcription_status}
+        </span>
+      )}
     </div>
   );
 }
 
-// ---- Session card ----
+// ---- Session card with session-level approval ----
 
 function SessionCard({
   session,
   profileMap,
-  onApprove,
+  onApproveSession,
+  onRejectSession,
   isPending,
 }: {
   session: SessionGroup;
   profileMap: Map<string, string>;
-  onApprove: (id: string, field: ReviewField, status: "approved" | "rejected") => void;
+  onApproveSession: (recordingIds: string[]) => void;
+  onRejectSession: (recordingIds: string[], reason: string) => void;
   isPending: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+
   const duration = session.mixed?.duration_seconds
     || Math.max(...session.individuals.map(r => r.duration_seconds || 0), 0);
 
-  const pendingCount = session.recordings.filter(
-    r => r.quality_status === "pending" || r.validation_status === "pending"
-  ).length;
+  const recIds = session.recordings.map(r => r.id);
+
+  // Derive overall session status
+  const allApproved = session.recordings.every(r => r.quality_status === "approved" && r.validation_status === "approved");
+  const anyRejected = session.recordings.some(r => r.quality_status === "rejected" || r.validation_status === "rejected");
+  const sessionStatus = allApproved ? "approved" : anyRejected ? "rejected" : "pending";
 
   return (
     <div className="border border-border/50 bg-card/50">
@@ -237,6 +204,7 @@ function SessionCard({
             <span className="font-mono text-xs px-1.5 py-0.5 bg-secondary text-muted-foreground">
               {session.sessionId.slice(0, 8)}
             </span>
+            <StatusPill status={sessionStatus} />
             {session.topic && <span className="text-xs text-muted-foreground">· {session.topic}</span>}
             {session.creatorName && <span className="text-xs text-muted-foreground">· {session.creatorName}</span>}
             <span className="text-[10px] text-muted-foreground">
@@ -256,11 +224,6 @@ function SessionCard({
                 <Clock className="h-3 w-3" /> {formatDuration(duration)}
               </span>
             )}
-            {pendingCount > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] text-amber-500">
-                <AlertCircle className="h-3 w-3" /> {pendingCount} pendente(s)
-              </span>
-            )}
           </div>
         </div>
         <ChevronDown
@@ -268,14 +231,16 @@ function SessionCard({
           style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </button>
+
       {expanded && (
         <div className="border-t border-border/30">
+          {/* Tracks */}
           {session.mixed && (
             <div>
               <div className="px-4 py-1 bg-accent/5">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-accent">🎧 Áudio Combinado</span>
               </div>
-              <TrackRow rec={session.mixed} onApprove={onApprove} isPending={isPending} />
+              <TrackRow rec={session.mixed} />
             </div>
           )}
           {session.individuals.map(r => {
@@ -285,10 +250,65 @@ function SessionCard({
                 <div className="px-4 py-1 bg-secondary/30">
                   <span className="font-mono text-[10px] text-muted-foreground">👤 {userName}</span>
                 </div>
-                <TrackRow rec={r} onApprove={onApprove} isPending={isPending} />
+                <TrackRow rec={r} />
               </div>
             );
           })}
+
+          {/* Session-level approval controls */}
+          {sessionStatus === "pending" && (
+            <div className="p-4 border-t border-border/30 bg-secondary/10 space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-green-500/30 text-green-600 hover:bg-green-500/10 hover:text-green-600"
+                  disabled={isPending}
+                  onClick={() => onApproveSession(recIds)}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Aprovar sessão
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={rejectionReason} onValueChange={setRejectionReason}>
+                  <SelectTrigger className="w-full max-w-md text-xs h-8">
+                    <SelectValue placeholder="Selecione o motivo da rejeição..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REJECTION_REASONS.map(reason => (
+                      <SelectItem key={reason} value={reason} className="text-xs">
+                        {reason}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-600 shrink-0"
+                  disabled={isPending || !rejectionReason}
+                  onClick={() => {
+                    onRejectSession(recIds, rejectionReason);
+                    setRejectionReason("");
+                  }}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Rejeitar sessão
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Show rejection reason if already rejected */}
+          {sessionStatus === "rejected" && (
+            <div className="p-3 border-t border-border/30 bg-red-500/5">
+              <span className="font-mono text-[10px] text-red-500">
+                Rejeitado: {session.recordings[0]?.quality_rejection_reason || session.recordings[0]?.validation_rejection_reason || "—"}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -300,12 +320,14 @@ function SessionCard({
 function CampaignTabContent({
   sessions,
   profileMap,
-  onApprove,
+  onApproveSession,
+  onRejectSession,
   isPending,
 }: {
   sessions: SessionGroup[];
   profileMap: Map<string, string>;
-  onApprove: (id: string, field: ReviewField, status: "approved" | "rejected") => void;
+  onApproveSession: (recordingIds: string[]) => void;
+  onRejectSession: (recordingIds: string[], reason: string) => void;
   isPending: boolean;
 }) {
   if (sessions.length === 0) {
@@ -324,7 +346,8 @@ function CampaignTabContent({
           key={session.sessionId}
           session={session}
           profileMap={profileMap}
-          onApprove={onApprove}
+          onApproveSession={onApproveSession}
+          onRejectSession={onRejectSession}
           isPending={isPending}
         />
       ))}
@@ -425,7 +448,6 @@ export default function ReviewQueue() {
     return m;
   }, [rooms]);
 
-  // Build sessions grouped by campaign
   const { campaignTabs, noCampaignSessions } = useMemo(() => {
     if (!recordings) return { campaignTabs: [], noCampaignSessions: [] };
 
@@ -469,9 +491,9 @@ export default function ReviewQueue() {
     for (const [cid, sessionMap] of byCampaign) {
       const campaign = campaignMap.get(cid) || { id: cid, name: cid.slice(0, 8), description: null, campaign_type: null };
       const sessions = buildSessions(sessionMap);
-      const pendingCount = sessions.reduce(
-        (acc, s) => acc + s.recordings.filter(r => r.quality_status === "pending" || r.validation_status === "pending").length, 0
-      );
+      const pendingCount = sessions.filter(s =>
+        s.recordings.some(r => r.quality_status === "pending" || r.validation_status === "pending")
+      ).length;
       tabs.push({ campaign, sessions, pendingCount });
     }
     tabs.sort((a, b) => b.pendingCount - a.pendingCount);
@@ -482,35 +504,71 @@ export default function ReviewQueue() {
     };
   }, [recordings, campaignMap, roomMap]);
 
-  // Mutation
-  const approveMutation = useMutation({
-    mutationFn: async ({ id, field, status }: { id: string; field: ReviewField; status: string }) => {
-      const reviewedField = field === "quality_status" ? "quality_reviewed_at" : "validation_reviewed_at";
-      const reviewerField = field === "quality_status" ? "quality_reviewed_by" : "validation_reviewed_by";
+  // Session-level approve mutation
+  const approveSessionMutation = useMutation({
+    mutationFn: async ({ recordingIds }: { recordingIds: string[] }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase
-        .from("voice_recordings")
-        .update({
-          [field]: status,
-          [reviewedField]: new Date().toISOString(),
-          [reviewerField]: user?.id || null,
-        } as any)
-        .eq("id", id);
-      if (error) throw error;
+      const now = new Date().toISOString();
+      for (const id of recordingIds) {
+        const { error } = await supabase
+          .from("voice_recordings")
+          .update({
+            quality_status: "approved",
+            validation_status: "approved",
+            quality_reviewed_at: now,
+            validation_reviewed_at: now,
+            quality_reviewed_by: user?.id || null,
+            validation_reviewed_by: user?.id || null,
+          } as any)
+          .eq("id", id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin_review_queue"] });
-      toast.success("Status atualizado");
+      toast.success("Sessão aprovada");
     },
-    onError: (err: any) => {
-      toast.error(err.message || "Erro ao atualizar");
-    },
+    onError: (err: any) => toast.error(err.message || "Erro ao aprovar"),
   });
 
-  const handleApprove = (id: string, field: ReviewField, status: "approved" | "rejected") => {
-    approveMutation.mutate({ id, field, status });
+  // Session-level reject mutation
+  const rejectSessionMutation = useMutation({
+    mutationFn: async ({ recordingIds, reason }: { recordingIds: string[]; reason: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const now = new Date().toISOString();
+      for (const id of recordingIds) {
+        const { error } = await supabase
+          .from("voice_recordings")
+          .update({
+            quality_status: "rejected",
+            validation_status: "rejected",
+            quality_rejection_reason: reason,
+            validation_rejection_reason: reason,
+            quality_reviewed_at: now,
+            validation_reviewed_at: now,
+            quality_reviewed_by: user?.id || null,
+            validation_reviewed_by: user?.id || null,
+          } as any)
+          .eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin_review_queue"] });
+      toast.success("Sessão rejeitada");
+    },
+    onError: (err: any) => toast.error(err.message || "Erro ao rejeitar"),
+  });
+
+  const handleApproveSession = (recordingIds: string[]) => {
+    approveSessionMutation.mutate({ recordingIds });
   };
 
+  const handleRejectSession = (recordingIds: string[], reason: string) => {
+    rejectSessionMutation.mutate({ recordingIds, reason });
+  };
+
+  const isMutating = approveSessionMutation.isPending || rejectSessionMutation.isPending;
   const hasNoCampaign = noCampaignSessions.length > 0;
   const allTabs = campaignTabs;
   const defaultTab = allTabs.length > 0 ? allTabs[0].campaign.id : (hasNoCampaign ? "__none__" : "");
@@ -576,8 +634,9 @@ export default function ReviewQueue() {
               <CampaignTabContent
                 sessions={sessions}
                 profileMap={profileMap}
-                onApprove={handleApprove}
-                isPending={approveMutation.isPending}
+                onApproveSession={handleApproveSession}
+                onRejectSession={handleRejectSession}
+                isPending={isMutating}
               />
             </TabsContent>
           ))}
@@ -591,8 +650,9 @@ export default function ReviewQueue() {
               <CampaignTabContent
                 sessions={noCampaignSessions}
                 profileMap={profileMap}
-                onApprove={handleApprove}
-                isPending={approveMutation.isPending}
+                onApproveSession={handleApproveSession}
+                onRejectSession={handleRejectSession}
+                isPending={isMutating}
               />
             </TabsContent>
           )}
