@@ -935,7 +935,7 @@ const Room = () => {
             <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
-                  Participantes ({participants.length})
+                  {t("room.participantsTitle")} ({participants.length})
                 </span>
               </div>
               <div className="p-3 space-y-1.5">
@@ -950,12 +950,12 @@ const Room = () => {
                       <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{p.name}</span>
                       {p.is_creator && (
                         <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                          Criador
+                          {t("room.creator")}
                         </span>
                       )}
                       {p.id === currentParticipant.id && (
                         <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
-                          Você
+                          {t("room.you")}
                         </span>
                       )}
                     </div>
@@ -972,7 +972,7 @@ const Room = () => {
             {/* My Audio */}
             <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Seu Áudio</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("room.yourAudio")}</span>
                 <button
                   onClick={toggleMute}
                   className="p-1.5 transition-colors"
