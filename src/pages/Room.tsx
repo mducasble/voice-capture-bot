@@ -852,7 +852,7 @@ const Room = () => {
           </div>
         </div>
 
-        <div className="flex gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="flex gap-6 mt-10" style={{ maxWidth: "1200px", margin: "0 auto" }}>
           {/* LEFT COLUMN - Controls (30%) */}
           <div className="space-y-4" style={{ width: "33%" }}>
             {/* Audio Test Flow */}

@@ -246,8 +246,9 @@ export const AudioTestFlow = ({
         } catch { /* quota exceeded */ }
       }
       toast.success(t("audioTest.configUpdated"));
-      setPhase("idle");
       setShowProfileDetails(false);
+      setShowResultDetails(false);
+      setPhase("idle");
     }
   };
 
