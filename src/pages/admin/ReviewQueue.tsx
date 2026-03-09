@@ -906,7 +906,11 @@ function CampaignTabContent({
         </p>
       </div>
 
-      {isLoading && (
+      {!isLoading && recordings && recordings.length > 0 && (
+        <SubmissionSummary recordings={recordings} campaignMap={campaignMap} />
+      )}
+
+
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
