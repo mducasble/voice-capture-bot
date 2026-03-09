@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Clock, FileAudio, Users, Play, Pause, ChevronDown,
-  CheckCircle2, XCircle, AlertCircle,
+  CheckCircle2, XCircle, User,
 } from "lucide-react";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -79,6 +79,13 @@ interface SessionGroup {
   creatorName: string | null;
 }
 
+interface HostGroup {
+  hostName: string;
+  sessions: SessionGroup[];
+  totalRecordings: number;
+  pendingSessions: number;
+}
+
 const REJECTION_REASONS = [
   "Número insuficiente de participantes",
   "Áudio abaixo do padrão mínimo de qualidade",
@@ -137,7 +144,13 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-// ---- Track Row (read-only, no individual approve buttons) ----
+function getSessionStatus(recs: Recording[]) {
+  const allApproved = recs.every(r => r.quality_status === "approved" && r.validation_status === "approved");
+  const anyRejected = recs.some(r => r.quality_status === "rejected" || r.validation_status === "rejected");
+  return allApproved ? "approved" : anyRejected ? "rejected" : "pending";
+}
+
+// ---- Track Row ----
 
 function TrackRow({ rec }: { rec: Recording }) {
   const [playing, setPlaying] = useState(false);
@@ -161,8 +174,7 @@ function TrackRow({ rec }: { rec: Recording }) {
   const m = rec.metadata;
 
   return (
-    <div className="px-4 py-3 border-b border-border/30 space-y-2">
-      {/* Row 1: play + name + duration */}
+    <div className="px-4 py-3 border-b border-border/20 space-y-2 last:border-b-0">
       <div className="flex items-center gap-3">
         {rec.file_url && (
           <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
@@ -184,9 +196,7 @@ function TrackRow({ rec }: { rec: Recording }) {
         )}
       </div>
 
-      {/* Row 2: Technical specs */}
       <div className="flex items-center gap-3 pl-7 flex-wrap">
-        {/* Format specs */}
         <div className="flex items-center gap-1.5">
           {rec.format && (
             <span className="font-mono text-[9px] px-1.5 py-0.5 bg-secondary/80 text-muted-foreground rounded-sm uppercase">
@@ -207,15 +217,12 @@ function TrackRow({ rec }: { rec: Recording }) {
             </span>
           )}
           {rec.file_size_bytes != null && (
-            <span className="font-mono text-[9px] text-muted-foreground">
-              {formatBytes(rec.file_size_bytes)}
-            </span>
+            <span className="font-mono text-[9px] text-muted-foreground">{formatBytes(rec.file_size_bytes)}</span>
           )}
         </div>
 
         <div className="w-px h-3 bg-border" />
 
-        {/* Quality metrics */}
         <div className="flex items-center gap-2">
           {rec.snr_db != null && (
             <span className="font-mono text-[10px] font-bold" style={{ color: snrColor(rec.snr_db) }}>
@@ -244,14 +251,10 @@ function TrackRow({ rec }: { rec: Recording }) {
                 </span>
               )}
               {m?.sigmos_sig != null && (
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  SIG {m.sigmos_sig.toFixed(2)}
-                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">SIG {m.sigmos_sig.toFixed(2)}</span>
               )}
               {m?.sigmos_bak != null && (
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  BAK {m.sigmos_bak.toFixed(2)}
-                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">BAK {m.sigmos_bak.toFixed(2)}</span>
               )}
               {m?.wvmos != null && (
                 <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.wvmos, 3.0, 2.0) }}>
@@ -284,9 +287,9 @@ function TrackRow({ rec }: { rec: Recording }) {
   );
 }
 
-// ---- Session card with session-level approval ----
+// ---- Session block (inside a host) ----
 
-function SessionCard({
+function SessionBlock({
   session,
   profileMap,
   onApproveSession,
@@ -299,135 +302,172 @@ function SessionCard({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   isPending: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const recIds = session.recordings.map(r => r.id);
+  const sessionStatus = getSessionStatus(session.recordings);
 
   const duration = session.mixed?.duration_seconds
     || Math.max(...session.individuals.map(r => r.duration_seconds || 0), 0);
 
-  const recIds = session.recordings.map(r => r.id);
-
-  // Derive overall session status
-  const allApproved = session.recordings.every(r => r.quality_status === "approved" && r.validation_status === "approved");
-  const anyRejected = session.recordings.some(r => r.quality_status === "rejected" || r.validation_status === "rejected");
-  const sessionStatus = allApproved ? "approved" : anyRejected ? "rejected" : "pending";
-
   return (
-    <div className="border border-border/50 bg-card/50">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full text-left p-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors"
-      >
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-xs px-1.5 py-0.5 bg-secondary text-muted-foreground">
-              {session.sessionId.slice(0, 8)}
+    <div className="border border-border/40 rounded-md bg-card/30 overflow-hidden">
+      {/* Session header */}
+      <div className="px-4 py-2.5 bg-secondary/20 flex items-center gap-3 flex-wrap">
+        <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm">
+          {session.sessionId.slice(0, 8)}
+        </span>
+        <StatusPill status={sessionStatus} />
+        {session.topic && <span className="text-xs text-muted-foreground">· {session.topic}</span>}
+        <span className="text-[10px] text-muted-foreground">
+          {new Date(session.createdAt).toLocaleDateString("pt-BR")}{" "}
+          {new Date(session.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        <div className="flex items-center gap-3 ml-auto">
+          <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+            <FileAudio className="h-3 w-3" /> {session.recordings.length}
+          </span>
+          <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+            <Users className="h-3 w-3" /> {session.individuals.length}
+          </span>
+          {duration > 0 && (
+            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+              <Clock className="h-3 w-3" /> {formatDuration(duration)}
             </span>
-            <StatusPill status={sessionStatus} />
-            {session.topic && <span className="text-xs text-muted-foreground">· {session.topic}</span>}
-            {session.creatorName && <span className="text-xs text-muted-foreground">· {session.creatorName}</span>}
-            <span className="text-[10px] text-muted-foreground">
-              {new Date(session.createdAt).toLocaleDateString("pt-BR")}{" "}
-              {new Date(session.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Tracks */}
+      <div>
+        {session.mixed && (
+          <div>
+            <div className="px-4 py-1 bg-accent/5">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-accent">🎧 Áudio Combinado</span>
+            </div>
+            <TrackRow rec={session.mixed} />
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-              <FileAudio className="h-3 w-3" /> {session.recordings.length}
-            </span>
-            <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-              <Users className="h-3 w-3" /> {session.individuals.length}
-            </span>
-            {duration > 0 && (
-              <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" /> {formatDuration(duration)}
-              </span>
-            )}
+        )}
+        {session.individuals.map(r => {
+          const userName = r.user_id ? (profileMap.get(r.user_id) || r.discord_username || "Participante") : (r.discord_username || "Participante");
+          return (
+            <div key={r.id}>
+              <div className="px-4 py-1 bg-secondary/20">
+                <span className="font-mono text-[10px] text-muted-foreground">👤 {userName}</span>
+              </div>
+              <TrackRow rec={r} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Approval controls */}
+      {sessionStatus === "pending" && (
+        <div className="p-4 border-t border-border/30 bg-secondary/10 space-y-3">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-green-500/30 text-green-600 hover:bg-green-500/10 hover:text-green-600"
+              disabled={isPending}
+              onClick={() => onApproveSession(recIds)}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Aprovar sessão
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={rejectionReason} onValueChange={setRejectionReason}>
+              <SelectTrigger className="w-full max-w-md text-xs h-8">
+                <SelectValue placeholder="Selecione o motivo da rejeição..." />
+              </SelectTrigger>
+              <SelectContent>
+                {REJECTION_REASONS.map(reason => (
+                  <SelectItem key={reason} value={reason} className="text-xs">{reason}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-600 shrink-0"
+              disabled={isPending || !rejectionReason}
+              onClick={() => { onRejectSession(recIds, rejectionReason); setRejectionReason(""); }}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Rejeitar sessão
+            </Button>
           </div>
         </div>
+      )}
+
+      {sessionStatus === "rejected" && (
+        <div className="p-3 border-t border-border/30 bg-destructive/5">
+          <span className="font-mono text-[10px] text-destructive">
+            Rejeitado: {session.recordings[0]?.quality_rejection_reason || session.recordings[0]?.validation_rejection_reason || "—"}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Host block (groups sessions by creator) ----
+
+function HostBlock({
+  host,
+  profileMap,
+  onApproveSession,
+  onRejectSession,
+  isPending,
+}: {
+  host: HostGroup;
+  profileMap: Map<string, string>;
+  onApproveSession: (recordingIds: string[]) => void;
+  onRejectSession: (recordingIds: string[], reason: string) => void;
+  isPending: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-secondary/20 transition-colors"
+      >
+        <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
+          <User className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-foreground">{host.hostName}</span>
+            {host.pendingSessions > 0 && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-500">
+                {host.pendingSessions} pendente{host.pendingSessions > 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {host.sessions.length} {host.sessions.length === 1 ? "sessão" : "sessões"} · {host.totalRecordings} arquivos
+          </span>
+        </div>
         <ChevronDown
-          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform"
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200"
           style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </button>
 
       {expanded && (
-        <div className="border-t border-border/30">
-          {/* Tracks */}
-          {session.mixed && (
-            <div>
-              <div className="px-4 py-1 bg-accent/5">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-accent">🎧 Áudio Combinado</span>
-              </div>
-              <TrackRow rec={session.mixed} />
-            </div>
-          )}
-          {session.individuals.map(r => {
-            const userName = r.user_id ? (profileMap.get(r.user_id) || r.discord_username || "Participante") : (r.discord_username || "Participante");
-            return (
-              <div key={r.id}>
-                <div className="px-4 py-1 bg-secondary/30">
-                  <span className="font-mono text-[10px] text-muted-foreground">👤 {userName}</span>
-                </div>
-                <TrackRow rec={r} />
-              </div>
-            );
-          })}
-
-          {/* Session-level approval controls */}
-          {sessionStatus === "pending" && (
-            <div className="p-4 border-t border-border/30 bg-secondary/10 space-y-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-green-500/30 text-green-600 hover:bg-green-500/10 hover:text-green-600"
-                  disabled={isPending}
-                  onClick={() => onApproveSession(recIds)}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Aprovar sessão
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select value={rejectionReason} onValueChange={setRejectionReason}>
-                  <SelectTrigger className="w-full max-w-md text-xs h-8">
-                    <SelectValue placeholder="Selecione o motivo da rejeição..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REJECTION_REASONS.map(reason => (
-                      <SelectItem key={reason} value={reason} className="text-xs">
-                        {reason}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-600 shrink-0"
-                  disabled={isPending || !rejectionReason}
-                  onClick={() => {
-                    onRejectSession(recIds, rejectionReason);
-                    setRejectionReason("");
-                  }}
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  Rejeitar sessão
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Show rejection reason if already rejected */}
-          {sessionStatus === "rejected" && (
-            <div className="p-3 border-t border-border/30 bg-red-500/5">
-              <span className="font-mono text-[10px] text-red-500">
-                Rejeitado: {session.recordings[0]?.quality_rejection_reason || session.recordings[0]?.validation_rejection_reason || "—"}
-              </span>
-            </div>
-          )}
+        <div className="border-t border-border/40 p-4 space-y-4">
+          {host.sessions.map(session => (
+            <SessionBlock
+              key={session.sessionId}
+              session={session}
+              profileMap={profileMap}
+              onApproveSession={onApproveSession}
+              onRejectSession={onRejectSession}
+              isPending={isPending}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -437,21 +477,21 @@ function SessionCard({
 // ---- Campaign tab content ----
 
 function CampaignTabContent({
-  sessions,
+  hosts,
   profileMap,
   onApproveSession,
   onRejectSession,
   isPending,
 }: {
-  sessions: SessionGroup[];
+  hosts: HostGroup[];
   profileMap: Map<string, string>;
   onApproveSession: (recordingIds: string[]) => void;
   onRejectSession: (recordingIds: string[], reason: string) => void;
   isPending: boolean;
 }) {
-  if (sessions.length === 0) {
+  if (hosts.length === 0) {
     return (
-      <div className="text-center py-12 border border-border bg-card">
+      <div className="text-center py-12 border border-border bg-card rounded-lg">
         <FileAudio className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Nenhuma sessão nesta campanha.</p>
       </div>
@@ -459,11 +499,11 @@ function CampaignTabContent({
   }
 
   return (
-    <div className="space-y-2">
-      {sessions.map(session => (
-        <SessionCard
-          key={session.sessionId}
-          session={session}
+    <div className="space-y-3">
+      {hosts.map(host => (
+        <HostBlock
+          key={host.hostName}
+          host={host}
           profileMap={profileMap}
           onApproveSession={onApproveSession}
           onRejectSession={onRejectSession}
@@ -567,8 +607,9 @@ export default function ReviewQueue() {
     return m;
   }, [rooms]);
 
-  const { campaignTabs, noCampaignSessions } = useMemo(() => {
-    if (!recordings) return { campaignTabs: [], noCampaignSessions: [] };
+  // Build: campaign → hosts → sessions → recordings
+  const { campaignTabs, noCampaignHosts } = useMemo(() => {
+    if (!recordings) return { campaignTabs: [], noCampaignHosts: [] };
 
     const byCampaign = new Map<string, Map<string, Recording[]>>();
     const noCampaignMap = new Map<string, Recording[]>();
@@ -606,24 +647,44 @@ export default function ReviewQueue() {
       return sessions;
     };
 
-    const tabs: { campaign: CampaignInfo; sessions: SessionGroup[]; pendingCount: number }[] = [];
+    const groupByHost = (sessions: SessionGroup[]): HostGroup[] => {
+      const byHost = new Map<string, SessionGroup[]>();
+      for (const s of sessions) {
+        const hostName = s.creatorName || "Desconhecido";
+        if (!byHost.has(hostName)) byHost.set(hostName, []);
+        byHost.get(hostName)!.push(s);
+      }
+      const hosts: HostGroup[] = [];
+      for (const [hostName, hostSessions] of byHost) {
+        const pendingSessions = hostSessions.filter(s => getSessionStatus(s.recordings) === "pending").length;
+        hosts.push({
+          hostName,
+          sessions: hostSessions,
+          totalRecordings: hostSessions.reduce((a, s) => a + s.recordings.length, 0),
+          pendingSessions,
+        });
+      }
+      hosts.sort((a, b) => b.pendingSessions - a.pendingSessions);
+      return hosts;
+    };
+
+    const tabs: { campaign: CampaignInfo; hosts: HostGroup[]; pendingCount: number }[] = [];
     for (const [cid, sessionMap] of byCampaign) {
       const campaign = campaignMap.get(cid) || { id: cid, name: cid.slice(0, 8), description: null, campaign_type: null };
       const sessions = buildSessions(sessionMap);
-      const pendingCount = sessions.filter(s =>
-        s.recordings.some(r => r.quality_status === "pending" || r.validation_status === "pending")
-      ).length;
-      tabs.push({ campaign, sessions, pendingCount });
+      const hosts = groupByHost(sessions);
+      const pendingCount = sessions.filter(s => getSessionStatus(s.recordings) === "pending").length;
+      tabs.push({ campaign, hosts, pendingCount });
     }
     tabs.sort((a, b) => b.pendingCount - a.pendingCount);
 
     return {
       campaignTabs: tabs,
-      noCampaignSessions: buildSessions(noCampaignMap),
+      noCampaignHosts: groupByHost(buildSessions(noCampaignMap)),
     };
   }, [recordings, campaignMap, roomMap]);
 
-  // Session-level approve mutation
+  // Mutations
   const approveSessionMutation = useMutation({
     mutationFn: async ({ recordingIds }: { recordingIds: string[] }) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -650,7 +711,6 @@ export default function ReviewQueue() {
     onError: (err: any) => toast.error(err.message || "Erro ao aprovar"),
   });
 
-  // Session-level reject mutation
   const rejectSessionMutation = useMutation({
     mutationFn: async ({ recordingIds, reason }: { recordingIds: string[]; reason: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -679,16 +739,11 @@ export default function ReviewQueue() {
     onError: (err: any) => toast.error(err.message || "Erro ao rejeitar"),
   });
 
-  const handleApproveSession = (recordingIds: string[]) => {
-    approveSessionMutation.mutate({ recordingIds });
-  };
-
-  const handleRejectSession = (recordingIds: string[], reason: string) => {
-    rejectSessionMutation.mutate({ recordingIds, reason });
-  };
-
+  const handleApproveSession = (recordingIds: string[]) => approveSessionMutation.mutate({ recordingIds });
+  const handleRejectSession = (recordingIds: string[], reason: string) => rejectSessionMutation.mutate({ recordingIds, reason });
   const isMutating = approveSessionMutation.isPending || rejectSessionMutation.isPending;
-  const hasNoCampaign = noCampaignSessions.length > 0;
+
+  const hasNoCampaign = noCampaignHosts.length > 0;
   const allTabs = campaignTabs;
   const defaultTab = allTabs.length > 0 ? allTabs[0].campaign.id : (hasNoCampaign ? "__none__" : "");
 
@@ -709,7 +764,7 @@ export default function ReviewQueue() {
       )}
 
       {!isLoading && allTabs.length === 0 && !hasNoCampaign && (
-        <div className="text-center py-16 border border-border bg-card">
+        <div className="text-center py-16 border border-border bg-card rounded-lg">
           <FileAudio className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold text-foreground">Nenhuma sessão encontrada</h3>
           <p className="text-sm text-muted-foreground mt-1">As sessões enviadas pelo portal aparecerão aqui.</p>
@@ -718,40 +773,41 @@ export default function ReviewQueue() {
 
       {!isLoading && (allTabs.length > 0 || hasNoCampaign) && (
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="w-full flex-wrap h-auto gap-1 bg-secondary/50 p-1">
+          <TabsList className="w-full flex-wrap h-auto gap-1.5 bg-secondary/50 p-1.5">
             {allTabs.map(({ campaign, pendingCount }) => (
-              <TabsTrigger key={campaign.id} value={campaign.id} className="text-xs gap-1.5 data-[state=active]:bg-background">
-                <span className="truncate max-w-[120px]">{campaign.name}</span>
+              <TabsTrigger
+                key={campaign.id}
+                value={campaign.id}
+                className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <span className="truncate max-w-[160px]">{campaign.name}</span>
                 {pendingCount > 0 && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-500/40 text-amber-500 ml-1">
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/40 text-amber-500">
                     {pendingCount}
                   </Badge>
                 )}
               </TabsTrigger>
             ))}
             {hasNoCampaign && (
-              <TabsTrigger value="__none__" className="text-xs gap-1.5 data-[state=active]:bg-background text-muted-foreground">
+              <TabsTrigger
+                value="__none__"
+                className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-muted-foreground"
+              >
                 Sem campanha
-                <Badge variant="outline" className="text-[9px] px-1 py-0 border-border ml-1">
-                  {noCampaignSessions.reduce((a, s) => a + s.recordings.length, 0)}
-                </Badge>
               </TabsTrigger>
             )}
           </TabsList>
 
-          {allTabs.map(({ campaign, sessions }) => (
-            <TabsContent key={campaign.id} value={campaign.id} className="mt-4">
-              <div className="mb-3">
+          {allTabs.map(({ campaign, hosts }) => (
+            <TabsContent key={campaign.id} value={campaign.id} className="mt-5">
+              <div className="mb-4">
                 <h2 className="text-base font-bold text-foreground">{campaign.name}</h2>
                 {campaign.description && (
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{campaign.description}</p>
                 )}
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {sessions.length} {sessions.length === 1 ? "sessão" : "sessões"} · {sessions.reduce((a, s) => a + s.recordings.length, 0)} arquivos
-                </p>
               </div>
               <CampaignTabContent
-                sessions={sessions}
+                hosts={hosts}
                 profileMap={profileMap}
                 onApproveSession={handleApproveSession}
                 onRejectSession={handleRejectSession}
@@ -761,13 +817,13 @@ export default function ReviewQueue() {
           ))}
 
           {hasNoCampaign && (
-            <TabsContent value="__none__" className="mt-4">
-              <div className="mb-3">
+            <TabsContent value="__none__" className="mt-5">
+              <div className="mb-4">
                 <h2 className="text-base font-bold text-foreground">Sem campanha</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Gravações legadas sem vínculo de campanha.</p>
               </div>
               <CampaignTabContent
-                sessions={noCampaignSessions}
+                hosts={noCampaignHosts}
                 profileMap={profileMap}
                 onApproveSession={handleApproveSession}
                 onRejectSession={handleRejectSession}
