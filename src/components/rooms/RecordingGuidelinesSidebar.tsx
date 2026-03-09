@@ -59,10 +59,10 @@ export function RecordingGuidelinesSidebar() {
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    // Fechar automaticamente após 20 segundos
+    // Fechar automaticamente após 5 segundos
     const timer = setTimeout(() => {
       setOpen(false);
-    }, 20000);
+    }, 5000);
     
     return () => clearTimeout(timer);
   }, []);
