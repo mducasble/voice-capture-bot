@@ -11,6 +11,7 @@ import LanguageSelector from "./LanguageSelector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { FaqSidebar } from "./FaqSidebar";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
@@ -67,6 +68,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isComplete: profileComplete } = useProfileCompletion();
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md" style={{ borderBottom: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
@@ -104,7 +106,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
 
         <div className="hidden md:flex items-center gap-3">
           <LanguageSelector variant="compact" />
-          <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} />
+          <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} showGlow={!profileComplete} />
           <button onClick={signOut} className="p-2 transition-colors" style={{ color: "var(--portal-text-muted)" }} title={t("nav.logout")}>
             <LogOut className="h-4 w-4" />
           </button>
@@ -146,8 +148,11 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
                   <Link
                     to="/profile"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 font-mono text-xs uppercase tracking-widest"
-                    style={{ color: location.pathname === "/profile" ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
+                    className={`flex items-center gap-3 px-4 py-3 font-mono text-xs uppercase tracking-widest ${!profileComplete ? "profile-glow" : ""}`}
+                    style={{
+                      color: location.pathname === "/profile" ? "var(--portal-accent)" : "var(--portal-text-muted)",
+                      borderRadius: !profileComplete ? "4px" : undefined,
+                    }}
                   >
                     <User className="h-4 w-4" />
                     {t("nav.profile") || "Profile"}
@@ -174,7 +179,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
   );
 }
 
-function UserProfileLink({ userId, userName }: { userId: string; userName: string }) {
+function UserProfileLink({ userId, userName, showGlow }: { userId: string; userName: string; showGlow?: boolean }) {
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
     queryFn: async () => {
@@ -194,9 +199,11 @@ function UserProfileLink({ userId, userName }: { userId: string; userName: strin
   return (
     <Link
       to="/profile"
-      className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest font-bold transition-all"
+      className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest font-bold transition-all ${showGlow && !isOnProfile ? "profile-glow" : ""}`}
       style={{
         color: isOnProfile ? "var(--portal-accent)" : "var(--portal-text-muted)",
+        borderRadius: "4px",
+        padding: showGlow ? "4px 8px" : undefined,
       }}
       onMouseEnter={(e) => {
         if (!isOnProfile) e.currentTarget.style.color = "var(--portal-accent)";

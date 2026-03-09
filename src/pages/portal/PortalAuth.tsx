@@ -124,6 +124,15 @@ export default function PortalAuth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+  const [signupCountry, setSignupCountry] = useState(() => {
+    const detected = detectBrowserCountry();
+    if (!detected) return "";
+    try {
+      const dn = new Intl.DisplayNames([i18n.language || "en"], { type: "region" });
+      return dn.of(detected) || detected;
+    } catch { return detected; }
+  });
+  const [signupCity, setSignupCity] = useState("");
 
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorPassword, setVendorPassword] = useState("");
@@ -154,7 +163,7 @@ export default function PortalAuth() {
       email: signupEmail,
       password: signupPassword,
       options: {
-        data: { full_name: signupName },
+        data: { full_name: signupName, country: signupCountry, city: signupCity },
         emailRedirectTo: window.location.origin + (sessionStorage.getItem("redirect_after_login") || "/"),
       },
     });
@@ -264,6 +273,16 @@ export default function PortalAuth() {
             <div className="space-y-2">
               <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.name")}</Label>
               <Input id="signup-name" required value={signupName} onChange={e => setSignupName(e.target.value)} placeholder={t("auth.name")} className="portal-brutalist-input" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="signup-country" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.country")}</Label>
+                <Input id="signup-country" required value={signupCountry} onChange={e => setSignupCountry(e.target.value)} placeholder={t("auth.country")} className="portal-brutalist-input" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-city" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.city")}</Label>
+                <Input id="signup-city" required value={signupCity} onChange={e => setSignupCity(e.target.value)} placeholder={t("auth.city")} className="portal-brutalist-input" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
