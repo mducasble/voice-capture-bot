@@ -68,6 +68,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isComplete: profileComplete } = useProfileCompletion();
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md" style={{ borderBottom: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
