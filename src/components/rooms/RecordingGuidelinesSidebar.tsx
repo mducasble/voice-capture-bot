@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, X, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -56,24 +56,36 @@ const GUIDELINES = [
 ];
 
 export function RecordingGuidelinesSidebar() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    // Fechar automaticamente após 20 segundos
+    const timer = setTimeout(() => {
+      setOpen(false);
+    }, 20000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <>
       {/* Toggle button - always visible */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-1.5 py-3 px-2 font-mono text-[10px] uppercase tracking-widest transition-all"
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 py-6 px-3 font-mono text-[18px] font-black uppercase tracking-widest transition-all ${
+          !open ? "animate-pulse" : ""
+        }`}
         style={{
           background: "var(--portal-accent)",
           color: "var(--portal-accent-text)",
           writingMode: "vertical-rl",
           textOrientation: "mixed",
-          borderRadius: "4px 0 0 4px",
+          borderRadius: "8px 0 0 8px",
           display: open ? "none" : "flex",
+          boxShadow: !open ? "0 0 20px var(--portal-accent)" : "none",
         }}
       >
-        <BookOpen className="h-3.5 w-3.5 rotate-90" />
+        <BookOpen className="h-6 w-6 rotate-90" />
         Instruções
       </button>
 
