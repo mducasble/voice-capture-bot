@@ -207,6 +207,9 @@
     "conversationTopicLabel": "Conversation Topic",
     "talkingPointsTitle": "Script / Talking Points",
     "talkingPointsEmpty": "No script defined for this room.",
+    "talkingPointsGenerating": "Generating talking points with AI...",
+    "talkingPointsRegenerate": "Generate new points",
+    "talkingPointsRetry": "TRY AGAIN",
     "startRecording": "START RECORDING",
     "stopRecording": "STOP RECORDING"
   },
