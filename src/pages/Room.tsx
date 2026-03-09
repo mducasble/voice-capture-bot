@@ -1065,15 +1065,8 @@ const Room = () => {
               </div>
             )}
 
-            {/* Script / Talking Points placeholder */}
-            <div className="p-4 flex-1" style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-card-bg)", minHeight: "200px" }}>
-              <span className="font-mono text-[10px] uppercase tracking-widest block mb-3" style={{ color: "var(--portal-text-muted)" }}>
-                {t("room.talkingPointsTitle")}
-              </span>
-              <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                {t("room.talkingPointsEmpty")}
-              </p>
-            </div>
+            {/* Script / Talking Points — AI generated */}
+            <TalkingPointsBlock topic={room.topic} />
           </div>
         </div>
       </div>
