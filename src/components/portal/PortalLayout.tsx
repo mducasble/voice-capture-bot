@@ -17,8 +17,9 @@ export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const { t } = useTranslation();
+  const { isComplete: profileComplete, isLoading: profileLoading } = useProfileCompletion();
 
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
       <div className="portal-auth-page min-h-screen flex items-center justify-center">
         <div className="absolute inset-0 portal-grid-bg" />
@@ -33,6 +34,11 @@ export default function PortalLayout() { // layout-root
       sessionStorage.setItem("redirect_after_login", intended);
     }
     return <Navigate to="/auth" replace />;
+  }
+
+  // Force profile completion — allow only /profile route
+  if (!profileComplete && location.pathname !== "/profile") {
+    return <Navigate to="/profile" replace />;
   }
 
   const navItems = [

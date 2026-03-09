@@ -2,10 +2,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
-import { Camera, Save, Loader2, X } from "lucide-react";
+import { Camera, Save, Loader2, X, AlertTriangle } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 
 const OPPORTUNITY_OPTIONS = [
   { value: "audio_capture_solo", label: "Áudio (Solo)" },
@@ -40,6 +41,7 @@ export default function PortalProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const { t } = useTranslation();
+  const { isComplete: profileComplete } = useProfileCompletion();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
@@ -105,6 +107,7 @@ export default function PortalProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-completion"] });
       toast.success(t("profile.savedSuccess"));
     },
     onError: () => {
@@ -148,6 +151,12 @@ export default function PortalProfile() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {!profileComplete && (
+        <div className="flex items-center gap-3 p-4 font-mono text-sm" style={{ border: "1px solid var(--portal-accent)", background: "color-mix(in srgb, var(--portal-accent) 10%, transparent)", color: "var(--portal-accent)" }}>
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <span>{t("profile.completeRequired")}</span>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
         <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>

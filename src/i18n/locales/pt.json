@@ -163,7 +163,8 @@
     "saveProfile": "SALVAR PERFIL",
     "savedSuccess": "Perfil salvo com sucesso!",
     "saveError": "Erro ao salvar perfil.",
-    "uploadError": "Erro ao enviar foto."
+    "uploadError": "Erro ao enviar foto.",
+    "completeRequired": "Complete seu perfil para acessar as oportunidades e campanhas."
   },
   "admin": {
     "campaigns": "Campanhas",
