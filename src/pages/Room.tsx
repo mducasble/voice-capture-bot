@@ -87,6 +87,26 @@ const Room = () => {
   const [isMixedUploading, setIsMixedUploading] = useState(false);
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
 
+  // Fetch campaign admin rules for min participants check
+  const { data: campaignAdminRules } = useQuery({
+    queryKey: ["campaign-admin-rules", campaignId],
+    queryFn: async () => {
+      if (!campaignId) return null;
+      const { data, error } = await supabase
+        .from("campaign_administrative_rules")
+        .select("min_participants_per_session")
+        .eq("campaign_id", campaignId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId,
+  });
+
+  const minParticipants = campaignAdminRules?.min_participants_per_session ?? null;
+  const connectedCount = participants.filter(p => p.is_connected).length;
+  const canStartRecording = minParticipants == null || connectedCount >= minParticipants;
+
   // Mixed recorder for creator
   const mixedRecorder = useMixedRecorder();
 
