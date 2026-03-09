@@ -31,8 +31,8 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
   const queryClient = useQueryClient();
 
   const isValidAudioFile = (file: File) => {
-    const validTypes = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/m4a", "audio/ogg", "audio/x-wav"];
-    return validTypes.includes(file.type) || file.name.match(/\.(wav|mp3|m4a|ogg)$/i);
+    const validTypes = ["audio/wav", "audio/x-wav"];
+    return validTypes.includes(file.type) || file.name.match(/\.wav$/i);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
