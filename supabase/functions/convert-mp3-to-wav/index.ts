@@ -44,10 +44,10 @@ serve(async (req) => {
 
     console.log('Decoding MP3...');
     
-    // Dynamic import of mpg123-decoder
-    const { MPEGDecoderWebWorker } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+    // Dynamic import of mpg123-decoder (non-Worker version for Deno compatibility)
+    const { MPEGDecoder } = await import("https://esm.sh/mpg123-decoder@0.4.12");
     
-    const decoder = new MPEGDecoderWebWorker();
+    const decoder = new MPEGDecoder();
     await decoder.ready;
 
     const decoded = await decoder.decode(new Uint8Array(mp3Buffer));

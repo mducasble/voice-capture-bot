@@ -88,9 +88,9 @@ function parseWavHeader(headerBytes: Uint8Array): { sampleRate: number; channels
 
 // Decode MP3 to PCM samples
 async function decodeMp3ToPcm(mp3Buffer: ArrayBuffer): Promise<{ samples: Int16Array; sampleRate: number; channels: number }> {
-  const { MPEGDecoderWebWorker } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+  const { MPEGDecoder } = await import("https://esm.sh/mpg123-decoder@0.4.12");
   
-  const decoder = new MPEGDecoderWebWorker();
+  const decoder = new MPEGDecoder();
   await decoder.ready;
   
   const decoded = await decoder.decode(new Uint8Array(mp3Buffer));
