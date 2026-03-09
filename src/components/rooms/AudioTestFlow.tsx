@@ -687,10 +687,10 @@ export const AudioTestFlow = ({
                     </div>
 
                     {/* Descriptions */}
-                    <div className="space-y-1.5">
+                     <div className="space-y-1.5">
                       {descriptions.map((d, i) => (
                         <div key={i} className="text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">{d.label}:</span> {d.detail}
+                          <span className="font-medium text-foreground">{t(`audioTest.profileDesc.${d.key}.label`)}:</span> {t(`audioTest.profileDesc.${d.key}.${d.detailKey}`, { value: d.value })}
                         </div>
                       ))}
                     </div>
