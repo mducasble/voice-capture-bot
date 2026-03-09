@@ -274,6 +274,16 @@ export default function PortalAuth() {
               <Label htmlFor="signup-name" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.name")}</Label>
               <Input id="signup-name" required value={signupName} onChange={e => setSignupName(e.target.value)} placeholder={t("auth.name")} className="portal-brutalist-input" />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="signup-country" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.country")}</Label>
+                <Input id="signup-country" required value={signupCountry} onChange={e => setSignupCountry(e.target.value)} placeholder={t("auth.country")} className="portal-brutalist-input" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-city" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.city")}</Label>
+                <Input id="signup-city" required value={signupCity} onChange={e => setSignupCity(e.target.value)} placeholder={t("auth.city")} className="portal-brutalist-input" />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="signup-email" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.email")}</Label>
               <Input id="signup-email" type="email" required value={signupEmail} onChange={e => setSignupEmail(e.target.value)} placeholder="you@email.com" className="portal-brutalist-input" />
