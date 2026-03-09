@@ -176,7 +176,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
   );
 }
 
-function UserProfileLink({ userId, userName }: { userId: string; userName: string }) {
+function UserProfileLink({ userId, userName, showGlow }: { userId: string; userName: string; showGlow?: boolean }) {
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
     queryFn: async () => {
@@ -196,9 +196,11 @@ function UserProfileLink({ userId, userName }: { userId: string; userName: strin
   return (
     <Link
       to="/profile"
-      className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest font-bold transition-all"
+      className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest font-bold transition-all ${showGlow && !isOnProfile ? "profile-glow" : ""}`}
       style={{
         color: isOnProfile ? "var(--portal-accent)" : "var(--portal-text-muted)",
+        borderRadius: "4px",
+        padding: showGlow ? "4px 8px" : undefined,
       }}
       onMouseEnter={(e) => {
         if (!isOnProfile) e.currentTarget.style.color = "var(--portal-accent)";
