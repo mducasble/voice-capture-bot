@@ -190,6 +190,23 @@
     "noName": "No name",
     "empty": "No one on the waiting list"
   },
+  "room": {
+    "recording": "Recording",
+    "waiting": "Waiting",
+    "completed": "Completed",
+    "participants": "participant(s)",
+    "inviteOther": "INVITE ANOTHER PARTICIPANT",
+    "leave": "LEAVE",
+    "copied": "COPIED!",
+    "participantsTitle": "Participants",
+    "creator": "Creator",
+    "you": "You",
+    "yourAudio": "Your Audio",
+    "timeRemaining": "Time remaining",
+    "conversationTime": "Conversation time",
+    "startRecording": "START RECORDING",
+    "stopRecording": "STOP RECORDING"
+  },
   "common": {
     "error": "Error",
     "loading": "Loading...",

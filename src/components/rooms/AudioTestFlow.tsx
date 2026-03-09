@@ -397,307 +397,349 @@ export const AudioTestFlow = ({
 
     const Wrapper = isPortal ? "div" : Card;
     const wrapperProps = isPortal
-      ? { style: { border: `2px solid ${passed ? "var(--portal-accent)" : "hsl(45 93% 47%)"}`, background: "var(--portal-input-bg)" } }
+      ? { className: "flex flex-col", style: { border: `2px solid ${passed ? "var(--portal-accent)" : "hsl(45 93% 47%)"}`, background: "var(--portal-input-bg)" } }
       : { className: `border-2 ${passed ? "border-green-500/50" : "border-yellow-500/50"}` };
 
     return (
       <Wrapper {...wrapperProps as any}>
-        <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowResultDetails(v => !v)}>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              {passed ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              )}
-              Resultado do Teste
-              {fromCache && (
-                <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
-              )}
-            </span>
-            <div className="flex items-center gap-2">
-              <Badge variant={passed ? "default" : "destructive"}>
-                {passed ? "Aprovado ✅" : "Reprovado ❌"}
-              </Badge>
-              {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        {isPortal ? (
+          <div className="p-4 flex flex-col gap-4">
+            {/* Header row: Left Title, Right Badge */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
+                  Resultado do Teste
+                </span>
+                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>(sessão anterior)</span>}
+              </div>
+              <span className="font-mono text-[10px] font-bold uppercase px-2 py-1" style={{ background: passed ? "var(--portal-accent)" : "hsl(45 93% 47%)", color: passed ? "var(--portal-accent-text)" : "hsl(168,28%,10%)" }}>
+                {passed ? "APROVADO" : "REPROVADO"}
+              </span>
             </div>
-          </CardTitle>
-        </CardHeader>
-        {showResultDetails && (
-        <CardContent className="space-y-4">
-          {/* Metrics Table */}
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {Object.entries(results.metrics).map(([key, m]) => (
-                    <TableHead key={key} className={`text-center text-xs py-1.5 px-2 ${getHeaderBg(m.status)}`}>
-                      {m.label}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  {Object.entries(results.metrics).map(([key, m]) => (
-                    <TableCell key={key} className="text-center text-xs py-1.5 px-2 font-mono">
-                      {formatValue(key, m.value)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableBody>
-            </Table>
+            
+            {/* Divider line */}
+            <div className="w-full h-px" style={{ background: "var(--portal-border)" }} />
+
+            {/* Actions row */}
+            <div className="flex gap-2">
+              {testBlobUrlRef.current && (
+                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? "PAUSAR" : "OUVIR TESTE"} />
+              )}
+              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText="REFAZER TESTE" />
+            </div>
+
+            {/* Toggle details */}
+            <button 
+              onClick={() => setShowResultDetails(v => !v)}
+              className="font-mono text-[10px] text-center w-full uppercase flex justify-center items-center gap-1 mt-2 transition-colors hover:text-white"
+              style={{ color: "var(--portal-text-muted)" }}
+            >
+              {showResultDetails ? "Ocultar detalhes" : "Ver detalhes métricas"}
+              {showResultDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
           </div>
-
-          {/* Issues & Guidance */}
-          {results.issues.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Orientações para melhorar:</p>
-              {results.issues.map((issue, i) => (
-                <div key={i} className={`p-3 rounded-lg border text-sm ${getStatusColor(issue.status)}`}>
-                  <div className="font-medium mb-1 flex items-center gap-1.5">
-                    {issue.status === "bad" ? (
-                      <XCircle className="h-4 w-4 shrink-0" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                    )}
-                    {issue.label}
-                  </div>
-                  <p className="text-xs opacity-90">{issue.guidance}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Recommended Audio Profile */}
-          {editedProfile && (
-            <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Configuração Recomendada</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={() => setShowProfileDetails(!showProfileDetails)}
-                >
-                  {showProfileDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </div>
-
-              {/* Summary badges */}
-              <div className="flex flex-wrap gap-1.5">
-                <Badge variant="outline" className="text-xs">
-                  Ganho: {editedProfile.gain.toFixed(1)}x
+        ) : (
+          <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowResultDetails(v => !v)}>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                {passed ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                )}
+                Resultado do Teste
+                {fromCache && (
+                  <span className="text-xs font-normal text-muted-foreground">(sessão anterior)</span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge variant={passed ? "default" : "destructive"}>
+                  {passed ? "Aprovado ✅" : "Reprovado ❌"}
                 </Badge>
-                {editedProfile.highpassFreq > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    HP: {editedProfile.highpassFreq}Hz
-                  </Badge>
-                )}
-                {editedProfile.lowpassFreq > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    LP: {(editedProfile.lowpassFreq / 1000).toFixed(0)}kHz
-                  </Badge>
-                )}
-                {editedProfile.enableRnnoise && (
-                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                    RNNoise
-                  </Badge>
-                )}
-                {editedProfile.enableKoala && (
-                  <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
-                    Koala
-                  </Badge>
-                )}
-                {editedProfile.enableNoiseGate && (
-                  <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                    Noise Gate
-                  </Badge>
-                )}
-                {editedProfile.enableEchoCancellation && (
-                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                    Echo
-                  </Badge>
-                )}
-                {editedProfile.enableNoiseSuppression && (
-                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                    NoiseSup
-                  </Badge>
-                )}
-                {editedProfile.enableAutoGainControl && (
-                  <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                    AGC
-                  </Badge>
-                )}
+                {showResultDetails ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </div>
+            </CardTitle>
+          </CardHeader>
+        )}
 
-              {/* Editable details */}
-              {showProfileDetails && (
-                <div className="space-y-3 pt-2 border-t border-border/50">
-                  {/* Gain slider */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Ganho</span>
-                      <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
-                    </div>
-                    <Slider
-                      value={[editedProfile.gain]}
-                      min={0.5}
-                      max={20}
-                      step={0.1}
-                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, gain: val } : p)}
-                    />
-                  </div>
-
-                  {/* Highpass slider */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">High-pass</span>
-                      <span className="font-mono">{editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : "Off"}</span>
-                    </div>
-                    <Slider
-                      value={[editedProfile.highpassFreq]}
-                      min={0}
-                      max={200}
-                      step={10}
-                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, highpassFreq: val } : p)}
-                    />
-                  </div>
-
-                  {/* Lowpass slider */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Low-pass</span>
-                      <span className="font-mono">{editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : "Off"}</span>
-                    </div>
-                    <Slider
-                      value={[editedProfile.lowpassFreq]}
-                      min={0}
-                      max={22000}
-                      step={1000}
-                      onValueChange={([val]) => setEditedProfile(p => p ? { ...p, lowpassFreq: val } : p)}
-                    />
-                  </div>
-
-                  {/* Toggles */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">RNNoise</span>
-                      <Switch
-                        checked={editedProfile.enableRnnoise}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v, ...(v ? { enableKoala: false } : {}) } : p)}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Koala</span>
-                      <Switch
-                        checked={editedProfile.enableKoala}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableKoala: v, ...(v ? { enableRnnoise: false } : {}) } : p)}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Noise Gate</span>
-                      <Switch
-                        checked={editedProfile.enableNoiseGate}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseGate: v } : p)}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Echo</span>
-                      <Switch
-                        checked={editedProfile.enableEchoCancellation}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableEchoCancellation: v } : p)}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">NoiseSup</span>
-                      <Switch
-                        checked={editedProfile.enableNoiseSuppression}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseSuppression: v } : p)}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">AGC</span>
-                      <Switch
-                        checked={editedProfile.enableAutoGainControl}
-                        onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableAutoGainControl: v } : p)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Descriptions */}
-                  <div className="space-y-1.5">
-                    {descriptions.map((d, i) => (
-                      <div key={i} className="text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{d.label}:</span> {d.detail}
-                      </div>
+        {showResultDetails && (
+          <div className={isPortal ? "p-4 pt-0 space-y-4" : "p-6 pt-0 space-y-4"}>
+            {/* Metrics Table */}
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {Object.entries(results.metrics).map(([key, m]) => (
+                      <TableHead key={key} className={`text-center text-xs py-1.5 px-2 ${getHeaderBg(m.status)}`}>
+                        {m.label}
+                      </TableHead>
                     ))}
-                  </div>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    {Object.entries(results.metrics).map(([key, m]) => (
+                      <TableCell key={key} className="text-center text-xs py-1.5 px-2 font-mono">
+                        {formatValue(key, m.value)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
 
-                  {/* Reset to recommended */}
-                  {recommendedProfile && (
-                    <Button
-                      variant="ghost"
+            {/* Issues & Guidance */}
+            {results.issues.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Orientações para melhorar:</p>
+                {results.issues.map((issue, i) => (
+                  <div key={i} className={`p-3 rounded-lg border text-sm ${getStatusColor(issue.status)}`}>
+                    <div className="font-medium mb-1 flex items-center gap-1.5">
+                      {issue.status === "bad" ? (
+                        <XCircle className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                      )}
+                      {issue.label}
+                    </div>
+                    <p className="text-xs opacity-90">{issue.guidance}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Recommended Audio Profile */}
+            {editedProfile && (
+              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">Configuração Recomendada</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setShowProfileDetails(!showProfileDetails)}
+                  >
+                    {showProfileDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                {/* Summary badges */}
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className="text-xs">
+                    Ganho: {editedProfile.gain.toFixed(1)}x
+                  </Badge>
+                  {editedProfile.highpassFreq > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      HP: {editedProfile.highpassFreq}Hz
+                    </Badge>
+                  )}
+                  {editedProfile.lowpassFreq > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      LP: {(editedProfile.lowpassFreq / 1000).toFixed(0)}kHz
+                    </Badge>
+                  )}
+                  {editedProfile.enableRnnoise && (
+                    <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
+                      RNNoise
+                    </Badge>
+                  )}
+                  {editedProfile.enableKoala && (
+                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                      Koala
+                    </Badge>
+                  )}
+                  {editedProfile.enableNoiseGate && (
+                    <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
+                      Noise Gate
+                    </Badge>
+                  )}
+                  {editedProfile.enableEchoCancellation && (
+                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                      Echo
+                    </Badge>
+                  )}
+                  {editedProfile.enableNoiseSuppression && (
+                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                      NoiseSup
+                    </Badge>
+                  )}
+                  {editedProfile.enableAutoGainControl && (
+                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                      AGC
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Editable details */}
+                {showProfileDetails && (
+                  <div className="space-y-3 pt-2 border-t border-border/50">
+                    {/* Gain slider */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Ganho</span>
+                        <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
+                      </div>
+                      <Slider
+                        value={[editedProfile.gain]}
+                        min={0.5}
+                        max={20}
+                        step={0.1}
+                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, gain: val } : p)}
+                      />
+                    </div>
+
+                    {/* Highpass slider */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">High-pass</span>
+                        <span className="font-mono">{editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : "Off"}</span>
+                      </div>
+                      <Slider
+                        value={[editedProfile.highpassFreq]}
+                        min={0}
+                        max={200}
+                        step={10}
+                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, highpassFreq: val } : p)}
+                      />
+                    </div>
+
+                    {/* Lowpass slider */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Low-pass</span>
+                        <span className="font-mono">{editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : "Off"}</span>
+                      </div>
+                      <Slider
+                        value={[editedProfile.lowpassFreq]}
+                        min={0}
+                        max={22000}
+                        step={1000}
+                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, lowpassFreq: val } : p)}
+                      />
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">RNNoise</span>
+                        <Switch
+                          checked={editedProfile.enableRnnoise}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v, ...(v ? { enableKoala: false } : {}) } : p)}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Koala</span>
+                        <Switch
+                          checked={editedProfile.enableKoala}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableKoala: v, ...(v ? { enableRnnoise: false } : {}) } : p)}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Noise Gate</span>
+                        <Switch
+                          checked={editedProfile.enableNoiseGate}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseGate: v } : p)}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Echo</span>
+                        <Switch
+                          checked={editedProfile.enableEchoCancellation}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableEchoCancellation: v } : p)}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">NoiseSup</span>
+                        <Switch
+                          checked={editedProfile.enableNoiseSuppression}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseSuppression: v } : p)}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">AGC</span>
+                        <Switch
+                          checked={editedProfile.enableAutoGainControl}
+                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableAutoGainControl: v } : p)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Descriptions */}
+                    <div className="space-y-1.5">
+                      {descriptions.map((d, i) => (
+                        <div key={i} className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{d.label}:</span> {d.detail}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Reset to recommended */}
+                    {recommendedProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs"
+                        onClick={() => setEditedProfile(recommendedProfile)}
+                      >
+                        Restaurar recomendação original
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Apply button */}
+                <div className="flex gap-2 mt-4">
+                  {isPortal ? (
+                    <KGenButton
                       size="sm"
-                      className="w-full text-xs"
-                      onClick={() => setEditedProfile(recommendedProfile)}
+                      className="flex-1"
+                      onClick={applyProfile}
+                      scrambleText={profileApplied ? "ATUALIZAR CONFIGURAÇÃO" : "APLICAR CONFIGURAÇÃO"}
+                      icon={<Settings2 className="h-4 w-4" />}
+                    />
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={applyProfile}
                     >
-                      Restaurar recomendação original
+                      <Settings2 className="h-4 w-4 mr-1.5" />
+                      {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
                     </Button>
                   )}
                 </div>
-              )}
-
-              {/* Apply button */}
-              <div className="flex gap-2">
-              {isPortal ? (
-                <KGenButton
-                  size="sm"
-                  className="flex-1"
-                  onClick={applyProfile}
-                  scrambleText={profileApplied ? "ATUALIZAR CONFIGURAÇÃO" : "APLICAR CONFIGURAÇÃO"}
-                  icon={<Settings2 className="h-4 w-4" />}
-                />
-              ) : (
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={applyProfile}
-                >
-                  <Settings2 className="h-4 w-4 mr-1.5" />
-                  {profileApplied ? "Atualizar Configuração" : "Aplicar Configuração"}
-                </Button>
-              )}
               </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex justify-center gap-3">
-            {testBlobUrlRef.current && (
-              <Button variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="gap-1.5">
-                {audioPlayer.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {audioPlayer.isPlaying ? "Pausar" : "Ouvir Teste"}
-              </Button>
             )}
+
+            {/* Actions for non-portal inside details */}
+            {!isPortal && (
+              <div className="flex justify-center gap-3 mt-4">
+                {testBlobUrlRef.current && (
+                  <Button variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="gap-1.5">
+                    {audioPlayer.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    {audioPlayer.isPlaying ? "Pausar" : "Ouvir Teste"}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
+                  <RotateCcw className="h-4 w-4" />
+                  Refazer Teste
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Always show retry button for non-portal when collapsed */}
+        {!isPortal && !showResultDetails && (
+          <div className="p-6 pt-0 flex justify-center gap-3">
             <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
               <RotateCcw className="h-4 w-4" />
               Refazer Teste
             </Button>
           </div>
-        </CardContent>
-        )}
-        {/* Always show retry button even when collapsed */}
-        {!showResultDetails && (
-          <CardContent className="pt-0 flex justify-center gap-3">
-            <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
-              <RotateCcw className="h-4 w-4" />
-              Refazer Teste
-            </Button>
-          </CardContent>
         )}
       </Wrapper>
     );

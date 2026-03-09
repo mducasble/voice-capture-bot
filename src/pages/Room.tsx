@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation("translation");
   const isPortal = !location.pathname.startsWith("/admin");
   const searchParams = new URLSearchParams(location.search);
   const campaignId = searchParams.get("campaign") || undefined;
@@ -811,12 +813,12 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-col gap-4 mb-12">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
-                {room.is_recording ? `Gravando ${formatDuration(recordingDuration)}` : room.status === "completed" ? "Finalizada" : "Aguardando"}
+                {room.is_recording ? `${t("room.recording")} ${formatDuration(recordingDuration)}` : room.status === "completed" ? t("room.completed") : t("room.waiting")}
               </span>
             </div>
             <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
@@ -824,7 +826,7 @@ const Room = () => {
             </h1>
             <div className="flex items-center gap-6 mt-2">
               <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                <Users className="h-4 w-4" /> {participants.length} participante(s)
+                <Users className="h-4 w-4" /> {participants.length} {t("room.participants")}
               </p>
               {room.topic && (
                 <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-accent)" }}>
@@ -833,18 +835,18 @@ const Room = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-3">
             <KGenButton
               variant="primary"
               size="sm"
               onClick={copyLink}
-              scrambleText={copied ? "COPIADO!" : "CONVIDAR OUTRO PARTICIPANTE"}
+              scrambleText={copied ? t("room.copied") : t("room.inviteOther")}
               icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             />
             <KGenButton
               size="sm"
               onClick={handleLeave}
-              scrambleText="SAIR"
+              scrambleText={t("room.leave")}
               className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
             />
           </div>
@@ -933,7 +935,7 @@ const Room = () => {
             <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
-                  Participantes ({participants.length})
+                  {t("room.participantsTitle")} ({participants.length})
                 </span>
               </div>
               <div className="p-3 space-y-1.5">
@@ -948,12 +950,12 @@ const Room = () => {
                       <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{p.name}</span>
                       {p.is_creator && (
                         <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                          Criador
+                          {t("room.creator")}
                         </span>
                       )}
                       {p.id === currentParticipant.id && (
                         <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
-                          Você
+                          {t("room.you")}
                         </span>
                       )}
                     </div>
@@ -970,7 +972,7 @@ const Room = () => {
             {/* My Audio */}
             <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
               <div className="p-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Seu Áudio</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("room.yourAudio")}</span>
                 <button
                   onClick={toggleMute}
                   className="p-1.5 transition-colors"
