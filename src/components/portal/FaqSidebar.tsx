@@ -125,8 +125,8 @@ export function FaqSidebar() {
           <div className="p-4 space-y-5">
             {Object.entries(grouped).map(([category, catItems]) => (
               <div key={category} className="space-y-2">
-                <p
-                  className="font-mono text-[10px] font-bold uppercase tracking-[0.3em]"
+              <p
+                  className="font-mono text-xs font-bold uppercase tracking-[0.3em]"
                   style={{ color: "var(--portal-accent)" }}
                 >
                   {category}
