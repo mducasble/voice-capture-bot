@@ -40,7 +40,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
     if (file && isValidAudioFile(file)) {
       setSpeakerFiles(prev => [...prev, { id: crypto.randomUUID(), file, speakerName: "" }]);
     } else if (file) {
-      toast.error("Formato não suportado. Use WAV, MP3, M4A ou OGG.");
+      toast.error("Formato não suportado. Use apenas arquivos .WAV");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
