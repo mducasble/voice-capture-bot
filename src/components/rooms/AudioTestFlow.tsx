@@ -212,16 +212,16 @@ export const AudioTestFlow = ({
       setEditedProfile(profile);
 
       if (data.overall_status === "passed") {
-        toast.success("Teste de áudio aprovado! ✅");
+        toast.success(t("audioTest.testPassed"));
       } else {
-        toast.warning("Teste de áudio com problemas. Veja as orientações abaixo.");
+        toast.warning(t("audioTest.testFailed"));
       }
     } catch (error) {
       console.error("Test error:", error);
-      toast.error("Erro ao analisar áudio de teste");
+      toast.error(t("audioTest.analysisError"));
       setPhase("idle");
     }
-  }, [wavRecorder, participantId, roomId, onTestComplete]);
+  }, [wavRecorder, participantId, roomId, onTestComplete, t]);
 
   const retryTest = () => {
     setPhase("idle");

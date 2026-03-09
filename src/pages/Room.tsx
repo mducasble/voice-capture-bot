@@ -813,7 +813,7 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex flex-col gap-4 mb-12">
+        <div className="flex flex-col gap-4 mb-24">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
