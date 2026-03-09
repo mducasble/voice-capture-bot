@@ -19,6 +19,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ReviewQueue = lazy(() => import("./pages/admin/ReviewQueue"));
 const SocialArt = lazy(() => import("./pages/admin/SocialArt"));
 const RoomsMonitor = lazy(() => import("./pages/admin/RoomsMonitor"));
+const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
