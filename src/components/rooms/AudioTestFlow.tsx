@@ -738,7 +738,7 @@ export const AudioTestFlow = ({
           <div className="p-6 pt-0 flex justify-center gap-3">
             <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
               <RotateCcw className="h-4 w-4" />
-              Refazer Teste
+              {t("audioTest.retryTest")}
             </Button>
           </div>
         )}
