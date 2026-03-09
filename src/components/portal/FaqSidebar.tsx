@@ -125,8 +125,8 @@ export function FaqSidebar() {
           <div className="p-4 space-y-5">
             {Object.entries(grouped).map(([category, catItems]) => (
               <div key={category} className="space-y-2">
-                <p
-                  className="font-mono text-[10px] font-bold uppercase tracking-[0.3em]"
+              <p
+                  className="font-mono text-xs font-bold uppercase tracking-[0.3em]"
                   style={{ color: "var(--portal-accent)" }}
                 >
                   {category}
@@ -143,7 +143,7 @@ export function FaqSidebar() {
                           onClick={() => setExpandedId(isExpanded ? null : item.id)}
                           className="w-full p-3 flex items-start gap-2 text-left"
                         >
-                          <span className="flex-1 font-mono text-xs font-bold leading-relaxed" style={{ color: "var(--portal-text)" }}>
+                          <span className="flex-1 font-mono text-sm font-bold leading-relaxed" style={{ color: "var(--portal-text)" }}>
                             {getQuestion(item)}
                           </span>
                           {isExpanded ? (
@@ -156,7 +156,7 @@ export function FaqSidebar() {
                           <div className="px-3 pb-3">
                             <div className="w-full h-px mb-2" style={{ background: "var(--portal-border)" }} />
                             <p
-                              className="font-mono text-[11px] leading-relaxed whitespace-pre-line"
+                              className="font-mono text-xs leading-relaxed whitespace-pre-line"
                               style={{ color: "var(--portal-text-muted)" }}
                             >
                               {getAnswer(item)}
