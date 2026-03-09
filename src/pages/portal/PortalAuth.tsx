@@ -124,6 +124,15 @@ export default function PortalAuth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+  const [signupCountry, setSignupCountry] = useState(() => {
+    const detected = detectBrowserCountry();
+    if (!detected) return "";
+    try {
+      const dn = new Intl.DisplayNames([i18n.language || "en"], { type: "region" });
+      return dn.of(detected) || detected;
+    } catch { return detected; }
+  });
+  const [signupCity, setSignupCity] = useState("");
 
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorPassword, setVendorPassword] = useState("");
