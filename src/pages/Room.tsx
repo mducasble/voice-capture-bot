@@ -910,11 +910,19 @@ const Room = () => {
             {/* Recording Controls (Creator only) */}
             {currentParticipant.is_creator && (
               <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                {!canStartRecording && !room.is_recording && (
+                  <div className="flex items-center gap-2 px-3 py-2" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.3)" }}>
+                    <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "hsl(40 80% 50%)" }} />
+                    <p className="font-mono text-xs" style={{ color: "hsl(40 80% 50%)" }}>
+                      {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center justify-center">
                   {!room.is_recording ? (
                     <KGenButton
                       onClick={handleStartRecording}
-                      disabled={room.status === "completed"}
+                      disabled={room.status === "completed" || !canStartRecording}
                       scrambleText={t("room.startRecording")}
                       icon={<Circle className="h-5 w-5 fill-red-500 text-red-500" />}
                       className="w-full"
