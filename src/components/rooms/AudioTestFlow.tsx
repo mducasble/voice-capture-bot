@@ -246,8 +246,9 @@ export const AudioTestFlow = ({
         } catch { /* quota exceeded */ }
       }
       toast.success(t("audioTest.configUpdated"));
-      setPhase("idle");
       setShowProfileDetails(false);
+      setShowResultDetails(false);
+      setPhase("idle");
     }
   };
 
@@ -472,7 +473,7 @@ export const AudioTestFlow = ({
                   <TableRow>
                     {Object.entries(results.metrics).map(([key, m]) => (
                       <TableHead key={key} className={`text-center text-xs py-1.5 px-2 ${getHeaderBg(m.status)}`}>
-                        {m.label}
+                        {t(`audioTest.metrics.${key}.label`, { defaultValue: m.label })}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -501,9 +502,9 @@ export const AudioTestFlow = ({
                       ) : (
                         <AlertTriangle className="h-4 w-4 shrink-0" />
                       )}
-                      {issue.label}
+                      {t(`audioTest.issues.${issue.metric}.label`, { defaultValue: issue.label })}
                     </div>
-                    <p className="text-xs opacity-90">{issue.guidance}</p>
+                    <p className="text-xs opacity-90">{t(`audioTest.issues.${issue.metric}.guidance`, { defaultValue: issue.guidance })}</p>
                   </div>
                 ))}
               </div>
@@ -544,32 +545,32 @@ export const AudioTestFlow = ({
                   )}
                   {editedProfile.enableRnnoise && (
                     <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                      RNNoise
+                      {t("audioTest.features.rnnoise")}
                     </Badge>
                   )}
                   {editedProfile.enableKoala && (
                     <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
-                      Koala
+                      {t("audioTest.features.koala")}
                     </Badge>
                   )}
                   {editedProfile.enableNoiseGate && (
                     <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                      Noise Gate
+                      {t("audioTest.features.noiseGate")}
                     </Badge>
                   )}
                   {editedProfile.enableEchoCancellation && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      Echo
+                      {t("audioTest.features.echoCancellation")}
                     </Badge>
                   )}
                   {editedProfile.enableNoiseSuppression && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      NoiseSup
+                      {t("audioTest.features.noiseSuppression")}
                     </Badge>
                   )}
                   {editedProfile.enableAutoGainControl && (
                     <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      AGC
+                      {t("audioTest.features.autoGainControl")}
                     </Badge>
                   )}
                 </div>
@@ -595,8 +596,10 @@ export const AudioTestFlow = ({
                     {/* Highpass slider */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">High-pass</span>
-                        <span className="font-mono">{editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : "Off"}</span>
+                        <span className="text-muted-foreground">{t("audioTest.highPass")}</span>
+                        <span className="font-mono">
+                          {editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : t("audioTest.off")}
+                        </span>
                       </div>
                       <Slider
                         value={[editedProfile.highpassFreq]}
@@ -610,8 +613,10 @@ export const AudioTestFlow = ({
                     {/* Lowpass slider */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Low-pass</span>
-                        <span className="font-mono">{editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : "Off"}</span>
+                        <span className="text-muted-foreground">{t("audioTest.lowPass")}</span>
+                        <span className="font-mono">
+                          {editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : t("audioTest.off")}
+                        </span>
                       </div>
                       <Slider
                         value={[editedProfile.lowpassFreq]}
@@ -625,42 +630,42 @@ export const AudioTestFlow = ({
                     {/* Toggles */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">RNNoise</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.rnnoise")}</span>
                         <Switch
                           checked={editedProfile.enableRnnoise}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v, ...(v ? { enableKoala: false } : {}) } : p)}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">Koala</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.koala")}</span>
                         <Switch
                           checked={editedProfile.enableKoala}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableKoala: v, ...(v ? { enableRnnoise: false } : {}) } : p)}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">Noise Gate</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.noiseGate")}</span>
                         <Switch
                           checked={editedProfile.enableNoiseGate}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseGate: v } : p)}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">Echo</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.echoCancellation")}</span>
                         <Switch
                           checked={editedProfile.enableEchoCancellation}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableEchoCancellation: v } : p)}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">NoiseSup</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.noiseSuppression")}</span>
                         <Switch
                           checked={editedProfile.enableNoiseSuppression}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseSuppression: v } : p)}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">AGC</span>
+                        <span className="text-xs text-muted-foreground">{t("audioTest.features.autoGainControl")}</span>
                         <Switch
                           checked={editedProfile.enableAutoGainControl}
                           onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableAutoGainControl: v } : p)}

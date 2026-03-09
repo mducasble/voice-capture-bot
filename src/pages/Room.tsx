@@ -852,7 +852,7 @@ const Room = () => {
           </div>
         </div>
 
-        <div className="flex gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="flex gap-6 mt-10" style={{ maxWidth: "1200px", margin: "0 auto" }}>
           {/* LEFT COLUMN - Controls (30%) */}
           <div className="space-y-4" style={{ width: "33%" }}>
             {/* Audio Test Flow */}
@@ -1029,7 +1029,7 @@ const Room = () => {
                 return (
                   <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Tempo restante
+                      {t("room.timeRemaining")}
                     </span>
                     <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
                       {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
@@ -1044,7 +1044,7 @@ const Room = () => {
                 return (
                   <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      Tempo de conversa
+                      {t("room.conversationTime")}
                     </span>
                     <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
                       {room.duration_minutes.toString().padStart(2, "0")}:00
@@ -1059,7 +1059,7 @@ const Room = () => {
             {room.topic && (
               <div className="p-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
-                  Tema da Conversa
+                  {t("room.conversationTopicLabel")}
                 </span>
                 <p className="font-mono text-lg font-bold uppercase" style={{ color: "var(--portal-text)" }}>
                   {room.topic}
@@ -1070,10 +1070,10 @@ const Room = () => {
             {/* Script / Talking Points placeholder */}
             <div className="p-4 flex-1" style={{ border: "1px dashed var(--portal-border)", background: "var(--portal-card-bg)", minHeight: "200px" }}>
               <span className="font-mono text-[10px] uppercase tracking-widest block mb-3" style={{ color: "var(--portal-text-muted)" }}>
-                Roteiro / Pontos de Conversa
+                {t("room.talkingPointsTitle")}
               </span>
               <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                Nenhum roteiro definido para esta sala.
+                {t("room.talkingPointsEmpty")}
               </p>
             </div>
           </div>

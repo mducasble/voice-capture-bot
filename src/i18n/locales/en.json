@@ -204,6 +204,9 @@
     "yourAudio": "Your Audio",
     "timeRemaining": "Time remaining",
     "conversationTime": "Conversation time",
+    "conversationTopicLabel": "Conversation Topic",
+    "talkingPointsTitle": "Script / Talking Points",
+    "talkingPointsEmpty": "No script defined for this room.",
     "startRecording": "START RECORDING",
     "stopRecording": "STOP RECORDING"
   },
@@ -236,7 +239,30 @@
     "testFailed": "Audio test had issues. Check the guidelines below.",
     "analysisError": "Error analyzing test audio",
     "gain": "Gain",
-    "restoreOriginal": "Restore original recommendation"
+    "restoreOriginal": "Restore original recommendation",
+    "off": "Off",
+    "highPass": "High-pass",
+    "lowPass": "Low-pass",
+    "features": {
+      "rnnoise": "RNNoise",
+      "koala": "Koala",
+      "noiseGate": "Noise Gate",
+      "echoCancellation": "Echo",
+      "noiseSuppression": "Noise Suppression",
+      "autoGainControl": "AGC"
+    },
+    "metrics": {
+      "snr": { "label": "SNR (Noise)" },
+      "rms": { "label": "Level (RMS)" },
+      "srmr": { "label": "Reverb (SRMR)" },
+      "wvmos": { "label": "Quality (WV-MOS)" },
+      "utmos": { "label": "Quality (UT-MOS)" },
+      "sigmos_ovrl": { "label": "SIGMOS (overall)" },
+      "sigmos_disc": { "label": "SIGMOS (distortion)" },
+      "sigmos_reverb": { "label": "SIGMOS (reverb)" },
+      "vqscore": { "label": "VQScore" },
+      "mic_sr": { "label": "Sample Rate" }
+    }
   },
   "common": {
     "error": "Error",
