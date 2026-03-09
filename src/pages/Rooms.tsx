@@ -54,7 +54,7 @@ const Rooms = () => {
       }
 
       toast.success("Sala criada com sucesso!");
-      navigate(`/room/${room.id}`);
+      navigate(`/room/${room.id}?campaign=${selectedCampaignId}`);
     } catch (error) {
       console.error("Error creating room:", error);
       toast.error("Erro ao criar sala");
