@@ -226,7 +226,8 @@
     "talkingPointsGlobal": "Global Context",
     "talkingPointsSuggestion": "Suggestion",
     "startRecording": "START RECORDING",
-    "stopRecording": "STOP RECORDING"
+    "stopRecording": "STOP RECORDING",
+    "minParticipantsWarning": "Minimum {{count}} participants required to record. Connected: {{current}}"
   },
   "audioTest": {
     "title": "Audio Test",

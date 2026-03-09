@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,26 @@ const Room = () => {
   const remoteAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [isMixedUploading, setIsMixedUploading] = useState(false);
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
+
+  // Fetch campaign admin rules for min participants check
+  const { data: campaignAdminRules } = useQuery({
+    queryKey: ["campaign-admin-rules", campaignId],
+    queryFn: async () => {
+      if (!campaignId) return null;
+      const { data, error } = await supabase
+        .from("campaign_administrative_rules")
+        .select("min_participants_per_session")
+        .eq("campaign_id", campaignId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId,
+  });
+
+  const minParticipants = campaignAdminRules?.min_participants_per_session ?? null;
+  const connectedCount = participants.filter(p => p.is_connected).length;
+  const canStartRecording = minParticipants == null || connectedCount >= minParticipants;
 
   // Mixed recorder for creator
   const mixedRecorder = useMixedRecorder();
@@ -889,11 +910,19 @@ const Room = () => {
             {/* Recording Controls (Creator only) */}
             {currentParticipant.is_creator && (
               <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                {!canStartRecording && !room.is_recording && (
+                  <div className="flex items-center gap-2 px-3 py-2" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.3)" }}>
+                    <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "hsl(40 80% 50%)" }} />
+                    <p className="font-mono text-xs" style={{ color: "hsl(40 80% 50%)" }}>
+                      {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center justify-center">
                   {!room.is_recording ? (
                     <KGenButton
                       onClick={handleStartRecording}
-                      disabled={room.status === "completed"}
+                      disabled={room.status === "completed" || !canStartRecording}
                       scrambleText={t("room.startRecording")}
                       icon={<Circle className="h-5 w-5 fill-red-500 text-red-500" />}
                       className="w-full"
@@ -1164,11 +1193,16 @@ const Room = () => {
                     <div className="flex items-center justify-center gap-4">
                       {!room.is_recording ? (
                         <div className="flex flex-col items-center gap-2">
+                          {!canStartRecording && (
+                            <p className="text-xs text-amber-500 text-center">
+                              {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
+                            </p>
+                          )}
                           <Button 
                             size="lg" 
                             onClick={handleStartRecording}
                             className="bg-red-600 hover:bg-red-700"
-                            disabled={room.status === "completed"}
+                            disabled={room.status === "completed" || !canStartRecording}
                           >
                             <Circle className="h-5 w-5 mr-2 fill-current" />
                             Iniciar Gravação
