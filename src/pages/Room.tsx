@@ -836,14 +836,16 @@ const Room = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 justify-end">
             <KGenButton
               variant="primary"
+              size="sm"
               onClick={copyLink}
               scrambleText={copied ? t("room.copied") : t("room.inviteOther")}
-              icon={copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+              icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             />
             <KGenButton
+              size="sm"
               onClick={handleLeave}
               scrambleText={t("room.leave")}
               className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
