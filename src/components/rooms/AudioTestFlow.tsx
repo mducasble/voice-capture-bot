@@ -696,25 +696,44 @@ export const AudioTestFlow = ({
                   </div>
                 )}
 
-                {/* Apply button */}
+                {/* Apply / Skip buttons */}
                 <div className="flex gap-2 mt-4">
                   {isPortal ? (
-                    <KGenButton
-                      size="sm"
-                      className="flex-1"
-                      onClick={applyProfile}
-                      scrambleText={profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
-                      icon={<Settings2 className="h-4 w-4" />}
-                    />
+                    <>
+                      <KGenButton
+                        size="sm"
+                        className="flex-1"
+                        onClick={applyProfile}
+                        scrambleText={profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
+                        icon={<Settings2 className="h-4 w-4" />}
+                      />
+                      <KGenButton
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={skipProfile}
+                        scrambleText={t("audioTest.skipConfig")}
+                      />
+                    </>
                   ) : (
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={applyProfile}
-                    >
-                      <Settings2 className="h-4 w-4 mr-1.5" />
-                      {profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={applyProfile}
+                      >
+                        <Settings2 className="h-4 w-4 mr-1.5" />
+                        {profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={skipProfile}
+                      >
+                        {t("audioTest.skipConfig")}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
