@@ -360,3 +360,18 @@
     transform: translateY(-1px);
   }
 }
+
+/* Profile completion glow animation */
+@keyframes profile-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px hsl(88 100% 51% / 0.4), 0 0 8px hsl(88 100% 51% / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 8px hsl(88 100% 51% / 0.6), 0 0 16px hsl(88 100% 51% / 0.3);
+  }
+}
+
+.profile-glow {
+  animation: profile-glow 2s ease-in-out infinite;
+  border: 1.5px solid hsl(88 100% 51% / 0.6) !important;
+}
