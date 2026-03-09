@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive } from "lucide-react";
+import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
