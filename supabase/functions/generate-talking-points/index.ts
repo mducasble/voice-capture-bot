@@ -21,7 +21,17 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const lang = language || "pt-BR";
+    // Determine output language: prioritize country-based detection, fallback to UI language
+    const countryLangMap: Record<string, string> = {
+      "Brasil": "pt-BR", "Brazil": "pt-BR", "BR": "pt-BR",
+      "Portugal": "pt", "PT": "pt",
+      "España": "es", "Spain": "es", "ES": "es",
+      "México": "es", "Mexico": "es", "MX": "es",
+      "Argentina": "es", "AR": "es", "Colombia": "es", "CO": "es",
+      "Chile": "es", "CL": "es", "Peru": "es", "PE": "es",
+    };
+    const countryLang = country ? countryLangMap[country] : null;
+    const lang = countryLang || language || "pt-BR";
     const today = new Date().toISOString().split("T")[0];
     const locationCtx = city && country
       ? `The user is located in ${city}, ${country}.`
@@ -29,7 +39,7 @@ serve(async (req) => {
         ? `The user is located in ${country}.`
         : "The user's location is unknown.";
 
-    const langName = lang === "pt-BR" || lang === "pt" ? "Portuguese (Brazil)" : lang === "es" ? "Spanish" : "English";
+    const langName = lang.startsWith("pt") ? "Portuguese (Brazil)" : lang.startsWith("es") ? "Spanish" : "English";
 
     const systemPrompt = `You are a conversation coach. Given a topic, generate two sets of talking points for a natural conversation between two people.
 
