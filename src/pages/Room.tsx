@@ -50,6 +50,7 @@ const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation("translation");
   const isPortal = !location.pathname.startsWith("/admin");
   const searchParams = new URLSearchParams(location.search);
   const campaignId = searchParams.get("campaign") || undefined;
