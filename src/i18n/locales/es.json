@@ -230,6 +230,7 @@
     "guidelines": "Pautas para mejorar:",
     "recommendedConfig": "Configuración Recomendada",
     "applyConfig": "APLICAR CONFIGURACIÓN",
+    "skipConfig": "OMITIR",
     "updateConfig": "ACTUALIZAR CONFIGURACIÓN",
     "configUpdated": "Configuración actualizada",
     "configApplied": "¡Configuración de audio aplicada! 🎛️",
