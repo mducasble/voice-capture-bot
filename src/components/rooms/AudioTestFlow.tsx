@@ -424,9 +424,9 @@ export const AudioTestFlow = ({
             {/* Actions row */}
             <div className="flex gap-2">
               {testBlobUrlRef.current && (
-                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? "PAUSAR" : "OUVIR TESTE"} />
+                <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? t("audioTest.pause") : t("audioTest.listenTest")} />
               )}
-              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText="REFAZER TESTE" />
+              <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText={t("audioTest.retryTest")} />
             </div>
 
             {/* Toggle details */}
