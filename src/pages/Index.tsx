@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SessionGroup } from "@/components/SessionGroup";
 import { AudioUpload } from "@/components/AudioUpload";
 import { MultiSpeakerUpload } from "@/components/MultiSpeakerUpload";
+import { CampaignSelector } from "@/components/CampaignSelector";
 import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const { data: recordings, isLoading, error } = useRecordings();
 
   // Group recordings by session_id
@@ -62,11 +64,23 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Upload Section */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AudioUpload />
-        <MultiSpeakerUpload />
+      {/* Campaign Selector */}
+      <section>
+        <label className="text-sm font-medium text-muted-foreground mb-2 block">Campanha de destino</label>
+        <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} className="max-w-md" />
       </section>
+
+      {/* Upload Section */}
+      {selectedCampaignId ? (
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AudioUpload campaignId={selectedCampaignId} />
+          <MultiSpeakerUpload campaignId={selectedCampaignId} />
+        </section>
+      ) : (
+        <section className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
+          Selecione uma campanha acima para fazer upload de áudio
+        </section>
+      )}
 
       <main className="space-y-8">
 

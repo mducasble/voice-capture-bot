@@ -36,11 +36,12 @@ serve(async (req) => {
       recording_type = 'individual',
       format = 'wav',
       language = 'pt',
+      campaign_id,
     } = await req.json();
 
-    if (!filename || !file_url || !session_id) {
+    if (!filename || !file_url || !session_id || !campaign_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: filename, file_url, session_id' }),
+        JSON.stringify({ error: 'Missing required fields: filename, file_url, session_id, campaign_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -55,6 +56,7 @@ serve(async (req) => {
         discord_user_id: participant_id,
         discord_username: participant_name,
         user_id: authUserId,
+        campaign_id,
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
@@ -67,7 +69,7 @@ serve(async (req) => {
         recording_type,
         transcription_status: 'pending',
         language,
-        metadata: { source: 'webapp', participant_id },
+        metadata: { source: 'webapp', participant_id, campaign_id },
       })
       .select()
       .single();

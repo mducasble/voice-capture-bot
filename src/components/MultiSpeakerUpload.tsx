@@ -19,10 +19,11 @@ interface SpeakerFile {
 }
 
 interface MultiSpeakerUploadProps {
+  campaignId: string;
   onUploadComplete?: () => void;
 }
 
-export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps) {
+export function MultiSpeakerUpload({ campaignId, onUploadComplete }: MultiSpeakerUploadProps) {
   const [speakerFiles, setSpeakerFiles] = useState<SpeakerFile[]>([]);
   const [mixedFile, setMixedFile] = useState<File | null>(null);
   const [autoMix, setAutoMix] = useState(true);
@@ -216,6 +217,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
             bit_depth: audioMetadata.bitDepth ?? 16,
             channels: audioMetadata.channels ?? 2,
             format: audioMetadata.format ?? ext.toLowerCase(),
+            campaign_id: campaignId,
             session_id: sessionId,
             recording_type: "individual",
             discord_user_id: `manual_${sf.id}`,
@@ -295,6 +297,7 @@ export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps
           file_url: mixedFileUrl,
           file_size_bytes: mixedFileSize || null,
           duration_seconds: mixedMetadata?.durationSeconds ?? null,
+          campaign_id: campaignId,
           session_id: sessionId,
           recording_type: "mixed",
           discord_user_id: "manual_upload",

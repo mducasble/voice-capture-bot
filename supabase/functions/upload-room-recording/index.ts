@@ -38,9 +38,9 @@ serve(async (req) => {
     const noise_gate_enabled = (formData.get('noise_gate_enabled') as string) === 'true';
     const campaign_id = formData.get('campaign_id') as string | null;
 
-    if (!audioFile || !filename || !session_id) {
+    if (!audioFile || !filename || !session_id || !campaign_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields (audio, filename, session_id)' }),
+        JSON.stringify({ error: 'Missing required fields (audio, filename, session_id, campaign_id)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

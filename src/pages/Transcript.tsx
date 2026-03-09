@@ -1,14 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, FileText, Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecordingCard } from "@/components/RecordingCard";
 import { SessionGroup } from "@/components/SessionGroup";
 import { AudioUpload } from "@/components/AudioUpload";
+import { CampaignSelector } from "@/components/CampaignSelector";
 import { useRecordings, type Recording } from "@/hooks/useRecordings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Transcript = () => {
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const { data: allRecordings, isLoading, error } = useRecordings();
 
   // Filter only transcription-only recordings
@@ -80,9 +82,17 @@ const Transcript = () => {
       </header>
 
       <main className="container py-8 space-y-8">
-        {/* Upload */}
-        <section>
-          <AudioUpload transcriptionOnly />
+        {/* Campaign + Upload */}
+        <section className="space-y-3">
+          <label className="text-sm font-medium text-muted-foreground block">Campanha de destino</label>
+          <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} className="max-w-md" />
+          {selectedCampaignId ? (
+            <AudioUpload campaignId={selectedCampaignId} transcriptionOnly />
+          ) : (
+            <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
+              Selecione uma campanha para fazer upload
+            </div>
+          )}
         </section>
 
         {/* Recordings List */}

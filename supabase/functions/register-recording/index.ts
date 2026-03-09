@@ -51,9 +51,9 @@ serve(async (req) => {
       extra
     } = body;
 
-    if (!filename || !file_url) {
+    if (!filename || !file_url || !campaign_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: filename, file_url' }),
+        JSON.stringify({ error: 'Missing required fields: filename, file_url, campaign_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -89,7 +89,7 @@ serve(async (req) => {
         quality_status: 'skipped',
         topic_id: topic_id || null,
         language: language || 'en',
-        campaign_id: campaign_id || null,
+        campaign_id,
         session_id: session_id || null,
         recording_type: recording_type || 'mixed',
         metadata: extra || {},

@@ -18,6 +18,7 @@ serve(async (req) => {
       file_size_bytes,
       original_filename,
       transcription_only,
+      campaign_id,
       duration_seconds,
       sample_rate,
       bit_depth,
@@ -25,9 +26,9 @@ serve(async (req) => {
       format: request_format,
     } = await req.json();
 
-    if (!filename || !file_url) {
+    if (!filename || !file_url || !campaign_id) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: filename and file_url" }),
+        JSON.stringify({ error: "Missing required fields: filename, file_url, campaign_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -70,6 +71,7 @@ serve(async (req) => {
         discord_channel_name: "Upload",
         discord_user_id: "upload",
         discord_username: "Upload",
+        campaign_id,
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,

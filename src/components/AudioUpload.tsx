@@ -9,11 +9,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getAudioMetadata } from "@/lib/audioMetadata";
 
 interface AudioUploadProps {
+  campaignId: string;
   onUploadComplete?: () => void;
   transcriptionOnly?: boolean;
 }
 
-export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: AudioUploadProps) {
+export function AudioUpload({ campaignId, onUploadComplete, transcriptionOnly = false }: AudioUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -109,6 +110,7 @@ export function AudioUpload({ onUploadComplete, transcriptionOnly = false }: Aud
           file_size_bytes: selectedFile.size,
           original_filename: selectedFile.name,
           transcription_only: transcriptionOnly,
+          campaign_id: campaignId,
           duration_seconds: audioMetadata.durationSeconds,
           sample_rate: audioMetadata.sampleRate,
           bit_depth: audioMetadata.bitDepth,
