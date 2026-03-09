@@ -409,12 +409,12 @@ export const AudioTestFlow = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
-                  Resultado do Teste
+                  {t("audioTest.testResult")}
                 </span>
-                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>(sessão anterior)</span>}
+                {fromCache && <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>{t("audioTest.previousSession")}</span>}
               </div>
               <span className="font-mono text-[10px] font-bold uppercase px-2 py-1" style={{ background: passed ? "var(--portal-accent)" : "hsl(45 93% 47%)", color: passed ? "var(--portal-accent-text)" : "hsl(168,28%,10%)" }}>
-                {passed ? "APROVADO" : "REPROVADO"}
+                {passed ? t("audioTest.passed") : t("audioTest.failed")}
               </span>
             </div>
             
