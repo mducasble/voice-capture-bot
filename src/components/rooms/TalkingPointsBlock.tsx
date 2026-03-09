@@ -20,23 +20,31 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [userLocation, setUserLocation] = useState<{ country: string | null; city: string | null }>({ country: null, city: null });
+  const [locationLoaded, setLocationLoaded] = useState(false);
 
   const isSuggestion = !topic;
 
   // Fetch user profile location
   useEffect(() => {
     const fetchLocation = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("country, city")
-        .eq("id", user.id)
-        .single();
-      if (profile) {
-        setUserLocation({ country: profile.country, city: profile.city });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("country, city")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          setUserLocation({ country: profile.country, city: profile.city });
+        }
+      } finally {
+        setLocationLoaded(true);
       }
     };
+
     fetchLocation();
   }, []);
 
@@ -85,10 +93,9 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
 
   // Auto-generate on mount
   useEffect(() => {
-    if (!hasGenerated && !loading) {
-      generate();
-    }
-  }, [topic]);
+    if (!locationLoaded || hasGenerated || loading) return;
+    generate();
+  }, [topic, locationLoaded]);
 
   const locationLabel = userLocation.country || t("room.talkingPointsLocal");
 

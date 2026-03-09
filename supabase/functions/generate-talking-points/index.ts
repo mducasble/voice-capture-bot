@@ -51,7 +51,7 @@ serve(async (req) => {
 
 ${locationCtx}
 
-Each bullet should be a short phrase or provocative question that sparks natural dialogue. Write in ${langName}.`;
+Each bullet should be a short phrase or provocative question that sparks natural dialogue. Write strictly in ${langName}. If the input topic is in another language, translate/adapt it and still answer only in ${langName}. Do not mix languages.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -61,6 +61,7 @@ Each bullet should be a short phrase or provocative question that sparks natural
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 0.2,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: isGeneric ? "Suggest interesting conversation topics." : `Topic: "${topic}"` },
