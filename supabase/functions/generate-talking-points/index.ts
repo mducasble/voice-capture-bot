@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { topic, language } = await req.json();
+    const { topic, language, country, city } = await req.json();
     if (!topic) {
       return new Response(JSON.stringify({ error: "topic is required" }), {
         status: 400,
@@ -23,8 +23,22 @@ serve(async (req) => {
 
     const lang = language || "pt-BR";
     const today = new Date().toISOString().split("T")[0];
+    const locationCtx = city && country
+      ? `The user is located in ${city}, ${country}.`
+      : country
+        ? `The user is located in ${country}.`
+        : "The user's location is unknown.";
 
-    const systemPrompt = `You are a conversation coach. Generate 5-7 concise talking point bullets about a given topic, contextualized with current events and trends as of ${today}. Each bullet should be a short phrase or question that sparks natural conversation between two people. Write in ${lang === "pt-BR" || lang === "pt" ? "Portuguese (Brazil)" : lang === "es" ? "Spanish" : "English"}. Return ONLY a JSON array of strings, no markdown.`;
+    const langName = lang === "pt-BR" || lang === "pt" ? "Portuguese (Brazil)" : lang === "es" ? "Spanish" : "English";
+
+    const systemPrompt = `You are a conversation coach. Given a topic, generate two sets of talking points for a natural conversation between two people.
+
+1. "local_points": 4-5 bullets about the topic contextualized to the user's local region/country, referencing local events, culture, or trends as of ${today}.
+2. "global_points": 4-5 bullets about the topic from a global/international perspective, referencing world trends and events as of ${today}.
+
+${locationCtx}
+
+Each bullet should be a short phrase or provocative question that sparks natural dialogue. Write in ${langName}.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -43,17 +57,22 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "return_talking_points",
-              description: "Return a list of talking point bullets for the conversation topic.",
+              description: "Return local and global talking point bullets.",
               parameters: {
                 type: "object",
                 properties: {
-                  points: {
+                  local_points: {
                     type: "array",
                     items: { type: "string" },
-                    description: "List of 5-7 talking point bullets",
+                    description: "4-5 locally contextualized talking points",
+                  },
+                  global_points: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "4-5 globally contextualized talking points",
                   },
                 },
-                required: ["points"],
+                required: ["local_points", "global_points"],
                 additionalProperties: false,
               },
             },
@@ -85,15 +104,16 @@ serve(async (req) => {
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       const parsed = JSON.parse(toolCall.function.arguments);
-      return new Response(JSON.stringify({ points: parsed.points }), {
+      return new Response(JSON.stringify({
+        local_points: parsed.local_points || [],
+        global_points: parsed.global_points || [],
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fallback: try to parse content directly
-    const content = data.choices?.[0]?.message?.content || "[]";
-    const points = JSON.parse(content);
-    return new Response(JSON.stringify({ points: Array.isArray(points) ? points : [] }), {
+    // Fallback
+    return new Response(JSON.stringify({ local_points: [], global_points: [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
