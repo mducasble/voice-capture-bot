@@ -226,7 +226,8 @@
     "talkingPointsGlobal": "Contexto Global",
     "talkingPointsSuggestion": "Sugerencia",
     "startRecording": "INICIAR GRABACIÓN",
-    "stopRecording": "DETENER GRABACIÓN"
+    "stopRecording": "DETENER GRABACIÓN",
+    "minParticipantsWarning": "Mínimo de {{count}} participantes necesarios para grabar. Conectados: {{current}}"
   },
   "audioTest": {
     "title": "Prueba de Audio",
