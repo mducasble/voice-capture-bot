@@ -405,8 +405,8 @@ const Room = () => {
 
       if (error) throw error;
 
-      // Store in sessionStorage for reconnection
-      sessionStorage.setItem(`room_${roomId}_participant`, data.id);
+      // Store in localStorage for reconnection
+      localStorage.setItem(`room_${roomId}_participant`, data.id);
       setCurrentParticipant(data as Participant);
       toast.success("Conectado à sala!");
     } catch (error: any) {
