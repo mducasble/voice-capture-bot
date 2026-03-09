@@ -254,6 +254,7 @@ export const AudioTestFlow = ({
       setShowProfileDetails(false);
       setShowResultDetails(false);
       setPhase("idle");
+      try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
     }
   };
 
@@ -261,6 +262,7 @@ export const AudioTestFlow = ({
     setShowProfileDetails(false);
     setShowResultDetails(false);
     setPhase("idle");
+    try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
   };
 
   const getStatusColor = (status: string) => {
