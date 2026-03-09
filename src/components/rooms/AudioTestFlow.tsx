@@ -530,7 +530,7 @@ export const AudioTestFlow = ({
                 {/* Summary badges */}
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="text-xs">
-                    Ganho: {editedProfile.gain.toFixed(1)}x
+                    {t("audioTest.gain")}: {editedProfile.gain.toFixed(1)}x
                   </Badge>
                   {editedProfile.highpassFreq > 0 && (
                     <Badge variant="outline" className="text-xs">
