@@ -230,6 +230,7 @@
     "guidelines": "Guidelines to improve:",
     "recommendedConfig": "Recommended Configuration",
     "applyConfig": "APPLY CONFIGURATION",
+    "skipConfig": "SKIP",
     "updateConfig": "UPDATE CONFIGURATION",
     "configUpdated": "Configuration updated",
     "configApplied": "Audio configuration applied! 🎛️",
