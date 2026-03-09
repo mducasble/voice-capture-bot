@@ -322,7 +322,7 @@ export const AudioTestFlow = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "hsl(0 84% 60%)" }} />
               <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "hsl(0 84% 60%)" }} />
             </span>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Gravando Teste...</span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("audioTest.recordingTest")}</span>
           </div>
           <p className="font-mono text-4xl font-black" style={{ color: "var(--portal-text)" }}>
             {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
@@ -331,7 +331,7 @@ export const AudioTestFlow = ({
             <div className="h-full transition-all" style={{ width: `${progress}%`, background: "hsl(0 84% 60%)" }} />
           </div>
           <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-            Fale como se estivesse gravando normalmente. Evite pausas muito longas.
+            {t("audioTest.recordingDesc")}
           </p>
         </div>
       );
@@ -344,17 +344,14 @@ export const AudioTestFlow = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
             </span>
-            Gravando Teste...
+            {t("audioTest.recordingTest")}
           </CardTitle>
-          <CardDescription>Fale normalmente por {countdown}s</CardDescription>
+          <CardDescription>{t("audioTest.recordingDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={progress} className="h-2" />
           <p className="text-center text-2xl font-mono font-bold text-foreground">
             {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
-          </p>
-          <p className="text-center text-xs text-muted-foreground">
-            Fale como se estivesse gravando normalmente. Evite pausas muito longas.
           </p>
         </CardContent>
       </Card>
