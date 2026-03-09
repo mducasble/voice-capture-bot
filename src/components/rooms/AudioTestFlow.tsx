@@ -721,12 +721,12 @@ export const AudioTestFlow = ({
                 {testBlobUrlRef.current && (
                   <Button variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="gap-1.5">
                     {audioPlayer.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {audioPlayer.isPlaying ? "Pausar" : "Ouvir Teste"}
+                    {audioPlayer.isPlaying ? t("audioTest.pause") : t("audioTest.listenTest")}
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
                   <RotateCcw className="h-4 w-4" />
-                  Refazer Teste
+                  {t("audioTest.retryTest")}
                 </Button>
               </div>
             )}
