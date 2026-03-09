@@ -813,38 +813,36 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex flex-col gap-4 mb-24">
+        <div className="flex flex-col gap-6 pb-12 mb-12" style={{ borderBottom: "1px solid var(--portal-border)" }}>
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
                 {room.is_recording ? `${t("room.recording")} ${formatDuration(recordingDuration)}` : room.status === "completed" ? t("room.completed") : t("room.waiting")}
               </span>
             </div>
-            <h1 className="font-mono text-3xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+            <h1 className="font-mono text-4xl font-black uppercase tracking-tight mb-4" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
-            <div className="flex items-center gap-6 mt-2">
-              <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                <Users className="h-4 w-4" /> {participants.length} {t("room.participants")}
+            <div className="flex items-center gap-8">
+              <p className="font-mono text-base flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
+                <Users className="h-5 w-5" /> {participants.length} {t("room.participants")}
               </p>
               {room.topic && (
-                <p className="font-mono text-sm flex items-center gap-2" style={{ color: "var(--portal-accent)" }}>
-                  <MessageSquare className="h-4 w-4" /> {room.topic}
+                <p className="font-mono text-base flex items-center gap-2" style={{ color: "var(--portal-accent)" }}>
+                  <MessageSquare className="h-5 w-5" /> {room.topic}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center gap-3">
             <KGenButton
               variant="primary"
-              size="sm"
               onClick={copyLink}
               scrambleText={copied ? t("room.copied") : t("room.inviteOther")}
-              icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              icon={copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
             />
             <KGenButton
-              size="sm"
               onClick={handleLeave}
               scrambleText={t("room.leave")}
               className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
