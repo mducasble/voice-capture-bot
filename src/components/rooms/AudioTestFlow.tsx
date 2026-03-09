@@ -580,7 +580,7 @@ export const AudioTestFlow = ({
                     {/* Gain slider */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Ganho</span>
+                        <span className="text-muted-foreground">{t("audioTest.gain")}</span>
                         <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
                       </div>
                       <Slider
