@@ -163,7 +163,8 @@
     "saveProfile": "SAVE PROFILE",
     "savedSuccess": "Profile saved successfully!",
     "saveError": "Error saving profile.",
-    "uploadError": "Error uploading photo."
+    "uploadError": "Error uploading photo.",
+    "completeRequired": "Complete your profile to access opportunities and campaigns."
   },
   "admin": {
     "campaigns": "Campaigns",
