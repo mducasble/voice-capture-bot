@@ -272,7 +272,20 @@
       "sigmos_disc": { "label": "SIGMOS (distortion)" },
       "sigmos_reverb": { "label": "SIGMOS (reverb)" },
       "vqscore": { "label": "VQScore" },
-      "mic_sr": { "label": "Sample Rate" }
+      "mic_sr": { "label": "Sample Rate" },
+      "device_sr": { "label": "Device SR" }
+    },
+    "issues": {
+      "snr": { "label": "Background Noise (SNR)", "guidance": "Your environment is too noisy. Try recording in a quieter place, close windows/doors and turn off fans or air conditioning." },
+      "rms": { "label": "Volume Level (RMS)", "guidanceLow": "Your microphone volume is too low. Speak closer to the microphone or increase the gain in system settings.", "guidanceHigh": "The volume is too high and may cause distortion. Move slightly away from the microphone or reduce the gain." },
+      "srmr": { "label": "Reverberation (SRMR)", "guidance": "There is too much reverberation (echo) in your environment. Try recording in a smaller space or with sound-absorbing materials (curtains, carpet)." },
+      "wvmos": { "label": "Voice Quality (WVMOS)", "guidance": "Overall voice quality is below expectations. Check if the microphone is working properly and if there are no interferences." },
+      "utmos": { "label": "Speech Naturalness (UTMOS)", "guidance": "Speech naturalness is compromised. Try speaking in a more natural and consistent tone." },
+      "sigmos_ovrl": { "label": "Signal Quality (SigMOS)", "guidance": "Overall signal quality is low. Check microphone connections and try a different device." },
+      "sigmos_disc": { "label": "Distortion (SigMOS)", "guidance": "There is distortion in the audio. Reduce the input volume or move away from the microphone." },
+      "sigmos_reverb": { "label": "Reverb (SigMOS)", "guidance": "Excessive reverberation detected. Use a more acoustically treated environment." },
+      "vqscore": { "label": "Voice Quality Score", "guidance": "Voice quality score is low. Improve the environment and check equipment." },
+      "mic_sr": { "label": "Microphone Bandwidth", "guidance": "Your microphone has limited bandwidth. Use a better quality microphone if possible (USB headset or condenser)." }
     },
     "profileDesc": {
       "gain": {

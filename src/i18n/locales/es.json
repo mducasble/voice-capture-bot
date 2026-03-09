@@ -272,7 +272,20 @@
       "sigmos_disc": { "label": "SIGMOS (distorsión)" },
       "sigmos_reverb": { "label": "SIGMOS (reverb)" },
       "vqscore": { "label": "VQScore" },
-      "mic_sr": { "label": "Sample Rate" }
+      "mic_sr": { "label": "Sample Rate" },
+      "device_sr": { "label": "SR Dispositivo" }
+    },
+    "issues": {
+      "snr": { "label": "Ruido de Fondo (SNR)", "guidance": "Su entorno es muy ruidoso. Intente grabar en un lugar más silencioso, cierre ventanas/puertas y apague ventiladores o aire acondicionado." },
+      "rms": { "label": "Nivel de Volumen (RMS)", "guidanceLow": "El volumen de su micrófono es muy bajo. Hable más cerca del micrófono o aumente la ganancia en la configuración del sistema.", "guidanceHigh": "El volumen es muy alto y puede causar distorsión. Aléjese un poco del micrófono o reduzca la ganancia." },
+      "srmr": { "label": "Reverberación (SRMR)", "guidance": "Hay mucha reverberación (eco) en su entorno. Intente grabar en un espacio más pequeño o con materiales que absorban sonido (cortinas, alfombra)." },
+      "wvmos": { "label": "Calidad de Voz (WVMOS)", "guidance": "La calidad general de la voz está por debajo de lo esperado. Verifique que el micrófono funcione correctamente y que no haya interferencias." },
+      "utmos": { "label": "Naturalidad del Habla (UTMOS)", "guidance": "La naturalidad del habla está comprometida. Intente hablar en un tono más natural y consistente." },
+      "sigmos_ovrl": { "label": "Calidad de Señal (SigMOS)", "guidance": "La calidad general de la señal es baja. Verifique las conexiones del micrófono e intente con un dispositivo diferente." },
+      "sigmos_disc": { "label": "Distorsión (SigMOS)", "guidance": "Hay distorsión en el audio. Reduzca el volumen de entrada o aléjese del micrófono." },
+      "sigmos_reverb": { "label": "Reverb (SigMOS)", "guidance": "Reverberación excesiva detectada. Use un entorno con mejor tratamiento acústico." },
+      "vqscore": { "label": "Score de Calidad de Voz", "guidance": "El score de calidad de voz es bajo. Mejore el entorno y verifique el equipo." },
+      "mic_sr": { "label": "Ancho de Banda del Micrófono", "guidance": "Su micrófono tiene ancho de banda limitado. Use un micrófono de mejor calidad si es posible (headset USB o condensador)." }
     },
     "profileDesc": {
       "gain": {
