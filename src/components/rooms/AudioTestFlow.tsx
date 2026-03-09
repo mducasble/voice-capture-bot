@@ -73,6 +73,7 @@ export const AudioTestFlow = ({
   const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
   const testBlobUrlRef = useRef<string | null>(null);
+  const { t } = useTranslation("translation");
 
   // Test uses no profile (raw capture for accurate measurement)
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
