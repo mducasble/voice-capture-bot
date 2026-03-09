@@ -156,7 +156,7 @@ export function FaqSidebar() {
                           <div className="px-3 pb-3">
                             <div className="w-full h-px mb-2" style={{ background: "var(--portal-border)" }} />
                             <p
-                              className="font-mono text-xs leading-relaxed whitespace-pre-line"
+                              className="font-mono text-[13px] leading-relaxed whitespace-pre-line"
                               style={{ color: "var(--portal-text-muted)" }}
                             >
                               {getAnswer(item)}
