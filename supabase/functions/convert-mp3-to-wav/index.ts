@@ -84,15 +84,14 @@ serve(async (req) => {
       for (let ch = 0; ch < outputChannels; ch++) {
         // Use modulo to handle mono -> stereo conversion
         const srcCh = ch % inputChannels;
-        const channelData = decoded.channelData[srcCh];
 
-        // Linear interpolation
-        const sample1 = channelData[srcIndex] || 0;
-        const sample2 = channelData[nextIndex] || 0;
+        // inputPcm is interleaved Int16
+        const sample1 = inputPcm[srcIndex * inputChannels + srcCh] || 0;
+        const sample2 = inputPcm[nextIndex * inputChannels + srcCh] || 0;
         const interpolated = sample1 + (sample2 - sample1) * frac;
 
-        // Convert float [-1, 1] to 16-bit signed integer
-        const intSample = Math.max(-32768, Math.min(32767, Math.round(interpolated * 32767)));
+        // Already Int16 range, just clamp
+        const intSample = Math.max(-32768, Math.min(32767, Math.round(interpolated)));
         
         const offset = (i * outputChannels + ch) * bytesPerSample;
         pcmView.setInt16(offset, intSample, true); // little-endian
