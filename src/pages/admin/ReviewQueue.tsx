@@ -627,8 +627,45 @@ function SummaryPill({ icon: Icon, label, value, color }: { icon: React.ElementT
 // ---- Campaign tab content ----
 
 function CampaignTabContent({
+  hosts,
+  profileMap,
+  onApproveSession,
+  onRejectSession,
+  isPending,
+}: {
+  hosts: HostGroup[];
+  profileMap: Map<string, string>;
+  onApproveSession: (recordingIds: string[]) => void;
+  onRejectSession: (recordingIds: string[], reason: string) => void;
+  isPending: boolean;
+}) {
+  if (hosts.length === 0) {
+    return (
+      <div className="text-center py-12 border border-border bg-card rounded-lg">
+        <FileAudio className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Nenhuma sessão nesta campanha.</p>
+      </div>
+    );
+  }
 
-export default function ReviewQueue() {
+  return (
+    <div className="space-y-3">
+      {hosts.map(host => (
+        <HostBlock
+          key={host.hostName}
+          host={host}
+          profileMap={profileMap}
+          onApproveSession={onApproveSession}
+          onRejectSession={onRejectSession}
+          isPending={isPending}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---- Main page ----
+
   const queryClient = useQueryClient();
 
   const { data: recordings, isLoading } = useQuery({
