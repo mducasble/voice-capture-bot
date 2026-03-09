@@ -163,7 +163,7 @@ export default function PortalAuth() {
       email: signupEmail,
       password: signupPassword,
       options: {
-        data: { full_name: signupName },
+        data: { full_name: signupName, country: signupCountry, city: signupCity },
         emailRedirectTo: window.location.origin + (sessionStorage.getItem("redirect_after_login") || "/"),
       },
     });
