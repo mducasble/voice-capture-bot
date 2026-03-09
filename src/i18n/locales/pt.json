@@ -210,6 +210,8 @@
     "talkingPointsGenerating": "Gerando pontos de conversa com IA...",
     "talkingPointsRegenerate": "Gerar novos pontos",
     "talkingPointsRetry": "TENTAR NOVAMENTE",
+    "talkingPointsLocal": "Contexto Local",
+    "talkingPointsGlobal": "Contexto Global",
     "startRecording": "INICIAR GRAVAÇÃO",
     "stopRecording": "PARAR GRAVAÇÃO"
   },
