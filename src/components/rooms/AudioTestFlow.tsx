@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
 import { computeAudioProfile, getProfileDescriptions, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 import KGenButton from "@/components/portal/KGenButton";
+import { useTranslation } from "react-i18next";
 
 interface MetricResult {
   value: number | null;
