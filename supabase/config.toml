@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.detect-emotions]
 verify_jwt = false
+
+[functions.generate-talking-points]
+verify_jwt = false
