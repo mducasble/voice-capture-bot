@@ -106,7 +106,7 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
 
         <div className="hidden md:flex items-center gap-3">
           <LanguageSelector variant="compact" />
-          <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} />
+          <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} showGlow={!profileComplete} />
           <button onClick={signOut} className="p-2 transition-colors" style={{ color: "var(--portal-text-muted)" }} title={t("nav.logout")}>
             <LogOut className="h-4 w-4" />
           </button>
