@@ -616,6 +616,7 @@ const Room = () => {
     const storedParticipantId = roomId ? localStorage.getItem(`room_${roomId}_participant`) : null;
     // Check participants list first, but also check DB-fetched creator (may be disconnected)
     const creatorParticipant = participants.find(p => p.is_creator) || dbCreatorParticipant;
+    // user_id check is handled in useEffect, but we can also use localStorage as primary UI hint
     const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
 
     // Join screen
