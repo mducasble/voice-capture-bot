@@ -408,7 +408,7 @@ export const AudioTestFlow = ({
   if (phase === "results" && results) {
     const passed = results.overall_status === "passed";
     const profileApplied = currentProfile != null && editedProfile != null;
-    const descriptions = editedProfile ? getProfileDescriptionKeyKeys(editedProfile) : [];
+    const descriptions = editedProfile ? getProfileDescriptionKeys(editedProfile) : [];
 
     const Wrapper = isPortal ? "div" : Card;
     const wrapperProps = isPortal
