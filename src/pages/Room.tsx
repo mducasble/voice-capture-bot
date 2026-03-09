@@ -265,8 +265,10 @@ const Room = () => {
 
     const checkCreatorParticipant = async () => {
       if (!currentParticipant) {
-        const storedCreatorId = sessionStorage.getItem(`room_${roomId}_participant`);
-        if (storedCreatorId === dbCreatorParticipant.id) {
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        const isUserCreator = currentUser && dbCreatorParticipant.user_id === currentUser.id;
+        const storedCreatorId = localStorage.getItem(`room_${roomId}_participant`);
+        if (storedCreatorId === dbCreatorParticipant.id || isUserCreator) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
             mediaStreamRef.current = stream;
