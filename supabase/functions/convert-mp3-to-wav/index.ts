@@ -44,22 +44,20 @@ serve(async (req) => {
 
     console.log('Decoding MP3...');
     
-    // Dynamic import of mpg123-decoder (non-Worker version for Deno compatibility)
-    const { MPEGDecoder } = await import("https://esm.sh/mpg123-decoder@0.4.12");
+    // Pure JS MP3 decoder (no Worker/WASM deps, Deno-compatible)
+    const JsMp3 = (await import("https://esm.sh/js-mp3@0.0.1")).default;
     
-    const decoder = new MPEGDecoder();
-    await decoder.ready;
-
-    const decoded = await decoder.decode(new Uint8Array(mp3Buffer));
-    await decoder.free();
+    const decoder = JsMp3.newDecoder(mp3Buffer);
+    const pcmBuffer = decoder.decode();
     
-    if (!decoded || !decoded.channelData || decoded.channelData.length === 0) {
+    if (!pcmBuffer || pcmBuffer.byteLength === 0) {
       throw new Error('Failed to decode MP3');
     }
 
-    const inputSampleRate = decoded.sampleRate;
-    const inputChannels = decoded.channelData.length;
-    const inputSamples = decoded.samplesDecoded;
+    const inputSampleRate = decoder.sampleRate || 44100;
+    const inputChannels = decoder.channels || 2;
+    const inputPcm = new Int16Array(pcmBuffer);
+    const inputSamples = Math.floor(inputPcm.length / inputChannels);
 
     console.log(`Decoded: ${inputSamples} samples, ${inputSampleRate}Hz, ${inputChannels} channels`);
 
@@ -86,15 +84,14 @@ serve(async (req) => {
       for (let ch = 0; ch < outputChannels; ch++) {
         // Use modulo to handle mono -> stereo conversion
         const srcCh = ch % inputChannels;
-        const channelData = decoded.channelData[srcCh];
 
-        // Linear interpolation
-        const sample1 = channelData[srcIndex] || 0;
-        const sample2 = channelData[nextIndex] || 0;
+        // inputPcm is interleaved Int16
+        const sample1 = inputPcm[srcIndex * inputChannels + srcCh] || 0;
+        const sample2 = inputPcm[nextIndex * inputChannels + srcCh] || 0;
         const interpolated = sample1 + (sample2 - sample1) * frac;
 
-        // Convert float [-1, 1] to 16-bit signed integer
-        const intSample = Math.max(-32768, Math.min(32767, Math.round(interpolated * 32767)));
+        // Already Int16 range, just clamp
+        const intSample = Math.max(-32768, Math.min(32767, Math.round(interpolated)));
         
         const offset = (i * outputChannels + ch) * bytesPerSample;
         pcmView.setInt16(offset, intSample, true); // little-endian
