@@ -555,29 +555,42 @@ const Room = () => {
 
   // Copy room link with referral code
   const copyLink = async () => {
-    const url = new URL(window.location.href);
-    
-    // Try to get current user's referral code
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("referral_code")
-          .eq("id", user.id)
-          .single();
-        if (profile?.referral_code) {
-          url.searchParams.set("ref", profile.referral_code);
+      const { createShortLink } = await import("@/lib/shortLinks");
+      const url = new URL(window.location.href);
+      
+      // Try to get current user's referral code
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("referral_code")
+            .eq("id", user.id)
+            .single();
+          if (profile?.referral_code) {
+            url.searchParams.set("ref", profile.referral_code);
+          }
         }
+      } catch (e) {
+        console.warn("Could not fetch referral code:", e);
       }
+      
+      // Create short link from the path + query string
+      const targetPath = url.pathname + url.search;
+      const shortUrl = await createShortLink(targetPath);
+      
+      navigator.clipboard.writeText(shortUrl);
+      setCopied(true);
+      toast.success("Link copiado!");
+      setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      console.warn("Could not fetch referral code:", e);
+      // Fallback to full URL
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      toast.success("Link copiado!");
+      setTimeout(() => setCopied(false), 2000);
     }
-    
-    navigator.clipboard.writeText(url.toString());
-    setCopied(true);
-    toast.success("Link copiado!");
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // Toggle mute
