@@ -323,6 +323,22 @@
       }
     }
   },
+  "guidelines": {
+    "toggleButton": "Instrucciones",
+    "title": "Instrucciones de Grabación",
+    "items": {
+      "environment": { "title": "Entorno de Grabación", "text": "Grabe en un lugar silencioso con mínimo ruido de fondo. Evite ventiladores, TV, música, tráfico u otras personas hablando. Se recomienda una habitación cerrada." },
+      "audioQuality": { "title": "Calidad de Audio", "text": "Use un micrófono o headset de buena calidad. Ambos hablantes deben ser claramente audibles. Mantenga distancia consistente del micrófono y evite tocar o mover el dispositivo." },
+      "twoParticipants": { "title": "Dos Participantes", "text": "La conversación debe incluir dos hablantes diferentes. Cada persona debe hablar naturalmente y turnarse. Evite interrumpir o hablar al mismo tiempo." },
+      "naturalConversation": { "title": "Conversación Natural", "text": "Hable de forma natural y clara, como en una conversación normal. Evite sonar robótico o excesivamente guionizado. El diálogo debe parecer realista." },
+      "followTopic": { "title": "Siga el Tema", "text": "Si se proporciona un tema o prompt, mantenga la conversación relevante. Ambos deben participar activamente." },
+      "speechPace": { "title": "Ritmo del Habla", "text": "Hable a un ritmo moderado y claro. No hable demasiado rápido ni demasiado lento y pronuncie las palabras con claridad." },
+      "noPersonalData": { "title": "Sin Datos Personales", "text": "No mencione nombres completos reales, direcciones, números de teléfono, documentos o cualquier información personal sensible." },
+      "continuousRecording": { "title": "Grabación Continua", "text": "La conversación debe grabarse continuamente sin cortes ni ediciones, salvo instrucciones específicas." },
+      "recordingDuration": { "title": "Duración de la Grabación", "text": "El tiempo puede variar: 10, 15, 20, 25 o 30 minutos, dependiendo de las instrucciones de la tarea." },
+      "consistency": { "title": "Consistencia", "text": "Mantenga el mismo entorno, distancia del micrófono y claridad de voz durante toda la conversación." }
+    }
+  },
   "common": {
     "error": "Error",
     "loading": "Cargando...",
