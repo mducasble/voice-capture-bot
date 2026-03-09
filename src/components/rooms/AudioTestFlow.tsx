@@ -365,9 +365,9 @@ export const AudioTestFlow = ({
         <div className="p-6 text-center space-y-4" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)" }}>
           <div className="flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--portal-accent)" }} />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>Analisando áudio...</span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("audioTest.analyzing")}</span>
           </div>
-          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>Calculando métricas de qualidade. Isso pode levar até 30s.</p>
+          <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>{t("audioTest.analyzingDesc")}</p>
           <div className="w-full h-1" style={{ background: "var(--portal-border)" }}>
             <div className="h-full transition-all" style={{ width: `${analysisProgress}%`, background: "var(--portal-accent)" }} />
           </div>
@@ -379,9 +379,9 @@ export const AudioTestFlow = ({
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-base flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Analisando áudio...
+            {t("audioTest.analyzing")}
           </CardTitle>
-          <CardDescription>Calculando métricas de qualidade. Isso pode levar até 30s.</CardDescription>
+          <CardDescription>{t("audioTest.analyzingDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Progress value={analysisProgress} className="h-2" />
