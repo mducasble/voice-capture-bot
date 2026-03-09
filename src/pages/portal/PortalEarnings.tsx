@@ -54,7 +54,7 @@ export default function PortalEarnings() {
   const stats = useMemo(() => {
     const rows = ledgerRows || [];
     const byActivity: Record<string, { direct: number; referral: number; pending: number; tasks: number; total: number }> = {};
-    ACTIVITY_TYPES.forEach(a => { byActivity[a.key] = { direct: 0, referral: 0, pending: 0, tasks: 0, total: 0 }; });
+    ACTIVITY_KEYS.forEach(a => { byActivity[a.key] = { direct: 0, referral: 0, pending: 0, tasks: 0, total: 0 }; });
 
     let totalAccumulated = 0;
     let totalCredited = 0;
