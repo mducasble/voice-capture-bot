@@ -435,7 +435,7 @@ export const AudioTestFlow = ({
               className="font-mono text-[10px] text-center w-full uppercase flex justify-center items-center gap-1 mt-2 transition-colors hover:text-white"
               style={{ color: "var(--portal-text-muted)" }}
             >
-              {showResultDetails ? "Ocultar detalhes" : "Ver detalhes métricas"}
+              {showResultDetails ? t("audioTest.hideDetails") : t("audioTest.showDetails")}
               {showResultDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
           </div>
