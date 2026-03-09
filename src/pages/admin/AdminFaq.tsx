@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Languages, Loader2 } from "lucide-react";
 
 interface FaqItem {
   id: string;
@@ -40,6 +40,7 @@ export default function AdminFaq() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FaqItem | null>(null);
   const [form, setForm] = useState<Omit<FaqItem, "id">>(EMPTY);
+  const [translating, setTranslating] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["admin-faq"],
@@ -117,6 +118,37 @@ export default function AdminFaq() {
       return;
     }
     saveMutation.mutate(editing ? { ...form, id: editing.id } : form);
+  };
+
+  const handleTranslate = async () => {
+    if (!form.question_pt.trim() || !form.answer_pt.trim()) {
+      toast.error("Preencha a pergunta e resposta em português primeiro.");
+      return;
+    }
+
+    setTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-faq", {
+        body: { question: form.question_pt, answer: form.answer_pt },
+      });
+
+      if (error) throw error;
+
+      const t = data.translated;
+      setForm(f => ({
+        ...f,
+        question_en: t.question_en || f.question_en,
+        answer_en: t.answer_en || f.answer_en,
+        question_es: t.question_es || f.question_es,
+        answer_es: t.answer_es || f.answer_es,
+      }));
+      toast.success("Tradução aplicada!");
+    } catch (e: any) {
+      console.error("Translation error:", e);
+      toast.error("Erro ao traduzir: " + (e.message || "tente novamente"));
+    } finally {
+      setTranslating(false);
+    }
   };
 
   // Group by category
@@ -201,7 +233,19 @@ export default function AdminFaq() {
 
             {/* PT */}
             <div className="space-y-2 p-3 rounded-lg border">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">🇧🇷 Português</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">🇧🇷 Português</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={handleTranslate}
+                  disabled={translating || !form.question_pt.trim() || !form.answer_pt.trim()}
+                >
+                  {translating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                  {translating ? "Traduzindo..." : "Traduzir para EN/ES"}
+                </Button>
+              </div>
               <Input value={form.question_pt} onChange={e => setForm(f => ({ ...f, question_pt: e.target.value }))} placeholder="Pergunta *" />
               <Textarea value={form.answer_pt} onChange={e => setForm(f => ({ ...f, answer_pt: e.target.value }))} placeholder="Resposta *" rows={3} />
             </div>
