@@ -492,7 +492,7 @@ export const AudioTestFlow = ({
             {/* Issues & Guidance */}
             {results.issues.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Orientações para melhorar:</p>
+                <p className="text-sm font-medium text-foreground">{t("audioTest.guidelines")}</p>
                 {results.issues.map((issue, i) => (
                   <div key={i} className={`p-3 rounded-lg border text-sm ${getStatusColor(issue.status)}`}>
                     <div className="font-medium mb-1 flex items-center gap-1.5">
