@@ -217,6 +217,7 @@ export function MultiSpeakerUpload({ campaignId, onUploadComplete }: MultiSpeake
             bit_depth: audioMetadata.bitDepth ?? 16,
             channels: audioMetadata.channels ?? 2,
             format: audioMetadata.format ?? ext.toLowerCase(),
+            campaign_id: campaignId,
             session_id: sessionId,
             recording_type: "individual",
             discord_user_id: `manual_${sf.id}`,
