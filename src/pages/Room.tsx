@@ -42,6 +42,7 @@ interface Participant {
   joined_at: string;
   audio_test_status: string;
   audio_test_results: any;
+  user_id?: string | null;
 }
 
 const Room = () => {
@@ -264,8 +265,10 @@ const Room = () => {
 
     const checkCreatorParticipant = async () => {
       if (!currentParticipant) {
-        const storedCreatorId = sessionStorage.getItem(`room_${roomId}_participant`);
-        if (storedCreatorId === dbCreatorParticipant.id) {
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        const isUserCreator = currentUser && dbCreatorParticipant.user_id === currentUser.id;
+        const storedCreatorId = localStorage.getItem(`room_${roomId}_participant`);
+        if (storedCreatorId === dbCreatorParticipant.id || isUserCreator) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
             mediaStreamRef.current = stream;
@@ -380,8 +383,8 @@ const Room = () => {
             .update({ is_connected: true, left_at: null })
             .eq("id", creatorParticipant.id);
 
-          // Store in sessionStorage for reconnection
-          sessionStorage.setItem(`room_${roomId}_participant`, creatorParticipant.id);
+          // Store in localStorage for reconnection
+          localStorage.setItem(`room_${roomId}_participant`, creatorParticipant.id);
           setCurrentParticipant(creatorParticipant as Participant);
           toast.success("Conectado à sala!");
           return;
@@ -402,8 +405,8 @@ const Room = () => {
 
       if (error) throw error;
 
-      // Store in sessionStorage for reconnection
-      sessionStorage.setItem(`room_${roomId}_participant`, data.id);
+      // Store in localStorage for reconnection
+      localStorage.setItem(`room_${roomId}_participant`, data.id);
       setCurrentParticipant(data as Participant);
       toast.success("Conectado à sala!");
     } catch (error: any) {
@@ -609,10 +612,11 @@ const Room = () => {
     );
   }
 
-    // Check if user might be the creator via sessionStorage
-    const storedParticipantId = roomId ? sessionStorage.getItem(`room_${roomId}_participant`) : null;
+    // Check if user might be the creator via localStorage
+    const storedParticipantId = roomId ? localStorage.getItem(`room_${roomId}_participant`) : null;
     // Check participants list first, but also check DB-fetched creator (may be disconnected)
     const creatorParticipant = participants.find(p => p.is_creator) || dbCreatorParticipant;
+    // user_id check is handled in useEffect, but we can also use localStorage as primary UI hint
     const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
 
     // Join screen
