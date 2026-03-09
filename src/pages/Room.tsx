@@ -1193,11 +1193,16 @@ const Room = () => {
                     <div className="flex items-center justify-center gap-4">
                       {!room.is_recording ? (
                         <div className="flex flex-col items-center gap-2">
+                          {!canStartRecording && (
+                            <p className="text-xs text-amber-500 text-center">
+                              {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
+                            </p>
+                          )}
                           <Button 
                             size="lg" 
                             onClick={handleStartRecording}
                             className="bg-red-600 hover:bg-red-700"
-                            disabled={room.status === "completed"}
+                            disabled={room.status === "completed" || !canStartRecording}
                           >
                             <Circle className="h-5 w-5 mr-2 fill-current" />
                             Iniciar Gravação
