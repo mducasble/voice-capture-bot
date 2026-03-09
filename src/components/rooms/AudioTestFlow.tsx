@@ -515,7 +515,7 @@ export const AudioTestFlow = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Settings2 className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">Configuração Recomendada</span>
+                    <span className="text-sm font-medium text-foreground">{t("audioTest.recommendedConfig")}</span>
                   </div>
                   <Button
                     variant="ghost"
