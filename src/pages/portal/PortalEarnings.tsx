@@ -6,12 +6,12 @@ import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Imag
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-const ACTIVITY_TYPES = [
-  { key: "audio", label: "Áudio", icon: Mic },
-  { key: "video", label: "Vídeo", icon: Video },
-  { key: "image", label: "Imagem", icon: Image },
-  { key: "annotation", label: "Data Labelling", icon: Tag },
-  { key: "text", label: "Texto", icon: FileText },
+const ACTIVITY_KEYS = [
+  { key: "audio", i18n: "earnings.activityAudio", icon: Mic },
+  { key: "video", i18n: "earnings.activityVideo", icon: Video },
+  { key: "image", i18n: "earnings.activityImage", icon: Image },
+  { key: "annotation", i18n: "earnings.activityAnnotation", icon: Tag },
+  { key: "text", i18n: "earnings.activityText", icon: FileText },
 ];
 
 function fmt(v: number) {
