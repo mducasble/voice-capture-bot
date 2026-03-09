@@ -19,10 +19,11 @@ interface SpeakerFile {
 }
 
 interface MultiSpeakerUploadProps {
+  campaignId: string;
   onUploadComplete?: () => void;
 }
 
-export function MultiSpeakerUpload({ onUploadComplete }: MultiSpeakerUploadProps) {
+export function MultiSpeakerUpload({ campaignId, onUploadComplete }: MultiSpeakerUploadProps) {
   const [speakerFiles, setSpeakerFiles] = useState<SpeakerFile[]>([]);
   const [mixedFile, setMixedFile] = useState<File | null>(null);
   const [autoMix, setAutoMix] = useState(true);
