@@ -88,22 +88,26 @@
   "task": {
     "backToCampaign": "Volver a la Campaña",
     "chooseMethod": "¿Cómo desea participar?",
-    "chooseMethodDesc": "Elija el método de envío de material para esta campaña.",
-    "liveRoom": "Sala en Vivo",
-    "liveRoomDesc": "Grabe en tiempo real con otros participantes",
-    "uploadFile": "Subir Archivo",
-    "uploadFileDesc": "Envíe un archivo ya grabado",
+    "chooseMethodDesc": "Elija cómo desea enviar los audios de la campaña.",
+    "executeTask": "Ejecutar Tarea",
+    "configureRecording": "Configurar Grabación",
+    "liveRoom": "Crear Sala",
+    "liveRoomDesc": "Grabe en vivo con otro participante. Cree una sala, comparta el enlace y conversen en tiempo real.",
+    "uploadFile": "Subir Audios",
+    "uploadFileDesc": "Suba archivos de audio separados por participante. Ideal para grabaciones ya realizadas.",
     "conversationTopic": "Tema de Conversación",
-    "selectTopic": "Seleccione el tema",
-    "sessionDuration": "Duración de la Sesión",
+    "selectTopic": "Seleccione un tema",
+    "sessionDuration": "Duración de la Conversación",
     "minutes": "min",
     "createRoom": "CREAR SALA DE GRABACIÓN",
-    "creating": "CREANDO...",
+    "creating": "CREANDO SALA...",
+    "createRoomError": "Error al crear sala: ",
     "selectTopicError": "Seleccione el tema de conversación",
-    "uploadMaterial": "Subir Material",
+    "uploadMaterial": "Subir Audios",
     "uploadDesc": "Seleccione o arrastre archivos para enviar.",
     "campaignNotFound": "Campaña no encontrada.",
-    "sendMore": "ENVIAR MÁS MATERIAL"
+    "sendMore": "ENVIAR MÁS MATERIAL",
+    "comingSoon": "Área de tareas próximamente."
   },
   "myCampaigns": {
     "title": "Mis Campañas",
@@ -317,6 +321,22 @@
         "active": "Control automático de ganancia del navegador activo",
         "off": "Control automático de ganancia desactivado"
       }
+    }
+  },
+  "guidelines": {
+    "toggleButton": "Instrucciones",
+    "title": "Instrucciones de Grabación",
+    "items": {
+      "environment": { "title": "Entorno de Grabación", "text": "Grabe en un lugar silencioso con mínimo ruido de fondo. Evite ventiladores, TV, música, tráfico u otras personas hablando. Se recomienda una habitación cerrada." },
+      "audioQuality": { "title": "Calidad de Audio", "text": "Use un micrófono o headset de buena calidad. Ambos hablantes deben ser claramente audibles. Mantenga distancia consistente del micrófono y evite tocar o mover el dispositivo." },
+      "twoParticipants": { "title": "Dos Participantes", "text": "La conversación debe incluir dos hablantes diferentes. Cada persona debe hablar naturalmente y turnarse. Evite interrumpir o hablar al mismo tiempo." },
+      "naturalConversation": { "title": "Conversación Natural", "text": "Hable de forma natural y clara, como en una conversación normal. Evite sonar robótico o excesivamente guionizado. El diálogo debe parecer realista." },
+      "followTopic": { "title": "Siga el Tema", "text": "Si se proporciona un tema o prompt, mantenga la conversación relevante. Ambos deben participar activamente." },
+      "speechPace": { "title": "Ritmo del Habla", "text": "Hable a un ritmo moderado y claro. No hable demasiado rápido ni demasiado lento y pronuncie las palabras con claridad." },
+      "noPersonalData": { "title": "Sin Datos Personales", "text": "No mencione nombres completos reales, direcciones, números de teléfono, documentos o cualquier información personal sensible." },
+      "continuousRecording": { "title": "Grabación Continua", "text": "La conversación debe grabarse continuamente sin cortes ni ediciones, salvo instrucciones específicas." },
+      "recordingDuration": { "title": "Duración de la Grabación", "text": "El tiempo puede variar: 10, 15, 20, 25 o 30 minutos, dependiendo de las instrucciones de la tarea." },
+      "consistency": { "title": "Consistencia", "text": "Mantenga el mismo entorno, distancia del micrófono y claridad de voz durante toda la conversación." }
     }
   },
   "common": {

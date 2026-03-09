@@ -89,21 +89,25 @@
     "backToCampaign": "Back to Campaign",
     "chooseMethod": "How would you like to participate?",
     "chooseMethodDesc": "Choose the method to submit material for this campaign.",
+    "executeTask": "Execute Task",
+    "configureRecording": "Configure Recording",
     "liveRoom": "Live Room",
-    "liveRoomDesc": "Record in real time with other participants",
-    "uploadFile": "Upload File",
-    "uploadFileDesc": "Submit a pre-recorded file",
+    "liveRoomDesc": "Record live with another participant. Create a room, share the link and talk in real time.",
+    "uploadFile": "Upload Files",
+    "uploadFileDesc": "Upload audio files separated by participant. Ideal for pre-recorded sessions.",
     "conversationTopic": "Conversation Topic",
     "selectTopic": "Select topic",
     "sessionDuration": "Session Duration",
     "minutes": "min",
     "createRoom": "CREATE RECORDING ROOM",
-    "creating": "CREATING...",
+    "creating": "CREATING ROOM...",
+    "createRoomError": "Error creating room: ",
     "selectTopicError": "Select the conversation topic",
     "uploadMaterial": "Upload Material",
     "uploadDesc": "Select or drag files to upload.",
     "campaignNotFound": "Campaign not found.",
-    "sendMore": "SUBMIT MORE MATERIAL"
+    "sendMore": "SUBMIT MORE MATERIAL",
+    "comingSoon": "Task area coming soon."
   },
   "myCampaigns": {
     "title": "My Campaigns",
@@ -317,6 +321,22 @@
         "active": "Browser automatic gain control active",
         "off": "Automatic gain control disabled"
       }
+    }
+  },
+  "guidelines": {
+    "toggleButton": "Guidelines",
+    "title": "Recording Guidelines",
+    "items": {
+      "environment": { "title": "Recording Environment", "text": "Record in a quiet place with minimal background noise. Avoid fans, TV, music, traffic or other people talking. A closed room is recommended." },
+      "audioQuality": { "title": "Audio Quality", "text": "Use a good quality microphone or headset. Both speakers must be clearly audible. Keep a consistent distance from the microphone and avoid touching or moving the device." },
+      "twoParticipants": { "title": "Two Participants", "text": "The conversation must include two different speakers. Each person should speak naturally and take turns. Avoid interrupting or talking at the same time." },
+      "naturalConversation": { "title": "Natural Conversation", "text": "Speak naturally and clearly, like in a normal conversation. Avoid sounding robotic or overly scripted. The dialogue should sound realistic." },
+      "followTopic": { "title": "Follow the Topic", "text": "If a topic or prompt is provided, keep the conversation relevant. Both should actively participate." },
+      "speechPace": { "title": "Speech Pace", "text": "Speak at a moderate and clear pace. Don't speak too fast or too slow and pronounce words clearly." },
+      "noPersonalData": { "title": "No Personal Data", "text": "Do not mention real full names, addresses, phone numbers, documents or any sensitive personal information." },
+      "continuousRecording": { "title": "Continuous Recording", "text": "The conversation should be recorded continuously without cuts or edits, unless specifically instructed." },
+      "recordingDuration": { "title": "Recording Duration", "text": "Duration may vary: 10, 15, 20, 25 or 30 minutes, depending on task instructions." },
+      "consistency": { "title": "Consistency", "text": "Maintain the same environment, microphone distance and voice clarity throughout the entire conversation." }
     }
   },
   "common": {

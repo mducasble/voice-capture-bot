@@ -8,6 +8,7 @@ import {
   ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users,
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 import { PortalMultiSpeakerUpload } from "@/components/portal/PortalMultiSpeakerUpload";
@@ -19,6 +20,7 @@ export default function PortalCampaignTask() {
   const { data: campaign, isLoading } = useCampaign(id);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [creating, setCreating] = useState(false);
   const [topic, setTopic] = useState("");
   const [durationMinutes, setDurationMinutes] = useState<number>(10);
@@ -26,12 +28,10 @@ export default function PortalCampaignTask() {
 
   const enabledTaskSets = campaign?.task_sets?.filter(ts => ts.enabled) || [];
   const activeSections = campaign?.sections?.filter(s => s.is_active) || [];
-  // Use sections if available, fallback to prompt_topic from task sets
   const allTopics = activeSections.length > 0
     ? activeSections.map(s => s.name)
     : enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
 
-  // Determine primary task category
   const primaryCategory = useMemo(() => {
     if (!enabledTaskSets.length) return null;
     const first = enabledTaskSets[0];
@@ -41,12 +41,12 @@ export default function PortalCampaignTask() {
   const handleCreateRoom = async () => {
     if (!user || !campaign) return;
     if (!topic.trim()) {
-      toast.error("Selecione o tema da conversa");
+      toast.error(t("task.selectTopicError"));
       return;
     }
     setCreating(true);
     try {
-      const userName = user.user_metadata?.full_name || user.email || "Usuário";
+      const userName = user.user_metadata?.full_name || user.email || "User";
       const { data: room, error } = await supabase
         .from("rooms")
         .insert({
@@ -61,7 +61,6 @@ export default function PortalCampaignTask() {
 
       if (error) throw error;
 
-      // Insert creator as participant
       const { data: participant, error: partError } = await supabase
         .from("room_participants")
         .insert({
@@ -75,11 +74,10 @@ export default function PortalCampaignTask() {
 
       if (partError) throw partError;
 
-      // Store participant ID for Room.tsx auto-connect
       localStorage.setItem(`room_${room.id}_participant`, participant.id);
       navigate(`/room/${room.id}?campaign=${campaign.id}`);
     } catch (err: any) {
-      toast.error("Erro ao criar sala: " + err.message);
+      toast.error(t("task.createRoomError") + err.message);
     } finally {
       setCreating(false);
     }
@@ -92,14 +90,12 @@ export default function PortalCampaignTask() {
   if (!campaign) {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
-        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>Campanha não encontrada.</p>
+        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{t("task.campaignNotFound")}</p>
       </div>
     );
   }
 
-  // Audio/video group — show choice or specific mode
   if (primaryCategory === "audio" || primaryCategory === "video") {
-    // Choose mode
     if (mode === "choose") {
       return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -109,7 +105,7 @@ export default function PortalCampaignTask() {
             style={{ color: "var(--portal-text-muted)" }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Voltar à Campanha
+            {t("task.backToCampaign")}
           </button>
 
           <div style={{ border: "1px solid var(--portal-border)" }}>
@@ -117,19 +113,18 @@ export default function PortalCampaignTask() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
                 <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                  Executar Tarefa
+                  {t("task.executeTask")}
                 </span>
               </div>
               <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
                 {campaign.name}
               </h1>
               <p className="font-mono text-xs mt-2" style={{ color: "var(--portal-text-muted)" }}>
-                Escolha como deseja enviar os áudios da campanha.
+                {t("task.chooseMethodDesc")}
               </p>
             </div>
 
             <div className="p-6 grid gap-4 sm:grid-cols-2">
-              {/* Option 1: Create Room */}
               <button
                 onClick={() => setMode("room")}
                 className="p-6 text-left transition-colors group"
@@ -140,15 +135,14 @@ export default function PortalCampaignTask() {
                     <Radio className="h-5 w-5" style={{ color: "var(--portal-accent-text)" }} />
                   </div>
                   <span className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                    Criar Sala
+                    {t("task.liveRoom")}
                   </span>
                 </div>
                 <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                  Grave ao vivo com outro participante. Crie uma sala, compartilhe o link e conversem em tempo real.
+                  {t("task.liveRoomDesc")}
                 </p>
               </button>
 
-              {/* Option 2: Manual Upload */}
               <button
                 onClick={() => setMode("upload")}
                 className="p-6 text-left transition-colors group"
@@ -159,11 +153,11 @@ export default function PortalCampaignTask() {
                     <Upload className="h-5 w-5" style={{ color: "var(--portal-accent-text)" }} />
                   </div>
                   <span className="font-mono text-sm font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                    Enviar Áudios
+                    {t("task.uploadFile")}
                   </span>
                 </div>
                 <p className="font-mono text-xs leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>
-                  Envie arquivos de áudio separados por participante. Ideal para gravações já realizadas.
+                  {t("task.uploadFileDesc")}
                 </p>
               </button>
             </div>
@@ -172,7 +166,6 @@ export default function PortalCampaignTask() {
       );
     }
 
-    // Room creation mode
     if (mode === "room") {
       return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -182,7 +175,7 @@ export default function PortalCampaignTask() {
             style={{ color: "var(--portal-text-muted)" }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Voltar
+            {t("common.back")}
           </button>
 
           <div style={{ border: "1px solid var(--portal-border)" }}>
@@ -190,7 +183,7 @@ export default function PortalCampaignTask() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
                 <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                  Configurar Gravação
+                  {t("task.configureRecording")}
                 </span>
               </div>
               <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
@@ -198,28 +191,26 @@ export default function PortalCampaignTask() {
               </h1>
             </div>
 
-            {/* Topic */}
             <div className="p-6 space-y-4" style={{ borderBottom: "1px solid var(--portal-border)" }}>
               <div className="space-y-2">
                 <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                  <MessageSquare className="h-3.5 w-3.5" /> Tema da Conversa
+                  <MessageSquare className="h-3.5 w-3.5" /> {t("task.conversationTopic")}
                 </label>
                 <select
                   className="portal-brutalist-input w-full"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                 >
-                  <option value="">Selecione um tema...</option>
-                  {allTopics.map((t, i) => (
-                    <option key={i} value={t}>{t}</option>
+                  <option value="">{t("task.selectTopic")}...</option>
+                  {allTopics.map((t_topic, i) => (
+                    <option key={i} value={t_topic}>{t_topic}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Duration */}
               <div className="space-y-2">
                 <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-                  <Timer className="h-3.5 w-3.5" /> Duração da Conversa
+                  <Timer className="h-3.5 w-3.5" /> {t("task.sessionDuration")}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {DURATION_OPTIONS.map(min => (
@@ -233,21 +224,20 @@ export default function PortalCampaignTask() {
                         color: durationMinutes === min ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
                       }}
                     >
-                      {min} min
+                      {min} {t("task.minutes")}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Action */}
             <div className="p-6">
               <KGenButton
                 onClick={handleCreateRoom}
                 disabled={creating || !topic.trim()}
                 className="w-full"
                 size="default"
-                scrambleText={creating ? "CRIANDO SALA..." : "CRIAR SALA DE GRAVAÇÃO"}
+                scrambleText={creating ? t("task.creating") : t("task.createRoom")}
                 icon={creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
               />
             </div>
@@ -256,7 +246,6 @@ export default function PortalCampaignTask() {
       );
     }
 
-    // Manual upload mode
     if (mode === "upload") {
       return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -266,7 +255,7 @@ export default function PortalCampaignTask() {
             style={{ color: "var(--portal-text-muted)" }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Voltar
+            {t("common.back")}
           </button>
 
           <div style={{ border: "1px solid var(--portal-border)" }}>
@@ -274,7 +263,7 @@ export default function PortalCampaignTask() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
                 <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                  Enviar Áudios
+                  {t("task.uploadMaterial")}
                 </span>
               </div>
               <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
@@ -291,7 +280,6 @@ export default function PortalCampaignTask() {
     }
   }
 
-  // Default — placeholder for other task types
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <button
@@ -300,12 +288,12 @@ export default function PortalCampaignTask() {
         style={{ color: "var(--portal-text-muted)" }}
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Voltar à Campanha
+        {t("task.backToCampaign")}
       </button>
 
       <div className="p-8 text-center" style={{ border: "1px solid var(--portal-border)" }}>
         <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-          Área de tarefas em breve.
+          {t("task.comingSoon")}
         </p>
       </div>
     </div>
