@@ -110,6 +110,7 @@ export function AudioUpload({ campaignId, onUploadComplete, transcriptionOnly = 
           file_size_bytes: selectedFile.size,
           original_filename: selectedFile.name,
           transcription_only: transcriptionOnly,
+          campaign_id: campaignId,
           duration_seconds: audioMetadata.durationSeconds,
           sample_rate: audioMetadata.sampleRate,
           bit_depth: audioMetadata.bitDepth,

@@ -82,9 +82,17 @@ const Transcript = () => {
       </header>
 
       <main className="container py-8 space-y-8">
-        {/* Upload */}
-        <section>
-          <AudioUpload transcriptionOnly />
+        {/* Campaign + Upload */}
+        <section className="space-y-3">
+          <label className="text-sm font-medium text-muted-foreground block">Campanha de destino</label>
+          <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} className="max-w-md" />
+          {selectedCampaignId ? (
+            <AudioUpload campaignId={selectedCampaignId} transcriptionOnly />
+          ) : (
+            <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
+              Selecione uma campanha para fazer upload
+            </div>
+          )}
         </section>
 
         {/* Recordings List */}

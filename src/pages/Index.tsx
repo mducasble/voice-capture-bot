@@ -64,11 +64,23 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Upload Section */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AudioUpload />
-        <MultiSpeakerUpload />
+      {/* Campaign Selector */}
+      <section>
+        <label className="text-sm font-medium text-muted-foreground mb-2 block">Campanha de destino</label>
+        <CampaignSelector value={selectedCampaignId} onChange={setSelectedCampaignId} className="max-w-md" />
       </section>
+
+      {/* Upload Section */}
+      {selectedCampaignId ? (
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AudioUpload campaignId={selectedCampaignId} />
+          <MultiSpeakerUpload campaignId={selectedCampaignId} />
+        </section>
+      ) : (
+        <section className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
+          Selecione uma campanha acima para fazer upload de áudio
+        </section>
+      )}
 
       <main className="space-y-8">
 

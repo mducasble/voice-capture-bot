@@ -297,6 +297,7 @@ export function MultiSpeakerUpload({ campaignId, onUploadComplete }: MultiSpeake
           file_url: mixedFileUrl,
           file_size_bytes: mixedFileSize || null,
           duration_seconds: mixedMetadata?.durationSeconds ?? null,
+          campaign_id: campaignId,
           session_id: sessionId,
           recording_type: "mixed",
           discord_user_id: "manual_upload",
