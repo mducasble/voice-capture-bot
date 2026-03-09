@@ -352,6 +352,10 @@
       "consistency": { "title": "Consistencia", "text": "Mantenga el mismo entorno, distancia del micrófono y claridad de voz durante toda la conversación." }
     }
   },
+  "faq": {
+    "toggleButton": "Dudas",
+    "title": "Preguntas Frecuentes"
+  },
   "common": {
     "error": "Error",
     "loading": "Cargando...",

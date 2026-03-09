@@ -1216,6 +1216,51 @@ export type Database = {
           },
         ]
       }
+      faq_items: {
+        Row: {
+          answer_en: string | null
+          answer_es: string | null
+          answer_pt: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          question_en: string | null
+          question_es: string | null
+          question_pt: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          answer_en?: string | null
+          answer_es?: string | null
+          answer_pt: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question_en?: string | null
+          question_es?: string | null
+          question_pt: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          answer_en?: string | null
+          answer_es?: string | null
+          answer_pt?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question_en?: string | null
+          question_es?: string | null
+          question_pt?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hardware_catalog: {
         Row: {
           created_at: string

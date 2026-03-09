@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Bell,
   PenSquare,
+  HelpCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -56,6 +57,7 @@ const navSections = [
     label: "Ferramentas",
     items: [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
+      { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
     ],
   },
 ];

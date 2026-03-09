@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import LanguageSelector from "./LanguageSelector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { FaqSidebar } from "./FaqSidebar";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
@@ -51,6 +52,9 @@ export default function PortalLayout() { // layout-root
         <main className="max-w-7xl mx-auto px-6 py-8">
           <Outlet />
         </main>
+
+        {/* FAQ sidebar */}
+        <FaqSidebar />
       </div>
     </div>
   );
