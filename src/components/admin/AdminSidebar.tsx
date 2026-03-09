@@ -57,6 +57,7 @@ const navSections = [
     label: "Ferramentas",
     items: [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
+      { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
     ],
   },
 ];

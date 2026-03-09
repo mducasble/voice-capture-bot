@@ -76,6 +76,7 @@ const App = () => (
               <Route path="transcription" element={<Transcript />} />
               <Route path="social-art" element={<SocialArt />} />
               <Route path="rooms-monitor" element={<RoomsMonitor />} />
+              <Route path="faq" element={<AdminFaq />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

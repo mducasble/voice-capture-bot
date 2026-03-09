@@ -52,6 +52,9 @@ export default function PortalLayout() { // layout-root
         <main className="max-w-7xl mx-auto px-6 py-8">
           <Outlet />
         </main>
+
+        {/* FAQ sidebar */}
+        <FaqSidebar />
       </div>
     </div>
   );
