@@ -31,8 +31,8 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
   const queryClient = useQueryClient();
 
   const isValidAudioFile = (file: File) => {
-    const validTypes = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/m4a", "audio/ogg", "audio/x-wav"];
-    return validTypes.includes(file.type) || file.name.match(/\.(wav|mp3|m4a|ogg)$/i);
+    const validTypes = ["audio/wav", "audio/x-wav"];
+    return validTypes.includes(file.type) || file.name.match(/\.wav$/i);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,7 +40,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
     if (file && isValidAudioFile(file)) {
       setSpeakerFiles(prev => [...prev, { id: crypto.randomUUID(), file, speakerName: "" }]);
     } else if (file) {
-      toast.error("Formato não suportado. Use WAV, MP3, M4A ou OGG.");
+      toast.error("Formato não suportado. Use apenas arquivos .WAV");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -191,8 +191,8 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
 
   return (
     <div className="space-y-4">
-      <input ref={fileInputRef} type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg" onChange={handleFileSelect} className="hidden" />
-      <input ref={mixedFileInputRef} type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg" onChange={handleMixedFileSelect} className="hidden" />
+      <input ref={fileInputRef} type="file" accept=".wav,audio/wav,audio/x-wav" onChange={handleFileSelect} className="hidden" />
+      <input ref={mixedFileInputRef} type="file" accept=".wav,audio/wav,audio/x-wav" onChange={handleMixedFileSelect} className="hidden" />
 
       {/* Speaker list */}
       {speakerFiles.length === 0 ? (
