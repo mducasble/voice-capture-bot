@@ -25,6 +25,7 @@ interface Props {
 
 export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [iconSearch, setIconSearch] = useState("");
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
