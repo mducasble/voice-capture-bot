@@ -88,6 +88,14 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
   const localStreamRef = useRef<MediaStream | null>(null);
   const participantIdRef = useRef<string | undefined>();
   const participantsRef = useRef<{ id: string; name: string }[]>([]);
+  const iceConfigRef = useRef<RTCConfiguration>(FALLBACK_ICE_SERVERS);
+
+  // Pre-fetch dynamic TURN credentials
+  useEffect(() => {
+    getIceConfig().then(config => {
+      iceConfigRef.current = config;
+    });
+  }, []);
 
   // Keep refs in sync
   useEffect(() => {
