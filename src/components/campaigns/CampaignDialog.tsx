@@ -913,7 +913,7 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
               <Label className="text-xs font-semibold flex items-center gap-1">
                 Validação Técnica <AlertTriangle className="h-3 w-3 text-destructive" />
               </Label>
-              {renderValidationRules(ts.tech_validation || [], index, "tech")}
+              {renderValidationRules(ts.tech_validation || [], index, "tech", (ts.task_type === "audio_capture_solo" || ts.task_type === "audio_capture_group"))}
             </div>
 
             {/* Content Validation */}
