@@ -241,6 +241,16 @@ export default function CarouselEditor() {
             // skip broken images
           }
         }
+
+        if (el.type === "icon") {
+          try {
+            const iconSvg = await fetchLucideIconSvg(el.iconName || "star", el.color || "#ffffff");
+            const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`);
+            ctx.drawImage(img, el.x, el.y, el.width, el.height);
+          } catch {
+            // skip broken icons
+          }
+        }
       }
 
       return canvas;
