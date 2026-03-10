@@ -65,18 +65,17 @@ export default function PortalProfile() {
   // Sync form state when profile data loads
   useEffect(() => {
     if (profile && !profileLoaded) {
-      console.log("[PortalProfile] Syncing form with profile data:", profile.full_name);
       setForm({
         full_name: profile.full_name || "",
         avatar_url: profile.avatar_url || null,
-        wallet_id: (profile as any)?.wallet_id || "",
-        whatsapp: (profile as any)?.whatsapp || "",
-        telegram: (profile as any)?.telegram || "",
-        email_contact: (profile as any)?.email_contact || user?.email || "",
-        country: (profile as any)?.country || "",
-        city: (profile as any)?.city || "",
-        spoken_languages: (profile as any)?.spoken_languages || [],
-        desired_opportunities: (profile as any)?.desired_opportunities || [],
+        wallet_id: profile.wallet_id || "",
+        whatsapp: profile.whatsapp || "",
+        telegram: profile.telegram || "",
+        email_contact: profile.email_contact || user?.email || "",
+        country: profile.country || "",
+        city: profile.city || "",
+        spoken_languages: profile.spoken_languages || [],
+        desired_opportunities: profile.desired_opportunities || [],
       });
       setProfileLoaded(true);
     }
