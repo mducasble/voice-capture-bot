@@ -28,7 +28,7 @@ export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
     <div className="space-y-3 p-3 rounded border border-border bg-card text-sm">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          {element.type === "text" ? "Texto" : "Imagem"}
+          {element.type === "text" ? "Texto" : element.type === "highlight" ? "Highlight" : "Imagem"}
         </span>
         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" />
