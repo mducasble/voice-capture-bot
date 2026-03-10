@@ -218,6 +218,21 @@ serve(async (req) => {
 
       console.log(`Transcription complete: ${fullTranscription.length} chars, ${segments.length} segments`);
 
+      // Trigger content analysis asynchronously
+      const analyzePromise = supabase.functions.invoke('analyze-content', {
+        body: { recording_id }
+      });
+
+      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(
+          analyzePromise.catch((err: unknown) => console.error("Failed to trigger content analysis:", err))
+        );
+      } else {
+        await analyzePromise.catch((err: unknown) => console.error("Failed to trigger content analysis:", err));
+      }
+
       return new Response(
         JSON.stringify({
           success: true,

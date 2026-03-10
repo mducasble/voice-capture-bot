@@ -157,6 +157,13 @@ interface Recording {
     enhanced_file_url?: string;
     enhanced_snr_db?: number;
     enhanced_rms_level_db?: number;
+    content_analysis?: {
+      topic_adherence_percent?: number;
+      off_topic_summary?: string;
+      content_summary?: string;
+      topic_used?: string;
+      speakers?: { name: string; speaking_time_percent: number; on_topic_percent: number }[];
+    };
   } | null;
   /** Runtime-only flag: true = uploaded, false = recorded in studio */
   _isUpload?: boolean;
@@ -338,6 +345,25 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
           </span>
         )}
         {validationRules && <QualityTierBadge tier={classifyRecording(rec, validationRules)} />}
+        {rec.metadata?.content_analysis?.topic_adherence_percent != null && (
+          <span
+            className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm font-bold shrink-0"
+            style={{
+              background: rec.metadata.content_analysis.topic_adherence_percent >= 80
+                ? "hsl(120 60% 45% / 0.15)"
+                : rec.metadata.content_analysis.topic_adherence_percent >= 50
+                ? "hsl(45 80% 50% / 0.15)"
+                : "hsl(0 70% 50% / 0.15)",
+              color: rec.metadata.content_analysis.topic_adherence_percent >= 80
+                ? "hsl(120 60% 45%)"
+                : rec.metadata.content_analysis.topic_adherence_percent >= 50
+                ? "hsl(45 80% 50%)"
+                : "hsl(0 70% 50%)",
+            }}
+          >
+            🎯 {rec.metadata.content_analysis.topic_adherence_percent}%
+          </span>
+        )}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
             {rec.discord_username || rec.filename}
@@ -419,7 +445,48 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
         </div>
       )}
 
-      {/* Row 5: actions - download + transcription */}
+      {/* Row 4.5: content analysis */}
+      {rec.metadata?.content_analysis && (
+        <div className="flex items-center gap-2.5 pl-7 flex-wrap">
+          <span
+            className="font-mono text-[10px] font-bold"
+            style={{
+              color: (rec.metadata.content_analysis.topic_adherence_percent ?? 0) >= 80
+                ? "hsl(120 60% 45%)"
+                : (rec.metadata.content_analysis.topic_adherence_percent ?? 0) >= 50
+                ? "hsl(45 80% 50%)"
+                : "hsl(0 70% 50%)",
+            }}
+          >
+            🎯 Tema {rec.metadata.content_analysis.topic_adherence_percent}%
+          </span>
+          {rec.metadata.content_analysis.topic_used && (
+            <span className="font-mono text-[9px] text-muted-foreground">
+              ({rec.metadata.content_analysis.topic_used})
+            </span>
+          )}
+          {rec.metadata.content_analysis.speakers && rec.metadata.content_analysis.speakers.length > 0 && (
+            <>
+              <div className="w-px h-3 bg-border" />
+              {rec.metadata.content_analysis.speakers.map((s) => (
+                <span key={s.name} className="font-mono text-[9px] text-muted-foreground">
+                  🗣️ {s.name} {s.speaking_time_percent}%
+                </span>
+              ))}
+            </>
+          )}
+          {rec.metadata.content_analysis.content_summary && (
+            <>
+              <div className="w-px h-3 bg-border" />
+              <span className="font-mono text-[9px] text-muted-foreground italic truncate max-w-[300px]" title={rec.metadata.content_analysis.content_summary}>
+                {rec.metadata.content_analysis.content_summary}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+
       <div className="flex items-center gap-1.5 pl-7 flex-wrap">
         {/* Download WAV */}
         {rec.file_url && (
@@ -744,6 +811,8 @@ interface CampaignStats {
   pendingValidation: number;
   goodQuality: number;
   badQuality: number;
+  avgTopicAdherence: number | null;
+  analyzedCount: number;
 }
 
 function SubmissionSummary({
@@ -779,6 +848,12 @@ function SubmissionSummary({
         return (snr != null && snr < 15) || (ovrl != null && ovrl < 2.5);
       }).length;
 
+      // Topic adherence
+      const analyzedRecs = recs.filter(r => r.metadata?.content_analysis?.topic_adherence_percent != null);
+      const avgTopicAdherence = analyzedRecs.length > 0
+        ? Math.round(analyzedRecs.reduce((a, r) => a + (r.metadata!.content_analysis!.topic_adherence_percent!), 0) / analyzedRecs.length)
+        : null;
+
       result.push({
         campaignName: campaign?.name || "Sem campanha",
         campaignType: campaign?.campaign_type || null,
@@ -789,6 +864,8 @@ function SubmissionSummary({
         pendingValidation,
         goodQuality,
         badQuality,
+        avgTopicAdherence,
+        analyzedCount: analyzedRecs.length,
       });
     }
     result.sort((a, b) => b.total - a.total);
@@ -839,6 +916,7 @@ function SubmissionSummary({
                 <th className="text-right py-2 text-muted-foreground font-medium">Pend. VAL</th>
                 <th className="text-right py-2 text-muted-foreground font-medium">Boa Qual.</th>
                 <th className="text-right py-2 text-muted-foreground font-medium">Baixa Qual.</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">🎯 Tema</th>
               </tr>
             </thead>
             <tbody>
@@ -859,6 +937,16 @@ function SubmissionSummary({
                   <td className="py-2 text-right font-bold text-orange-400">{s.pendingValidation}</td>
                   <td className="py-2 text-right font-bold text-emerald-500">{s.goodQuality}</td>
                   <td className="py-2 text-right font-bold text-red-400">{s.badQuality}</td>
+                  <td className="py-2 text-right font-bold" style={{
+                    color: s.avgTopicAdherence != null
+                      ? s.avgTopicAdherence >= 80 ? "hsl(120 60% 45%)" : s.avgTopicAdherence >= 50 ? "hsl(45 80% 50%)" : "hsl(0 70% 50%)"
+                      : undefined
+                  }}>
+                    {s.avgTopicAdherence != null ? `${s.avgTopicAdherence}%` : "—"}
+                    {s.analyzedCount > 0 && (
+                      <span className="text-[8px] text-muted-foreground ml-0.5">({s.analyzedCount})</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
