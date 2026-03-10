@@ -426,7 +426,48 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
         </div>
       )}
 
-      {/* Row 5: actions - download + transcription */}
+      {/* Row 4.5: content analysis */}
+      {rec.metadata?.content_analysis && (
+        <div className="flex items-center gap-2.5 pl-7 flex-wrap">
+          <span
+            className="font-mono text-[10px] font-bold"
+            style={{
+              color: (rec.metadata.content_analysis.topic_adherence_percent ?? 0) >= 80
+                ? "hsl(120 60% 45%)"
+                : (rec.metadata.content_analysis.topic_adherence_percent ?? 0) >= 50
+                ? "hsl(45 80% 50%)"
+                : "hsl(0 70% 50%)",
+            }}
+          >
+            🎯 Tema {rec.metadata.content_analysis.topic_adherence_percent}%
+          </span>
+          {rec.metadata.content_analysis.topic_used && (
+            <span className="font-mono text-[9px] text-muted-foreground">
+              ({rec.metadata.content_analysis.topic_used})
+            </span>
+          )}
+          {rec.metadata.content_analysis.speakers && rec.metadata.content_analysis.speakers.length > 0 && (
+            <>
+              <div className="w-px h-3 bg-border" />
+              {rec.metadata.content_analysis.speakers.map((s) => (
+                <span key={s.name} className="font-mono text-[9px] text-muted-foreground">
+                  🗣️ {s.name} {s.speaking_time_percent}%
+                </span>
+              ))}
+            </>
+          )}
+          {rec.metadata.content_analysis.content_summary && (
+            <>
+              <div className="w-px h-3 bg-border" />
+              <span className="font-mono text-[9px] text-muted-foreground italic truncate max-w-[300px]" title={rec.metadata.content_analysis.content_summary}>
+                {rec.metadata.content_analysis.content_summary}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+
       <div className="flex items-center gap-1.5 pl-7 flex-wrap">
         {/* Download WAV */}
         {rec.file_url && (
