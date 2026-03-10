@@ -837,7 +837,7 @@ export default function ReviewQueue() {
       campaignTabs: tabs,
       noCampaignHosts: groupByHost(buildSessions(noCampaignMap)),
     };
-  }, [recordings, campaignMap, roomMap]);
+  }, [recordings, campaignMap, roomMap, profileMap]);
 
   // Mutations
   const approveSessionMutation = useMutation({
