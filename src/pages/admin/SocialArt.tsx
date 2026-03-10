@@ -47,9 +47,8 @@ export default function SocialArt() {
   const format = FORMATS.find(f => f.id === selectedFormat)!;
   const lang = LANGUAGES.find(l => l.code === selectedLang)!;
 
-  // Campaign index for short link
-  const campaignIndex = campaigns?.findIndex(c => c.id === selectedCampaignId);
-  const shortLink = campaign ? `kgen.quest/${selectedLang}/${(campaignIndex ?? 0) + 1}` : "";
+  // Short link for social art
+  const shortLink = campaign ? `kgen.quest/campaign/${campaign.id}` : "";
 
   const handleDownloadTemplate = useCallback(async () => {
     if (!campaign) return;
