@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Clock, FileAudio, Users, Play, Pause, ChevronDown,
   CheckCircle2, XCircle, User, BarChart3, ShieldCheck, ShieldX, AlertTriangle, Hourglass,
-  Download, FileVolume2, Sparkles, AudioLines, Loader2,
+  Download, FileVolume2, Sparkles, AudioLines, Loader2, BarChart,
 } from "lucide-react";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
