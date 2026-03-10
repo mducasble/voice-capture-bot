@@ -119,6 +119,30 @@ export function DraggableElement({ element, isSelected, onSelect, onUpdate, scal
         </div>
       )}
 
+      {element.type === "highlight" && (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            background: element.highlightBg || "#8cff05",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: element.textAlign === "left" ? "flex-start" : element.textAlign === "right" ? "flex-end" : "center",
+            padding: `${element.highlightPaddingY || 12}px ${element.highlightPaddingX || 24}px`,
+            fontSize: element.fontSize || 48,
+            fontWeight: element.fontWeight || 900,
+            color: element.color || "#111111",
+            fontFamily: element.fontFamily || "monospace",
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {element.content || "HIGHLIGHT"}
+        </div>
+      )}
+
       {element.type === "image" && (
         <div
           style={{

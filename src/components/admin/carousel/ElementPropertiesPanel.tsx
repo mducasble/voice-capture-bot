@@ -35,14 +35,14 @@ export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
         </Button>
       </div>
 
-      {element.type === "text" && (
+      {(element.type === "text" || element.type === "highlight") && (
         <>
           <div className="space-y-1">
             <Label className="text-xs">Conteúdo</Label>
             <Textarea
               value={element.content || ""}
               onChange={(e) => onUpdate({ content: e.target.value })}
-              rows={3}
+              rows={element.type === "highlight" ? 1 : 3}
               className="text-xs"
             />
           </div>
@@ -74,7 +74,7 @@ export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Cor</Label>
+              <Label className="text-xs">Cor do Texto</Label>
               <div className="flex gap-1">
                 <input
                   type="color"
@@ -104,6 +104,24 @@ export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
               </Select>
             </div>
           </div>
+          {element.type === "highlight" && (
+            <div className="space-y-1">
+              <Label className="text-xs">Cor do Fundo</Label>
+              <div className="flex gap-1">
+                <input
+                  type="color"
+                  value={element.highlightBg || "#8cff05"}
+                  onChange={(e) => onUpdate({ highlightBg: e.target.value })}
+                  className="w-9 h-9 rounded cursor-pointer border-0 p-0"
+                />
+                <Input
+                  value={element.highlightBg || "#8cff05"}
+                  onChange={(e) => onUpdate({ highlightBg: e.target.value })}
+                  className="text-xs flex-1"
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
 
