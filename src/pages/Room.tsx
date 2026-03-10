@@ -494,6 +494,8 @@ const Room = () => {
     // Start mixed recording if creator has a local stream
     if (currentParticipant?.is_creator && mediaStreamRef.current) {
       await mixedRecorder.startRecording(mediaStreamRef.current, remoteStreams);
+      // Start recording each remote stream individually as backup
+      await remoteRecorders.startRecording(remoteStreams, participants);
     }
 
     await supabase
