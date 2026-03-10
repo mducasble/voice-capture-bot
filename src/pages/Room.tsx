@@ -92,6 +92,7 @@ const Room = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const remoteAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const remoteGainContexts = useRef<Map<string, { ctx: AudioContext; gain: GainNode }>>(new Map());
   const [isMixedUploading, setIsMixedUploading] = useState(false);
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
 
