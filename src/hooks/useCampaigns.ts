@@ -196,6 +196,9 @@ async function upsertTaskSetValidation(taskSetId: string, taskType: string, tech
           target_value: r.target_value ?? null,
           allowed_values: r.allowed_values ?? null,
           is_critical: r.is_critical,
+          mq_threshold: r.mq_threshold ?? null,
+          hq_threshold: r.hq_threshold ?? null,
+          pq_threshold: r.pq_threshold ?? null,
         }))
       );
     }
