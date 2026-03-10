@@ -17,7 +17,7 @@ const THRESHOLDS = {
   sigmos_disc: { good: 3.5, fair: 2.5 },
   sigmos_reverb: { good: 3.5, fair: 2.5 },
   vqscore: { good: 0.65, fair: 60 },
-  mic_sr: { good: 16000, fair: 8000 },
+  mic_sr: { good: 10000, fair: 6000 },
 };
 
 // Guidance messages for each metric when it fails
@@ -202,30 +202,76 @@ function calculateRMSLevel(samples: Int16Array): number {
   return Math.round(Math.max(-96.0, Math.min(0, 20 * Math.log10(rms))) * 10) / 10;
 }
 
-// Mic bandwidth analysis
-function analyzeMicBandwidth(samples: Int16Array, sampleRate: number): number {
-  const fftSize = 2048;
-  if (samples.length < fftSize) return sampleRate / 2;
-  const floats = new Float64Array(fftSize);
-  for (let i = 0; i < fftSize; i++) floats[i] = (samples[i] / 32768.0) * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (fftSize - 1)));
+// Extract mono samples at original sample rate (no downsampling)
+function extractMonoOriginal(audioBytes: Uint8Array, header: { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number }): Float64Array {
+  const { channels, bitsPerSample, dataOffset, dataSize } = header;
+  const bytesPerSample = bitsPerSample / 8;
+  const totalSamples = Math.floor(dataSize / (bytesPerSample * channels));
+  const view = new DataView(audioBytes.buffer, audioBytes.byteOffset, audioBytes.byteLength);
+  const result = new Float64Array(totalSamples);
 
-  // Simple DFT magnitude for frequency bins
-  const magnitudes = new Float64Array(fftSize / 2);
-  for (let k = 0; k < fftSize / 2; k++) {
-    let re = 0, im = 0;
-    for (let n = 0; n < fftSize; n++) {
-      const angle = -2 * Math.PI * k * n / fftSize;
-      re += floats[n] * Math.cos(angle);
-      im += floats[n] * Math.sin(angle);
+  for (let i = 0; i < totalSamples; i++) {
+    let mono = 0;
+    for (let ch = 0; ch < channels; ch++) {
+      const bytePos = dataOffset + (i * channels + ch) * bytesPerSample;
+      if (bytesPerSample === 2) {
+        mono += view.getInt16(bytePos, true) / 32768.0;
+      } else if (bytesPerSample === 3) {
+        const b0 = audioBytes[bytePos], b1 = audioBytes[bytePos + 1], b2 = audioBytes[bytePos + 2];
+        let val = (b2 << 16) | (b1 << 8) | b0;
+        if (val & 0x800000) val |= ~0xFFFFFF;
+        mono += val / 8388608.0;
+      }
     }
-    magnitudes[k] = 20 * Math.log10(Math.sqrt(re * re + im * im) / fftSize + 1e-10);
+    result[i] = mono / channels;
+  }
+  return result;
+}
+
+// Mic bandwidth analysis — runs on original sample rate for accurate detection
+function analyzeMicBandwidth(floatSamples: Float64Array, sampleRate: number): number {
+  const fftSize = 4096;
+  if (floatSamples.length < fftSize) return sampleRate / 2;
+
+  // Use multiple windows and average for robustness
+  const numWindows = Math.min(4, Math.floor(floatSamples.length / fftSize));
+  const avgMagnitudes = new Float64Array(fftSize / 2);
+
+  for (let w = 0; w < numWindows; w++) {
+    const offset = Math.floor(w * (floatSamples.length - fftSize) / Math.max(1, numWindows - 1));
+    const windowed = new Float64Array(fftSize);
+    for (let i = 0; i < fftSize; i++) {
+      windowed[i] = floatSamples[offset + i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (fftSize - 1)));
+    }
+
+    for (let k = 0; k < fftSize / 2; k++) {
+      let re = 0, im = 0;
+      for (let n = 0; n < fftSize; n++) {
+        const angle = -2 * Math.PI * k * n / fftSize;
+        re += windowed[n] * Math.cos(angle);
+        im += windowed[n] * Math.sin(angle);
+      }
+      avgMagnitudes[k] += 20 * Math.log10(Math.sqrt(re * re + im * im) / fftSize + 1e-10);
+    }
   }
 
-  // Find highest freq with energy above -80dB
-  let maxFreq = 0;
+  // Average
+  for (let k = 0; k < avgMagnitudes.length; k++) avgMagnitudes[k] /= numWindows;
+
+  // Find peak magnitude in speech band (300Hz-4kHz) as reference
   const binWidth = sampleRate / fftSize;
-  for (let k = magnitudes.length - 1; k >= 0; k--) {
-    if (magnitudes[k] > -80) { maxFreq = k * binWidth; break; }
+  const lowBin = Math.floor(300 / binWidth);
+  const highBin = Math.floor(4000 / binWidth);
+  let peakMag = -120;
+  for (let k = lowBin; k <= highBin && k < avgMagnitudes.length; k++) {
+    if (avgMagnitudes[k] > peakMag) peakMag = avgMagnitudes[k];
+  }
+
+  // Find highest freq with energy within 60dB of peak (relative threshold)
+  const threshold = peakMag - 60;
+  let maxFreq = 0;
+  for (let k = avgMagnitudes.length - 1; k >= 0; k--) {
+    if (avgMagnitudes[k] > threshold) { maxFreq = k * binWidth; break; }
   }
   return Math.round(maxFreq * 2); // Nyquist equivalent
 }
@@ -287,7 +333,8 @@ serve(async (req) => {
     // Calculate local metrics
     const snr = calculateSNR(samples, 16000);
     const rms = calculateRMSLevel(samples);
-    const micSr = analyzeMicBandwidth(samples, 16000);
+    const monoOriginal = extractMonoOriginal(audioBytes, header);
+    const micSr = analyzeMicBandwidth(monoOriginal, header.sampleRate);
 
     console.log(`Local metrics: SNR=${snr}, RMS=${rms}, MicSR=${micSr}`);
 
