@@ -47,23 +47,17 @@ export default function PortalProfile() {
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      console.log("[PortalProfile] Fetching profile for user:", user.id);
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("full_name, avatar_url, wallet_id, whatsapp, telegram, email_contact, country, city, spoken_languages, desired_opportunities")
         .eq("id", user.id)
-        .single();
-      if (error) {
-        console.error("[PortalProfile] Query error:", error);
-        throw error;
-      }
-      console.log("[PortalProfile] Profile data received:", JSON.stringify(data));
-      return data as ProfileData;
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return data as unknown as ProfileData;
     },
     enabled: !!user?.id,
   });
-
-  console.log("[PortalProfile] Render state:", { userId: user?.id, isLoading, hasProfile: !!profile, profileError: profileError?.message, profileName: profile?.full_name });
 
   const [form, setForm] = useState<ProfileData | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
