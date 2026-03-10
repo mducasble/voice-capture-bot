@@ -27,9 +27,18 @@ export function useAuth() {
     try {
       await supabase.auth.signOut();
     } catch {
-      // If server-side sign out fails (expired session), force local cleanup
-      await supabase.auth.signOut({ scope: 'local' });
+      // ignore
     }
+    // Always force local cleanup to guarantee logout
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignore
+    }
+    // Force state clear and redirect
+    setUser(null);
+    setSession(null);
+    window.location.href = '/auth';
   }, []);
 
   return { user, session, loading, signOut };
