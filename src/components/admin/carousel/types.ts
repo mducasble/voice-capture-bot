@@ -172,6 +172,7 @@ export const CAROUSEL_TEMPLATES: {
         ],
         backgroundColor: "#111111",
         backgroundGradient: "linear-gradient(135deg, #111111 0%, #1a1a2e 100%)",
+        backgroundPattern: "dark-grid",
       },
     ],
   },
