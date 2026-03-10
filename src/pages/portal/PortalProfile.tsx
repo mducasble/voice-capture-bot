@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, Save, Loader2, X, AlertTriangle } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
@@ -59,6 +59,26 @@ export default function PortalProfile() {
   });
 
   const [form, setForm] = useState<ProfileData | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Sync form state when profile data loads
+  useEffect(() => {
+    if (profile && !profileLoaded) {
+      setForm({
+        full_name: profile.full_name || "",
+        avatar_url: profile.avatar_url || null,
+        wallet_id: (profile as any)?.wallet_id || "",
+        whatsapp: (profile as any)?.whatsapp || "",
+        telegram: (profile as any)?.telegram || "",
+        email_contact: (profile as any)?.email_contact || user?.email || "",
+        country: (profile as any)?.country || "",
+        city: (profile as any)?.city || "",
+        spoken_languages: (profile as any)?.spoken_languages || [],
+        desired_opportunities: (profile as any)?.desired_opportunities || [],
+      });
+      setProfileLoaded(true);
+    }
+  }, [profile, profileLoaded, user?.email]);
 
   const currentForm: ProfileData = form || {
     full_name: profile?.full_name || "",
