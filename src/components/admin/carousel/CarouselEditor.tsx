@@ -420,7 +420,6 @@ export default function CarouselEditor() {
             />
           </div>
         </div>
-        </div>
 
         {/* Selected element */}
         {selectedElement ? (
