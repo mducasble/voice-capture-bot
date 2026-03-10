@@ -102,7 +102,7 @@ export function PortalMultiSpeakerUpload({ campaignId, onUploadComplete }: Porta
         setUploadProgress(Math.round(((i + 0.5) / speakerFiles.length) * 50));
         setCurrentStep(`Enviando ${sf.speakerName}...`);
         const ext = sf.file.name.split(".").pop() || "wav";
-        const fn = `multi_${ts}_${sf.speakerName.replace(/\s+/g, "_")}.${ext}`;
+        const fn = `multi_${ts}_${sf.speakerName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_\-]/g, "_")}.${ext}`;
         const path = `uploads/${sessionId}/${fn}`;
         const meta = await getAudioMetadata(sf.file, sf.file.name);
         const { error: ue } = await supabase.storage.from("voice-recordings").upload(path, sf.file);
