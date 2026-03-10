@@ -28,6 +28,7 @@ import {
   Download,
   Copy,
   Layers,
+  Highlighter,
 } from "lucide-react";
 import { toast } from "sonner";
 
