@@ -63,6 +63,8 @@ interface Recording {
     enhanced_snr_db?: number;
     enhanced_rms_level_db?: number;
   } | null;
+  /** Runtime-only flag: true = uploaded, false = recorded in studio */
+  _isUpload?: boolean;
 }
 
 interface CampaignInfo {
@@ -225,6 +227,17 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
         <span className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-sm shrink-0">
           {rec.recording_type === "mixed" ? "MIX" : "IND"}
         </span>
+        {rec._isUpload != null && (
+          <span
+            className="font-mono text-[8px] px-1.5 py-0.5 rounded-sm shrink-0 uppercase tracking-wider font-bold"
+            style={{
+              background: rec._isUpload ? "hsl(210 80% 50% / 0.12)" : "hsl(270 60% 50% / 0.12)",
+              color: rec._isUpload ? "hsl(210 80% 55%)" : "hsl(270 60% 55%)",
+            }}
+          >
+            {rec._isUpload ? "📤 Upload" : "🎙️ Estúdio"}
+          </span>
+        )}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
             {rec.discord_username || rec.filename}
@@ -897,6 +910,12 @@ export default function ReviewQueue() {
     const buildSessions = (sessionMap: Map<string, Recording[]>): SessionGroup[] => {
       const sessions: SessionGroup[] = [];
       for (const [sid, recs] of sessionMap) {
+        // Tag each recording with origin: upload vs studio
+        const hasRoom = roomMap.has(sid);
+        for (const r of recs) {
+          r._isUpload = !hasRoom;
+        }
+
         const mixed = recs.find(r => r.recording_type === "mixed");
         const individuals = recs.filter(r => r.recording_type !== "mixed");
         const room = roomMap.get(sid);
