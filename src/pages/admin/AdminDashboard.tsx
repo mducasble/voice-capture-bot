@@ -363,17 +363,28 @@ export default function AdminDashboard() {
 
 function CountryBreakdown({ profiles }: { profiles: { country?: string | null }[] }) {
   const countryData = useMemo(() => {
+    let dn: Intl.DisplayNames | null = null;
+    try {
+      dn = new Intl.DisplayNames(["pt"], { type: "region" });
+    } catch { /* fallback */ }
+
     const map: Record<string, number> = {};
     profiles.forEach((p) => {
-      const country = p.country?.trim() || "Não informado";
-      map[country] = (map[country] || 0) + 1;
+      const raw = p.country?.trim();
+      if (!raw) return; // skip users without country
+      // Resolve 2-letter ISO codes to localized names
+      let label = raw;
+      if (raw.length === 2 && dn) {
+        try { label = dn.of(raw.toUpperCase()) || raw; } catch { /* keep raw */ }
+      }
+      map[label] = (map[label] || 0) + 1;
     });
     return Object.entries(map)
       .map(([country, count]) => ({ country, count }))
       .sort((a, b) => b.count - a.count);
   }, [profiles]);
 
-  const total = profiles.length;
+  const total = countryData.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <Card className="border-border/40 bg-card">
