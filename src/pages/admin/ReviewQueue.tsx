@@ -1084,6 +1084,32 @@ export default function ReviewQueue() {
     enabled: sessionIds.length > 0,
   });
 
+  // Fetch audio validation rules (critical, with thresholds) per campaign
+  const { data: audioValidationRules } = useQuery({
+    queryKey: ["admin_review_audio_validation", campaignIds],
+    queryFn: async () => {
+      if (!campaignIds.length) return [];
+      const { data, error } = await supabase
+        .from("campaign_audio_validation")
+        .select("rule_key, is_critical, mq_threshold, hq_threshold, pq_threshold, task_set_id, campaign_id")
+        .in("campaign_id", campaignIds)
+        .eq("is_critical", true);
+      if (error) throw error;
+      return (data || []) as (AudioValidationRule & { campaign_id: string })[];
+    },
+    enabled: campaignIds.length > 0,
+  });
+
+  const validationRulesMap = useMemo(() => {
+    const m = new Map<string, AudioValidationRule[]>();
+    audioValidationRules?.forEach(r => {
+      const cid = (r as any).campaign_id as string;
+      if (!m.has(cid)) m.set(cid, []);
+      m.get(cid)!.push(r);
+    });
+    return m;
+  }, [audioValidationRules]);
+
   const profileMap = useMemo(() => {
     const m = new Map<string, string>();
     profiles?.forEach(p => m.set(p.id, p.full_name || p.email_contact || p.id.slice(0, 8)));
