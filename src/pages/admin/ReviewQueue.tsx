@@ -779,6 +779,15 @@ function SummaryPill({ icon: Icon, label, value, color }: { icon: React.ElementT
   );
 }
 
+// ---- Status filter type ----
+type StatusFilter = "pending" | "approved" | "rejected";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string; icon: React.ElementType; color: string }[] = [
+  { value: "pending", label: "Não processados", icon: Hourglass, color: "text-amber-500" },
+  { value: "approved", label: "Aprovados", icon: CheckCircle2, color: "text-green-500" },
+  { value: "rejected", label: "Rejeitados", icon: XCircle, color: "text-destructive" },
+];
+
 // ---- Campaign tab content ----
 
 function CampaignTabContent({
@@ -796,6 +805,39 @@ function CampaignTabContent({
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
 }) {
+  const [filter, setFilter] = useState<StatusFilter>("pending");
+
+  // Filter hosts → sessions by status
+  const filteredHosts = useMemo(() => {
+    const result: HostGroup[] = [];
+    for (const host of hosts) {
+      const filteredSessions = host.sessions.filter(s => getSessionStatus(s.recordings) === filter);
+      if (filteredSessions.length > 0) {
+        result.push({
+          ...host,
+          sessions: filteredSessions,
+          totalRecordings: filteredSessions.reduce((a, s) => a + s.recordings.length, 0),
+          pendingSessions: filteredSessions.filter(s => getSessionStatus(s.recordings) === "pending").length,
+        });
+      }
+    }
+    return result;
+  }, [hosts, filter]);
+
+  // Count per filter for badges
+  const counts = useMemo(() => {
+    let pending = 0, approved = 0, rejected = 0;
+    for (const host of hosts) {
+      for (const s of host.sessions) {
+        const st = getSessionStatus(s.recordings);
+        if (st === "pending") pending++;
+        else if (st === "approved") approved++;
+        else if (st === "rejected") rejected++;
+      }
+    }
+    return { pending, approved, rejected };
+  }, [hosts]);
+
   if (hosts.length === 0) {
     return (
       <div className="text-center py-12 border border-border bg-card rounded-lg">
@@ -806,18 +848,58 @@ function CampaignTabContent({
   }
 
   return (
-    <div className="space-y-3">
-      {hosts.map(host => (
-        <HostBlock
-          key={host.hostName}
-          host={host}
-          profileMap={profileMap}
-          onApproveSession={onApproveSession}
-          onRejectSession={onRejectSession}
-          onTranscribe={onTranscribe}
-          isPending={isPending}
-        />
-      ))}
+    <div className="space-y-4">
+      {/* Filter buttons */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {STATUS_FILTER_OPTIONS.map(opt => {
+          const count = counts[opt.value];
+          const isActive = filter === opt.value;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setFilter(opt.value)}
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors font-medium ${
+                isActive
+                  ? "bg-secondary border-border text-foreground shadow-sm"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <opt.icon className={`h-3.5 w-3.5 ${isActive ? opt.color : ""}`} />
+              {opt.label}
+              {count > 0 && (
+                <span className={`font-mono text-[10px] px-1.5 py-0 rounded-full ${
+                  isActive ? `${opt.color} bg-background` : "text-muted-foreground bg-secondary/60"
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filtered content */}
+      {filteredHosts.length === 0 ? (
+        <div className="text-center py-10 border border-border/40 bg-card/50 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            Nenhuma sessão {filter === "pending" ? "pendente" : filter === "approved" ? "aprovada" : "rejeitada"}.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredHosts.map(host => (
+            <HostBlock
+              key={host.hostName}
+              host={host}
+              profileMap={profileMap}
+              onApproveSession={onApproveSession}
+              onRejectSession={onRejectSession}
+              onTranscribe={onTranscribe}
+              isPending={isPending}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
