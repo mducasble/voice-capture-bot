@@ -1015,6 +1015,18 @@ export default function ReviewQueue() {
   const handleRejectSession = (recordingIds: string[], reason: string) => rejectSessionMutation.mutate({ recordingIds, reason });
   const isMutating = approveSessionMutation.isPending || rejectSessionMutation.isPending;
 
+  // Transcription hooks
+  const elevenLabsTranscription = useElevenLabsTranscription();
+  const sessionTranscription = useSessionTranscription();
+
+  const handleTranscribe = useCallback((recId: string, sessionId: string | null, isMixed: boolean) => {
+    if (isMixed && sessionId) {
+      sessionTranscription.mutate({ sessionId, mixedRecordingId: recId });
+    } else {
+      elevenLabsTranscription.mutate({ recordingId: recId, mode: "chunks" });
+    }
+  }, [elevenLabsTranscription, sessionTranscription]);
+
   const hasNoCampaign = noCampaignHosts.length > 0;
   const allTabs = campaignTabs;
   const defaultTab = allTabs.length > 0 ? allTabs[0].campaign.id : (hasNoCampaign ? "__none__" : "");
