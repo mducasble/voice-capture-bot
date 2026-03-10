@@ -181,11 +181,14 @@ const Room = () => {
     });
   }, [remoteStreams]);
 
-  // Add new remote streams to mixed recorder mid-recording
+  // Add new remote streams to mixed recorder and remote recorders mid-recording
   useEffect(() => {
     if (!mixedRecorder.isRecording) return;
-    remoteStreams.forEach((stream) => {
+    remoteStreams.forEach((stream, peerId) => {
       mixedRecorder.addRemoteStream(stream);
+      // Find participant name for this peer
+      const participant = participants.find(p => p.id === peerId);
+      remoteRecorders.addRemoteStream(peerId, stream, participant?.name || peerId);
     });
     // We only want to react to new streams appearing
     // eslint-disable-next-line react-hooks/exhaustive-deps
