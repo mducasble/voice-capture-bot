@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -768,6 +768,51 @@ const Room = () => {
     );
   }
 
+    const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0;
+
+    // Full-screen upload overlay
+    const uploadOverlay = isAnyUploadInProgress && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center">
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+            <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-500/20 border-2 border-red-500">
+              <ShieldAlert className="h-10 w-10 text-red-400" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase tracking-tight text-white">
+              Não feche a sala!
+            </h2>
+            <p className="text-sm text-red-300 font-medium">
+              Enviando áudio. Fechar agora causará perda de dados.
+            </p>
+          </div>
+          <div className="w-full space-y-3">
+            {isMixedUploading && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-white/70">
+                  <span>Áudio mixado</span>
+                  <span>{mixedUploadProgress}%</span>
+                </div>
+                <Progress value={mixedUploadProgress} className="h-2" />
+              </div>
+            )}
+            {remoteUploadsInProgress > 0 && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-white/70">
+                  <span>Backups individuais</span>
+                  <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
+                </div>
+                <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-2" />
+              </div>
+            )}
+          </div>
+          <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
+        </div>
+      </div>
+    );
+
     // Check if user might be the creator via localStorage
     const storedParticipantId = roomId ? localStorage.getItem(`room_${roomId}_participant`) : null;
     // Check participants list first, but also check DB-fetched creator (may be disconnected)
@@ -964,6 +1009,8 @@ const Room = () => {
   if (isPortal) {
     // Portal-themed room view
     return (
+      <>
+      {uploadOverlay}
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
@@ -1251,11 +1298,14 @@ const Room = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   // Original non-portal room view
   return (
+    <>
+    {uploadOverlay}
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -1497,6 +1547,7 @@ const Room = () => {
         </Card>
       </main>
     </div>
+    </>
   );
 };
 
