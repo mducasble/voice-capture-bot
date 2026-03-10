@@ -12,12 +12,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { FaqSidebar } from "./FaqSidebar";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
+import { useAutoFillCountry } from "@/hooks/useAutoFillCountry";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const { t } = useTranslation();
   const { isComplete: profileComplete, isLoading: profileLoading } = useProfileCompletion();
+  useAutoFillCountry();
 
   if (loading || (user && profileLoading)) {
     return (
