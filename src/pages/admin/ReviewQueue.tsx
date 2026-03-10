@@ -606,7 +606,7 @@ function SessionBlock({
               <div className="px-4 py-1 bg-secondary/20">
                 <span className="font-mono text-[10px] text-muted-foreground">👤 {userName}</span>
               </div>
-              <TrackRow rec={r} onTranscribe={onTranscribe} />
+              <TrackRow rec={r} onTranscribe={onTranscribe} validationRules={validationRules} />
             </div>
           );
         })}
