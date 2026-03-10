@@ -321,7 +321,8 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
           inserted.id,
           ts.task_type,
           ts.tech_validation || [],
-          ts.content_validation || []
+          ts.content_validation || [],
+          campaignId
         );
       }
     }
