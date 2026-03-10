@@ -1016,7 +1016,7 @@ const Room = () => {
                     style={{ border: "1px solid var(--portal-border)" }}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2" style={{ background: p.is_connected ? "var(--portal-accent)" : "var(--portal-text-muted)" }} />
+                      <div className={`w-2.5 h-2.5 rounded-full ${p.is_connected ? "bg-green-500" : "bg-red-500"}`} title={p.is_connected ? "Online" : "Offline"} />
                       <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{p.name}</span>
                       {p.is_creator && (
                         <span className="font-mono text-[9px] px-1.5 py-0.5 uppercase" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
