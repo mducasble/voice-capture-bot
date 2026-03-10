@@ -32,7 +32,7 @@ const PortalMyCampaigns = lazy(() => import("./pages/portal/PortalMyCampaigns"))
 const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
 const PortalEarnings = lazy(() => import("./pages/portal/PortalEarnings"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
-const ShortLinkResolver = lazy(() => import("./pages/portal/ShortLinkResolver"));
+
 
 const queryClient = new QueryClient();
 
