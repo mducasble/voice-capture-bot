@@ -910,6 +910,12 @@ export default function ReviewQueue() {
     const buildSessions = (sessionMap: Map<string, Recording[]>): SessionGroup[] => {
       const sessions: SessionGroup[] = [];
       for (const [sid, recs] of sessionMap) {
+        // Tag each recording with origin: upload vs studio
+        const hasRoom = roomMap.has(sid);
+        for (const r of recs) {
+          r._isUpload = !hasRoom;
+        }
+
         const mixed = recs.find(r => r.recording_type === "mixed");
         const individuals = recs.filter(r => r.recording_type !== "mixed");
         const room = roomMap.get(sid);
