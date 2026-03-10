@@ -169,6 +169,30 @@ serve(async (req) => {
 
     console.log(`Calculated duration: ${durationSeconds.toFixed(2)}s from ${bytes.length} bytes`);
 
+    // Check for duplicate: if an individual recording for this participant+session already exists, skip
+    if (recording_type === 'individual') {
+      const { data: existing } = await supabase
+        .from('voice_recordings')
+        .select('id')
+        .eq('discord_channel_id', session_id)
+        .eq('discord_user_id', participant_id)
+        .eq('recording_type', 'individual')
+        .limit(1);
+      
+      if (existing && existing.length > 0) {
+        console.log(`Individual recording already exists for participant ${participant_id} in session ${session_id}, skipping duplicate`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            recording_id: existing[0].id,
+            file_url: s3Url,
+            skipped_duplicate: true,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Register in database
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')

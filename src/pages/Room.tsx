@@ -18,6 +18,7 @@ import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useMixedRecorder } from "@/hooks/useMixedRecorder";
+import { useRemoteRecorders } from "@/hooks/useRemoteRecorders";
 import { RecordingGuidelinesSidebar } from "@/components/rooms/RecordingGuidelinesSidebar";
 import { TalkingPointsBlock } from "@/components/rooms/TalkingPointsBlock";
 import type { AudioProfile } from "@/lib/audioProfile";
@@ -95,6 +96,8 @@ const Room = () => {
   const remoteGainContexts = useRef<Map<string, { ctx: AudioContext; gain: GainNode }>>(new Map());
   const [isMixedUploading, setIsMixedUploading] = useState(false);
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
+  const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
+  const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
@@ -118,6 +121,9 @@ const Room = () => {
 
   // Mixed recorder for creator
   const mixedRecorder = useMixedRecorder();
+
+  // Remote individual recorders (creator records each remote stream as backup)
+  const remoteRecorders = useRemoteRecorders();
 
   // WebRTC peer-to-peer audio
   const { remoteStreams, peerStatuses } = useWebRTC({
@@ -175,11 +181,14 @@ const Room = () => {
     });
   }, [remoteStreams]);
 
-  // Add new remote streams to mixed recorder mid-recording
+  // Add new remote streams to mixed recorder and remote recorders mid-recording
   useEffect(() => {
     if (!mixedRecorder.isRecording) return;
-    remoteStreams.forEach((stream) => {
+    remoteStreams.forEach((stream, peerId) => {
       mixedRecorder.addRemoteStream(stream);
+      // Find participant name for this peer
+      const participant = participants.find(p => p.id === peerId);
+      remoteRecorders.addRemoteStream(peerId, stream, participant?.name || peerId);
     });
     // We only want to react to new streams appearing
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -485,6 +494,8 @@ const Room = () => {
     // Start mixed recording if creator has a local stream
     if (currentParticipant?.is_creator && mediaStreamRef.current) {
       await mixedRecorder.startRecording(mediaStreamRef.current, remoteStreams);
+      // Start recording each remote stream individually as backup
+      await remoteRecorders.startRecording(remoteStreams, participants);
     }
 
     await supabase
@@ -563,6 +574,60 @@ const Room = () => {
     }
   };
 
+  // Upload a remote participant's backup recording
+  const uploadRemoteBackup = async (peerId: string, wavBlob: Blob, participantName: string) => {
+    if (!room || !wavBlob || wavBlob.size === 0) return;
+
+    const filename = `room_${room.session_id}_${peerId}_${Date.now()}.wav`;
+    try {
+      const formData = new FormData();
+      formData.append("audio", wavBlob, filename);
+      formData.append("filename", filename);
+      formData.append("session_id", room.session_id);
+      formData.append("participant_id", peerId);
+      formData.append("participant_name", participantName);
+      formData.append("recording_type", "individual");
+      formData.append("format", "wav");
+      formData.append("noise_gate_enabled", "false");
+      formData.append("campaign_id", campaignId || "");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
+        {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${authToken}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Upload failed: ${errText}`);
+      }
+
+      console.log(`[RemoteBackup] Uploaded backup for ${participantName}`);
+      toast.success(`Backup de ${participantName} enviado!`);
+    } catch (error) {
+      console.error(`[RemoteBackup] Upload error for ${participantName}:`, error);
+      // Fallback: save locally
+      try {
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.info(`Backup de ${participantName} salvo localmente`);
+      } catch (dlErr) {
+        console.error("Local save also failed:", dlErr);
+      }
+    }
+  };
+
   // Stop recording (creator only)
   const handleStopRecording = async () => {
     if (!room || !roomId) return;
@@ -572,6 +637,33 @@ const Room = () => {
       const mixedBlob = await mixedRecorder.stopRecording();
       if (mixedBlob) {
         uploadMixedRecording(mixedBlob);
+      }
+    }
+
+    // Stop remote backup recorders and upload each
+    if (currentParticipant?.is_creator && remoteRecorders.isRecording) {
+      const remoteBlobs = await remoteRecorders.stopRecording();
+      if (remoteBlobs.size > 0) {
+        setRemoteUploadsInProgress(remoteBlobs.size);
+        setRemoteUploadsDone(0);
+        
+        // Check which participants already uploaded their own recording
+        // We upload all backups - the edge function will handle deduplication
+        // or we can skip if recording already exists
+        for (const [peerId, { blob, participantName }] of remoteBlobs) {
+          uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+            setRemoteUploadsDone(prev => {
+              const next = prev + 1;
+              if (next >= remoteBlobs.size) {
+                setTimeout(() => {
+                  setRemoteUploadsInProgress(0);
+                  setRemoteUploadsDone(0);
+                }, 2000);
+              }
+              return next;
+            });
+          });
+        }
       }
     }
 
@@ -986,6 +1078,15 @@ const Room = () => {
                     <Progress value={mixedUploadProgress} className="h-1" />
                   </div>
                 )}
+                {remoteUploadsInProgress > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span>BACKUPS REMOTOS</span>
+                      <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
+                    </div>
+                    <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-1" />
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-3 pt-2 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
                   {audioProfile && (
                     <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
@@ -1274,6 +1375,15 @@ const Room = () => {
                           <span>{mixedUploadProgress}%</span>
                         </div>
                         <Progress value={mixedUploadProgress} className="h-1" />
+                      </div>
+                    )}
+                    {remoteUploadsInProgress > 0 && (
+                      <div className="space-y-1 px-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Backups remotos...</span>
+                          <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
+                        </div>
+                        <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-1" />
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
