@@ -1351,7 +1351,7 @@ const Room = () => {
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${p.is_connected ? "bg-green-500" : "bg-gray-400"}`} />
+                    <div className={`w-2.5 h-2.5 rounded-full ${p.is_connected ? "bg-green-500" : "bg-red-500"}`} title={p.is_connected ? "Online" : "Offline"} />
                     <span className="font-medium">{p.name}</span>
                     {p.is_creator && (
                       <Badge variant="outline" className="text-xs">Criador</Badge>
