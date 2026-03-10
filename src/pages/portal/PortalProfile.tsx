@@ -110,8 +110,13 @@ export default function PortalProfile() {
       queryClient.invalidateQueries({ queryKey: ["profile-completion"] });
       toast.success(t("profile.savedSuccess"));
     },
-    onError: () => {
-      toast.error(t("profile.saveError"));
+    onError: (error: any) => {
+      const msg = error?.message || "";
+      if (msg.includes("JWT") || msg.includes("token") || msg.includes("session")) {
+        toast.error(t("profile.sessionExpired") || "Sessão expirada. Faça login novamente.");
+      } else {
+        toast.error(t("profile.saveError"));
+      }
     },
   });
 
