@@ -791,7 +791,7 @@ export default function ReviewQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("voice_recordings")
-        .select("id, filename, duration_seconds, recording_type, session_id, created_at, discord_username, file_url, status, campaign_id, user_id, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, snr_db, sample_rate, bit_depth, channels, format, file_size_bytes, transcription_status, metadata")
+        .select("id, filename, duration_seconds, recording_type, session_id, created_at, discord_username, file_url, mp3_file_url, status, campaign_id, user_id, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, snr_db, sample_rate, bit_depth, channels, format, file_size_bytes, transcription_status, transcription_elevenlabs_status, metadata")
         .not("session_id", "is", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
