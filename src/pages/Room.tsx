@@ -127,7 +127,7 @@ const Room = () => {
     participants,
   });
 
-  // Play remote audio streams
+  // Play remote audio streams with volume boost via Web Audio API
   useEffect(() => {
     remoteStreams.forEach((stream, peerId) => {
       let audioEl = remoteAudioRefs.current.get(peerId);
@@ -139,6 +139,25 @@ const Room = () => {
       if (audioEl.srcObject !== stream) {
         audioEl.srcObject = stream;
         audioEl.play().catch(e => console.warn("[WebRTC] Audio play failed:", e));
+
+        // Apply volume boost via Web Audio API GainNode
+        const existing = remoteGainContexts.current.get(peerId);
+        if (existing) {
+          existing.ctx.close();
+          remoteGainContexts.current.delete(peerId);
+        }
+        try {
+          const ctx = new AudioContext();
+          const source = ctx.createMediaStreamSource(stream);
+          const gain = ctx.createGain();
+          gain.gain.value = 2.5; // 2.5x volume boost for remote audio
+          source.connect(gain);
+          gain.connect(ctx.destination);
+          remoteGainContexts.current.set(peerId, { ctx, gain });
+          console.log(`[WebRTC] Applied 2.5x volume boost for ${peerId}`);
+        } catch (e) {
+          console.warn("[WebRTC] Failed to create gain node:", e);
+        }
       }
     });
 
@@ -147,6 +166,11 @@ const Room = () => {
       if (!remoteStreams.has(peerId)) {
         audioEl.srcObject = null;
         remoteAudioRefs.current.delete(peerId);
+        const gainCtx = remoteGainContexts.current.get(peerId);
+        if (gainCtx) {
+          gainCtx.ctx.close();
+          remoteGainContexts.current.delete(peerId);
+        }
       }
     });
   }, [remoteStreams]);
