@@ -11,6 +11,16 @@ interface Props {
   scale: number;
 }
 
+function DynamicIcon({ name, ...props }: { name: keyof typeof dynamicIconImports } & LucideProps) {
+  const validName = name in dynamicIconImports ? name : "star";
+  const LucideIcon = lazy(dynamicIconImports[validName as keyof typeof dynamicIconImports]);
+  return (
+    <Suspense fallback={<div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />}>
+      <LucideIcon {...props} />
+    </Suspense>
+  );
+}
+
 export function DraggableElement({ element, isSelected, onSelect, onUpdate, scale }: Props) {
   const elRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
