@@ -1,5 +1,7 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, lazy, Suspense } from "react";
 import type { CarouselElement } from "./types";
+import dynamicIconImports from "lucide-react/dynamicIconImports";
+import type { LucideProps } from "lucide-react";
 
 interface Props {
   element: CarouselElement;
@@ -7,6 +9,16 @@ interface Props {
   onSelect: () => void;
   onUpdate: (updates: Partial<CarouselElement>) => void;
   scale: number;
+}
+
+function DynamicIcon({ name, style, color, strokeWidth }: { name: keyof typeof dynamicIconImports; style?: React.CSSProperties; color?: string; strokeWidth?: number }) {
+  const validName = name in dynamicIconImports ? name : "star";
+  const LucideIcon = lazy(dynamicIconImports[validName as keyof typeof dynamicIconImports]);
+  return (
+    <Suspense fallback={<div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />}>
+      <LucideIcon style={style} color={color} strokeWidth={strokeWidth} />
+    </Suspense>
+  );
 }
 
 export function DraggableElement({ element, isSelected, onSelect, onUpdate, scale }: Props) {
@@ -172,6 +184,15 @@ export function DraggableElement({ element, isSelected, onSelect, onUpdate, scal
             <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Imagem</span>
           )}
         </div>
+      )}
+
+      {element.type === "icon" && (
+        <DynamicIcon
+          name={(element.iconName || "star") as keyof typeof dynamicIconImports}
+          style={{ width: "100%", height: "100%" }}
+          color={element.color || "#ffffff"}
+          strokeWidth={1.5}
+        />
       )}
 
       {/* Resize handle */}
