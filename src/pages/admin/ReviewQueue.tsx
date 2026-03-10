@@ -337,6 +337,7 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
             {rec._isUpload ? "📤 Upload" : "🎙️ Estúdio"}
           </span>
         )}
+        {validationRules && <QualityTierBadge tier={classifyRecording(rec, validationRules)} />}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
             {rec.discord_username || rec.filename}
