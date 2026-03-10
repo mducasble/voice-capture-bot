@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const ICE_SERVERS: RTCConfiguration = {
+// Fallback ICE config used while fetching dynamic TURN credentials
+const FALLBACK_ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -30,6 +31,38 @@ const ICE_SERVERS: RTCConfiguration = {
 // Reconnection config
 const MAX_RECONNECT_ATTEMPTS = 5;
 const BASE_RECONNECT_DELAY = 1000; // 1s
+
+// Cache TURN credentials (valid for ~24h, refresh every 12h)
+let cachedIceConfig: RTCConfiguration | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+async function getIceConfig(): Promise<RTCConfiguration> {
+  if (cachedIceConfig && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedIceConfig;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("get-turn-credentials");
+    if (error) throw error;
+
+    if (data?.iceServers && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+      // Add Google STUN servers as fallback
+      const iceServers = [
+        { urls: "stun:stun.l.google.com:19302" },
+        ...data.iceServers,
+      ];
+      cachedIceConfig = { iceServers, iceCandidatePoolSize: 5 };
+      cacheTimestamp = Date.now();
+      console.log("[WebRTC] Loaded dynamic TURN credentials from Metered");
+      return cachedIceConfig;
+    }
+  } catch (e) {
+    console.warn("[WebRTC] Failed to fetch TURN credentials, using fallback:", e);
+  }
+
+  return FALLBACK_ICE_SERVERS;
+}
 
 interface PeerState {
   connection: RTCPeerConnection;
