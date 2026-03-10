@@ -1,12 +1,12 @@
 export interface CarouselElement {
   id: string;
-  type: "text" | "image";
+  type: "text" | "image" | "highlight";
   x: number;
   y: number;
   width: number;
   height: number;
   rotation: number;
-  // Text props
+  // Text props (shared with highlight)
   content?: string;
   fontSize?: number;
   fontWeight?: number;
@@ -16,6 +16,10 @@ export interface CarouselElement {
   // Image props
   imageUrl?: string;
   objectFit?: "cover" | "contain" | "fill";
+  // Highlight props
+  highlightBg?: string;
+  highlightPaddingX?: number;
+  highlightPaddingY?: number;
 }
 
 export type BackgroundPattern = "none" | "dark-grid" | "light-grid";
