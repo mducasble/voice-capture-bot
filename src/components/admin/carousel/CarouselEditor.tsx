@@ -555,3 +555,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.src = src;
   });
 }
+
+// Lucide icons are available as ES modules. For canvas export we dynamically
+// import the icon, render it to an off-screen SVG string, then draw it.
+async function fetchLucideIconSvg(name: string, color: string): Promise<string> {
+  try {
+    const mod = await import(`lucide-static/icons/${name}.svg?raw`);
+    // The raw SVG string from lucide-static
+    let svg: string = mod.default;
+    // Replace stroke color
+    svg = svg.replace(/currentColor/g, color);
+    // Ensure width/height are set for rasterization
+    if (!svg.includes('width=')) {
+      svg = svg.replace('<svg', '<svg width="256" height="256"');
+    }
+    return svg;
+  } catch {
+    // Fallback: draw a simple circle
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
+  }
+}
