@@ -783,8 +783,11 @@ export default function ReviewQueue() {
         const mixed = recs.find(r => r.recording_type === "mixed");
         const individuals = recs.filter(r => r.recording_type !== "mixed");
         const room = roomMap.get(sid);
-        // Fallback: use uploader's discord_username when no room exists
-        const fallbackName = recs.find(r => r.discord_username && r.discord_username !== "Multi-Speaker Session")?.discord_username || null;
+        // Fallback: resolve uploader name from profile (user_id), then discord_username
+        const uploaderRec = recs.find(r => r.user_id) || recs[0];
+        const fallbackName = (uploaderRec?.user_id ? profileMap.get(uploaderRec.user_id) : null)
+          || recs.find(r => r.discord_username && r.discord_username !== "Multi-Speaker Session")?.discord_username
+          || null;
         sessions.push({
           sessionId: sid,
           recordings: recs,
@@ -834,7 +837,7 @@ export default function ReviewQueue() {
       campaignTabs: tabs,
       noCampaignHosts: groupByHost(buildSessions(noCampaignMap)),
     };
-  }, [recordings, campaignMap, roomMap]);
+  }, [recordings, campaignMap, roomMap, profileMap]);
 
   // Mutations
   const approveSessionMutation = useMutation({
