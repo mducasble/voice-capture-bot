@@ -183,10 +183,24 @@ export function createId(): string {
 }
 
 export function createSlide(template?: Omit<CarouselSlide, "id">): CarouselSlide {
-  const base = template || { elements: [], backgroundColor: "#111111" };
+  const base = template || { elements: [], backgroundColor: "#111111", backgroundPattern: "dark-grid" as BackgroundPattern };
   return {
     ...base,
+    backgroundPattern: base.backgroundPattern || "dark-grid",
     id: createId(),
     elements: base.elements.map((el) => ({ ...el, id: createId() })),
   };
+}
+
+export const GRID_SIZE = 60;
+export const ACCENT_COLOR = "#8cff05";
+
+export function getPatternColors(pattern: BackgroundPattern) {
+  if (pattern === "dark-grid") {
+    return { bg: "#111111", lineColor: "rgba(255,255,255,0.05)", accentColor: ACCENT_COLOR };
+  }
+  if (pattern === "light-grid") {
+    return { bg: "#f5f5f5", lineColor: "rgba(0,0,0,0.06)", accentColor: ACCENT_COLOR };
+  }
+  return { bg: null, lineColor: null, accentColor: null };
 }
