@@ -168,8 +168,9 @@ function getSessionStatus(recs: Recording[]) {
 
 // ---- Track Row ----
 
-function TrackRow({ rec }: { rec: Recording }) {
+function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void }) {
   const [playing, setPlaying] = useState(false);
+  const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggle = useCallback(() => {
@@ -189,8 +190,32 @@ function TrackRow({ rec }: { rec: Recording }) {
 
   const m = rec.metadata;
 
+  // Build metrics list
+  const metrics: { label: string; value: string; color: string }[] = [];
+  if (rec.snr_db != null) metrics.push({ label: "SNR", value: `${rec.snr_db.toFixed(1)}dB`, color: snrColor(rec.snr_db) });
+  if (m?.rms_level_db != null) metrics.push({ label: "RMS", value: `${m.rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.rms_level_db, -26, -35) });
+  if (m?.srmr != null) metrics.push({ label: "SRMR", value: m.srmr.toFixed(2), color: metricColor(m.srmr, 6, 4) });
+  if (m?.sigmos_ovrl != null) metrics.push({ label: "SigMOS Ovrl", value: m.sigmos_ovrl.toFixed(2), color: metricColor(m.sigmos_ovrl, 3.5, 2.5) });
+  if (m?.sigmos_sig != null) metrics.push({ label: "SigMOS SIG", value: m.sigmos_sig.toFixed(2), color: metricColor(m.sigmos_sig, 3.5, 2.5) });
+  if (m?.sigmos_bak != null) metrics.push({ label: "SigMOS BAK", value: m.sigmos_bak.toFixed(2), color: metricColor(m.sigmos_bak, 3.5, 2.5) });
+  if (m?.sigmos_disc != null) metrics.push({ label: "SigMOS DISC", value: m.sigmos_disc.toFixed(2), color: metricColor(m.sigmos_disc, 3.5, 2.5) });
+  if (m?.sigmos_reverb != null) metrics.push({ label: "SigMOS Rev", value: m.sigmos_reverb.toFixed(2), color: metricColor(m.sigmos_reverb, 3.5, 2.5) });
+  if (m?.wvmos != null) metrics.push({ label: "WVMOS", value: m.wvmos.toFixed(2), color: metricColor(m.wvmos, 3.0, 2.0) });
+  if (m?.utmos != null) metrics.push({ label: "UTMOS", value: m.utmos.toFixed(2), color: metricColor(m.utmos, 3.5, 2.5) });
+  if (m?.vqscore != null) metrics.push({ label: "VQScore", value: m.vqscore.toFixed(1), color: metricColor(m.vqscore, 4, 3) });
+  if (m?.mos_score != null) metrics.push({ label: "MOS", value: m.mos_score.toFixed(2), color: metricColor(m.mos_score, 3.5, 2.5) });
+
+  // Enhanced metrics
+  const enhancedMetrics: { label: string; value: string; color: string }[] = [];
+  if (m?.enhanced_snr_db != null) enhancedMetrics.push({ label: "SNR✨", value: `${m.enhanced_snr_db.toFixed(1)}dB`, color: snrColor(m.enhanced_snr_db) });
+  if (m?.enhanced_rms_level_db != null) enhancedMetrics.push({ label: "RMS✨", value: `${m.enhanced_rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.enhanced_rms_level_db, -26, -35) });
+
+  const hasElevenLabs = rec.transcription_elevenlabs_status === "completed";
+  const isTranscribing = rec.transcription_elevenlabs_status === "processing" || rec.transcription_status === "processing";
+
   return (
     <div className="px-4 py-3 border-b border-border/20 space-y-2 last:border-b-0">
+      {/* Row 1: play, type, name, duration */}
       <div className="flex items-center gap-3">
         {rec.file_url && (
           <button onClick={toggle} className="shrink-0 text-accent hover:text-accent/80 transition-colors">
@@ -212,93 +237,162 @@ function TrackRow({ rec }: { rec: Recording }) {
         )}
       </div>
 
-      <div className="flex items-center gap-3 pl-7 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          {rec.format && (
-            <span className="font-mono text-[9px] px-1.5 py-0.5 bg-secondary/80 text-muted-foreground rounded-sm uppercase">
-              {rec.format}
-            </span>
-          )}
-          {rec.sample_rate && (
-            <span className="font-mono text-[9px] text-muted-foreground">
-              {(rec.sample_rate / 1000).toFixed(rec.sample_rate % 1000 === 0 ? 0 : 1)}kHz
-            </span>
-          )}
-          {rec.bit_depth && (
-            <span className="font-mono text-[9px] text-muted-foreground">{rec.bit_depth}bit</span>
-          )}
-          {rec.channels != null && (
-            <span className="font-mono text-[9px] text-muted-foreground">
-              {rec.channels === 1 ? "mono" : rec.channels === 2 ? "stereo" : `${rec.channels}ch`}
-            </span>
-          )}
-          {rec.file_size_bytes != null && (
-            <span className="font-mono text-[9px] text-muted-foreground">{formatBytes(rec.file_size_bytes)}</span>
-          )}
-        </div>
-
-        <div className="w-px h-3 bg-border" />
-
-        <div className="flex items-center gap-2">
-          {rec.snr_db != null && (
-            <span className="font-mono text-[10px] font-bold" style={{ color: snrColor(rec.snr_db) }}>
-              SNR {rec.snr_db.toFixed(1)}dB
-            </span>
-          )}
-          {m?.rms_level_db != null && (
-            <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.rms_level_db, -26, -35) }}>
-              RMS {m.rms_level_db.toFixed(1)}dBFS
-            </span>
-          )}
-          {m?.srmr != null && (
-            <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.srmr, 6, 4) }}>
-              SRMR {m.srmr.toFixed(2)}
-            </span>
-          )}
-        </div>
-
-        {(m?.sigmos_ovrl != null || m?.wvmos != null) && (
-          <>
-            <div className="w-px h-3 bg-border" />
-            <div className="flex items-center gap-2">
-              {m?.sigmos_ovrl != null && (
-                <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.sigmos_ovrl, 3.5, 2.5) }}>
-                  SigMOS {m.sigmos_ovrl.toFixed(2)}
-                </span>
-              )}
-              {m?.sigmos_sig != null && (
-                <span className="font-mono text-[10px] text-muted-foreground">SIG {m.sigmos_sig.toFixed(2)}</span>
-              )}
-              {m?.sigmos_bak != null && (
-                <span className="font-mono text-[10px] text-muted-foreground">BAK {m.sigmos_bak.toFixed(2)}</span>
-              )}
-              {m?.wvmos != null && (
-                <span className="font-mono text-[10px] font-bold" style={{ color: metricColor(m.wvmos, 3.0, 2.0) }}>
-                  WVMOS {m.wvmos.toFixed(2)}
-                </span>
-              )}
-            </div>
-          </>
+      {/* Row 2: file specs */}
+      <div className="flex items-center gap-1.5 pl-7 flex-wrap">
+        {rec.format && (
+          <span className="font-mono text-[9px] px-1.5 py-0.5 bg-secondary/80 text-muted-foreground rounded-sm uppercase">
+            {rec.format}
+          </span>
         )}
-
+        {rec.sample_rate && (
+          <span className="font-mono text-[9px] text-muted-foreground">
+            {(rec.sample_rate / 1000).toFixed(rec.sample_rate % 1000 === 0 ? 0 : 1)}kHz
+          </span>
+        )}
+        {rec.bit_depth && (
+          <span className="font-mono text-[9px] text-muted-foreground">{rec.bit_depth}bit</span>
+        )}
+        {rec.channels != null && (
+          <span className="font-mono text-[9px] text-muted-foreground">
+            {rec.channels === 1 ? "mono" : rec.channels === 2 ? "stereo" : `${rec.channels}ch`}
+          </span>
+        )}
+        {rec.file_size_bytes != null && (
+          <span className="font-mono text-[9px] text-muted-foreground">{formatBytes(rec.file_size_bytes)}</span>
+        )}
         {m?.effective_bandwidth_hz != null && (
           <>
             <div className="w-px h-3 bg-border" />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              BW {(m.effective_bandwidth_hz / 1000).toFixed(1)}kHz
+            <span className="font-mono text-[9px] text-muted-foreground">
+              Eff.BW {(m.effective_bandwidth_hz / 1000).toFixed(1)}kHz
             </span>
           </>
         )}
-
-        {rec.transcription_status && (
+        {m?.mic_sr != null && (
+          <span className="font-mono text-[9px] text-muted-foreground">
+            Mic {(m.mic_sr / 1000).toFixed(1)}kHz
+          </span>
+        )}
+        {m?.analysis_mode && (
           <>
             <div className="w-px h-3 bg-border" />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-              TR: {rec.transcription_status}
+            <span className="font-mono text-[8px] px-1 py-0.5 bg-accent/10 text-accent rounded-sm uppercase">
+              {m.analysis_mode}
             </span>
           </>
         )}
       </div>
+
+      {/* Row 3: quality metrics grid */}
+      {metrics.length > 0 && (
+        <div className="flex items-center gap-2.5 pl-7 flex-wrap">
+          {metrics.map(({ label, value, color }) => (
+            <span key={label} className="font-mono text-[10px] font-bold" style={{ color }}>
+              {label} {value}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Row 4: enhanced metrics */}
+      {enhancedMetrics.length > 0 && (
+        <div className="flex items-center gap-2.5 pl-7 flex-wrap">
+          <Sparkles className="h-3 w-3 text-violet-400" />
+          {enhancedMetrics.map(({ label, value, color }) => (
+            <span key={label} className="font-mono text-[10px] font-bold" style={{ color }}>
+              {label} {value}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Row 5: actions - download + transcription */}
+      <div className="flex items-center gap-1.5 pl-7 flex-wrap">
+        {/* Download WAV */}
+        {rec.file_url && (
+          <a
+            href={rec.file_url}
+            download
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            title="Download WAV (original)"
+          >
+            <FileAudio className="h-3 w-3" /> WAV
+          </a>
+        )}
+        {/* Download Enhanced */}
+        {m?.enhanced_file_url && (
+          <a
+            href={m.enhanced_file_url}
+            download
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+            title="Download WAV (melhorado)"
+          >
+            <Sparkles className="h-3 w-3" /> Enhanced
+          </a>
+        )}
+        {/* Download Compressed */}
+        {rec.mp3_file_url && (
+          <a
+            href={rec.mp3_file_url}
+            download
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            title="Download comprimido (16kHz mono)"
+          >
+            <FileVolume2 className="h-3 w-3" /> Comprimido
+          </a>
+        )}
+
+        <div className="w-px h-3 bg-border" />
+
+        {/* Transcription status & trigger */}
+        {isTranscribing && (
+          <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 text-yellow-500">
+            <Loader2 className="h-3 w-3 animate-spin" /> Transcrevendo...
+          </span>
+        )}
+        {hasElevenLabs && (
+          <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 text-blue-400">
+            <CheckCircle2 className="h-3 w-3" /> ElevenLabs ✓
+          </span>
+        )}
+        {rec.transcription_status === "completed" && (
+          <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 text-muted-foreground">
+            Gemini ✓
+          </span>
+        )}
+        {!isTranscribing && !hasElevenLabs && onTranscribe && (
+          <button
+            onClick={() => setCostDialogOpen(true)}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+            title="Transcrever com ElevenLabs"
+          >
+            <AudioLines className="h-3 w-3" /> Transcrever
+          </button>
+        )}
+        {/* Aggregate session (mixed only) */}
+        {rec.recording_type === "mixed" && rec.session_id && onTranscribe && (
+          <button
+            onClick={() => onTranscribe(rec.id, rec.session_id, true)}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            title="Agregar transcrição da sessão"
+          >
+            <Users className="h-3 w-3" /> Agregar Sessão
+          </button>
+        )}
+      </div>
+
+      {/* Cost dialog */}
+      {costDialogOpen && (
+        <TranscriptionCostDialog
+          open={costDialogOpen}
+          onOpenChange={setCostDialogOpen}
+          durationSeconds={rec.duration_seconds || 0}
+          onConfirm={() => {
+            setCostDialogOpen(false);
+            onTranscribe?.(rec.id, rec.session_id, rec.recording_type === "mixed");
+          }}
+        />
+      )}
     </div>
   );
 }
