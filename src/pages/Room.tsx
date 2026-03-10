@@ -1377,6 +1377,15 @@ const Room = () => {
                         <Progress value={mixedUploadProgress} className="h-1" />
                       </div>
                     )}
+                    {remoteUploadsInProgress > 0 && (
+                      <div className="space-y-1 px-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Backups remotos...</span>
+                          <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
+                        </div>
+                        <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-1" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
                       {audioProfile && (
                         <Badge variant="outline" className="text-xs border-primary/50 text-primary">
