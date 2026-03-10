@@ -50,6 +50,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AppInner />
+        <MaintenanceBanner />
+        <MaintenanceBlock>
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
           <Routes>
             {/* Portal routes (public-facing, root) */}
