@@ -157,6 +157,13 @@ interface Recording {
     enhanced_file_url?: string;
     enhanced_snr_db?: number;
     enhanced_rms_level_db?: number;
+    content_analysis?: {
+      topic_adherence_percent?: number;
+      off_topic_summary?: string;
+      content_summary?: string;
+      topic_used?: string;
+      speakers?: { name: string; speaking_time_percent: number; on_topic_percent: number }[];
+    };
   } | null;
   /** Runtime-only flag: true = uploaded, false = recorded in studio */
   _isUpload?: boolean;
