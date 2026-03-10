@@ -63,8 +63,8 @@ export default function PortalLayout() { // layout-root
           <Outlet />
         </main>
 
-        {/* FAQ sidebar */}
-        <FaqSidebar />
+        {/* FAQ sidebar — hide on room pages */}
+        {!location.pathname.startsWith("/room/") && <FaqSidebar />}
       </div>
     </div>
   );
