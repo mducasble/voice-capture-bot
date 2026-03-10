@@ -29,6 +29,8 @@ import {
   Copy,
   Layers,
   Highlighter,
+  Smile,
+  Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 
