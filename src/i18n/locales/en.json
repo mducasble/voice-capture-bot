@@ -227,7 +227,12 @@
     "talkingPointsSuggestion": "Suggestion",
     "startRecording": "START RECORDING",
     "stopRecording": "STOP RECORDING",
-    "minParticipantsWarning": "Minimum {{count}} participants required to record. Connected: {{current}}"
+    "minParticipantsWarning": "Minimum {{count}} participants required to record. Connected: {{current}}",
+    "uploadOverlayTitle": "Don't close the room!",
+    "uploadOverlayDesc": "Uploading audio. Closing now will cause data loss.",
+    "uploadMixedAudio": "Mixed audio",
+    "uploadRemoteBackups": "Individual backups",
+    "uploadSendingAudio": "UPLOADING AUDIO..."
   },
   "audioTest": {
     "title": "Audio Test",
