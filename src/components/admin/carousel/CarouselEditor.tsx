@@ -312,7 +312,7 @@ export default function CarouselEditor() {
           style={{ width: format.width * scale, height: format.height * scale }}
         >
           <div
-            onClick={() => setSelectedElId(null)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedElId(null); }}
             style={{
               width: format.width,
               height: format.height,
