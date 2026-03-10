@@ -899,6 +899,7 @@ function CampaignTabContent({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   hosts: HostGroup[];
   profileMap: Map<string, string>;
@@ -906,6 +907,7 @@ function CampaignTabContent({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [filter, setFilter] = useState<StatusFilter>("pending");
 
