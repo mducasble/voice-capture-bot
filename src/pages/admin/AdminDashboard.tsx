@@ -371,7 +371,10 @@ function CountryBreakdown({ profiles }: { profiles: { country?: string | null }[
     const map: Record<string, number> = {};
     profiles.forEach((p) => {
       const raw = p.country?.trim();
-      if (!raw) return; // skip users without country
+      if (!raw) {
+        map["Não informado"] = (map["Não informado"] || 0) + 1;
+        return;
+      }
       // Resolve 2-letter ISO codes to localized names
       let label = raw;
       if (raw.length === 2 && dn) {
