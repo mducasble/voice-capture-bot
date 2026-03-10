@@ -11,12 +11,12 @@ interface Props {
   scale: number;
 }
 
-function DynamicIcon({ name, ...props }: { name: keyof typeof dynamicIconImports } & LucideProps) {
+function DynamicIcon({ name, style, color, strokeWidth }: { name: keyof typeof dynamicIconImports; style?: React.CSSProperties; color?: string; strokeWidth?: number }) {
   const validName = name in dynamicIconImports ? name : "star";
   const LucideIcon = lazy(dynamicIconImports[validName as keyof typeof dynamicIconImports]);
   return (
     <Suspense fallback={<div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />}>
-      <LucideIcon {...props} />
+      <LucideIcon style={style} color={color} strokeWidth={strokeWidth} />
     </Suspense>
   );
 }
