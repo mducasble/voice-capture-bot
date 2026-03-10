@@ -47,7 +47,7 @@ export default function CarouselEditor() {
 
   // -- Slide management --
   const addSlide = () => {
-    const s = createSlide({ elements: [], backgroundColor: currentSlide?.backgroundColor || "#111111" });
+    const s = createSlide({ elements: [], backgroundColor: currentSlide?.backgroundColor || "#111111", backgroundPattern: currentSlide?.backgroundPattern || "dark-grid" });
     setSlides((prev) => [...prev, s]);
     setCurrentIdx(slides.length);
     setSelectedElId(null);
