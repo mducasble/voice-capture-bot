@@ -333,7 +333,8 @@ serve(async (req) => {
     // Calculate local metrics
     const snr = calculateSNR(samples, 16000);
     const rms = calculateRMSLevel(samples);
-    const micSr = analyzeMicBandwidth(samples, 16000);
+    const monoOriginal = extractMonoOriginal(audioBytes, header);
+    const micSr = analyzeMicBandwidth(monoOriginal, header.sampleRate);
 
     console.log(`Local metrics: SNR=${snr}, RMS=${rms}, MicSR=${micSr}`);
 
