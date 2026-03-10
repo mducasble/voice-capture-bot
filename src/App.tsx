@@ -70,6 +70,7 @@ const App = () => (
             {/* Admin routes with sidebar layout */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
               <Route path="recordings" element={<Index />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="rooms" element={<Rooms />} />
