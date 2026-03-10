@@ -21,7 +21,7 @@ serve(async (req) => {
   try {
     // Fetch temporary TURN credentials from Metered API
     const response = await fetch(
-      `https://kgen.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
+      `https://kgenlatam.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
     );
 
     if (!response.ok) {
