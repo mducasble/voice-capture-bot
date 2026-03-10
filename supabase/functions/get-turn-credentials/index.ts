@@ -10,8 +10,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const METERED_API_KEY = Deno.env.get('METERED_API_KEY');
-  if (!METERED_API_KEY) {
+  const METERED_SECRET_KEY = Deno.env.get('METERED_API_KEY');
+  if (!METERED_SECRET_KEY) {
     return new Response(JSON.stringify({ error: 'METERED_API_KEY not configured' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -19,9 +19,17 @@ serve(async (req) => {
   }
 
   try {
-    // Fetch temporary TURN credentials from Metered API
+    // Create a short-lived TURN credential using the app's secretKey
     const response = await fetch(
-      `https://kgenlatam.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
+      `https://kgenlatam.metered.live/api/v1/turn/credential?secretKey=${METERED_SECRET_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expiryInSeconds: 86400,
+          label: 'kgen-webrtc',
+        }),
+      }
     );
 
     if (!response.ok) {
@@ -29,7 +37,27 @@ serve(async (req) => {
       throw new Error(`Metered API error [${response.status}]: ${errorText}`);
     }
 
-    const iceServers = await response.json();
+    const credential = await response.json();
+
+    // Build ICE servers array from the credential
+    const iceServers = [
+      { urls: "stun:stun.l.google.com:19302" },
+      {
+        urls: "turn:kgenlatam.metered.live:80",
+        username: credential.username,
+        credential: credential.password,
+      },
+      {
+        urls: "turn:kgenlatam.metered.live:80?transport=tcp",
+        username: credential.username,
+        credential: credential.password,
+      },
+      {
+        urls: "turns:kgenlatam.metered.live:443",
+        username: credential.username,
+        credential: credential.password,
+      },
+    ];
 
     return new Response(JSON.stringify({ iceServers }), {
       status: 200,
