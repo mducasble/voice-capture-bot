@@ -393,6 +393,59 @@ export default function CarouselEditor() {
   }, [slides, exportSlide]);
 
   return (
+    <div className="space-y-4">
+      {/* Project bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          className="text-sm font-semibold flex-1 h-9"
+          placeholder="Nome do projeto"
+        />
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          <Save className="h-3.5 w-3.5 mr-1.5" />
+          {saving ? "Salvando..." : projectId ? "Salvar" : "Criar"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowProjectList(!showProjectList)}>
+          <FolderOpen className="h-3.5 w-3.5 mr-1.5" /> Abrir
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleNewProject}>
+          <FilePlus className="h-3.5 w-3.5 mr-1.5" /> Novo
+        </Button>
+      </div>
+
+      {/* Saved projects list */}
+      {showProjectList && (
+        <div className="border border-border rounded-lg p-3 space-y-2 max-h-[300px] overflow-y-auto bg-card">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Projetos Salvos</Label>
+          {savedProjects.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">Nenhum projeto salvo</p>
+          )}
+          {savedProjects.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-2 p-2 rounded border border-border hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{p.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {CAROUSEL_FORMATS.find(f => f.id === p.format_id)?.label || p.format_id} · {new Date(p.updated_at).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => handleLoad(p)}>
+                Abrir
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => handleDuplicate(p)}>
+                <Copy className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-destructive" onClick={() => handleDeleteProject(p.id)}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_260px] gap-6">
       {/* Left panel: slides & controls */}
       <div className="space-y-4">
