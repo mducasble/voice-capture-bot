@@ -227,7 +227,12 @@
     "talkingPointsSuggestion": "Sugestão",
     "startRecording": "INICIAR GRAVAÇÃO",
     "stopRecording": "PARAR GRAVAÇÃO",
-    "minParticipantsWarning": "Mínimo de {{count}} participantes necessários para gravar. Conectados: {{current}}"
+    "minParticipantsWarning": "Mínimo de {{count}} participantes necessários para gravar. Conectados: {{current}}",
+    "uploadOverlayTitle": "Não feche a sala!",
+    "uploadOverlayDesc": "Enviando áudio. Fechar agora causará perda de dados.",
+    "uploadMixedAudio": "Áudio mixado",
+    "uploadRemoteBackups": "Backups individuais",
+    "uploadSendingAudio": "ENVIANDO ÁUDIO..."
   },
   "audioTest": {
     "title": "Teste de Áudio",
