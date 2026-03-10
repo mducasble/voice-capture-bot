@@ -63,6 +63,8 @@ interface Recording {
     enhanced_snr_db?: number;
     enhanced_rms_level_db?: number;
   } | null;
+  /** Runtime-only flag: true = uploaded, false = recorded in studio */
+  _isUpload?: boolean;
 }
 
 interface CampaignInfo {
