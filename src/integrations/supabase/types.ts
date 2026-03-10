@@ -1121,6 +1121,36 @@ export type Database = {
           },
         ]
       }
+      carousel_projects: {
+        Row: {
+          created_at: string
+          created_by: string
+          format_id: string
+          id: string
+          name: string
+          slides: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          format_id?: string
+          id?: string
+          name?: string
+          slides?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          format_id?: string
+          id?: string
+          name?: string
+          slides?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           contact_email: string | null
