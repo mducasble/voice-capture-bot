@@ -175,6 +175,8 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const reanalyze = useReanalyzeAudio("sampled", "original");
+  const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
