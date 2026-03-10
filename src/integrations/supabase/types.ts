@@ -207,10 +207,13 @@ export type Database = {
           allowed_values: Json | null
           campaign_id: string
           created_at: string
+          hq_threshold: number | null
           id: string
           is_critical: boolean | null
           max_value: number | null
           min_value: number | null
+          mq_threshold: number | null
+          pq_threshold: number | null
           rule_key: string
           target_value: number | null
           task_set_id: string | null
@@ -219,10 +222,13 @@ export type Database = {
           allowed_values?: Json | null
           campaign_id: string
           created_at?: string
+          hq_threshold?: number | null
           id?: string
           is_critical?: boolean | null
           max_value?: number | null
           min_value?: number | null
+          mq_threshold?: number | null
+          pq_threshold?: number | null
           rule_key: string
           target_value?: number | null
           task_set_id?: string | null
@@ -231,10 +237,13 @@ export type Database = {
           allowed_values?: Json | null
           campaign_id?: string
           created_at?: string
+          hq_threshold?: number | null
           id?: string
           is_critical?: boolean | null
           max_value?: number | null
           min_value?: number | null
+          mq_threshold?: number | null
+          pq_threshold?: number | null
           rule_key?: string
           target_value?: number | null
           task_set_id?: string | null
