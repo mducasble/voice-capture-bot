@@ -59,6 +59,7 @@ export default function CarouselEditor() {
       elements: currentSlide.elements.map((el) => ({ ...el })),
       backgroundColor: currentSlide.backgroundColor,
       backgroundGradient: currentSlide.backgroundGradient,
+      backgroundPattern: currentSlide.backgroundPattern,
     });
     const newSlides = [...slides];
     newSlides.splice(currentIdx + 1, 0, dup);
