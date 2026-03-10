@@ -916,6 +916,7 @@ function SubmissionSummary({
                 <th className="text-right py-2 text-muted-foreground font-medium">Pend. VAL</th>
                 <th className="text-right py-2 text-muted-foreground font-medium">Boa Qual.</th>
                 <th className="text-right py-2 text-muted-foreground font-medium">Baixa Qual.</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">🎯 Tema</th>
               </tr>
             </thead>
             <tbody>
@@ -936,6 +937,16 @@ function SubmissionSummary({
                   <td className="py-2 text-right font-bold text-orange-400">{s.pendingValidation}</td>
                   <td className="py-2 text-right font-bold text-emerald-500">{s.goodQuality}</td>
                   <td className="py-2 text-right font-bold text-red-400">{s.badQuality}</td>
+                  <td className="py-2 text-right font-bold" style={{
+                    color: s.avgTopicAdherence != null
+                      ? s.avgTopicAdherence >= 80 ? "hsl(120 60% 45%)" : s.avgTopicAdherence >= 50 ? "hsl(45 80% 50%)" : "hsl(0 70% 50%)"
+                      : undefined
+                  }}>
+                    {s.avgTopicAdherence != null ? `${s.avgTopicAdherence}%` : "—"}
+                    {s.analyzedCount > 0 && (
+                      <span className="text-[8px] text-muted-foreground ml-0.5">({s.analyzedCount})</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
