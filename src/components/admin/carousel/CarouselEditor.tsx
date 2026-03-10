@@ -174,6 +174,23 @@ export default function CarouselEditor() {
           ctx.restore();
         }
 
+        if (el.type === "highlight") {
+          ctx.save();
+          const px = el.highlightPaddingX || 24;
+          const py = el.highlightPaddingY || 12;
+          // Draw background
+          ctx.fillStyle = el.highlightBg || "#8cff05";
+          ctx.fillRect(el.x, el.y, el.width, el.height);
+          // Draw text
+          ctx.font = `${el.fontWeight || 900} ${el.fontSize || 48}px ${el.fontFamily || "monospace"}`;
+          ctx.fillStyle = el.color || "#111111";
+          ctx.textAlign = el.textAlign || "center";
+          ctx.textBaseline = "middle";
+          const textX = el.textAlign === "left" ? el.x + px : el.textAlign === "right" ? el.x + el.width - px : el.x + el.width / 2;
+          ctx.fillText(el.content || "", textX, el.y + el.height / 2);
+          ctx.restore();
+        }
+
         if (el.type === "image" && el.imageUrl) {
           try {
             const img = await loadImage(el.imageUrl);
