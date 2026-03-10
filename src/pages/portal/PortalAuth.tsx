@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { detectBrowserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CountrySelect from "@/components/portal/CountrySelect";
 
 type AuthMode = "login" | "signup" | "vendor";
 
