@@ -183,7 +183,7 @@ export default function AdminDashboard() {
         />
         <StatCard
           title="Total Distribuído"
-          value={`$${totalDistributed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          value={`$${totalDistributed.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           gradientClass="admin-gradient-card-amber"
         />
