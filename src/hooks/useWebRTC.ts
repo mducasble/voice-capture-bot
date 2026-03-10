@@ -219,7 +219,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       peersRef.current.delete(remoteParticipantId);
     }
 
-    const connection = new RTCPeerConnection(ICE_SERVERS);
+    const connection = new RTCPeerConnection(iceConfigRef.current);
     const remoteStream = new MediaStream();
 
     // Add local tracks
