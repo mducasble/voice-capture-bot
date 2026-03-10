@@ -380,9 +380,32 @@ export default function CarouselEditor() {
 
       {/* Right panel: properties */}
       <div className="space-y-4">
-        {/* Slide background */}
+        {/* Background pattern */}
         <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Fundo do Slide</Label>
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Padrão de Fundo</Label>
+          <Select
+            value={currentSlide?.backgroundPattern || "dark-grid"}
+            onValueChange={(v) => {
+              const pattern = v as BackgroundPattern;
+              const colors = getPatternColors(pattern);
+              updateSlide({
+                backgroundPattern: pattern,
+                ...(colors.bg ? { backgroundColor: colors.bg } : {}),
+              });
+            }}
+          >
+            <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dark-grid">🖤 Escuro + Grid</SelectItem>
+              <SelectItem value="light-grid">🤍 Claro + Grid</SelectItem>
+              <SelectItem value="none">Sem padrão</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Slide background color */}
+        <div className="space-y-1.5">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Cor do Fundo</Label>
           <div className="flex gap-2">
             <input
               type="color"
@@ -396,6 +419,7 @@ export default function CarouselEditor() {
               className="text-xs flex-1"
             />
           </div>
+        </div>
         </div>
 
         {/* Selected element */}
