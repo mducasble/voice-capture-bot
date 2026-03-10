@@ -47,23 +47,17 @@ export default function PortalProfile() {
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      console.log("[PortalProfile] Fetching profile for user:", user.id);
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("full_name, avatar_url, wallet_id, whatsapp, telegram, email_contact, country, city, spoken_languages, desired_opportunities")
         .eq("id", user.id)
-        .single();
-      if (error) {
-        console.error("[PortalProfile] Query error:", error);
-        throw error;
-      }
-      console.log("[PortalProfile] Profile data received:", JSON.stringify(data));
-      return data as ProfileData;
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return data as unknown as ProfileData;
     },
     enabled: !!user?.id,
   });
-
-  console.log("[PortalProfile] Render state:", { userId: user?.id, isLoading, hasProfile: !!profile, profileError: profileError?.message, profileName: profile?.full_name });
 
   const [form, setForm] = useState<ProfileData | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -71,18 +65,17 @@ export default function PortalProfile() {
   // Sync form state when profile data loads
   useEffect(() => {
     if (profile && !profileLoaded) {
-      console.log("[PortalProfile] Syncing form with profile data:", profile.full_name);
       setForm({
         full_name: profile.full_name || "",
         avatar_url: profile.avatar_url || null,
-        wallet_id: (profile as any)?.wallet_id || "",
-        whatsapp: (profile as any)?.whatsapp || "",
-        telegram: (profile as any)?.telegram || "",
-        email_contact: (profile as any)?.email_contact || user?.email || "",
-        country: (profile as any)?.country || "",
-        city: (profile as any)?.city || "",
-        spoken_languages: (profile as any)?.spoken_languages || [],
-        desired_opportunities: (profile as any)?.desired_opportunities || [],
+        wallet_id: profile.wallet_id || "",
+        whatsapp: profile.whatsapp || "",
+        telegram: profile.telegram || "",
+        email_contact: profile.email_contact || user?.email || "",
+        country: profile.country || "",
+        city: profile.city || "",
+        spoken_languages: profile.spoken_languages || [],
+        desired_opportunities: profile.desired_opportunities || [],
       });
       setProfileLoaded(true);
     }
@@ -91,14 +84,14 @@ export default function PortalProfile() {
   const currentForm: ProfileData = form || {
     full_name: profile?.full_name || "",
     avatar_url: profile?.avatar_url || null,
-    wallet_id: (profile as any)?.wallet_id || "",
-    whatsapp: (profile as any)?.whatsapp || "",
-    telegram: (profile as any)?.telegram || "",
-    email_contact: (profile as any)?.email_contact || user?.email || "",
-    country: (profile as any)?.country || "",
-    city: (profile as any)?.city || "",
-    spoken_languages: (profile as any)?.spoken_languages || [],
-    desired_opportunities: (profile as any)?.desired_opportunities || [],
+    wallet_id: profile?.wallet_id || "",
+    whatsapp: profile?.whatsapp || "",
+    telegram: profile?.telegram || "",
+    email_contact: profile?.email_contact || user?.email || "",
+    country: profile?.country || "",
+    city: profile?.city || "",
+    spoken_languages: profile?.spoken_languages || [],
+    desired_opportunities: profile?.desired_opportunities || [],
   };
 
   const updateField = (key: keyof ProfileData, value: any) => {
