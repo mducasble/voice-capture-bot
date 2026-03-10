@@ -745,12 +745,14 @@ function CampaignTabContent({
   profileMap,
   onApproveSession,
   onRejectSession,
+  onTranscribe,
   isPending,
 }: {
   hosts: HostGroup[];
   profileMap: Map<string, string>;
   onApproveSession: (recordingIds: string[]) => void;
   onRejectSession: (recordingIds: string[], reason: string) => void;
+  onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
 }) {
   if (hosts.length === 0) {
@@ -771,6 +773,7 @@ function CampaignTabContent({
           profileMap={profileMap}
           onApproveSession={onApproveSession}
           onRejectSession={onRejectSession}
+          onTranscribe={onTranscribe}
           isPending={isPending}
         />
       ))}
