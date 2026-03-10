@@ -179,7 +179,7 @@ export interface SaveCampaignPayload {
 }
 
 // --- Upsert validation rules for a task set ---
-async function upsertTaskSetValidation(taskSetId: string, taskType: string, techRules: ValidationRule[], contentRules: ValidationRule[]) {
+async function upsertTaskSetValidation(taskSetId: string, taskType: string, techRules: ValidationRule[], contentRules: ValidationRule[], campaignId?: string) {
   const category = TASK_TYPE_CATEGORIES[taskType] || "audio";
 
   if (category === "audio") {
@@ -189,7 +189,7 @@ async function upsertTaskSetValidation(taskSetId: string, taskType: string, tech
       await supabase.from("campaign_audio_validation").insert(
         techRules.map(r => ({
           task_set_id: taskSetId,
-          campaign_id: null as any, // legacy field
+          campaign_id: campaignId || r.campaign_id || "",
           rule_key: r.rule_key,
           min_value: r.min_value,
           max_value: r.max_value,
@@ -207,7 +207,7 @@ async function upsertTaskSetValidation(taskSetId: string, taskType: string, tech
       await supabase.from("campaign_content_validation").insert(
         contentRules.map(r => ({
           task_set_id: taskSetId,
-          campaign_id: null as any,
+          campaign_id: campaignId || r.campaign_id || "",
           rule_key: r.rule_key,
           min_value: r.min_value,
           max_value: r.max_value,
@@ -321,7 +321,8 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
           inserted.id,
           ts.task_type,
           ts.tech_validation || [],
-          ts.content_validation || []
+          ts.content_validation || [],
+          campaignId
         );
       }
     }
