@@ -17,7 +17,7 @@ const THRESHOLDS = {
   sigmos_disc: { good: 3.5, fair: 2.5 },
   sigmos_reverb: { good: 3.5, fair: 2.5 },
   vqscore: { good: 0.65, fair: 60 },
-  mic_sr: { good: 16000, fair: 8000 },
+  mic_sr: { good: 10000, fair: 6000 },
 };
 
 // Guidance messages for each metric when it fails
