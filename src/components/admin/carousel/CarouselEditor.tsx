@@ -77,17 +77,20 @@ export default function CarouselEditor() {
   };
 
   // -- Element management --
-  const addElement = (type: "text" | "image") => {
+  const addElement = (type: "text" | "image" | "highlight") => {
     const el: CarouselElement = {
       id: createId(),
       type,
       x: 80,
       y: 200,
-      width: type === "text" ? 600 : 400,
-      height: type === "text" ? 100 : 300,
+      width: type === "image" ? 400 : type === "highlight" ? 400 : 600,
+      height: type === "image" ? 300 : type === "highlight" ? 80 : 100,
       rotation: 0,
       ...(type === "text"
         ? { content: "Novo texto", fontSize: 40, fontWeight: 700, color: "#ffffff", textAlign: "left" as const, fontFamily: "monospace" }
+        : {}),
+      ...(type === "highlight"
+        ? { content: "HIGHLIGHT", fontSize: 48, fontWeight: 900, color: "#111111", textAlign: "center" as const, fontFamily: "monospace", highlightBg: "#8cff05", highlightPaddingX: 24, highlightPaddingY: 12 }
         : {}),
     };
     updateSlide({ elements: [...currentSlide.elements, el] });
