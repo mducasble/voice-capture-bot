@@ -7,6 +7,7 @@ import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
+import CountrySelect from "@/components/portal/CountrySelect";
 
 const OPPORTUNITY_OPTIONS = [
   { value: "audio_capture_solo", label: "Áudio (Solo)" },
