@@ -20,6 +20,100 @@ import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 
 // ---- types ----
 
+interface AudioValidationRule {
+  rule_key: string;
+  is_critical: boolean;
+  mq_threshold: number | null;
+  hq_threshold: number | null;
+  pq_threshold: number | null;
+  task_set_id: string;
+}
+
+type QualityTier = "PQ" | "HQ" | "MQ" | "below" | null;
+
+const TIER_CONFIG: Record<Exclude<QualityTier, null>, { label: string; color: string; bg: string }> = {
+  PQ: { label: "PQ", color: "hsl(160 60% 40%)", bg: "hsl(160 60% 40% / 0.15)" },
+  HQ: { label: "HQ", color: "hsl(210 70% 55%)", bg: "hsl(210 70% 55% / 0.15)" },
+  MQ: { label: "MQ", color: "hsl(45 80% 50%)", bg: "hsl(45 80% 50% / 0.15)" },
+  below: { label: "Abaixo", color: "hsl(0 70% 50%)", bg: "hsl(0 70% 50% / 0.15)" },
+};
+
+/** Map rule_key → recording metric value */
+function getRecordingMetricValue(rec: Recording, ruleKey: string): number | null {
+  const m = rec.metadata;
+  switch (ruleKey) {
+    case "signal_to_noise_ratio": return rec.snr_db;
+    case "rms_level": return m?.rms_level_db ?? null;
+    case "srmr": return m?.srmr ?? null;
+    case "sigmos_disc": return m?.sigmos_disc ?? null;
+    case "sigmos_overall": return m?.sigmos_ovrl ?? null;
+    case "sigmos_reverb": return m?.sigmos_reverb ?? null;
+    case "vqscore": return m?.vqscore ?? null;
+    case "wvmos": return m?.wvmos ?? null;
+    default: return null;
+  }
+}
+
+/** Classify a single metric value into a tier. Higher value = better for all metrics except rms_level. */
+function classifyMetricTier(
+  value: number,
+  ruleKey: string,
+  rule: AudioValidationRule
+): QualityTier {
+  const { pq_threshold, hq_threshold, mq_threshold } = rule;
+  
+  // RMS is special: it's a range, higher (less negative) is better but within range
+  // For simplicity, treat all metrics as "higher is better tier"
+  // The thresholds define minimum values for each tier
+  if (pq_threshold != null && value >= pq_threshold) return "PQ";
+  if (hq_threshold != null && value >= hq_threshold) return "HQ";
+  if (mq_threshold != null && value >= mq_threshold) return "MQ";
+  
+  // If no thresholds defined for this rule, skip
+  if (pq_threshold == null && hq_threshold == null && mq_threshold == null) return null;
+  
+  return "below";
+}
+
+const TIER_RANK: Record<string, number> = { PQ: 3, HQ: 2, MQ: 1, below: 0 };
+
+/** Classify a recording overall: worst tier among critical metrics */
+function classifyRecording(rec: Recording, rules: AudioValidationRule[]): QualityTier {
+  const criticalRules = rules.filter(r => r.is_critical);
+  if (criticalRules.length === 0) return null;
+  
+  let worstTier: QualityTier = null;
+  let hasAnyMetric = false;
+  
+  for (const rule of criticalRules) {
+    if (rule.pq_threshold == null && rule.hq_threshold == null && rule.mq_threshold == null) continue;
+    const value = getRecordingMetricValue(rec, rule.rule_key);
+    if (value == null) continue;
+    hasAnyMetric = true;
+    const tier = classifyMetricTier(value, rule.rule_key, rule);
+    if (tier == null) continue;
+    if (worstTier == null || TIER_RANK[tier] < TIER_RANK[worstTier]) {
+      worstTier = tier;
+    }
+  }
+  
+  return hasAnyMetric ? worstTier : null;
+}
+
+function QualityTierBadge({ tier }: { tier: QualityTier }) {
+  if (!tier) return null;
+  const config = TIER_CONFIG[tier];
+  return (
+    <span
+      className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold shrink-0"
+      style={{ background: config.bg, color: config.color }}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+
 interface Recording {
   id: string;
   filename: string;
@@ -173,7 +267,7 @@ function getSessionStatus(recs: Recording[]) {
 
 // ---- Track Row ----
 
-function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void }) {
+function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[] }) {
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -243,6 +337,7 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
             {rec._isUpload ? "📤 Upload" : "🎙️ Estúdio"}
           </span>
         )}
+        {validationRules && <QualityTierBadge tier={classifyRecording(rec, validationRules)} />}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
             {rec.discord_username || rec.filename}
@@ -449,6 +544,7 @@ function SessionBlock({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   session: SessionGroup;
   profileMap: Map<string, string>;
@@ -456,6 +552,7 @@ function SessionBlock({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [rejectionReason, setRejectionReason] = useState("");
   const recIds = session.recordings.map(r => r.id);
@@ -499,7 +596,7 @@ function SessionBlock({
             <div className="px-4 py-1 bg-accent/5">
               <span className="font-mono text-[9px] uppercase tracking-widest text-accent">🎧 Áudio Combinado</span>
             </div>
-            <TrackRow rec={session.mixed} onTranscribe={onTranscribe} />
+            <TrackRow rec={session.mixed} onTranscribe={onTranscribe} validationRules={validationRules} />
           </div>
         )}
         {session.individuals.map(r => {
@@ -509,7 +606,7 @@ function SessionBlock({
               <div className="px-4 py-1 bg-secondary/20">
                 <span className="font-mono text-[10px] text-muted-foreground">👤 {userName}</span>
               </div>
-              <TrackRow rec={r} onTranscribe={onTranscribe} />
+              <TrackRow rec={r} onTranscribe={onTranscribe} validationRules={validationRules} />
             </div>
           );
         })}
@@ -575,6 +672,7 @@ function HostBlock({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   host: HostGroup;
   profileMap: Map<string, string>;
@@ -582,6 +680,7 @@ function HostBlock({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -624,6 +723,7 @@ function HostBlock({
               onRejectSession={onRejectSession}
               onTranscribe={onTranscribe}
               isPending={isPending}
+              validationRules={validationRules}
             />
           ))}
         </div>
@@ -799,6 +899,7 @@ function CampaignTabContent({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   hosts: HostGroup[];
   profileMap: Map<string, string>;
@@ -806,6 +907,7 @@ function CampaignTabContent({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [filter, setFilter] = useState<StatusFilter>("pending");
 
@@ -898,6 +1000,7 @@ function CampaignTabContent({
               onRejectSession={onRejectSession}
               onTranscribe={onTranscribe}
               isPending={isPending}
+              validationRules={validationRules}
             />
           ))}
         </div>
@@ -980,6 +1083,32 @@ export default function ReviewQueue() {
     },
     enabled: sessionIds.length > 0,
   });
+
+  // Fetch audio validation rules (critical, with thresholds) per campaign
+  const { data: audioValidationRules } = useQuery({
+    queryKey: ["admin_review_audio_validation", campaignIds],
+    queryFn: async () => {
+      if (!campaignIds.length) return [];
+      const { data, error } = await supabase
+        .from("campaign_audio_validation")
+        .select("rule_key, is_critical, mq_threshold, hq_threshold, pq_threshold, task_set_id, campaign_id")
+        .in("campaign_id", campaignIds)
+        .eq("is_critical", true);
+      if (error) throw error;
+      return (data || []) as (AudioValidationRule & { campaign_id: string })[];
+    },
+    enabled: campaignIds.length > 0,
+  });
+
+  const validationRulesMap = useMemo(() => {
+    const m = new Map<string, AudioValidationRule[]>();
+    audioValidationRules?.forEach(r => {
+      const cid = (r as any).campaign_id as string;
+      if (!m.has(cid)) m.set(cid, []);
+      m.get(cid)!.push(r);
+    });
+    return m;
+  }, [audioValidationRules]);
 
   const profileMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -1232,6 +1361,7 @@ export default function ReviewQueue() {
                 onRejectSession={handleRejectSession}
                 onTranscribe={handleTranscribe}
                 isPending={isMutating}
+                validationRules={validationRulesMap.get(campaign.id)}
               />
             </TabsContent>
           ))}
