@@ -15,6 +15,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
+import { useReanalyzeAudio } from "@/hooks/useReanalyzeAudio";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 
 // ---- types ----
