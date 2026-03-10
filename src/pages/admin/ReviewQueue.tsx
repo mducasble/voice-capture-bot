@@ -404,12 +404,14 @@ function SessionBlock({
   profileMap,
   onApproveSession,
   onRejectSession,
+  onTranscribe,
   isPending,
 }: {
   session: SessionGroup;
   profileMap: Map<string, string>;
   onApproveSession: (recordingIds: string[]) => void;
   onRejectSession: (recordingIds: string[], reason: string) => void;
+  onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
 }) {
   const [rejectionReason, setRejectionReason] = useState("");
