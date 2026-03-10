@@ -44,7 +44,7 @@ export default function PortalProfile() {
   const { isComplete: profileComplete } = useProfileCompletion();
 
   const { data: profile, isLoading, error: profileError } = useQuery({
-    queryKey: ["profile", user?.id],
+    queryKey: ["profile-detail", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data, error } = await supabase
