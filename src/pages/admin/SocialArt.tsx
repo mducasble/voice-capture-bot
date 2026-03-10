@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, lazy, Suspense } from "react";
 
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Download, Loader2, Sparkles, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Download, Loader2, Sparkles, X, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import SocialArtCanvas from "@/components/admin/SocialArtCanvas";
 import { supabase } from "@/integrations/supabase/client";
+
+const CarouselEditor = lazy(() => import("@/components/admin/carousel/CarouselEditor"));
 
 const FORMATS = [
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080 },
@@ -177,10 +180,19 @@ export default function SocialArt() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Social Media Art Generator</h1>
-            <p className="text-sm text-muted-foreground">Crie artes para divulgar as quests nas redes sociais</p>
+            <p className="text-sm text-muted-foreground">Crie artes e carrosséis para divulgar nas redes sociais</p>
           </div>
         </div>
 
+        <Tabs defaultValue="single" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="single">Arte Única</TabsTrigger>
+            <TabsTrigger value="carousel" className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Carrossel
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="single">
         <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8">
           {/* Controls */}
           <div className="space-y-6">
@@ -377,7 +389,14 @@ export default function SocialArt() {
             )}
           </div>
         </div>
+          </TabsContent>
 
+          <TabsContent value="carousel">
+            <Suspense fallback={<div className="p-8 text-muted-foreground">Carregando editor...</div>}>
+              <CarouselEditor />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
