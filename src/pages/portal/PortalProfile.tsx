@@ -127,6 +127,7 @@ export default function PortalProfile() {
       if (error) throw error;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile-detail"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["profile-completion"] });
       toast.success(t("profile.savedSuccess"));
