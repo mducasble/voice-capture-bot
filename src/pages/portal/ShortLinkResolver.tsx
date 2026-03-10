@@ -19,20 +19,15 @@ export default function ShortLinkResolver() {
         .single();
 
       if (data?.target_path) {
-        // Extract ref param to save referral and process immediately
+        // Extract ref param and save to localStorage (non-blocking)
         try {
           const url = new URL(data.target_path, window.location.origin);
           const ref = url.searchParams.get("ref");
           if (ref) {
             localStorage.setItem("referral_code", ref);
-            // Process referral immediately if already authenticated
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const { processReferralOnSignup } = await import("@/hooks/useReferral");
-              await processReferralOnSignup(user.id);
-            }
           }
         } catch {}
+        // Navigate immediately — referral will be processed on auth
         navigate(data.target_path, { replace: true });
       } else {
         setError(true);
