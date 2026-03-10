@@ -782,17 +782,17 @@ const Room = () => {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-              Não feche a sala!
+              {t("room.uploadOverlayTitle")}
             </h2>
             <p className="text-sm text-red-300 font-medium">
-              Enviando áudio. Fechar agora causará perda de dados.
+              {t("room.uploadOverlayDesc")}
             </p>
           </div>
           <div className="w-full space-y-3">
             {isMixedUploading && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>Áudio mixado</span>
+                  <span>{t("room.uploadMixedAudio")}</span>
                   <span>{mixedUploadProgress}%</span>
                 </div>
                 <Progress value={mixedUploadProgress} className="h-2" />
@@ -801,7 +801,7 @@ const Room = () => {
             {remoteUploadsInProgress > 0 && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>Backups individuais</span>
+                  <span>{t("room.uploadRemoteBackups")}</span>
                   <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
                 </div>
                 <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-2" />
