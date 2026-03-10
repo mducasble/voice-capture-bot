@@ -1116,6 +1116,7 @@ export default function ReviewQueue() {
                 profileMap={profileMap}
                 onApproveSession={handleApproveSession}
                 onRejectSession={handleRejectSession}
+                onTranscribe={handleTranscribe}
                 isPending={isMutating}
               />
             </TabsContent>
