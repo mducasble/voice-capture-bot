@@ -564,7 +564,6 @@ const Room = () => {
   // Copy room link with referral code
   const copyLink = async () => {
     try {
-      const { createShortLink } = await import("@/lib/shortLinks");
       const url = new URL(window.location.href);
       
       // Try to get current user's referral code
@@ -584,16 +583,11 @@ const Room = () => {
         console.warn("Could not fetch referral code:", e);
       }
       
-      // Create short link from the path + query string
-      const targetPath = url.pathname + url.search;
-      const shortUrl = await createShortLink(targetPath);
-      
-      navigator.clipboard.writeText(shortUrl);
+      navigator.clipboard.writeText(url.toString());
       setCopied(true);
       toast.success("Link copiado!");
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      // Fallback to full URL
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       toast.success("Link copiado!");

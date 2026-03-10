@@ -53,8 +53,21 @@ const Rooms = () => {
         localStorage.setItem(`room_${room.id}_participant`, participant.id);
       }
 
+      // Build URL with campaign and referral code
+      let roomUrl = `/room/${room.id}?campaign=${selectedCampaignId}`;
+      if (currentUser) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("referral_code")
+          .eq("id", currentUser.id)
+          .single();
+        if (profile?.referral_code) {
+          roomUrl += `&ref=${profile.referral_code}`;
+        }
+      }
+
       toast.success("Sala criada com sucesso!");
-      navigate(`/room/${room.id}?campaign=${selectedCampaignId}`);
+      navigate(roomUrl);
     } catch (error) {
       console.error("Error creating room:", error);
       toast.error("Erro ao criar sala");
