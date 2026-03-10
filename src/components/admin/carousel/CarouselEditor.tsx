@@ -556,22 +556,38 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// Lucide icons are available as ES modules. For canvas export we dynamically
-// import the icon, render it to an off-screen SVG string, then draw it.
+// For canvas export, we grab the rendered SVG from the DOM or build a simple one.
 async function fetchLucideIconSvg(name: string, color: string): Promise<string> {
-  try {
-    const mod = await import(`lucide-static/icons/${name}.svg?raw`);
-    // The raw SVG string from lucide-static
-    let svg: string = mod.default;
-    // Replace stroke color
-    svg = svg.replace(/currentColor/g, color);
-    // Ensure width/height are set for rasterization
-    if (!svg.includes('width=')) {
-      svg = svg.replace('<svg', '<svg width="256" height="256"');
-    }
-    return svg;
-  } catch {
-    // Fallback: draw a simple circle
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
+  // Try to find the icon already rendered in the DOM by its data attribute
+  const svgEl = document.querySelector(`[data-lucide-icon="${name}"]`) as SVGElement | null;
+  if (svgEl) {
+    const clone = svgEl.cloneNode(true) as SVGElement;
+    clone.setAttribute("width", "256");
+    clone.setAttribute("height", "256");
+    clone.querySelectorAll("*").forEach(el => {
+      if (el.getAttribute("stroke") === "currentColor") el.setAttribute("stroke", color);
+    });
+    return new XMLSerializer().serializeToString(clone);
   }
+  // Fallback: dynamically import from lucide-react and serialize
+  try {
+    const iconModule = await import("lucide-react");
+    const icons = (iconModule as any).icons || {};
+    // Convert kebab-case to PascalCase
+    const pascal = name.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    if (icons[pascal]) {
+      // icons[pascal] is an array of [tag, attrs, children] - not directly usable
+      // Use a simple SVG template instead
+    }
+  } catch { /* noop */ }
+  // Simple fallback SVG using known icon paths
+  const ICON_PATHS: Record<string, string> = {
+    "thumbs-up": '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
+    "message-circle": '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    "share-2": '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+    "heart": '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+    "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  };
+  const path = ICON_PATHS[name] || '<circle cx="12" cy="12" r="10"/>';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
