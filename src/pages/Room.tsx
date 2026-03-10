@@ -119,7 +119,7 @@ const Room = () => {
   const mixedRecorder = useMixedRecorder();
 
   // WebRTC peer-to-peer audio
-  const { remoteStreams } = useWebRTC({
+  const { remoteStreams, peerStatuses } = useWebRTC({
     roomId,
     participantId: currentParticipant?.id,
     localStream,
