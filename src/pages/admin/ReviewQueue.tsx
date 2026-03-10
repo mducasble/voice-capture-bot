@@ -20,6 +20,100 @@ import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 
 // ---- types ----
 
+interface AudioValidationRule {
+  rule_key: string;
+  is_critical: boolean;
+  mq_threshold: number | null;
+  hq_threshold: number | null;
+  pq_threshold: number | null;
+  task_set_id: string;
+}
+
+type QualityTier = "PQ" | "HQ" | "MQ" | "below" | null;
+
+const TIER_CONFIG: Record<Exclude<QualityTier, null>, { label: string; color: string; bg: string }> = {
+  PQ: { label: "PQ", color: "hsl(160 60% 40%)", bg: "hsl(160 60% 40% / 0.15)" },
+  HQ: { label: "HQ", color: "hsl(210 70% 55%)", bg: "hsl(210 70% 55% / 0.15)" },
+  MQ: { label: "MQ", color: "hsl(45 80% 50%)", bg: "hsl(45 80% 50% / 0.15)" },
+  below: { label: "Abaixo", color: "hsl(0 70% 50%)", bg: "hsl(0 70% 50% / 0.15)" },
+};
+
+/** Map rule_key → recording metric value */
+function getRecordingMetricValue(rec: Recording, ruleKey: string): number | null {
+  const m = rec.metadata;
+  switch (ruleKey) {
+    case "signal_to_noise_ratio": return rec.snr_db;
+    case "rms_level": return m?.rms_level_db ?? null;
+    case "srmr": return m?.srmr ?? null;
+    case "sigmos_disc": return m?.sigmos_disc ?? null;
+    case "sigmos_overall": return m?.sigmos_ovrl ?? null;
+    case "sigmos_reverb": return m?.sigmos_reverb ?? null;
+    case "vqscore": return m?.vqscore ?? null;
+    case "wvmos": return m?.wvmos ?? null;
+    default: return null;
+  }
+}
+
+/** Classify a single metric value into a tier. Higher value = better for all metrics except rms_level. */
+function classifyMetricTier(
+  value: number,
+  ruleKey: string,
+  rule: AudioValidationRule
+): QualityTier {
+  const { pq_threshold, hq_threshold, mq_threshold } = rule;
+  
+  // RMS is special: it's a range, higher (less negative) is better but within range
+  // For simplicity, treat all metrics as "higher is better tier"
+  // The thresholds define minimum values for each tier
+  if (pq_threshold != null && value >= pq_threshold) return "PQ";
+  if (hq_threshold != null && value >= hq_threshold) return "HQ";
+  if (mq_threshold != null && value >= mq_threshold) return "MQ";
+  
+  // If no thresholds defined for this rule, skip
+  if (pq_threshold == null && hq_threshold == null && mq_threshold == null) return null;
+  
+  return "below";
+}
+
+const TIER_RANK: Record<string, number> = { PQ: 3, HQ: 2, MQ: 1, below: 0 };
+
+/** Classify a recording overall: worst tier among critical metrics */
+function classifyRecording(rec: Recording, rules: AudioValidationRule[]): QualityTier {
+  const criticalRules = rules.filter(r => r.is_critical);
+  if (criticalRules.length === 0) return null;
+  
+  let worstTier: QualityTier = null;
+  let hasAnyMetric = false;
+  
+  for (const rule of criticalRules) {
+    if (rule.pq_threshold == null && rule.hq_threshold == null && rule.mq_threshold == null) continue;
+    const value = getRecordingMetricValue(rec, rule.rule_key);
+    if (value == null) continue;
+    hasAnyMetric = true;
+    const tier = classifyMetricTier(value, rule.rule_key, rule);
+    if (tier == null) continue;
+    if (worstTier == null || TIER_RANK[tier] < TIER_RANK[worstTier]) {
+      worstTier = tier;
+    }
+  }
+  
+  return hasAnyMetric ? worstTier : null;
+}
+
+function QualityTierBadge({ tier }: { tier: QualityTier }) {
+  if (!tier) return null;
+  const config = TIER_CONFIG[tier];
+  return (
+    <span
+      className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold shrink-0"
+      style={{ background: config.bg, color: config.color }}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+
 interface Recording {
   id: string;
   filename: string;
