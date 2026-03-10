@@ -596,7 +596,7 @@ function SessionBlock({
             <div className="px-4 py-1 bg-accent/5">
               <span className="font-mono text-[9px] uppercase tracking-widest text-accent">🎧 Áudio Combinado</span>
             </div>
-            <TrackRow rec={session.mixed} onTranscribe={onTranscribe} />
+            <TrackRow rec={session.mixed} onTranscribe={onTranscribe} validationRules={validationRules} />
           </div>
         )}
         {session.individuals.map(r => {
