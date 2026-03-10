@@ -132,6 +132,26 @@ export default function CarouselEditor() {
       ctx.fillStyle = slide.backgroundColor;
       ctx.fillRect(0, 0, format.width, format.height);
 
+      // Grid pattern
+      const patternColors = getPatternColors(slide.backgroundPattern);
+      if (patternColors.lineColor) {
+        ctx.strokeStyle = patternColors.lineColor;
+        ctx.lineWidth = 2;
+        for (let x = 0; x <= format.width; x += GRID_SIZE) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, format.height); ctx.stroke();
+        }
+        for (let y = 0; y <= format.height; y += GRID_SIZE) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(format.width, y); ctx.stroke();
+        }
+        // Corner accents
+        const accentSize = 12;
+        ctx.fillStyle = patternColors.accentColor!;
+        ctx.fillRect(20, 20, accentSize, accentSize);
+        ctx.fillRect(format.width - 20 - accentSize, 20, accentSize, accentSize);
+        ctx.fillRect(20, format.height - 20 - accentSize, accentSize, accentSize);
+        ctx.fillRect(format.width - 20 - accentSize, format.height - 20 - accentSize, accentSize, accentSize);
+      }
+
       // Render elements in order
       for (const el of slide.elements) {
         if (el.type === "text") {
