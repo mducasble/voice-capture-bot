@@ -579,6 +579,7 @@ function HostBlock({
               profileMap={profileMap}
               onApproveSession={onApproveSession}
               onRejectSession={onRejectSession}
+              onTranscribe={onTranscribe}
               isPending={isPending}
             />
           ))}
