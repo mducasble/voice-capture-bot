@@ -13,6 +13,7 @@ import {
   Bell,
   PenSquare,
   HelpCircle,
+  Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,6 +35,7 @@ const navSections = [
     label: "Geral",
     items: [
       { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+      { title: "Usuários", url: "/admin/users", icon: Users },
       { title: "Gravações", url: "/admin/recordings", icon: Mic2 },
       { title: "Campanhas", url: "/admin/campaigns", icon: FolderOpen },
     ],

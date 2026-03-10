@@ -20,6 +20,7 @@ const ReviewQueue = lazy(() => import("./pages/admin/ReviewQueue"));
 const SocialArt = lazy(() => import("./pages/admin/SocialArt"));
 const RoomsMonitor = lazy(() => import("./pages/admin/RoomsMonitor"));
 const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -69,6 +70,7 @@ const App = () => (
             {/* Admin routes with sidebar layout */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
               <Route path="recordings" element={<Index />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="rooms" element={<Rooms />} />
