@@ -1361,6 +1361,7 @@ export default function ReviewQueue() {
                 onRejectSession={handleRejectSession}
                 onTranscribe={handleTranscribe}
                 isPending={isMutating}
+                validationRules={validationRulesMap.get(campaign.id)}
               />
             </TabsContent>
           ))}
