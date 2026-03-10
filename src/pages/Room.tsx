@@ -1298,6 +1298,7 @@ const Room = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
