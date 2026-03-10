@@ -1009,6 +1009,8 @@ const Room = () => {
   if (isPortal) {
     // Portal-themed room view
     return (
+      <>
+      {uploadOverlay}
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
