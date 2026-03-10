@@ -162,6 +162,51 @@ export function ElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
         </>
       )}
 
+      {element.type === "icon" && (
+        <>
+          <div className="space-y-1">
+            <Label className="text-xs">Cor</Label>
+            <div className="flex gap-1">
+              <input
+                type="color"
+                value={element.color || "#ffffff"}
+                onChange={(e) => onUpdate({ color: e.target.value })}
+                className="w-9 h-9 rounded cursor-pointer border-0 p-0"
+              />
+              <Input
+                value={element.color || "#ffffff"}
+                onChange={(e) => onUpdate({ color: e.target.value })}
+                className="text-xs flex-1"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Buscar ícone</Label>
+            <Input
+              value={iconSearch}
+              onChange={(e) => setIconSearch(e.target.value)}
+              placeholder="Ex: heart, star..."
+              className="text-xs"
+            />
+          </div>
+          <div className="grid grid-cols-6 gap-1 max-h-[180px] overflow-y-auto">
+            {POPULAR_ICONS.filter(n => !iconSearch || n.includes(iconSearch.toLowerCase())).map((name) => (
+              <button
+                key={name}
+                onClick={() => onUpdate({ iconName: name })}
+                className="p-1.5 rounded text-[10px] border border-transparent hover:border-primary/50 transition-colors flex flex-col items-center gap-0.5"
+                style={{
+                  background: element.iconName === name ? "hsl(var(--accent))" : "transparent",
+                }}
+                title={name}
+              >
+                <span className="text-xs font-mono truncate w-full text-center">{name.split("-")[0]}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Position */}
       <div className="grid grid-cols-4 gap-1.5">
         {[

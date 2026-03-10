@@ -385,6 +385,12 @@ export default function CarouselEditor() {
           <Button variant="outline" size="sm" onClick={() => addElement("highlight")}>
             <Highlighter className="h-3.5 w-3.5 mr-1.5" /> Highlight
           </Button>
+          <Button variant="outline" size="sm" onClick={() => addElement("icon")}>
+            <Smile className="h-3.5 w-3.5 mr-1.5" /> Ícone
+          </Button>
+          <Button variant="outline" size="sm" onClick={addSocialBlock}>
+            <Heart className="h-3.5 w-3.5 mr-1.5" /> Like/Share
+          </Button>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
             <Button variant="ghost" size="icon" className="h-7 w-7" disabled={currentIdx === 0} onClick={() => { setCurrentIdx(currentIdx - 1); setSelectedElId(null); }}>
