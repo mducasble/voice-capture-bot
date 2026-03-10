@@ -3,8 +3,12 @@ import {
   type CarouselSlide,
   type CarouselElement,
   type CarouselFormat,
+  type BackgroundPattern,
   CAROUSEL_FORMATS,
   CAROUSEL_TEMPLATES,
+  GRID_SIZE,
+  ACCENT_COLOR,
+  getPatternColors,
   createSlide,
   createId,
 } from "./types";
