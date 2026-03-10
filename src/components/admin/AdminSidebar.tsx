@@ -14,6 +14,7 @@ import {
   PenSquare,
   HelpCircle,
   Users,
+  Wrench,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -60,6 +61,7 @@ const navSections = [
     items: [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
       { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
+      { title: "Manutenção", url: "/admin/maintenance", icon: Wrench },
     ],
   },
 ];

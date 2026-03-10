@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
+import { MaintenanceBanner, MaintenanceBlock } from "@/components/MaintenanceBanner";
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -21,6 +22,7 @@ const SocialArt = lazy(() => import("./pages/admin/SocialArt"));
 const RoomsMonitor = lazy(() => import("./pages/admin/RoomsMonitor"));
 const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminMaintenance = lazy(() => import("./pages/admin/AdminMaintenance"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -48,6 +50,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AppInner />
+        <MaintenanceBanner />
+        <MaintenanceBlock>
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
           <Routes>
             {/* Portal routes (public-facing, root) */}
@@ -81,12 +85,14 @@ const App = () => (
               <Route path="social-art" element={<SocialArt />} />
               <Route path="rooms-monitor" element={<RoomsMonitor />} />
               <Route path="faq" element={<AdminFaq />} />
+              <Route path="maintenance" element={<AdminMaintenance />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </MaintenanceBlock>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
