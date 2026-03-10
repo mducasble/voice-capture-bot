@@ -723,6 +723,7 @@ function HostBlock({
               onRejectSession={onRejectSession}
               onTranscribe={onTranscribe}
               isPending={isPending}
+              validationRules={validationRules}
             />
           ))}
         </div>
