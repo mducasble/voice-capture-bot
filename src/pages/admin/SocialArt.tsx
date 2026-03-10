@@ -180,11 +180,19 @@ export default function SocialArt() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Social Media Art Generator</h1>
-            <p className="text-sm text-muted-foreground">Crie artes para divulgar as quests nas redes sociais</p>
+            <p className="text-sm text-muted-foreground">Crie artes e carrosséis para divulgar nas redes sociais</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8">
+        <Tabs defaultValue="single" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="single">Arte Única</TabsTrigger>
+            <TabsTrigger value="carousel" className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Carrossel
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="single">
           {/* Controls */}
           <div className="space-y-6">
             {/* Campaign Selector */}
