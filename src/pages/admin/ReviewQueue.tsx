@@ -783,6 +783,8 @@ export default function ReviewQueue() {
         const mixed = recs.find(r => r.recording_type === "mixed");
         const individuals = recs.filter(r => r.recording_type !== "mixed");
         const room = roomMap.get(sid);
+        // Fallback: use uploader's discord_username when no room exists
+        const fallbackName = recs.find(r => r.discord_username && r.discord_username !== "Multi-Speaker Session")?.discord_username || null;
         sessions.push({
           sessionId: sid,
           recordings: recs,
@@ -790,7 +792,7 @@ export default function ReviewQueue() {
           individuals,
           createdAt: recs[0].created_at,
           topic: room?.topic || null,
-          creatorName: room?.creator_name || null,
+          creatorName: room?.creator_name || fallbackName,
         });
       }
       sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
