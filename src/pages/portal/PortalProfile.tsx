@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, Save, Loader2, X, AlertTriangle } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { toast } from "sonner";
