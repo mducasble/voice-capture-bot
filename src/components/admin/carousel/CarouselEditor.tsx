@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   type CarouselSlide,
   type CarouselElement,
@@ -31,8 +31,21 @@ import {
   Highlighter,
   Smile,
   Heart,
+  Save,
+  FolderOpen,
+  FilePlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface SavedProject {
+  id: string;
+  name: string;
+  format_id: string;
+  slides: CarouselSlide[];
+  created_at: string;
+  updated_at: string;
+}
 
 export default function CarouselEditor() {
   const [format, setFormat] = useState<CarouselFormat>(CAROUSEL_FORMATS[0]);
@@ -40,6 +53,111 @@ export default function CarouselEditor() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
+
+  // Save/load state
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Sem título");
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [showProjectList, setShowProjectList] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Load saved projects list
+  const loadProjects = useCallback(async () => {
+    const { data } = await supabase
+      .from("carousel_projects")
+      .select("id, name, format_id, slides, created_at, updated_at")
+      .order("updated_at", { ascending: false });
+    if (data) setSavedProjects(data as unknown as SavedProject[]);
+  }, []);
+
+  useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Faça login primeiro"); return; }
+
+      const payload = {
+        name: projectName,
+        format_id: format.id,
+        slides: JSON.parse(JSON.stringify(slides)),
+        created_by: user.id,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (projectId) {
+        const { error } = await supabase
+          .from("carousel_projects")
+          .update(payload)
+          .eq("id", projectId);
+        if (error) throw error;
+        toast.success("Projeto salvo!");
+      } else {
+        const { data, error } = await supabase
+          .from("carousel_projects")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        setProjectId(data.id);
+        toast.success("Projeto criado!");
+      }
+      loadProjects();
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLoad = (project: SavedProject) => {
+    setProjectId(project.id);
+    setProjectName(project.name);
+    setFormat(CAROUSEL_FORMATS.find(f => f.id === project.format_id) || CAROUSEL_FORMATS[0]);
+    setSlides(project.slides);
+    setCurrentIdx(0);
+    setSelectedElId(null);
+    setShowProjectList(false);
+    toast.success(`"${project.name}" carregado`);
+  };
+
+  const handleDuplicate = async (project: SavedProject) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("carousel_projects")
+      .insert({
+        name: project.name + " (cópia)",
+        format_id: project.format_id,
+        slides: JSON.parse(JSON.stringify(project.slides)),
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (error) { toast.error("Erro ao duplicar"); return; }
+    toast.success("Projeto duplicado!");
+    loadProjects();
+    // Load the duplicate
+    handleLoad({ ...project, id: data.id, name: project.name + " (cópia)" });
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    const { error } = await supabase.from("carousel_projects").delete().eq("id", id);
+    if (error) { toast.error("Erro ao deletar"); return; }
+    if (projectId === id) { setProjectId(null); setProjectName("Sem título"); }
+    toast.success("Projeto deletado");
+    loadProjects();
+  };
+
+  const handleNewProject = () => {
+    setProjectId(null);
+    setProjectName("Sem título");
+    setSlides([createSlide(CAROUSEL_TEMPLATES[1].slides[0])]);
+    setCurrentIdx(0);
+    setSelectedElId(null);
+    setShowProjectList(false);
+  };
 
   const currentSlide = slides[currentIdx];
   const selectedElement = currentSlide?.elements.find((e) => e.id === selectedElId) ?? null;
@@ -275,6 +393,59 @@ export default function CarouselEditor() {
   }, [slides, exportSlide]);
 
   return (
+    <div className="space-y-4">
+      {/* Project bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          className="text-sm font-semibold flex-1 h-9"
+          placeholder="Nome do projeto"
+        />
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          <Save className="h-3.5 w-3.5 mr-1.5" />
+          {saving ? "Salvando..." : projectId ? "Salvar" : "Criar"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowProjectList(!showProjectList)}>
+          <FolderOpen className="h-3.5 w-3.5 mr-1.5" /> Abrir
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleNewProject}>
+          <FilePlus className="h-3.5 w-3.5 mr-1.5" /> Novo
+        </Button>
+      </div>
+
+      {/* Saved projects list */}
+      {showProjectList && (
+        <div className="border border-border rounded-lg p-3 space-y-2 max-h-[300px] overflow-y-auto bg-card">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Projetos Salvos</Label>
+          {savedProjects.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">Nenhum projeto salvo</p>
+          )}
+          {savedProjects.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-2 p-2 rounded border border-border hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{p.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {CAROUSEL_FORMATS.find(f => f.id === p.format_id)?.label || p.format_id} · {new Date(p.updated_at).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => handleLoad(p)}>
+                Abrir
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => handleDuplicate(p)}>
+                <Copy className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-destructive" onClick={() => handleDeleteProject(p.id)}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_260px] gap-6">
       {/* Left panel: slides & controls */}
       <div className="space-y-4">
@@ -521,6 +692,7 @@ export default function CarouselEditor() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
