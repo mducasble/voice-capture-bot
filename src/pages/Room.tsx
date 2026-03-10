@@ -122,6 +122,9 @@ const Room = () => {
   // Mixed recorder for creator
   const mixedRecorder = useMixedRecorder();
 
+  // Remote individual recorders (creator records each remote stream as backup)
+  const remoteRecorders = useRemoteRecorders();
+
   // WebRTC peer-to-peer audio
   const { remoteStreams, peerStatuses } = useWebRTC({
     roomId,
