@@ -271,7 +271,7 @@ export default function PortalAuth() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="signup-country" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.country")}</Label>
-                <Input id="signup-country" required value={signupCountry} onChange={e => setSignupCountry(e.target.value)} placeholder={t("auth.country")} className="portal-brutalist-input" />
+                <CountrySelect value={signupCountry} onValueChange={setSignupCountry} placeholder={t("auth.country")} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-city" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.city")}</Label>

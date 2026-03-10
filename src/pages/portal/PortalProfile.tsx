@@ -221,7 +221,10 @@ export default function PortalProfile() {
         </div>
         <InputField label={t("profile.bestEmail")} value={currentForm.email_contact || ""} onChange={v => updateField("email_contact", v)} placeholder="seu@email.com" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField label={t("profile.country")} value={currentForm.country || ""} onChange={v => updateField("country", v)} placeholder="Brasil" />
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs uppercase tracking-widest font-bold block" style={{ color: "var(--portal-text-muted)" }}>{t("profile.country")}</label>
+            <CountrySelect value={currentForm.country || ""} onValueChange={v => updateField("country", v)} placeholder="—" />
+          </div>
           <InputField label={t("profile.city")} value={currentForm.city || ""} onChange={v => updateField("city", v)} placeholder="São Paulo" />
         </div>
 
