@@ -18,11 +18,14 @@ export interface CarouselElement {
   objectFit?: "cover" | "contain" | "fill";
 }
 
+export type BackgroundPattern = "none" | "dark-grid" | "light-grid";
+
 export interface CarouselSlide {
   id: string;
   elements: CarouselElement[];
   backgroundColor: string;
   backgroundGradient?: string;
+  backgroundPattern: BackgroundPattern;
 }
 
 export interface CarouselProject {
