@@ -389,6 +389,14 @@ export default function SocialArt() {
           </div>
         </div>
 
+          </TabsContent>
+
+          <TabsContent value="carousel">
+            <Suspense fallback={<div className="p-8 text-muted-foreground">Carregando editor...</div>}>
+              <CarouselEditor />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
