@@ -49,6 +49,7 @@ export interface CarouselFormat {
 export const CAROUSEL_FORMATS: CarouselFormat[] = [
   { id: "instagram", label: "Instagram (1080×1080)", width: 1080, height: 1080 },
   { id: "linkedin", label: "LinkedIn (1080×1350)", width: 1080, height: 1350 },
+  { id: "stories", label: "Stories (1080×1920)", width: 1080, height: 1920 },
 ];
 
 export const CAROUSEL_TEMPLATES: {
