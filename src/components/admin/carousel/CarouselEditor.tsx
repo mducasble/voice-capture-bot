@@ -79,14 +79,14 @@ export default function CarouselEditor() {
   };
 
   // -- Element management --
-  const addElement = (type: "text" | "image" | "highlight") => {
+  const addElement = (type: "text" | "image" | "highlight" | "icon") => {
     const el: CarouselElement = {
       id: createId(),
       type,
       x: 80,
       y: 200,
-      width: type === "image" ? 400 : type === "highlight" ? 400 : 600,
-      height: type === "image" ? 300 : type === "highlight" ? 80 : 100,
+      width: type === "image" ? 400 : type === "highlight" ? 400 : type === "icon" ? 120 : 600,
+      height: type === "image" ? 300 : type === "highlight" ? 80 : type === "icon" ? 120 : 100,
       rotation: 0,
       ...(type === "text"
         ? { content: "Novo texto", fontSize: 40, fontWeight: 700, color: "#ffffff", textAlign: "left" as const, fontFamily: "monospace" }
@@ -94,9 +94,49 @@ export default function CarouselEditor() {
       ...(type === "highlight"
         ? { content: "HIGHLIGHT", fontSize: 48, fontWeight: 900, color: "#111111", textAlign: "center" as const, fontFamily: "monospace", highlightBg: "#8cff05", highlightPaddingX: 24, highlightPaddingY: 12 }
         : {}),
+      ...(type === "icon"
+        ? { iconName: "star", color: "#ffffff" }
+        : {}),
     };
     updateSlide({ elements: [...currentSlide.elements, el] });
     setSelectedElId(el.id);
+  };
+
+  const addSocialBlock = () => {
+    const gap = 24;
+    const iconSize = 64;
+    const barWidth = iconSize * 3 + gap * 4;
+    const barHeight = iconSize + gap * 2;
+    const startX = Math.round((format.width - barWidth) / 2);
+    const startY = format.height - 200;
+
+    const bgEl: CarouselElement = {
+      id: createId(),
+      type: "highlight",
+      x: startX,
+      y: startY,
+      width: barWidth,
+      height: barHeight,
+      rotation: 0,
+      content: "",
+      fontSize: 1,
+      fontWeight: 400,
+      color: "transparent",
+      textAlign: "center",
+      fontFamily: "monospace",
+      highlightBg: "#8cff05",
+      highlightPaddingX: 0,
+      highlightPaddingY: 0,
+    };
+
+    const icons: CarouselElement[] = [
+      { id: createId(), type: "icon", x: startX + gap, y: startY + gap, width: iconSize, height: iconSize, rotation: 0, iconName: "thumbs-up", color: "#111111" },
+      { id: createId(), type: "icon", x: startX + gap + iconSize + gap, y: startY + gap, width: iconSize, height: iconSize, rotation: 0, iconName: "message-circle", color: "#111111" },
+      { id: createId(), type: "icon", x: startX + gap + (iconSize + gap) * 2, y: startY + gap, width: iconSize, height: iconSize, rotation: 0, iconName: "share-2", color: "#111111" },
+    ];
+
+    updateSlide({ elements: [...currentSlide.elements, bgEl, ...icons] });
+    setSelectedElId(bgEl.id);
   };
 
   const updateSlide = (updates: Partial<CarouselSlide>) => {
