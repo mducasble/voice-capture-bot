@@ -28,6 +28,7 @@ interface Recording {
   created_at: string;
   discord_username: string | null;
   file_url: string | null;
+  mp3_file_url: string | null;
   status: string | null;
   campaign_id: string | null;
   user_id: string | null;
@@ -42,6 +43,7 @@ interface Recording {
   format: string | null;
   file_size_bytes: number | null;
   transcription_status: string | null;
+  transcription_elevenlabs_status: string | null;
   metadata: {
     rms_level_db?: number;
     effective_bandwidth_hz?: number;
@@ -49,8 +51,17 @@ interface Recording {
     sigmos_sig?: number;
     sigmos_bak?: number;
     sigmos_ovrl?: number;
+    sigmos_disc?: number;
+    sigmos_reverb?: number;
     wvmos?: number;
+    utmos?: number;
+    vqscore?: number;
+    mos_score?: number;
+    mic_sr?: number;
     analysis_mode?: string;
+    enhanced_file_url?: string;
+    enhanced_snr_db?: number;
+    enhanced_rms_level_db?: number;
   } | null;
 }
 
