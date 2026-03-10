@@ -1000,6 +1000,7 @@ function CampaignTabContent({
               onRejectSession={onRejectSession}
               onTranscribe={onTranscribe}
               isPending={isPending}
+              validationRules={validationRules}
             />
           ))}
         </div>
