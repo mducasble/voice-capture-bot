@@ -24,7 +24,12 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // If server-side sign out fails (expired session), force local cleanup
+      await supabase.auth.signOut({ scope: 'local' });
+    }
   }, []);
 
   return { user, session, loading, signOut };
