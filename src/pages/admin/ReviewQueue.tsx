@@ -345,6 +345,25 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
           </span>
         )}
         {validationRules && <QualityTierBadge tier={classifyRecording(rec, validationRules)} />}
+        {rec.metadata?.content_analysis?.topic_adherence_percent != null && (
+          <span
+            className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm font-bold shrink-0"
+            style={{
+              background: rec.metadata.content_analysis.topic_adherence_percent >= 80
+                ? "hsl(120 60% 45% / 0.15)"
+                : rec.metadata.content_analysis.topic_adherence_percent >= 50
+                ? "hsl(45 80% 50% / 0.15)"
+                : "hsl(0 70% 50% / 0.15)",
+              color: rec.metadata.content_analysis.topic_adherence_percent >= 80
+                ? "hsl(120 60% 45%)"
+                : rec.metadata.content_analysis.topic_adherence_percent >= 50
+                ? "hsl(45 80% 50%)"
+                : "hsl(0 70% 50%)",
+            }}
+          >
+            🎯 {rec.metadata.content_analysis.topic_adherence_percent}%
+          </span>
+        )}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
             {rec.discord_username || rec.filename}
