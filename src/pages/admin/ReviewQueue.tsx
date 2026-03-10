@@ -530,12 +530,14 @@ function HostBlock({
   profileMap,
   onApproveSession,
   onRejectSession,
+  onTranscribe,
   isPending,
 }: {
   host: HostGroup;
   profileMap: Map<string, string>;
   onApproveSession: (recordingIds: string[]) => void;
   onRejectSession: (recordingIds: string[], reason: string) => void;
+  onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
