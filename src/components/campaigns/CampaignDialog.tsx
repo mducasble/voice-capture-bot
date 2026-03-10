@@ -687,16 +687,35 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
     );
   };
 
-  const renderValidationRules = (rules: ValidationRule[], tsIndex: number, type: "tech" | "content") => {
+  const renderValidationRules = (rules: ValidationRule[], tsIndex: number, type: "tech" | "content", isAudio?: boolean) => {
     const updateFn = type === "tech" ? updateTechRule : updateContentRule;
     return (
       <div className="space-y-2">
+        {isAudio && type === "tech" && rules.length > 0 && (
+          <div className="grid grid-cols-[1fr_70px_70px_70px_55px_55px_55px_50px] gap-2 items-center text-xs text-muted-foreground font-medium">
+            <span>Regra</span>
+            <span className="text-center">Mín</span>
+            <span className="text-center">Máx</span>
+            <span className="text-center">Alvo</span>
+            <span className="text-center text-yellow-600">MQ</span>
+            <span className="text-center text-blue-600">HQ</span>
+            <span className="text-center text-emerald-600">PQ</span>
+            <span className="text-center">Crítico</span>
+          </div>
+        )}
         {rules.map((rule, i) => (
-          <div key={rule.rule_key} className="grid grid-cols-[1fr_70px_70px_70px_50px] gap-2 items-center text-sm">
+          <div key={rule.rule_key} className={`grid gap-2 items-center text-sm ${isAudio && type === "tech" ? "grid-cols-[1fr_70px_70px_70px_55px_55px_55px_50px]" : "grid-cols-[1fr_70px_70px_70px_50px]"}`}>
             <span className="truncate text-xs">{RULE_LABELS[rule.rule_key] || rule.rule_key}</span>
             <Input type="number" step="any" value={rule.min_value ?? ""} onChange={e => updateFn(tsIndex, i, "min_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Mín" className="h-7 text-xs" />
             <Input type="number" step="any" value={rule.max_value ?? ""} onChange={e => updateFn(tsIndex, i, "max_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Máx" className="h-7 text-xs" />
             <Input type="number" step="any" value={rule.target_value ?? ""} onChange={e => updateFn(tsIndex, i, "target_value", e.target.value ? parseFloat(e.target.value) : null)} placeholder="Alvo" className="h-7 text-xs" />
+            {isAudio && type === "tech" && (
+              <>
+                <Input type="number" step="any" value={rule.mq_threshold ?? ""} onChange={e => updateFn(tsIndex, i, "mq_threshold", e.target.value ? parseFloat(e.target.value) : null)} placeholder="MQ" className="h-7 text-xs border-yellow-300" />
+                <Input type="number" step="any" value={rule.hq_threshold ?? ""} onChange={e => updateFn(tsIndex, i, "hq_threshold", e.target.value ? parseFloat(e.target.value) : null)} placeholder="HQ" className="h-7 text-xs border-blue-300" />
+                <Input type="number" step="any" value={rule.pq_threshold ?? ""} onChange={e => updateFn(tsIndex, i, "pq_threshold", e.target.value ? parseFloat(e.target.value) : null)} placeholder="PQ" className="h-7 text-xs border-emerald-300" />
+              </>
+            )}
             <div className="flex items-center justify-center">
               <Switch checked={rule.is_critical} onCheckedChange={c => updateFn(tsIndex, i, "is_critical", c)} />
             </div>

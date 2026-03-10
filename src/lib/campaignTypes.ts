@@ -144,6 +144,10 @@ export interface ValidationRule {
   allowed_values?: any | null;
   config?: Record<string, any> | null;
   is_critical: boolean;
+  // Quality tier thresholds (audio only)
+  mq_threshold?: number | null;
+  hq_threshold?: number | null;
+  pq_threshold?: number | null;
 }
 
 // --- Campaign ---
