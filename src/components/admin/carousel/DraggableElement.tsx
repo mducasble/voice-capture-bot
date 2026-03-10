@@ -176,6 +176,15 @@ export function DraggableElement({ element, isSelected, onSelect, onUpdate, scal
         </div>
       )}
 
+      {element.type === "icon" && (
+        <DynamicIcon
+          name={(element.iconName || "star") as keyof typeof dynamicIconImports}
+          style={{ width: "100%", height: "100%" }}
+          color={element.color || "#ffffff"}
+          strokeWidth={1.5}
+        />
+      )}
+
       {/* Resize handle */}
       {isSelected && (
         <div
