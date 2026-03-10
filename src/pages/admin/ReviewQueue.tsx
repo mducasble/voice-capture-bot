@@ -672,6 +672,7 @@ function HostBlock({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   host: HostGroup;
   profileMap: Map<string, string>;
@@ -679,6 +680,7 @@ function HostBlock({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [expanded, setExpanded] = useState(false);
 
