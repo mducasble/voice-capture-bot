@@ -694,7 +694,6 @@ export default function CarouselEditor() {
       </div>
     </div>
     </div>
-    </div>
   );
 }
 
