@@ -93,6 +93,7 @@ export const CAROUSEL_TEMPLATES: {
           },
         ],
         backgroundColor: "#111111",
+        backgroundPattern: "dark-grid",
       },
       {
         elements: [
