@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { detectBrowserCountry, isCampaignVisibleForCountry } from "@/hooks/useUserCountry";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CountrySelect from "@/components/portal/CountrySelect";
 
 type AuthMode = "login" | "signup" | "vendor";
 
@@ -124,14 +125,7 @@ export default function PortalAuth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
-  const [signupCountry, setSignupCountry] = useState(() => {
-    const detected = detectBrowserCountry();
-    if (!detected) return "";
-    try {
-      const dn = new Intl.DisplayNames([i18n.language || "en"], { type: "region" });
-      return dn.of(detected) || detected;
-    } catch { return detected; }
-  });
+  const [signupCountry, setSignupCountry] = useState(() => detectBrowserCountry() || "");
   const [signupCity, setSignupCity] = useState("");
 
   const [vendorEmail, setVendorEmail] = useState("");
@@ -277,7 +271,7 @@ export default function PortalAuth() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="signup-country" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.country")}</Label>
-                <Input id="signup-country" required value={signupCountry} onChange={e => setSignupCountry(e.target.value)} placeholder={t("auth.country")} className="portal-brutalist-input" />
+                <CountrySelect value={signupCountry} onValueChange={setSignupCountry} placeholder={t("auth.country")} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-city" className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("auth.city")}</Label>

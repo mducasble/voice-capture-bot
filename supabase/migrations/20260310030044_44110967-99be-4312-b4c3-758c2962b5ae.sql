@@ -1,0 +1,35 @@
+
+-- Normalize existing free-text country values to ISO 3166-1 alpha-2 codes
+UPDATE public.profiles SET country = 'BR' WHERE lower(trim(country)) IN ('brasil', 'brazil', 'brasilien', 'brésil');
+UPDATE public.profiles SET country = 'US' WHERE lower(trim(country)) IN ('estados unidos', 'united states', 'usa', 'eua', 'états-unis');
+UPDATE public.profiles SET country = 'AR' WHERE lower(trim(country)) IN ('argentina');
+UPDATE public.profiles SET country = 'CO' WHERE lower(trim(country)) IN ('colombia', 'colômbia');
+UPDATE public.profiles SET country = 'PE' WHERE lower(trim(country)) IN ('peru', 'perú');
+UPDATE public.profiles SET country = 'CL' WHERE lower(trim(country)) IN ('chile');
+UPDATE public.profiles SET country = 'VE' WHERE lower(trim(country)) IN ('venezuela');
+UPDATE public.profiles SET country = 'MX' WHERE lower(trim(country)) IN ('mexico', 'méxico');
+UPDATE public.profiles SET country = 'PT' WHERE lower(trim(country)) IN ('portugal');
+UPDATE public.profiles SET country = 'ES' WHERE lower(trim(country)) IN ('espanha', 'españa', 'spain');
+UPDATE public.profiles SET country = 'UY' WHERE lower(trim(country)) IN ('uruguai', 'uruguay');
+UPDATE public.profiles SET country = 'PY' WHERE lower(trim(country)) IN ('paraguai', 'paraguay');
+UPDATE public.profiles SET country = 'BO' WHERE lower(trim(country)) IN ('bolivia', 'bolívia');
+UPDATE public.profiles SET country = 'EC' WHERE lower(trim(country)) IN ('equador', 'ecuador');
+UPDATE public.profiles SET country = 'PA' WHERE lower(trim(country)) IN ('panamá', 'panama');
+UPDATE public.profiles SET country = 'CA' WHERE lower(trim(country)) IN ('canada', 'canadá');
+UPDATE public.profiles SET country = 'FR' WHERE lower(trim(country)) IN ('france', 'frança');
+UPDATE public.profiles SET country = 'DE' WHERE lower(trim(country)) IN ('germany', 'alemanha', 'deutschland');
+UPDATE public.profiles SET country = 'IT' WHERE lower(trim(country)) IN ('italy', 'itália', 'italia');
+UPDATE public.profiles SET country = 'GB' WHERE lower(trim(country)) IN ('united kingdom', 'uk', 'reino unido', 'england', 'inglaterra');
+UPDATE public.profiles SET country = 'JP' WHERE lower(trim(country)) IN ('japan', 'japão');
+UPDATE public.profiles SET country = 'IN' WHERE lower(trim(country)) IN ('india', 'índia');
+UPDATE public.profiles SET country = 'AU' WHERE lower(trim(country)) IN ('australia', 'austrália');
+UPDATE public.profiles SET country = 'NG' WHERE lower(trim(country)) IN ('nigeria', 'nigéria');
+UPDATE public.profiles SET country = 'ZA' WHERE lower(trim(country)) IN ('south africa', 'áfrica do sul');
+UPDATE public.profiles SET country = 'CR' WHERE lower(trim(country)) IN ('costa rica');
+UPDATE public.profiles SET country = 'GT' WHERE lower(trim(country)) IN ('guatemala');
+UPDATE public.profiles SET country = 'HN' WHERE lower(trim(country)) IN ('honduras');
+UPDATE public.profiles SET country = 'NI' WHERE lower(trim(country)) IN ('nicaragua', 'nicarágua');
+UPDATE public.profiles SET country = 'DO' WHERE lower(trim(country)) IN ('república dominicana', 'dominican republic');
+UPDATE public.profiles SET country = 'CU' WHERE lower(trim(country)) IN ('cuba');
+UPDATE public.profiles SET country = 'AO' WHERE lower(trim(country)) IN ('angola');
+UPDATE public.profiles SET country = 'MZ' WHERE lower(trim(country)) IN ('moçambique', 'mozambique');
