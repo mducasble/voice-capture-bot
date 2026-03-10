@@ -384,7 +384,7 @@ function CountryBreakdown({ profiles }: { profiles: { country?: string | null }[
       .sort((a, b) => b.count - a.count);
   }, [profiles]);
 
-  const total = profiles.length;
+  const total = countryData.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <Card className="border-border/40 bg-card">
