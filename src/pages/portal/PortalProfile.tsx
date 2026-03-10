@@ -43,20 +43,27 @@ export default function PortalProfile() {
   const { t } = useTranslation();
   const { isComplete: profileComplete } = useProfileCompletion();
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, error: profileError } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
+      console.log("[PortalProfile] Fetching profile for user:", user.id);
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error("[PortalProfile] Query error:", error);
+        throw error;
+      }
+      console.log("[PortalProfile] Profile data received:", JSON.stringify(data));
       return data as ProfileData;
     },
     enabled: !!user?.id,
   });
+
+  console.log("[PortalProfile] Render state:", { userId: user?.id, isLoading, hasProfile: !!profile, profileError: profileError?.message, profileName: profile?.full_name });
 
   const [form, setForm] = useState<ProfileData | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -64,6 +71,7 @@ export default function PortalProfile() {
   // Sync form state when profile data loads
   useEffect(() => {
     if (profile && !profileLoaded) {
+      console.log("[PortalProfile] Syncing form with profile data:", profile.full_name);
       setForm({
         full_name: profile.full_name || "",
         avatar_url: profile.avatar_url || null,
