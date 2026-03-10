@@ -28,6 +28,7 @@ import {
   Download,
   Copy,
   Layers,
+  Highlighter,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,17 +77,20 @@ export default function CarouselEditor() {
   };
 
   // -- Element management --
-  const addElement = (type: "text" | "image") => {
+  const addElement = (type: "text" | "image" | "highlight") => {
     const el: CarouselElement = {
       id: createId(),
       type,
       x: 80,
       y: 200,
-      width: type === "text" ? 600 : 400,
-      height: type === "text" ? 100 : 300,
+      width: type === "image" ? 400 : type === "highlight" ? 400 : 600,
+      height: type === "image" ? 300 : type === "highlight" ? 80 : 100,
       rotation: 0,
       ...(type === "text"
         ? { content: "Novo texto", fontSize: 40, fontWeight: 700, color: "#ffffff", textAlign: "left" as const, fontFamily: "monospace" }
+        : {}),
+      ...(type === "highlight"
+        ? { content: "HIGHLIGHT", fontSize: 48, fontWeight: 900, color: "#111111", textAlign: "center" as const, fontFamily: "monospace", highlightBg: "#8cff05", highlightPaddingX: 24, highlightPaddingY: 12 }
         : {}),
     };
     updateSlide({ elements: [...currentSlide.elements, el] });
@@ -167,6 +171,23 @@ export default function CarouselEditor() {
           lines.forEach((line, li) => {
             ctx.fillText(line, textX, el.y + li * lineHeight);
           });
+          ctx.restore();
+        }
+
+        if (el.type === "highlight") {
+          ctx.save();
+          const px = el.highlightPaddingX || 24;
+          const py = el.highlightPaddingY || 12;
+          // Draw background
+          ctx.fillStyle = el.highlightBg || "#8cff05";
+          ctx.fillRect(el.x, el.y, el.width, el.height);
+          // Draw text
+          ctx.font = `${el.fontWeight || 900} ${el.fontSize || 48}px ${el.fontFamily || "monospace"}`;
+          ctx.fillStyle = el.color || "#111111";
+          ctx.textAlign = el.textAlign || "center";
+          ctx.textBaseline = "middle";
+          const textX = el.textAlign === "left" ? el.x + px : el.textAlign === "right" ? el.x + el.width - px : el.x + el.width / 2;
+          ctx.fillText(el.content || "", textX, el.y + el.height / 2);
           ctx.restore();
         }
 
@@ -268,16 +289,20 @@ export default function CarouselEditor() {
                           top: el.y,
                           width: el.width,
                           height: el.height,
-                          fontSize: el.type === "text" ? el.fontSize : undefined,
-                          fontWeight: el.type === "text" ? el.fontWeight : undefined,
-                          color: el.type === "text" ? el.color : undefined,
-                          textAlign: el.type === "text" ? el.textAlign : undefined,
-                          fontFamily: el.type === "text" ? (el.fontFamily || "monospace") : undefined,
+                          fontSize: (el.type === "text" || el.type === "highlight") ? el.fontSize : undefined,
+                          fontWeight: (el.type === "text" || el.type === "highlight") ? el.fontWeight : undefined,
+                          color: (el.type === "text" || el.type === "highlight") ? el.color : undefined,
+                          textAlign: (el.type === "text" || el.type === "highlight") ? el.textAlign : undefined,
+                          fontFamily: (el.type === "text" || el.type === "highlight") ? (el.fontFamily || "monospace") : undefined,
                           lineHeight: 1.3,
                           overflow: "hidden",
+                          background: el.type === "highlight" ? (el.highlightBg || "#8cff05") : undefined,
+                          display: el.type === "highlight" ? "flex" : undefined,
+                          alignItems: el.type === "highlight" ? "center" : undefined,
+                          justifyContent: el.type === "highlight" ? "center" : undefined,
                         }}
                       >
-                        {el.type === "text" ? el.content : null}
+                        {(el.type === "text" || el.type === "highlight") ? el.content : null}
                         {el.type === "image" && el.imageUrl ? (
                           <img src={el.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : el.type === "image" ? (
@@ -314,6 +339,9 @@ export default function CarouselEditor() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => addElement("image")}>
             <ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Imagem
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => addElement("highlight")}>
+            <Highlighter className="h-3.5 w-3.5 mr-1.5" /> Highlight
           </Button>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
