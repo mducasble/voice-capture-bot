@@ -96,6 +96,8 @@ const Room = () => {
   const remoteGainContexts = useRef<Map<string, { ctx: AudioContext; gain: GainNode }>>(new Map());
   const [isMixedUploading, setIsMixedUploading] = useState(false);
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
+  const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
+  const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
