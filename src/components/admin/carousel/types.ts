@@ -18,11 +18,14 @@ export interface CarouselElement {
   objectFit?: "cover" | "contain" | "fill";
 }
 
+export type BackgroundPattern = "none" | "dark-grid" | "light-grid";
+
 export interface CarouselSlide {
   id: string;
   elements: CarouselElement[];
   backgroundColor: string;
   backgroundGradient?: string;
+  backgroundPattern: BackgroundPattern;
 }
 
 export interface CarouselProject {
@@ -50,7 +53,7 @@ export const CAROUSEL_TEMPLATES: {
   {
     id: "blank",
     label: "Em branco",
-    slides: [{ elements: [], backgroundColor: "#111111" }],
+    slides: [{ elements: [], backgroundColor: "#111111", backgroundPattern: "dark-grid" }],
   },
   {
     id: "title-body",
@@ -90,6 +93,7 @@ export const CAROUSEL_TEMPLATES: {
           },
         ],
         backgroundColor: "#111111",
+        backgroundPattern: "dark-grid",
       },
       {
         elements: [
@@ -125,6 +129,7 @@ export const CAROUSEL_TEMPLATES: {
           },
         ],
         backgroundColor: "#111111",
+        backgroundPattern: "dark-grid",
       },
     ],
   },
@@ -167,6 +172,7 @@ export const CAROUSEL_TEMPLATES: {
         ],
         backgroundColor: "#111111",
         backgroundGradient: "linear-gradient(135deg, #111111 0%, #1a1a2e 100%)",
+        backgroundPattern: "dark-grid",
       },
     ],
   },
@@ -177,10 +183,24 @@ export function createId(): string {
 }
 
 export function createSlide(template?: Omit<CarouselSlide, "id">): CarouselSlide {
-  const base = template || { elements: [], backgroundColor: "#111111" };
+  const base = template || { elements: [], backgroundColor: "#111111", backgroundPattern: "dark-grid" as BackgroundPattern };
   return {
     ...base,
+    backgroundPattern: base.backgroundPattern || "dark-grid",
     id: createId(),
     elements: base.elements.map((el) => ({ ...el, id: createId() })),
   };
+}
+
+export const GRID_SIZE = 60;
+export const ACCENT_COLOR = "#8cff05";
+
+export function getPatternColors(pattern: BackgroundPattern) {
+  if (pattern === "dark-grid") {
+    return { bg: "#111111", lineColor: "rgba(255,255,255,0.05)", accentColor: ACCENT_COLOR };
+  }
+  if (pattern === "light-grid") {
+    return { bg: "#f5f5f5", lineColor: "rgba(0,0,0,0.06)", accentColor: ACCENT_COLOR };
+  }
+  return { bg: null, lineColor: null, accentColor: null };
 }

@@ -3,8 +3,12 @@ import {
   type CarouselSlide,
   type CarouselElement,
   type CarouselFormat,
+  type BackgroundPattern,
   CAROUSEL_FORMATS,
   CAROUSEL_TEMPLATES,
+  GRID_SIZE,
+  ACCENT_COLOR,
+  getPatternColors,
   createSlide,
   createId,
 } from "./types";
@@ -43,7 +47,7 @@ export default function CarouselEditor() {
 
   // -- Slide management --
   const addSlide = () => {
-    const s = createSlide({ elements: [], backgroundColor: currentSlide?.backgroundColor || "#111111" });
+    const s = createSlide({ elements: [], backgroundColor: currentSlide?.backgroundColor || "#111111", backgroundPattern: currentSlide?.backgroundPattern || "dark-grid" });
     setSlides((prev) => [...prev, s]);
     setCurrentIdx(slides.length);
     setSelectedElId(null);
@@ -55,6 +59,7 @@ export default function CarouselEditor() {
       elements: currentSlide.elements.map((el) => ({ ...el })),
       backgroundColor: currentSlide.backgroundColor,
       backgroundGradient: currentSlide.backgroundGradient,
+      backgroundPattern: currentSlide.backgroundPattern,
     });
     const newSlides = [...slides];
     newSlides.splice(currentIdx + 1, 0, dup);
@@ -126,6 +131,26 @@ export default function CarouselEditor() {
       // Background
       ctx.fillStyle = slide.backgroundColor;
       ctx.fillRect(0, 0, format.width, format.height);
+
+      // Grid pattern
+      const patternColors = getPatternColors(slide.backgroundPattern);
+      if (patternColors.lineColor) {
+        ctx.strokeStyle = patternColors.lineColor;
+        ctx.lineWidth = 2;
+        for (let x = 0; x <= format.width; x += GRID_SIZE) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, format.height); ctx.stroke();
+        }
+        for (let y = 0; y <= format.height; y += GRID_SIZE) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(format.width, y); ctx.stroke();
+        }
+        // Corner accents
+        const accentSize = 12;
+        ctx.fillStyle = patternColors.accentColor!;
+        ctx.fillRect(20, 20, accentSize, accentSize);
+        ctx.fillRect(format.width - 20 - accentSize, 20, accentSize, accentSize);
+        ctx.fillRect(20, format.height - 20 - accentSize, accentSize, accentSize);
+        ctx.fillRect(format.width - 20 - accentSize, format.height - 20 - accentSize, accentSize, accentSize);
+      }
 
       // Render elements in order
       for (const el of slide.elements) {
@@ -322,6 +347,23 @@ export default function CarouselEditor() {
               background: currentSlide?.backgroundGradient || currentSlide?.backgroundColor || "#111",
             }}
           >
+            {/* Grid overlay */}
+            {currentSlide?.backgroundPattern && currentSlide.backgroundPattern !== "none" && (() => {
+              const colors = getPatternColors(currentSlide.backgroundPattern);
+              return (
+                <>
+                  <div style={{
+                    position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
+                    backgroundImage: `linear-gradient(${colors.lineColor} 2px, transparent 2px), linear-gradient(90deg, ${colors.lineColor} 2px, transparent 2px)`,
+                    backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+                  }} />
+                  <div style={{ position: "absolute", top: 20, left: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", top: 20, right: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", bottom: 20, left: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", bottom: 20, right: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                </>
+              );
+            })()}
             {currentSlide?.elements.map((el) => (
               <DraggableElement
                 key={el.id}
@@ -338,9 +380,32 @@ export default function CarouselEditor() {
 
       {/* Right panel: properties */}
       <div className="space-y-4">
-        {/* Slide background */}
+        {/* Background pattern */}
         <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Fundo do Slide</Label>
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Padrão de Fundo</Label>
+          <Select
+            value={currentSlide?.backgroundPattern || "dark-grid"}
+            onValueChange={(v) => {
+              const pattern = v as BackgroundPattern;
+              const colors = getPatternColors(pattern);
+              updateSlide({
+                backgroundPattern: pattern,
+                ...(colors.bg ? { backgroundColor: colors.bg } : {}),
+              });
+            }}
+          >
+            <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dark-grid">🖤 Escuro + Grid</SelectItem>
+              <SelectItem value="light-grid">🤍 Claro + Grid</SelectItem>
+              <SelectItem value="none">Sem padrão</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Slide background color */}
+        <div className="space-y-1.5">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Cor do Fundo</Label>
           <div className="flex gap-2">
             <input
               type="color"
