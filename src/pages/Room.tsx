@@ -1078,6 +1078,15 @@ const Room = () => {
                     <Progress value={mixedUploadProgress} className="h-1" />
                   </div>
                 )}
+                {remoteUploadsInProgress > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span>BACKUPS REMOTOS</span>
+                      <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
+                    </div>
+                    <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-1" />
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-3 pt-2 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
                   {audioProfile && (
                     <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
