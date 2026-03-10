@@ -811,6 +811,8 @@ interface CampaignStats {
   pendingValidation: number;
   goodQuality: number;
   badQuality: number;
+  avgTopicAdherence: number | null;
+  analyzedCount: number;
 }
 
 function SubmissionSummary({
