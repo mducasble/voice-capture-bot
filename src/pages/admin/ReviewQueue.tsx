@@ -848,6 +848,12 @@ function SubmissionSummary({
         return (snr != null && snr < 15) || (ovrl != null && ovrl < 2.5);
       }).length;
 
+      // Topic adherence
+      const analyzedRecs = recs.filter(r => r.metadata?.content_analysis?.topic_adherence_percent != null);
+      const avgTopicAdherence = analyzedRecs.length > 0
+        ? Math.round(analyzedRecs.reduce((a, r) => a + (r.metadata!.content_analysis!.topic_adherence_percent!), 0) / analyzedRecs.length)
+        : null;
+
       result.push({
         campaignName: campaign?.name || "Sem campanha",
         campaignType: campaign?.campaign_type || null,
@@ -858,6 +864,8 @@ function SubmissionSummary({
         pendingValidation,
         goodQuality,
         badQuality,
+        avgTopicAdherence,
+        analyzedCount: analyzedRecs.length,
       });
     }
     result.sort((a, b) => b.total - a.total);
