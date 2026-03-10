@@ -189,7 +189,7 @@ export function MultiSpeakerUpload({ campaignId, onUploadComplete }: MultiSpeake
         setCurrentStep(`Enviando ${sf.speakerName}...`);
 
         const ext = sf.file.name.split(".").pop() || "wav";
-        const filename = `multi_${timestamp}_${sf.speakerName.replace(/\s+/g, "_")}.${ext}`;
+        const filename = `multi_${timestamp}_${sf.speakerName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_\-]/g, "_")}.${ext}`;
         const storagePath = `uploads/${sessionId}/${filename}`;
 
         const audioMetadata = await getAudioMetadata(sf.file, sf.file.name);
