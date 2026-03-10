@@ -267,7 +267,7 @@ function getSessionStatus(recs: Recording[]) {
 
 // ---- Track Row ----
 
-function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void }) {
+function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[] }) {
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
