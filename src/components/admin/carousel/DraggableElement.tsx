@@ -1,5 +1,7 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, lazy, Suspense } from "react";
 import type { CarouselElement } from "./types";
+import dynamicIconImports from "lucide-react/dynamicIconImports";
+import type { LucideProps } from "lucide-react";
 
 interface Props {
   element: CarouselElement;
