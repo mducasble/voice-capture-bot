@@ -544,6 +544,7 @@ function SessionBlock({
   onRejectSession,
   onTranscribe,
   isPending,
+  validationRules,
 }: {
   session: SessionGroup;
   profileMap: Map<string, string>;
@@ -551,6 +552,7 @@ function SessionBlock({
   onRejectSession: (recordingIds: string[], reason: string) => void;
   onTranscribe: (recId: string, sessionId: string | null, isMixed: boolean) => void;
   isPending: boolean;
+  validationRules?: AudioValidationRule[];
 }) {
   const [rejectionReason, setRejectionReason] = useState("");
   const recIds = session.recordings.map(r => r.id);
