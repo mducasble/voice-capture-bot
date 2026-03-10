@@ -395,6 +395,31 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
             <Users className="h-3 w-3" /> Agregar Sessão
           </button>
         )}
+
+        <div className="w-px h-3 bg-border" />
+
+        {/* Reanalyze original */}
+        {rec.file_url && (
+          <button
+            onClick={() => reanalyze.mutate(rec.id)}
+            disabled={reanalyze.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+            title="Analisar métricas (original)"
+          >
+            {reanalyze.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart className="h-3 w-3" />} Analisar
+          </button>
+        )}
+        {/* Reanalyze enhanced */}
+        {m?.enhanced_file_url && (
+          <button
+            onClick={() => reanalyzeEnhanced.mutate(rec.id)}
+            disabled={reanalyzeEnhanced.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+            title="Analisar métricas (enhanced)"
+          >
+            {reanalyzeEnhanced.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <><BarChart className="h-3 w-3" /><Sparkles className="h-2.5 w-2.5" /></>} Analisar ✨
+          </button>
+        )}
       </div>
 
       {/* Cost dialog */}
