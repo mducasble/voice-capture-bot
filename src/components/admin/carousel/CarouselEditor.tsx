@@ -289,16 +289,20 @@ export default function CarouselEditor() {
                           top: el.y,
                           width: el.width,
                           height: el.height,
-                          fontSize: el.type === "text" ? el.fontSize : undefined,
-                          fontWeight: el.type === "text" ? el.fontWeight : undefined,
-                          color: el.type === "text" ? el.color : undefined,
-                          textAlign: el.type === "text" ? el.textAlign : undefined,
-                          fontFamily: el.type === "text" ? (el.fontFamily || "monospace") : undefined,
+                          fontSize: (el.type === "text" || el.type === "highlight") ? el.fontSize : undefined,
+                          fontWeight: (el.type === "text" || el.type === "highlight") ? el.fontWeight : undefined,
+                          color: (el.type === "text" || el.type === "highlight") ? el.color : undefined,
+                          textAlign: (el.type === "text" || el.type === "highlight") ? el.textAlign : undefined,
+                          fontFamily: (el.type === "text" || el.type === "highlight") ? (el.fontFamily || "monospace") : undefined,
                           lineHeight: 1.3,
                           overflow: "hidden",
+                          background: el.type === "highlight" ? (el.highlightBg || "#8cff05") : undefined,
+                          display: el.type === "highlight" ? "flex" : undefined,
+                          alignItems: el.type === "highlight" ? "center" : undefined,
+                          justifyContent: el.type === "highlight" ? "center" : undefined,
                         }}
                       >
-                        {el.type === "text" ? el.content : null}
+                        {(el.type === "text" || el.type === "highlight") ? el.content : null}
                         {el.type === "image" && el.imageUrl ? (
                           <img src={el.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : el.type === "image" ? (
