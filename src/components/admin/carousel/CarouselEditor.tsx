@@ -347,6 +347,23 @@ export default function CarouselEditor() {
               background: currentSlide?.backgroundGradient || currentSlide?.backgroundColor || "#111",
             }}
           >
+            {/* Grid overlay */}
+            {currentSlide?.backgroundPattern && currentSlide.backgroundPattern !== "none" && (() => {
+              const colors = getPatternColors(currentSlide.backgroundPattern);
+              return (
+                <>
+                  <div style={{
+                    position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
+                    backgroundImage: `linear-gradient(${colors.lineColor} 2px, transparent 2px), linear-gradient(90deg, ${colors.lineColor} 2px, transparent 2px)`,
+                    backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+                  }} />
+                  <div style={{ position: "absolute", top: 20, left: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", top: 20, right: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", bottom: 20, left: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                  <div style={{ position: "absolute", bottom: 20, right: 20, width: 12, height: 12, background: colors.accentColor!, pointerEvents: "none", zIndex: 0 }} />
+                </>
+              );
+            })()}
             {currentSlide?.elements.map((el) => (
               <DraggableElement
                 key={el.id}
