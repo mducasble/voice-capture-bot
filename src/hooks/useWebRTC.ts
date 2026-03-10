@@ -5,6 +5,9 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
     {
       urls: "turn:openrelay.metered.ca:80",
       username: "openrelayproject",
@@ -21,13 +24,22 @@ const ICE_SERVERS: RTCConfiguration = {
       credential: "openrelayproject",
     },
   ],
+  iceCandidatePoolSize: 5,
 };
+
+// Reconnection config
+const MAX_RECONNECT_ATTEMPTS = 5;
+const BASE_RECONNECT_DELAY = 1000; // 1s
 
 interface PeerState {
   connection: RTCPeerConnection;
   remoteStream: MediaStream;
   pendingCandidates: RTCIceCandidateInit[];
+  reconnectAttempts: number;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
 }
+
+export type PeerConnectionStatus = "connecting" | "connected" | "reconnecting" | "failed";
 
 interface UseWebRTCOptions {
   roomId: string | undefined;
@@ -39,14 +51,20 @@ interface UseWebRTCOptions {
 export function useWebRTC({ roomId, participantId, localStream, participants }: UseWebRTCOptions) {
   const peersRef = useRef<Map<string, PeerState>>(new Map());
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [peerStatuses, setPeerStatuses] = useState<Map<string, PeerConnectionStatus>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const participantIdRef = useRef<string | undefined>();
+  const participantsRef = useRef<{ id: string; name: string }[]>([]);
 
   // Keep refs in sync
   useEffect(() => {
     localStreamRef.current = localStream;
     participantIdRef.current = participantId;
   }, [localStream, participantId]);
+
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
 
   const updateRemoteStreams = useCallback(() => {
     const map = new Map<string, MediaStream>();
@@ -56,6 +74,18 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       }
     });
     setRemoteStreams(new Map(map));
+  }, []);
+
+  const updatePeerStatus = useCallback((peerId: string, status: PeerConnectionStatus) => {
+    setPeerStatuses(prev => {
+      const next = new Map(prev);
+      if (status === "failed") {
+        next.delete(peerId);
+      } else {
+        next.set(peerId, status);
+      }
+      return next;
+    });
   }, []);
 
   /** Flush queued ICE candidates once remoteDescription is set */
@@ -70,10 +100,80 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     }
   }, []);
 
-  const createPeerConnection = useCallback((remoteParticipantId: string): PeerState => {
+  // Reconnect a failed peer with exponential backoff
+  const reconnectPeer = useCallback((remoteParticipantId: string) => {
+    const peer = peersRef.current.get(remoteParticipantId);
+    const attempts = peer?.reconnectAttempts ?? 0;
+
+    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn(`[WebRTC] Max reconnect attempts reached for ${remoteParticipantId}`);
+      updatePeerStatus(remoteParticipantId, "failed");
+      return;
+    }
+
+    // Check if remote participant is still in the room
+    const stillPresent = participantsRef.current.some(p => p.id === remoteParticipantId);
+    if (!stillPresent) {
+      console.log(`[WebRTC] Participant ${remoteParticipantId} left, skipping reconnect`);
+      return;
+    }
+
+    const delay = BASE_RECONNECT_DELAY * Math.pow(2, attempts);
+    console.log(`[WebRTC] Scheduling reconnect #${attempts + 1} for ${remoteParticipantId} in ${delay}ms`);
+    updatePeerStatus(remoteParticipantId, "reconnecting");
+
+    const timer = setTimeout(async () => {
+      if (!participantIdRef.current || !roomId || !localStreamRef.current) return;
+
+      // Clean up old connection
+      const existingPeer = peersRef.current.get(remoteParticipantId);
+      if (existingPeer) {
+        if (existingPeer.reconnectTimer) clearTimeout(existingPeer.reconnectTimer);
+        existingPeer.connection.close();
+        peersRef.current.delete(remoteParticipantId);
+      }
+
+      // Only the participant with the "smaller" ID initiates
+      if (participantIdRef.current < remoteParticipantId) {
+        console.log(`[WebRTC] Reconnecting to ${remoteParticipantId} (attempt ${attempts + 1})`);
+        const newPeer = createPeerConnectionInternal(remoteParticipantId);
+        newPeer.reconnectAttempts = attempts + 1;
+        
+        try {
+          const offer = await newPeer.connection.createOffer();
+          await newPeer.connection.setLocalDescription(offer);
+
+          await supabase.from("webrtc_signals").insert([{
+            room_id: roomId,
+            sender_id: participantIdRef.current,
+            receiver_id: remoteParticipantId,
+            signal_type: "offer",
+            signal_data: { sdp: offer.sdp, type: offer.type } as any,
+          }]);
+        } catch (e) {
+          console.error(`[WebRTC] Reconnect offer failed for ${remoteParticipantId}:`, e);
+          // Schedule another attempt
+          const nextPeer = peersRef.current.get(remoteParticipantId);
+          if (nextPeer) {
+            nextPeer.reconnectAttempts = attempts + 1;
+            reconnectPeer(remoteParticipantId);
+          }
+        }
+      }
+    }, delay);
+
+    // Store timer so it can be cleaned up
+    if (peer) {
+      peer.reconnectTimer = timer;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, updatePeerStatus]);
+
+  const createPeerConnectionInternal = useCallback((remoteParticipantId: string): PeerState => {
     // Close existing connection if any
     const existing = peersRef.current.get(remoteParticipantId);
     if (existing) {
+      if (existing.reconnectTimer) clearTimeout(existing.reconnectTimer);
       existing.connection.close();
       peersRef.current.delete(remoteParticipantId);
     }
@@ -112,22 +212,52 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     };
 
     connection.oniceconnectionstatechange = () => {
-      console.log(`[WebRTC] ICE state for ${remoteParticipantId}: ${connection.iceConnectionState}`);
-    };
-
-    connection.onconnectionstatechange = () => {
-      console.log(`[WebRTC] Connection to ${remoteParticipantId}: ${connection.connectionState}`);
-      if (connection.connectionState === "failed") {
-        console.log(`[WebRTC] Connection failed to ${remoteParticipantId}, will retry on next participant update`);
-        peersRef.current.delete(remoteParticipantId);
-        updateRemoteStreams();
+      const state = connection.iceConnectionState;
+      console.log(`[WebRTC] ICE state for ${remoteParticipantId}: ${state}`);
+      
+      if (state === "connected" || state === "completed") {
+        updatePeerStatus(remoteParticipantId, "connected");
+        // Reset reconnect counter on successful connection
+        const peer = peersRef.current.get(remoteParticipantId);
+        if (peer) peer.reconnectAttempts = 0;
+      } else if (state === "disconnected") {
+        updatePeerStatus(remoteParticipantId, "reconnecting");
+        // ICE disconnected can auto-recover, wait a bit before force-reconnecting
+        const peer = peersRef.current.get(remoteParticipantId);
+        if (peer && !peer.reconnectTimer) {
+          peer.reconnectTimer = setTimeout(() => {
+            peer.reconnectTimer = null;
+            // If still disconnected after 5s, force reconnect
+            if (connection.iceConnectionState === "disconnected" || connection.iceConnectionState === "failed") {
+              reconnectPeer(remoteParticipantId);
+            }
+          }, 5000);
+        }
       }
     };
 
-    const state: PeerState = { connection, remoteStream, pendingCandidates: [] };
-    peersRef.current.set(remoteParticipantId, state);
-    return state;
-  }, [roomId, updateRemoteStreams]);
+    connection.onconnectionstatechange = () => {
+      const state = connection.connectionState;
+      console.log(`[WebRTC] Connection to ${remoteParticipantId}: ${state}`);
+      
+      if (state === "failed") {
+        console.log(`[WebRTC] Connection failed to ${remoteParticipantId}, scheduling reconnect`);
+        reconnectPeer(remoteParticipantId);
+      }
+    };
+
+    updatePeerStatus(remoteParticipantId, "connecting");
+
+    const peerState: PeerState = {
+      connection,
+      remoteStream,
+      pendingCandidates: [],
+      reconnectAttempts: 0,
+      reconnectTimer: null,
+    };
+    peersRef.current.set(remoteParticipantId, peerState);
+    return peerState;
+  }, [roomId, updateRemoteStreams, updatePeerStatus, reconnectPeer]);
 
   // Initiate connection to a remote participant (caller side)
   const connectToPeer = useCallback(async (remoteParticipantId: string) => {
@@ -135,7 +265,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     if (peersRef.current.has(remoteParticipantId)) return;
 
     console.log(`[WebRTC] Creating offer for ${remoteParticipantId}`);
-    const peer = createPeerConnection(remoteParticipantId);
+    const peer = createPeerConnectionInternal(remoteParticipantId);
 
     const offer = await peer.connection.createOffer();
     await peer.connection.setLocalDescription(offer);
@@ -147,7 +277,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       signal_type: "offer",
       signal_data: { sdp: offer.sdp, type: offer.type } as any,
     }]);
-  }, [roomId, createPeerConnection]);
+  }, [roomId, createPeerConnectionInternal]);
 
   // Handle incoming signals via realtime subscription
   useEffect(() => {
@@ -159,7 +289,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
 
       if (signal.signal_type === "offer") {
         console.log(`[WebRTC] Received offer from ${senderId}`);
-        const peer = createPeerConnection(senderId);
+        const peer = createPeerConnectionInternal(senderId);
         await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
         await flushCandidates(peer);
 
@@ -243,7 +373,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, participantId, localStream, createPeerConnection, updateRemoteStreams, flushCandidates]);
+  }, [roomId, participantId, localStream, createPeerConnectionInternal, updateRemoteStreams, flushCandidates]);
 
   // Connect to new participants when they appear
   useEffect(() => {
@@ -259,7 +389,20 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         }
       }
     }
-  }, [participants, participantId, localStream, connectToPeer]);
+
+    // Clean up peers for participants who left
+    peersRef.current.forEach((peer, peerId) => {
+      const stillPresent = participants.some(p => p.id === peerId);
+      if (!stillPresent) {
+        console.log(`[WebRTC] Cleaning up peer ${peerId} (participant left)`);
+        if (peer.reconnectTimer) clearTimeout(peer.reconnectTimer);
+        peer.connection.close();
+        peersRef.current.delete(peerId);
+        updatePeerStatus(peerId, "failed"); // removes from map
+        updateRemoteStreams();
+      }
+    });
+  }, [participants, participantId, localStream, connectToPeer, updatePeerStatus, updateRemoteStreams]);
 
   // Update local tracks when stream changes (e.g. device switch)
   useEffect(() => {
@@ -284,11 +427,12 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
   useEffect(() => {
     return () => {
       peersRef.current.forEach((peer) => {
+        if (peer.reconnectTimer) clearTimeout(peer.reconnectTimer);
         peer.connection.close();
       });
       peersRef.current.clear();
     };
   }, []);
 
-  return { remoteStreams };
+  return { remoteStreams, peerStatuses };
 }
