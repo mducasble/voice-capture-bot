@@ -64,19 +64,22 @@ function buildDailyData(
   range: DateRange
 ) {
   const days: Record<string, { date: string; users: number; quests: number }> = {};
-  const current = new Date(range.from);
-  while (current <= range.to) {
-    const key = format(current, "yyyy-MM-dd");
+  // Use UTC-consistent date keys to avoid timezone mismatches
+  const toKey = (d: Date) => d.toISOString().slice(0, 10);
+  const current = new Date(startOfDay(range.from));
+  const end = endOfDay(range.to);
+  while (current <= end) {
+    const key = toKey(current);
     days[key] = { date: key, users: 0, quests: 0 };
     current.setDate(current.getDate() + 1);
   }
   profiles.forEach((p) => {
-    const d = format(new Date(p.created_at), "yyyy-MM-dd");
+    const d = toKey(new Date(p.created_at));
     if (days[d]) days[d].users++;
   });
   const dailyQuestUsers: Record<string, Set<string>> = {};
   participants.forEach((p) => {
-    const d = format(new Date(p.joined_at), "yyyy-MM-dd");
+    const d = toKey(new Date(p.joined_at));
     if (days[d]) {
       if (!dailyQuestUsers[d]) dailyQuestUsers[d] = new Set();
       dailyQuestUsers[d].add(p.user_id);
