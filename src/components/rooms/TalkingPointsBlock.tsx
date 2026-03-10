@@ -108,7 +108,7 @@ export function TalkingPointsBlock({ topic }: TalkingPointsBlockProps) {
             <Sparkles className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
             {t("room.talkingPointsTitle")}
           </span>
-          {isSuggestion && hasGenerated && !loading && (
+          {hasGenerated && !loading && (
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider"
               style={{
