@@ -193,6 +193,7 @@ export default function SocialArt() {
           </TabsList>
 
           <TabsContent value="single">
+        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-8">
           {/* Controls */}
           <div className="space-y-6">
             {/* Campaign Selector */}
@@ -388,7 +389,6 @@ export default function SocialArt() {
             )}
           </div>
         </div>
-
           </TabsContent>
 
           <TabsContent value="carousel">
