@@ -53,7 +53,7 @@ export const CAROUSEL_TEMPLATES: {
   {
     id: "blank",
     label: "Em branco",
-    slides: [{ elements: [], backgroundColor: "#111111" }],
+    slides: [{ elements: [], backgroundColor: "#111111", backgroundPattern: "dark-grid" }],
   },
   {
     id: "title-body",
