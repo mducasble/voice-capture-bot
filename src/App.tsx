@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
+import { MaintenanceBanner, MaintenanceBlock } from "@/components/MaintenanceBanner";
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
