@@ -5,7 +5,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Trash2, Upload } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+
+const POPULAR_ICONS = [
+  "star", "heart", "thumbs-up", "thumbs-down", "message-circle", "share-2",
+  "send", "bookmark", "bell", "check", "x", "plus", "minus", "arrow-right",
+  "arrow-left", "play", "pause", "volume-2", "mic", "camera", "image",
+  "download", "upload", "link", "globe", "user", "users", "settings",
+  "search", "eye", "trophy", "zap", "flame", "sparkles", "shield",
+  "lock", "unlock", "mail", "phone", "map-pin", "calendar", "clock",
+  "gift", "award", "target", "trending-up", "bar-chart", "pie-chart",
+];
 
 interface Props {
   element: CarouselElement;
