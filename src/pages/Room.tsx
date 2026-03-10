@@ -574,6 +574,60 @@ const Room = () => {
     }
   };
 
+  // Upload a remote participant's backup recording
+  const uploadRemoteBackup = async (peerId: string, wavBlob: Blob, participantName: string) => {
+    if (!room || !wavBlob || wavBlob.size === 0) return;
+
+    const filename = `room_${room.session_id}_${peerId}_${Date.now()}.wav`;
+    try {
+      const formData = new FormData();
+      formData.append("audio", wavBlob, filename);
+      formData.append("filename", filename);
+      formData.append("session_id", room.session_id);
+      formData.append("participant_id", peerId);
+      formData.append("participant_name", participantName);
+      formData.append("recording_type", "individual");
+      formData.append("format", "wav");
+      formData.append("noise_gate_enabled", "false");
+      formData.append("campaign_id", campaignId || "");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
+        {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${authToken}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Upload failed: ${errText}`);
+      }
+
+      console.log(`[RemoteBackup] Uploaded backup for ${participantName}`);
+      toast.success(`Backup de ${participantName} enviado!`);
+    } catch (error) {
+      console.error(`[RemoteBackup] Upload error for ${participantName}:`, error);
+      // Fallback: save locally
+      try {
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.info(`Backup de ${participantName} salvo localmente`);
+      } catch (dlErr) {
+        console.error("Local save also failed:", dlErr);
+      }
+    }
+  };
+
   // Stop recording (creator only)
   const handleStopRecording = async () => {
     if (!room || !roomId) return;
@@ -583,6 +637,33 @@ const Room = () => {
       const mixedBlob = await mixedRecorder.stopRecording();
       if (mixedBlob) {
         uploadMixedRecording(mixedBlob);
+      }
+    }
+
+    // Stop remote backup recorders and upload each
+    if (currentParticipant?.is_creator && remoteRecorders.isRecording) {
+      const remoteBlobs = await remoteRecorders.stopRecording();
+      if (remoteBlobs.size > 0) {
+        setRemoteUploadsInProgress(remoteBlobs.size);
+        setRemoteUploadsDone(0);
+        
+        // Check which participants already uploaded their own recording
+        // We upload all backups - the edge function will handle deduplication
+        // or we can skip if recording already exists
+        for (const [peerId, { blob, participantName }] of remoteBlobs) {
+          uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+            setRemoteUploadsDone(prev => {
+              const next = prev + 1;
+              if (next >= remoteBlobs.size) {
+                setTimeout(() => {
+                  setRemoteUploadsInProgress(0);
+                  setRemoteUploadsDone(0);
+                }, 2000);
+              }
+              return next;
+            });
+          });
+        }
       }
     }
 
