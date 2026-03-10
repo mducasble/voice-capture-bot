@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Clock, FileAudio, Users, Play, Pause, ChevronDown,
   CheckCircle2, XCircle, User, BarChart3, ShieldCheck, ShieldX, AlertTriangle, Hourglass,
-  Download, FileVolume2, Sparkles, AudioLines, Loader2,
+  Download, FileVolume2, Sparkles, AudioLines, Loader2, BarChart,
 } from "lucide-react";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElevenLabsTranscription";
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
+import { useReanalyzeAudio } from "@/hooks/useReanalyzeAudio";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
 
 // ---- types ----
@@ -174,6 +175,8 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const reanalyze = useReanalyzeAudio("sampled", "original");
+  const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
@@ -390,6 +393,31 @@ function TrackRow({ rec, onTranscribe }: { rec: Recording; onTranscribe?: (recId
             title="Agregar transcrição da sessão"
           >
             <Users className="h-3 w-3" /> Agregar Sessão
+          </button>
+        )}
+
+        <div className="w-px h-3 bg-border" />
+
+        {/* Reanalyze original */}
+        {rec.file_url && (
+          <button
+            onClick={() => reanalyze.mutate(rec.id)}
+            disabled={reanalyze.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+            title="Analisar métricas (original)"
+          >
+            {reanalyze.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart className="h-3 w-3" />} Analisar
+          </button>
+        )}
+        {/* Reanalyze enhanced */}
+        {m?.enhanced_file_url && (
+          <button
+            onClick={() => reanalyzeEnhanced.mutate(rec.id)}
+            disabled={reanalyzeEnhanced.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+            title="Analisar métricas (enhanced)"
+          >
+            {reanalyzeEnhanced.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <><BarChart className="h-3 w-3" /><Sparkles className="h-2.5 w-2.5" /></>} Analisar ✨
           </button>
         )}
       </div>
