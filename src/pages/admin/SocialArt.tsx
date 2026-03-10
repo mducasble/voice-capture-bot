@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, lazy, Suspense } from "react";
 
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { TASK_TYPE_LABELS } from "@/lib/campaignTypes";
@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Download, Loader2, Sparkles, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Download, Loader2, Sparkles, X, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import SocialArtCanvas from "@/components/admin/SocialArtCanvas";
 import { supabase } from "@/integrations/supabase/client";
+
+const CarouselEditor = lazy(() => import("@/components/admin/carousel/CarouselEditor"));
 
 const FORMATS = [
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080 },
