@@ -113,6 +113,7 @@ const REJECTION_REASONS = [
   "Duração menor que o tempo previsto",
   "Material inconsistente (Upload de arquivos de duração diferentes)",
   "Um dos participantes já ultrapassou a cota máxima dessa campanha",
+  "Participantes não enviaram áudio isolado",
   "Item de Teste",
 ];
 
