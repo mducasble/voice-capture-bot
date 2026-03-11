@@ -75,19 +75,19 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
     return (
       <div className="flex items-center gap-1">
         <span
-          className="font-mono text-[8px] uppercase tracking-wider"
+        className="font-mono text-[10px] uppercase tracking-wider"
           style={{ color: statusColor }}
         >
           {statusText}
         </span>
         {isOnline && (
-          <div className="flex items-end gap-[1px] h-[10px]">
+          <div className="flex items-end gap-[2px] h-[14px]">
             {levels.map((level, i) => (
               <div
                 key={i}
-                className="w-[2px] rounded-full transition-all duration-75"
+                className="w-[3px] rounded-full transition-all duration-75"
                 style={{
-                  height: `${Math.max(2, level * 10)}px`,
+                  height: `${Math.max(3, level * 14)}px`,
                   backgroundColor: isActive ? "hsl(142 71% 45%)" : "var(--portal-text-muted, #555)",
                   opacity: isActive ? 1 : 0.4,
                 }}
@@ -102,19 +102,19 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
   return (
     <div className="flex items-center gap-1.5">
       <span
-        className="font-mono text-[9px] uppercase tracking-wider font-medium"
+        className="font-mono text-[11px] uppercase tracking-wider font-medium"
         style={{ color: statusColor }}
       >
         {statusText}
       </span>
       {isOnline && (
-        <div className="flex items-end gap-[2px] h-[14px]">
+        <div className="flex items-end gap-[2px] h-[16px]">
           {levels.map((level, i) => (
             <div
               key={i}
-              className="w-[3px] rounded-full transition-all duration-75"
+              className="w-[3.5px] rounded-full transition-all duration-75"
               style={{
-                height: `${Math.max(3, level * 14)}px`,
+                height: `${Math.max(4, level * 16)}px`,
                 backgroundColor: isActive ? "hsl(142 71% 45%)" : "var(--portal-text-muted, #555)",
                 opacity: isActive ? 1 : 0.3,
               }}
