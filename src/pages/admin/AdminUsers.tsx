@@ -158,6 +158,27 @@ export default function AdminUsers() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (user_id: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ action: "delete_user", user_id }),
+        }
+      );
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-profiles"] });
+      toast.success("Usuário excluído");
+      setDeleteUserId(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
