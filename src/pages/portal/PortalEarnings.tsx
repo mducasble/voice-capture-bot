@@ -130,13 +130,13 @@ export default function PortalEarnings() {
                   <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{t(activity.i18n)}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.direct)}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
+                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                    <MoneyValue value={fmt(s.direct)} />
+                    <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
                   </div>
                   <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.referral)}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.referralEarnings")}</p>
+                    <MoneyValue value={fmt(s.referral)} />
+                    <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.referralEarnings")}</p>
                   </div>
                 </div>
                 {s.pending > 0 && (
