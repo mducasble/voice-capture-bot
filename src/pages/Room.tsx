@@ -1198,8 +1198,21 @@ const Room = () => {
 
             {/* My Audio */}
             <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-              <div className="p-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("room.yourAudio")}</span>
+              <div className="p-3 flex items-center justify-between gap-2" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>{t("room.yourAudio")}</span>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider"
+                    style={{
+                      background: "hsl(45 93% 47% / 0.15)",
+                      color: "hsl(45 93% 47%)",
+                      border: "1px solid hsl(45 93% 47% / 0.3)",
+                    }}
+                  >
+                    <Lightbulb className="h-3 w-3" />
+                    {t("room.chooseBestMic")}
+                  </span>
+                </div>
                 <button
                   onClick={toggleMute}
                   className="p-1.5 transition-colors"
