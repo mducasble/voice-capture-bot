@@ -636,38 +636,14 @@ const Room = () => {
 
     const filename = `room_${room.session_id}_${peerId}_${Date.now()}.wav`;
     try {
-      const formData = new FormData();
-      formData.append("audio", wavBlob, filename);
-      formData.append("filename", filename);
-      formData.append("session_id", room.session_id);
-      formData.append("participant_id", peerId);
-      formData.append("participant_name", participantName);
-      formData.append("recording_type", "individual");
-      formData.append("format", "wav");
-      formData.append("noise_gate_enabled", "false");
-      formData.append("campaign_id", campaignId || "");
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
-        {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${authToken}` },
-          body: formData,
-        }
+      await uploadViaPresignedUrl(
+        wavBlob, filename,
+        peerId, participantName, "individual",
       );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Upload failed: ${errText}`);
-      }
-
       console.log(`[RemoteBackup] Uploaded backup for ${participantName}`);
       toast.success(`Backup de ${participantName} enviado!`);
     } catch (error) {
       console.error(`[RemoteBackup] Upload error for ${participantName}:`, error);
-      // Fallback: save locally
       try {
         const url = URL.createObjectURL(wavBlob);
         const a = document.createElement("a");
@@ -703,9 +679,6 @@ const Room = () => {
         setRemoteUploadsInProgress(remoteBlobs.size);
         setRemoteUploadsDone(0);
         
-        // Check which participants already uploaded their own recording
-        // We upload all backups - the edge function will handle deduplication
-        // or we can skip if recording already exists
         for (const [peerId, { blob, participantName }] of remoteBlobs) {
           uploadRemoteBackup(peerId, blob, participantName).finally(() => {
             setRemoteUploadsDone(prev => {
