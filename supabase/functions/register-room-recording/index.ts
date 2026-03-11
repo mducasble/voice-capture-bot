@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bot-api-key, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -17,13 +17,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Extract user_id from JWT if present
+    // Auth: JWT or bot API key
     let authUserId: string | null = null;
-    const authHeader = req.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) authUserId = user.id;
+    let isBotAuth = false;
+    const botApiKey = req.headers.get('x-bot-api-key');
+    const expectedApiKey = Deno.env.get('BOT_API_KEY');
+    
+    if (botApiKey && botApiKey === expectedApiKey) {
+      isBotAuth = true;
+    } else {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        if (user) authUserId = user.id;
+      }
     }
 
     const {
@@ -38,7 +46,13 @@ serve(async (req) => {
       language = 'pt',
       campaign_id,
       audio_profile,
+      user_id: bodyUserId,
     } = await req.json();
+
+    // Resolve user_id: from JWT or from body (bot/electron)
+    if (isBotAuth && bodyUserId) {
+      authUserId = bodyUserId;
+    }
 
     if (!filename || !file_url || !session_id || !campaign_id) {
       return new Response(

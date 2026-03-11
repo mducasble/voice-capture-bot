@@ -43,3 +43,7 @@ project_id = "qfxustvmwdyjduzpeafk"
     verify_jwt = false
   [functions.upload-transcribe]
     verify_jwt = false
+  [functions.create-room]
+    verify_jwt = false
+  [functions.stream-upload-to-s3]
+    verify_jwt = false
