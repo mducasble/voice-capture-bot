@@ -1242,8 +1242,8 @@ const Room = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - Content (67%) */}
-          <div className="space-y-4" style={{ width: "67%" }}>
+          {/* RIGHT COLUMN - Content */}
+          <div className="space-y-4 w-full lg:w-[67%] order-first lg:order-2">
             {/* Countdown Timer */}
             {room.duration_minutes && (() => {
               if (room.is_recording && room.recording_started_at) {
