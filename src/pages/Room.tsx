@@ -610,21 +610,9 @@ const Room = () => {
       toast.success("Áudio mixado enviado!");
     } catch (error) {
       console.error("Mixed upload error:", error);
-      toast.error("Erro ao enviar áudio mixado. Salvando localmente...");
-      try {
-        const url = URL.createObjectURL(wavBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("Arquivo salvo localmente como fallback!");
-      } catch (dlErr) {
-        console.error("Local save also failed:", dlErr);
-        toast.error("Não foi possível salvar localmente");
-      }
+      // Don't download the mixed file as fallback — individual tracks are what matters.
+      // The mixed track can be reconstructed server-side from individual tracks.
+      toast.error("Erro ao enviar áudio combinado (os áudios individuais serão enviados normalmente)");
     } finally {
       setIsMixedUploading(false);
     }
