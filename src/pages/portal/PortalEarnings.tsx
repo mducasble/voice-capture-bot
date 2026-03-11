@@ -169,7 +169,7 @@ function ReferralSection({ userId, referralCode }: { userId?: string; referralCo
   const [copied, setCopied] = useState(false);
   const { t } = useTranslation();
 
-  const inviteUrl = `${window.location.origin}/invite/${referralCode || ""}`;
+  const inviteUrl = referralCode ? `${window.location.origin}/invite/${referralCode}` : "";
 
   const { data: referralStats } = useQuery({
     queryKey: ["referral-stats", userId],
