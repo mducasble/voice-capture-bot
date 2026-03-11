@@ -96,7 +96,7 @@ serve(async (req) => {
         recording_type,
         transcription_status: 'pending',
         language,
-        metadata: { source: 'webapp', participant_id, campaign_id },
+        metadata: { source: 'webapp', participant_id, campaign_id, audio_profile: audio_profile || null },
       })
       .select()
       .single();
