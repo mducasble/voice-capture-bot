@@ -175,13 +175,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
 
     connection.onicecandidate = async (event) => {
       if (event.candidate && participantIdRef.current && roomIdRef.current) {
-        await supabase.from("webrtc_signals").insert([{
+        await insertSignalWithRetry({
           room_id: roomIdRef.current,
           sender_id: participantIdRef.current,
           receiver_id: remoteParticipantId,
           signal_type: "ice",
           signal_data: event.candidate.toJSON() as any,
-        }]);
+        });
       }
     };
 
