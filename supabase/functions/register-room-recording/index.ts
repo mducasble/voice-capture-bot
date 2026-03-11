@@ -17,13 +17,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Extract user_id from JWT if present
+    // Auth: JWT or bot API key
     let authUserId: string | null = null;
-    const authHeader = req.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) authUserId = user.id;
+    let isBotAuth = false;
+    const botApiKey = req.headers.get('x-bot-api-key');
+    const expectedApiKey = Deno.env.get('BOT_API_KEY');
+    
+    if (botApiKey && botApiKey === expectedApiKey) {
+      isBotAuth = true;
+    } else {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        if (user) authUserId = user.id;
+      }
     }
 
     const {
