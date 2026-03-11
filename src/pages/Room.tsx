@@ -829,7 +829,7 @@ const Room = () => {
     );
   }
 
-    const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0;
+    const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
 
     // Full-screen upload overlay
     const uploadOverlay = isAnyUploadInProgress && (
