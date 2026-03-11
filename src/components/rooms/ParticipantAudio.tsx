@@ -120,7 +120,7 @@ export const ParticipantAudio = ({
     handleRecordingChange();
   }, [isRecording, stream, wavRecorder]);
 
-  // Upload WAV recording to S3 via Edge Function proxy (FormData)
+  // Upload WAV recording to S3 via pre-signed URL (avoids memory limits)
   const uploadRecording = useCallback(async (wavBlob: Blob) => {
     if (!wavBlob || wavBlob.size === 0) return;
 
@@ -129,49 +129,95 @@ export const ParticipantAudio = ({
 
     try {
       const filename = `room_${sessionId}_${participantId}_${Date.now()}.wav`;
-
-      setUploadProgress(10);
-      const formData = new FormData();
-      formData.append("audio", wavBlob, filename);
-      formData.append("filename", filename);
-      formData.append("session_id", sessionId);
-      formData.append("participant_id", participantId);
-      formData.append("participant_name", participantName);
-      formData.append("recording_type", "individual");
-      formData.append("format", "wav");
-      formData.append("noise_gate_enabled", noiseGateEnabled ? "true" : "false");
-      formData.append("campaign_id", campaignId || "");
-
-      setUploadProgress(30);
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
+
+      setUploadProgress(10);
+
+      // 1. Get pre-signed URL
+      const signRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-room-upload-url`,
         {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json",
           },
-          body: formData,
+          body: JSON.stringify({
+            filename,
+            content_type: "audio/wav",
+            session_id: sessionId,
+          }),
         }
       );
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Upload failed: ${errText}`);
-      }
+      if (!signRes.ok) throw new Error(`Failed to get upload URL: ${await signRes.text()}`);
+      const { upload_url, upload_headers, public_url } = await signRes.json();
+
+      setUploadProgress(30);
+
+      // 2. PUT directly to S3
+      const putRes = await fetch(upload_url, {
+        method: "PUT",
+        headers: upload_headers,
+        body: wavBlob,
+      });
+
+      if (!putRes.ok) throw new Error(`S3 upload failed: ${putRes.status}`);
+
+      setUploadProgress(70);
+
+      // 3. Register in database
+      const regRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-room-recording`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename,
+            file_url: public_url,
+            file_size_bytes: wavBlob.size,
+            session_id: sessionId,
+            participant_id: participantId,
+            participant_name: participantName,
+            recording_type: "individual",
+            format: "wav",
+            campaign_id: campaignId || null,
+          }),
+        }
+      );
+
+      if (!regRes.ok) throw new Error(`Registration failed: ${await regRes.text()}`);
 
       setUploadProgress(100);
       toast.success(`Áudio de ${participantName} enviado!`);
       
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error(`Erro ao enviar áudio de ${participantName}`);
+      // Fallback: download the individual audio so it's not lost
+      try {
+        const fallbackFilename = `room_${sessionId}_${participantName}_${Date.now()}.wav`;
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fallbackFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.error(`Erro ao enviar áudio de ${participantName}. Arquivo salvo localmente!`);
+      } catch (dlErr) {
+        console.error("Local save also failed:", dlErr);
+        toast.error(`Erro ao enviar áudio de ${participantName}`);
+      }
     } finally {
       setIsUploading(false);
       pendingBlobRef.current = null;
     }
-  }, [sessionId, participantId, participantName]);
+  }, [sessionId, participantId, participantName, campaignId]);
 
   return (
     <div className="space-y-3">
