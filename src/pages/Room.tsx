@@ -524,31 +524,6 @@ const Room = () => {
 
     onProgress?.(10);
 
-    // 1. Get pre-signed URL from edge function
-    const signRes = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-room-upload-url`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename,
-          content_type: "audio/wav",
-          session_id: room!.session_id,
-        }),
-      }
-    );
-
-    if (!signRes.ok) {
-      throw new Error(`Failed to get upload URL: ${await signRes.text()}`);
-    }
-
-    const { upload_url, upload_headers, public_url } = await signRes.json();
-
-    onProgress?.(30);
-
     // 2. Upload via streaming proxy (avoids S3 CORS issues)
     const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(filename)}&session_id=${encodeURIComponent(room!.session_id)}&content_type=${encodeURIComponent("audio/wav")}`;
     const streamRes = await fetch(streamUrl, {
