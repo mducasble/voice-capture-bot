@@ -696,11 +696,14 @@ const Room = () => {
   const handleStopRecording = async () => {
     if (!room || !roomId) return;
 
+    setUploadOverlayHold(true);
+    const uploadPromises: Promise<void>[] = [];
+
     // Stop mixed recording and upload
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
       const mixedBlob = await mixedRecorder.stopRecording();
       if (mixedBlob) {
-        uploadMixedRecording(mixedBlob);
+        uploadPromises.push(uploadMixedRecording(mixedBlob));
       }
     }
 
@@ -712,7 +715,7 @@ const Room = () => {
         setRemoteUploadsDone(0);
         
         for (const [peerId, { blob, participantName }] of remoteBlobs) {
-          uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+          const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
             setRemoteUploadsDone(prev => {
               const next = prev + 1;
               if (next >= remoteBlobs.size) {
@@ -724,6 +727,7 @@ const Room = () => {
               return next;
             });
           });
+          uploadPromises.push(p);
         }
       }
     }
@@ -736,7 +740,15 @@ const Room = () => {
       })
       .eq("id", roomId);
 
-    toast.success("Gravação finalizada! Processando uploads...");
+    toast.success(t("room.recordingStopped") || "Gravação finalizada! Processando uploads...");
+
+    // Wait for ALL uploads to finish, then hold overlay 3s so user sees confirmation toasts
+    if (uploadPromises.length > 0) {
+      await Promise.allSettled(uploadPromises);
+      setTimeout(() => setUploadOverlayHold(false), 3000);
+    } else {
+      setUploadOverlayHold(false);
+    }
   };
 
   // Copy room link with referral code
