@@ -28,39 +28,33 @@ const FALLBACK_ICE_SERVERS: RTCConfiguration = {
   iceCandidatePoolSize: 5,
 };
 
-// Reconnection config
 const MAX_RECONNECT_ATTEMPTS = 5;
-const BASE_RECONNECT_DELAY = 1000; // 1s
+const BASE_RECONNECT_DELAY = 1000;
 
-// Cache TURN credentials (valid for ~24h, refresh every 12h)
 let cachedIceConfig: RTCConfiguration | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
+const CACHE_TTL = 12 * 60 * 60 * 1000;
 
 async function getIceConfig(): Promise<RTCConfiguration> {
   if (cachedIceConfig && Date.now() - cacheTimestamp < CACHE_TTL) {
     return cachedIceConfig;
   }
-
   try {
     const { data, error } = await supabase.functions.invoke("get-turn-credentials");
     if (error) throw error;
-
     if (data?.iceServers && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
-      // Add Google STUN servers as fallback
       const iceServers = [
         { urls: "stun:stun.l.google.com:19302" },
         ...data.iceServers,
       ];
       cachedIceConfig = { iceServers, iceCandidatePoolSize: 5 };
       cacheTimestamp = Date.now();
-      console.log("[WebRTC] Loaded dynamic TURN credentials from Metered");
+      console.log("[WebRTC] Loaded dynamic TURN credentials");
       return cachedIceConfig;
     }
   } catch (e) {
     console.warn("[WebRTC] Failed to fetch TURN credentials, using fallback:", e);
   }
-
   return FALLBACK_ICE_SERVERS;
 }
 
@@ -89,23 +83,18 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
   const participantIdRef = useRef<string | undefined>();
   const participantsRef = useRef<{ id: string; name: string }[]>([]);
   const iceConfigRef = useRef<RTCConfiguration>(FALLBACK_ICE_SERVERS);
+  const roomIdRef = useRef<string | undefined>();
 
   // Pre-fetch dynamic TURN credentials
   useEffect(() => {
-    getIceConfig().then(config => {
-      iceConfigRef.current = config;
-    });
+    getIceConfig().then(config => { iceConfigRef.current = config; });
   }, []);
 
-  // Keep refs in sync
-  useEffect(() => {
-    localStreamRef.current = localStream;
-    participantIdRef.current = participantId;
-  }, [localStream, participantId]);
-
-  useEffect(() => {
-    participantsRef.current = participants;
-  }, [participants]);
+  // Keep refs in sync (no re-renders triggered)
+  useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
+  useEffect(() => { participantIdRef.current = participantId; }, [participantId]);
+  useEffect(() => { participantsRef.current = participants; }, [participants]);
+  useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
 
   const updateRemoteStreams = useCallback(() => {
     const map = new Map<string, MediaStream>();
@@ -129,7 +118,6 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     });
   }, []);
 
-  /** Flush queued ICE candidates once remoteDescription is set */
   const flushCandidates = useCallback(async (peer: PeerState) => {
     while (peer.pendingCandidates.length > 0) {
       const candidate = peer.pendingCandidates.shift()!;
@@ -141,77 +129,8 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     }
   }, []);
 
-  // Reconnect a failed peer with exponential backoff
-  const reconnectPeer = useCallback((remoteParticipantId: string) => {
-    const peer = peersRef.current.get(remoteParticipantId);
-    const attempts = peer?.reconnectAttempts ?? 0;
-
-    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.warn(`[WebRTC] Max reconnect attempts reached for ${remoteParticipantId}`);
-      updatePeerStatus(remoteParticipantId, "failed");
-      return;
-    }
-
-    // Check if remote participant is still in the room
-    const stillPresent = participantsRef.current.some(p => p.id === remoteParticipantId);
-    if (!stillPresent) {
-      console.log(`[WebRTC] Participant ${remoteParticipantId} left, skipping reconnect`);
-      return;
-    }
-
-    const delay = BASE_RECONNECT_DELAY * Math.pow(2, attempts);
-    console.log(`[WebRTC] Scheduling reconnect #${attempts + 1} for ${remoteParticipantId} in ${delay}ms`);
-    updatePeerStatus(remoteParticipantId, "reconnecting");
-
-    const timer = setTimeout(async () => {
-      if (!participantIdRef.current || !roomId || !localStreamRef.current) return;
-
-      // Clean up old connection
-      const existingPeer = peersRef.current.get(remoteParticipantId);
-      if (existingPeer) {
-        if (existingPeer.reconnectTimer) clearTimeout(existingPeer.reconnectTimer);
-        existingPeer.connection.close();
-        peersRef.current.delete(remoteParticipantId);
-      }
-
-      // Only the participant with the "smaller" ID initiates
-      if (participantIdRef.current < remoteParticipantId) {
-        console.log(`[WebRTC] Reconnecting to ${remoteParticipantId} (attempt ${attempts + 1})`);
-        const newPeer = createPeerConnectionInternal(remoteParticipantId);
-        newPeer.reconnectAttempts = attempts + 1;
-        
-        try {
-          const offer = await newPeer.connection.createOffer();
-          await newPeer.connection.setLocalDescription(offer);
-
-          await supabase.from("webrtc_signals").insert([{
-            room_id: roomId,
-            sender_id: participantIdRef.current,
-            receiver_id: remoteParticipantId,
-            signal_type: "offer",
-            signal_data: { sdp: offer.sdp, type: offer.type } as any,
-          }]);
-        } catch (e) {
-          console.error(`[WebRTC] Reconnect offer failed for ${remoteParticipantId}:`, e);
-          // Schedule another attempt
-          const nextPeer = peersRef.current.get(remoteParticipantId);
-          if (nextPeer) {
-            nextPeer.reconnectAttempts = attempts + 1;
-            reconnectPeer(remoteParticipantId);
-          }
-        }
-      }
-    }, delay);
-
-    // Store timer so it can be cleaned up
-    if (peer) {
-      peer.reconnectTimer = timer;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, updatePeerStatus]);
-
-  const createPeerConnectionInternal = useCallback((remoteParticipantId: string): PeerState => {
-    // Close existing connection if any
+  // Create peer connection - works even without localStream (tracks added later)
+  const createPeerConnection = useCallback((remoteParticipantId: string): PeerState => {
     const existing = peersRef.current.get(remoteParticipantId);
     if (existing) {
       if (existing.reconnectTimer) clearTimeout(existing.reconnectTimer);
@@ -222,28 +141,26 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     const connection = new RTCPeerConnection(iceConfigRef.current);
     const remoteStream = new MediaStream();
 
-    // Add local tracks
+    // Add local tracks if available now
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
         connection.addTrack(track, localStreamRef.current!);
       });
       console.log(`[WebRTC] Added ${localStreamRef.current.getTracks().length} local tracks for ${remoteParticipantId}`);
     } else {
-      console.warn(`[WebRTC] No local stream when connecting to ${remoteParticipantId}`);
+      console.log(`[WebRTC] No local stream yet for ${remoteParticipantId}, tracks will be added later`);
     }
 
-    // Handle remote tracks
     connection.ontrack = (event) => {
       console.log(`[WebRTC] Got remote track from ${remoteParticipantId}: ${event.track.kind}`);
       remoteStream.addTrack(event.track);
       updateRemoteStreams();
     };
 
-    // Handle ICE candidates
     connection.onicecandidate = async (event) => {
-      if (event.candidate && participantIdRef.current && roomId) {
+      if (event.candidate && participantIdRef.current && roomIdRef.current) {
         await supabase.from("webrtc_signals").insert([{
-          room_id: roomId,
+          room_id: roomIdRef.current,
           sender_id: participantIdRef.current,
           receiver_id: remoteParticipantId,
           signal_type: "ice",
@@ -255,22 +172,18 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     connection.oniceconnectionstatechange = () => {
       const state = connection.iceConnectionState;
       console.log(`[WebRTC] ICE state for ${remoteParticipantId}: ${state}`);
-      
       if (state === "connected" || state === "completed") {
         updatePeerStatus(remoteParticipantId, "connected");
-        // Reset reconnect counter on successful connection
         const peer = peersRef.current.get(remoteParticipantId);
         if (peer) peer.reconnectAttempts = 0;
       } else if (state === "disconnected") {
         updatePeerStatus(remoteParticipantId, "reconnecting");
-        // ICE disconnected can auto-recover, wait a bit before force-reconnecting
         const peer = peersRef.current.get(remoteParticipantId);
         if (peer && !peer.reconnectTimer) {
           peer.reconnectTimer = setTimeout(() => {
             peer.reconnectTimer = null;
-            // If still disconnected after 5s, force reconnect
             if (connection.iceConnectionState === "disconnected" || connection.iceConnectionState === "failed") {
-              reconnectPeer(remoteParticipantId);
+              scheduleReconnect(remoteParticipantId);
             }
           }, 5000);
         }
@@ -280,10 +193,8 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     connection.onconnectionstatechange = () => {
       const state = connection.connectionState;
       console.log(`[WebRTC] Connection to ${remoteParticipantId}: ${state}`);
-      
       if (state === "failed") {
-        console.log(`[WebRTC] Connection failed to ${remoteParticipantId}, scheduling reconnect`);
-        reconnectPeer(remoteParticipantId);
+        scheduleReconnect(remoteParticipantId);
       }
     };
 
@@ -298,44 +209,84 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     };
     peersRef.current.set(remoteParticipantId, peerState);
     return peerState;
-  }, [roomId, updateRemoteStreams, updatePeerStatus, reconnectPeer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateRemoteStreams, updatePeerStatus]);
 
-  // Initiate connection to a remote participant (caller side)
-  const connectToPeer = useCallback(async (remoteParticipantId: string) => {
-    if (!participantIdRef.current || !roomId || !localStreamRef.current) return;
-    if (peersRef.current.has(remoteParticipantId)) return;
+  // Reconnection with exponential backoff
+  const scheduleReconnect = useCallback((remoteParticipantId: string) => {
+    const peer = peersRef.current.get(remoteParticipantId);
+    const attempts = peer?.reconnectAttempts ?? 0;
 
-    console.log(`[WebRTC] Creating offer for ${remoteParticipantId}`);
-    const peer = createPeerConnectionInternal(remoteParticipantId);
+    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn(`[WebRTC] Max reconnect attempts reached for ${remoteParticipantId}`);
+      updatePeerStatus(remoteParticipantId, "failed");
+      return;
+    }
 
-    const offer = await peer.connection.createOffer();
-    await peer.connection.setLocalDescription(offer);
+    const stillPresent = participantsRef.current.some(p => p.id === remoteParticipantId);
+    if (!stillPresent) return;
 
-    await supabase.from("webrtc_signals").insert([{
-      room_id: roomId,
-      sender_id: participantIdRef.current,
-      receiver_id: remoteParticipantId,
-      signal_type: "offer",
-      signal_data: { sdp: offer.sdp, type: offer.type } as any,
-    }]);
-  }, [roomId, createPeerConnectionInternal]);
+    const delay = BASE_RECONNECT_DELAY * Math.pow(2, attempts);
+    console.log(`[WebRTC] Reconnect #${attempts + 1} for ${remoteParticipantId} in ${delay}ms`);
+    updatePeerStatus(remoteParticipantId, "reconnecting");
 
-  // Handle incoming signals via realtime subscription + polling fallback
+    const timer = setTimeout(async () => {
+      const myId = participantIdRef.current;
+      const myRoom = roomIdRef.current;
+      if (!myId || !myRoom) return;
+
+      const existingPeer = peersRef.current.get(remoteParticipantId);
+      if (existingPeer) {
+        if (existingPeer.reconnectTimer) clearTimeout(existingPeer.reconnectTimer);
+        existingPeer.connection.close();
+        peersRef.current.delete(remoteParticipantId);
+      }
+
+      if (myId < remoteParticipantId) {
+        const newPeer = createPeerConnection(remoteParticipantId);
+        newPeer.reconnectAttempts = attempts + 1;
+        try {
+          const offer = await newPeer.connection.createOffer();
+          await newPeer.connection.setLocalDescription(offer);
+          await supabase.from("webrtc_signals").insert([{
+            room_id: myRoom,
+            sender_id: myId,
+            receiver_id: remoteParticipantId,
+            signal_type: "offer",
+            signal_data: { sdp: offer.sdp, type: offer.type } as any,
+          }]);
+        } catch (e) {
+          console.error(`[WebRTC] Reconnect offer failed:`, e);
+        }
+      }
+    }, delay);
+
+    if (peer) peer.reconnectTimer = timer;
+  }, [createPeerConnection, updatePeerStatus]);
+
+  // ============================================================
+  // SIGNALING: runs as soon as roomId + participantId are known
+  // Does NOT depend on localStream
+  // ============================================================
   useEffect(() => {
-    if (!roomId || !participantId || !localStream) return;
+    if (!roomId || !participantId) return;
 
     let isMounted = true;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
-    let isProcessing = false;
+    const processedIds = new Set<string>();
 
     const handleSignal = async (signal: any) => {
+      const signalId = signal.id;
+      if (processedIds.has(signalId)) return;
+      processedIds.add(signalId);
+
       const senderId = signal.sender_id;
       if (senderId === participantId) return;
 
       try {
         if (signal.signal_type === "offer") {
           console.log(`[WebRTC] Received offer from ${senderId}`);
-          const peer = createPeerConnectionInternal(senderId);
+          const peer = createPeerConnection(senderId);
           await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
           await flushCandidates(peer);
 
@@ -349,7 +300,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             signal_type: "answer",
             signal_data: { sdp: answer.sdp, type: answer.type } as any,
           }]);
-
+          console.log(`[WebRTC] Sent answer to ${senderId}`);
           updateRemoteStreams();
         } else if (signal.signal_type === "answer") {
           console.log(`[WebRTC] Received answer from ${senderId}`);
@@ -375,61 +326,56 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       } catch (e) {
         console.error(`[WebRTC] Error handling signal ${signal.signal_type} from ${senderId}:`, e);
       }
+
+      // Delete processed signal from DB
+      supabase.from("webrtc_signals").delete().eq("id", signalId).then(() => {});
     };
 
-    // Process pending signals from DB (used both initially and as polling fallback)
     const processPendingSignals = async () => {
-      if (!isMounted || isProcessing) return;
-      isProcessing = true;
-
+      if (!isMounted) return;
       try {
-        const { data: signals } = await supabase
+        const { data: signals, error } = await supabase
           .from("webrtc_signals")
           .select("*")
           .eq("room_id", roomId)
           .eq("receiver_id", participantId)
           .order("created_at", { ascending: true });
 
+        if (error) {
+          console.error("[WebRTC] Error fetching signals:", error);
+          return;
+        }
+
         if (signals && signals.length > 0) {
-          console.log(`[WebRTC] Processing ${signals.length} pending signals`);
-          const signalIds = signals.map(s => s.id);
-          
+          console.log(`[WebRTC] Polling found ${signals.length} pending signals`);
           for (const signal of signals) {
             if (!isMounted) break;
             await handleSignal(signal);
           }
-
-          // Delete processed signals
-          for (const id of signalIds) {
-            await supabase.from("webrtc_signals").delete().eq("id", id);
-          }
         }
       } catch (e) {
-        console.error("[WebRTC] Error processing pending signals:", e);
-      } finally {
-        isProcessing = false;
+        console.error("[WebRTC] Error in processPendingSignals:", e);
       }
     };
 
-    // Schedule polling fallback (catches any signals missed by realtime)
+    // Start polling immediately (every 2s)
     const startPolling = () => {
       if (pollTimer) clearTimeout(pollTimer);
       const poll = () => {
         if (!isMounted) return;
         processPendingSignals().then(() => {
           if (isMounted) {
-            pollTimer = setTimeout(poll, 2000); // Poll every 2s
+            pollTimer = setTimeout(poll, 2000);
           }
         });
       };
-      // Start first poll after 1s to give realtime a chance
-      pollTimer = setTimeout(poll, 1000);
+      pollTimer = setTimeout(poll, 500);
     };
 
     // Initial fetch
     processPendingSignals();
 
-    // Subscribe to new signals via realtime
+    // Subscribe to realtime as well (belt-and-suspenders)
     const channel = supabase
       .channel(`webrtc-${roomId}-${participantId}`)
       .on(
@@ -441,40 +387,54 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           filter: `receiver_id=eq.${participantId}`,
         },
         (payload) => {
-          handleSignal(payload.new).then(() => {
-            supabase.from("webrtc_signals").delete().eq("id", (payload.new as any).id).then(() => {});
-          });
+          handleSignal(payload.new);
         }
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("[WebRTC] Realtime subscription active, starting polling fallback");
-          processPendingSignals();
-          startPolling();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("[WebRTC] Realtime subscription failed, relying on polling");
+        console.log(`[WebRTC] Realtime subscription status: ${status}`);
+        if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           startPolling();
         }
       });
+
+    // Also start polling right away in case subscription takes long
+    startPolling();
 
     return () => {
       isMounted = false;
       if (pollTimer) clearTimeout(pollTimer);
       supabase.removeChannel(channel);
     };
-  }, [roomId, participantId, localStream, createPeerConnectionInternal, updateRemoteStreams, flushCandidates]);
+  // Only depend on roomId + participantId. Signal handler uses refs for everything else.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, participantId]);
 
-  // Connect to new participants when they appear
+  // Connect to new participants (initiate offers) — needs localStream
   useEffect(() => {
     if (!participantId || !localStream) return;
 
     const otherParticipants = participants.filter(p => p.id !== participantId);
-
     for (const p of otherParticipants) {
       if (!peersRef.current.has(p.id)) {
-        // Only the participant with the "smaller" ID initiates to avoid double-offers
         if (participantId < p.id) {
-          connectToPeer(p.id);
+          // Initiate connection
+          (async () => {
+            const peer = createPeerConnection(p.id);
+            try {
+              const offer = await peer.connection.createOffer();
+              await peer.connection.setLocalDescription(offer);
+              await supabase.from("webrtc_signals").insert([{
+                room_id: roomId,
+                sender_id: participantId,
+                receiver_id: p.id,
+                signal_type: "offer",
+                signal_data: { sdp: offer.sdp, type: offer.type } as any,
+              }]);
+              console.log(`[WebRTC] Sent offer to ${p.id}`);
+            } catch (e) {
+              console.error(`[WebRTC] Failed to create offer for ${p.id}:`, e);
+            }
+          })();
         }
       }
     }
@@ -487,13 +447,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         if (peer.reconnectTimer) clearTimeout(peer.reconnectTimer);
         peer.connection.close();
         peersRef.current.delete(peerId);
-        updatePeerStatus(peerId, "failed"); // removes from map
+        updatePeerStatus(peerId, "failed");
         updateRemoteStreams();
       }
     });
-  }, [participants, participantId, localStream, connectToPeer, updatePeerStatus, updateRemoteStreams]);
+  }, [participants, participantId, localStream, roomId, createPeerConnection, updatePeerStatus, updateRemoteStreams]);
 
-  // Update local tracks when stream changes (e.g. device switch)
+  // Update local tracks when stream changes (e.g. device switch or stream becomes available)
   useEffect(() => {
     if (!localStream) return;
 
@@ -502,11 +462,15 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       localStream.getTracks().forEach(track => {
         const sender = senders.find(s => s.track?.kind === track.kind);
         if (sender) {
-          sender.replaceTrack(track).catch(e => 
+          sender.replaceTrack(track).catch(e =>
             console.warn(`[WebRTC] Failed to replace track for ${peerId}:`, e)
           );
         } else {
-          peer.connection.addTrack(track, localStream);
+          try {
+            peer.connection.addTrack(track, localStream);
+          } catch (e) {
+            console.warn(`[WebRTC] Failed to add track for ${peerId}:`, e);
+          }
         }
       });
     });
