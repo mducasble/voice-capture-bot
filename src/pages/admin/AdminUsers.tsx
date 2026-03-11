@@ -89,6 +89,7 @@ export default function AdminUsers() {
   const [sortAsc, setSortAsc] = useState(false);
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
   const userIds = useMemo(() => profiles.map(p => p.id), [profiles]);
