@@ -320,80 +320,116 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
     }]);
   }, [roomId, createPeerConnectionInternal]);
 
-  // Handle incoming signals via realtime subscription
+  // Handle incoming signals via realtime subscription + polling fallback
   useEffect(() => {
     if (!roomId || !participantId || !localStream) return;
+
+    let isMounted = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let isProcessing = false;
 
     const handleSignal = async (signal: any) => {
       const senderId = signal.sender_id;
       if (senderId === participantId) return;
 
-      if (signal.signal_type === "offer") {
-        console.log(`[WebRTC] Received offer from ${senderId}`);
-        const peer = createPeerConnectionInternal(senderId);
-        await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
-        await flushCandidates(peer);
-
-        const answer = await peer.connection.createAnswer();
-        await peer.connection.setLocalDescription(answer);
-
-        await supabase.from("webrtc_signals").insert([{
-          room_id: roomId,
-          sender_id: participantId,
-          receiver_id: senderId,
-          signal_type: "answer",
-          signal_data: { sdp: answer.sdp, type: answer.type } as any,
-        }]);
-
-        updateRemoteStreams();
-      } else if (signal.signal_type === "answer") {
-        console.log(`[WebRTC] Received answer from ${senderId}`);
-        const peer = peersRef.current.get(senderId);
-        if (peer && peer.connection.signalingState === "have-local-offer") {
+      try {
+        if (signal.signal_type === "offer") {
+          console.log(`[WebRTC] Received offer from ${senderId}`);
+          const peer = createPeerConnectionInternal(senderId);
           await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
           await flushCandidates(peer);
-        }
-      } else if (signal.signal_type === "ice") {
-        const peer = peersRef.current.get(senderId);
-        if (peer) {
-          if (peer.connection.remoteDescription) {
-            try {
-              await peer.connection.addIceCandidate(new RTCIceCandidate(signal.signal_data));
-            } catch (e) {
-              console.warn("[WebRTC] Failed to add ICE candidate:", e);
+
+          const answer = await peer.connection.createAnswer();
+          await peer.connection.setLocalDescription(answer);
+
+          await supabase.from("webrtc_signals").insert([{
+            room_id: roomId,
+            sender_id: participantId,
+            receiver_id: senderId,
+            signal_type: "answer",
+            signal_data: { sdp: answer.sdp, type: answer.type } as any,
+          }]);
+
+          updateRemoteStreams();
+        } else if (signal.signal_type === "answer") {
+          console.log(`[WebRTC] Received answer from ${senderId}`);
+          const peer = peersRef.current.get(senderId);
+          if (peer && peer.connection.signalingState === "have-local-offer") {
+            await peer.connection.setRemoteDescription(new RTCSessionDescription(signal.signal_data));
+            await flushCandidates(peer);
+          }
+        } else if (signal.signal_type === "ice") {
+          const peer = peersRef.current.get(senderId);
+          if (peer) {
+            if (peer.connection.remoteDescription) {
+              try {
+                await peer.connection.addIceCandidate(new RTCIceCandidate(signal.signal_data));
+              } catch (e) {
+                console.warn("[WebRTC] Failed to add ICE candidate:", e);
+              }
+            } else {
+              peer.pendingCandidates.push(signal.signal_data);
             }
-          } else {
-            // Queue candidate — will be flushed when remoteDescription is set
-            peer.pendingCandidates.push(signal.signal_data);
           }
         }
+      } catch (e) {
+        console.error(`[WebRTC] Error handling signal ${signal.signal_type} from ${senderId}:`, e);
       }
     };
 
-    // Process any pending signals first
+    // Process pending signals from DB (used both initially and as polling fallback)
     const processPendingSignals = async () => {
-      const { data: signals } = await supabase
-        .from("webrtc_signals")
-        .select("*")
-        .eq("room_id", roomId)
-        .eq("receiver_id", participantId)
-        .order("created_at", { ascending: true });
+      if (!isMounted || isProcessing) return;
+      isProcessing = true;
 
-      if (signals && signals.length > 0) {
-        for (const signal of signals) {
-          await handleSignal(signal);
-        }
-        await supabase
+      try {
+        const { data: signals } = await supabase
           .from("webrtc_signals")
-          .delete()
+          .select("*")
+          .eq("room_id", roomId)
           .eq("receiver_id", participantId)
-          .eq("room_id", roomId);
+          .order("created_at", { ascending: true });
+
+        if (signals && signals.length > 0) {
+          console.log(`[WebRTC] Processing ${signals.length} pending signals`);
+          const signalIds = signals.map(s => s.id);
+          
+          for (const signal of signals) {
+            if (!isMounted) break;
+            await handleSignal(signal);
+          }
+
+          // Delete processed signals
+          for (const id of signalIds) {
+            await supabase.from("webrtc_signals").delete().eq("id", id);
+          }
+        }
+      } catch (e) {
+        console.error("[WebRTC] Error processing pending signals:", e);
+      } finally {
+        isProcessing = false;
       }
     };
 
+    // Schedule polling fallback (catches any signals missed by realtime)
+    const startPolling = () => {
+      if (pollTimer) clearTimeout(pollTimer);
+      const poll = () => {
+        if (!isMounted) return;
+        processPendingSignals().then(() => {
+          if (isMounted) {
+            pollTimer = setTimeout(poll, 2000); // Poll every 2s
+          }
+        });
+      };
+      // Start first poll after 1s to give realtime a chance
+      pollTimer = setTimeout(poll, 1000);
+    };
+
+    // Initial fetch
     processPendingSignals();
 
-    // Subscribe to new signals
+    // Subscribe to new signals via realtime
     const channel = supabase
       .channel(`webrtc-${roomId}-${participantId}`)
       .on(
@@ -405,20 +441,25 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           filter: `receiver_id=eq.${participantId}`,
         },
         (payload) => {
-          handleSignal(payload.new);
-          supabase.from("webrtc_signals").delete().eq("id", (payload.new as any).id).then(() => {});
+          handleSignal(payload.new).then(() => {
+            supabase.from("webrtc_signals").delete().eq("id", (payload.new as any).id).then(() => {});
+          });
         }
       )
       .subscribe((status) => {
-        // Re-poll pending signals once subscription is confirmed active
-        // This closes the race window where signals arrive between initial poll and subscription activation
         if (status === "SUBSCRIBED") {
-          console.log("[WebRTC] Realtime subscription active, re-polling pending signals");
+          console.log("[WebRTC] Realtime subscription active, starting polling fallback");
           processPendingSignals();
+          startPolling();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[WebRTC] Realtime subscription failed, relying on polling");
+          startPolling();
         }
       });
 
     return () => {
+      isMounted = false;
+      if (pollTimer) clearTimeout(pollTimer);
       supabase.removeChannel(channel);
     };
   }, [roomId, participantId, localStream, createPeerConnectionInternal, updateRemoteStreams, flushCandidates]);
