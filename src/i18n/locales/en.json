@@ -239,7 +239,7 @@
   "audioTest": {
     "title": "Audio Test",
     "idleDesc": "Record {{duration}}s speaking normally to evaluate your setup quality",
-    "idealRetestHint": "For optimal results, test and adjust at least 3 times",
+    "idealRetestHint": "For optimal results, test and adjust 3 times",
     "startTest": "START TEST",
     "recordingTest": "Recording Test...",
     "recordingDesc": "Speak as if recording normally. Avoid long pauses.",
