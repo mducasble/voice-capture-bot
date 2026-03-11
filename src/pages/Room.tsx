@@ -1179,14 +1179,14 @@ const Room = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {p.id !== currentParticipant.id && (() => {
-                        const status = peerStatuses.get(p.id);
-                        if (status === "reconnecting") return <span className="text-[10px]" title="Reconectando...">🔄</span>;
-                        if (status === "connecting") return <span className="text-[10px]" title="Conectando...">⏳</span>;
-                        if (status === "connected") return <span className="text-[10px]" title="Conectado">🔊</span>;
-                        if (p.is_connected) return <span className="text-[10px]" title="Aguardando áudio">📡</span>;
-                        return null;
-                      })()}
+                      {p.id !== currentParticipant.id && (
+                        <AudioLevelIndicator
+                          stream={remoteStreams.get(p.id) ?? null}
+                          isConnected={!!p.is_connected}
+                          status={peerStatuses.get(p.id)}
+                          compact
+                        />
+                      )}
                       {p.audio_test_status === "passed" && <span className="text-[10px]">✅</span>}
                       {p.audio_test_status === "failed" && <span className="text-[10px]">❌</span>}
                       {p.audio_test_status === "testing" && <span className="text-[10px]">⏳</span>}
