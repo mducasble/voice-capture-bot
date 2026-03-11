@@ -458,13 +458,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             try {
               const offer = await peer.connection.createOffer();
               await peer.connection.setLocalDescription(offer);
-              await supabase.from("webrtc_signals").insert([{
+              await insertSignalWithRetry({
                 room_id: roomId,
                 sender_id: participantId,
                 receiver_id: p.id,
                 signal_type: "offer",
                 signal_data: { sdp: offer.sdp, type: offer.type } as any,
-              }]);
+              });
               console.log(`[WebRTC] Sent offer to ${p.id}`);
             } catch (e) {
               console.error(`[WebRTC] Failed to create offer for ${p.id}:`, e);
