@@ -37,6 +37,7 @@ serve(async (req) => {
       format = 'wav',
       language = 'pt',
       campaign_id,
+      audio_profile,
     } = await req.json();
 
     if (!filename || !file_url || !session_id || !campaign_id) {
@@ -95,7 +96,7 @@ serve(async (req) => {
         recording_type,
         transcription_status: 'pending',
         language,
-        metadata: { source: 'webapp', participant_id, campaign_id },
+        metadata: { source: 'webapp', participant_id, campaign_id, audio_profile: audio_profile || null },
       })
       .select()
       .single();
