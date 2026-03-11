@@ -309,13 +309,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           const answer = await peer.connection.createAnswer();
           await peer.connection.setLocalDescription(answer);
 
-          await supabase.from("webrtc_signals").insert([{
+          await insertSignalWithRetry({
             room_id: roomId,
             sender_id: participantId,
             receiver_id: senderId,
             signal_type: "answer",
             signal_data: { sdp: answer.sdp, type: answer.type } as any,
-          }]);
+          });
           console.log(`[WebRTC] Sent answer to ${senderId}`);
           updateRemoteStreams();
         } else if (signal.signal_type === "answer") {
