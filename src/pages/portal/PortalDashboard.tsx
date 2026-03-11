@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Coins, ArrowRight, Layers, Bell, CheckCircle, BookOpen } from "lucide-react";
+import { Calendar, Clock, Coins, ArrowRight, Layers, Bell, CheckCircle, BookOpen, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
