@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, ChevronDown, ChevronUp, Edit2, KeyRound, X, Check, Loader2, Mail } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Edit2, KeyRound, X, Check, Loader2, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import CountrySelect from "@/components/portal/CountrySelect";
@@ -88,6 +89,7 @@ export default function AdminUsers() {
   const [sortAsc, setSortAsc] = useState(false);
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
   const userIds = useMemo(() => profiles.map(p => p.id), [profiles]);
@@ -152,6 +154,27 @@ export default function AdminUsers() {
       else toast.success("Senha alterada com sucesso");
       setResetUserId(null);
       setNewPassword("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (user_id: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ action: "delete_user", user_id }),
+        }
+      );
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-profiles"] });
+      toast.success("Usuário excluído");
+      setDeleteUserId(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -251,6 +274,13 @@ export default function AdminUsers() {
                       >
                         <KeyRound className="h-4 w-4" />
                       </button>
+                      <button
+                        onClick={() => setDeleteUserId(p.id)}
+                        className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Excluir usuário"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -298,6 +328,29 @@ export default function AdminUsers() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação é irreversível. O usuário, seu perfil e todas as permissões serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteUserId && deleteUserMutation.mutate(deleteUserId)}
+              disabled={deleteUserMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteUserMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
