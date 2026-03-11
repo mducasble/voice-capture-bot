@@ -37,6 +37,7 @@ serve(async (req) => {
       format = 'wav',
       language = 'pt',
       campaign_id,
+      audio_profile,
     } = await req.json();
 
     if (!filename || !file_url || !session_id || !campaign_id) {

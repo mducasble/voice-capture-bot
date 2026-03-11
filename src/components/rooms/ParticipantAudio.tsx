@@ -164,7 +164,7 @@ export const ParticipantAudio = ({
             "Authorization": `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+            body: JSON.stringify({
             filename,
             file_url: finalUrl,
             file_size_bytes: wavBlob.size,
@@ -174,6 +174,7 @@ export const ParticipantAudio = ({
             recording_type: "individual",
             format: "wav",
             campaign_id: campaignId || null,
+            audio_profile: audioProfile || null,
           }),
         }
       );
