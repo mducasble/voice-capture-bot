@@ -46,7 +46,13 @@ serve(async (req) => {
       language = 'pt',
       campaign_id,
       audio_profile,
+      user_id: bodyUserId,
     } = await req.json();
+
+    // Resolve user_id: from JWT or from body (bot/electron)
+    if (isBotAuth && bodyUserId) {
+      authUserId = bodyUserId;
+    }
 
     if (!filename || !file_url || !session_id || !campaign_id) {
       return new Response(
