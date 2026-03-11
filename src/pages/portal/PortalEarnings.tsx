@@ -162,7 +162,7 @@ export default function PortalEarnings() {
             { label: t("earnings.totalWithdrawn"), value: fmt(stats.totalPaid) },
           ].map(item => (
             <div key={item.label} className="flex flex-col items-center justify-center p-4" style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}>
-              <span className="font-mono text-lg font-black" style={{ color: "var(--portal-accent)" }}>{item.value}</span>
+              <MoneyValue value={item.value} size="lg" color="var(--portal-accent)" />
               <span className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{item.label}</span>
             </div>
           ))}
