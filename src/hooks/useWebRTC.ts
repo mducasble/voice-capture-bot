@@ -366,6 +366,30 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
               peer.pendingCandidates.push(signal.signal_data);
             }
           }
+        } else if (signal.signal_type === "reconnect-request") {
+          // The other side is requesting us to re-initiate the connection
+          console.log(`[WebRTC] Reconnect request from ${senderId}, re-initiating…`);
+          const existingPeer = peersRef.current.get(senderId);
+          if (existingPeer) {
+            if (existingPeer.reconnectTimer) clearTimeout(existingPeer.reconnectTimer);
+            existingPeer.connection.close();
+            peersRef.current.delete(senderId);
+          }
+          const newPeer = createPeerConnection(senderId);
+          try {
+            const offer = await newPeer.connection.createOffer();
+            await newPeer.connection.setLocalDescription(offer);
+            await insertSignalWithRetry({
+              room_id: roomId,
+              sender_id: participantId,
+              receiver_id: senderId,
+              signal_type: "offer",
+              signal_data: { sdp: offer.sdp, type: offer.type } as any,
+            });
+            console.log(`[WebRTC] Sent reconnect offer to ${senderId}`);
+          } catch (e) {
+            console.error(`[WebRTC] Failed to create reconnect offer for ${senderId}:`, e);
+          }
         }
       } catch (e) {
         console.error(`[WebRTC] Error handling signal ${signal.signal_type} from ${senderId}:`, e);
