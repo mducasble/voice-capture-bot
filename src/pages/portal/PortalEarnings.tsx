@@ -148,7 +148,7 @@ export default function PortalEarnings() {
                   </div>
                 )}
                 <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
-                  {s.tasks} {t("earnings.tasks")} · {t("earnings.total")}: {fmt(s.total)}
+                  {s.tasks} {t("earnings.tasks")} · {t("earnings.total")}: US$ {fmt(s.total)}
                 </p>
               </div>
             );
