@@ -358,21 +358,58 @@ const Room = () => {
     checkCreatorParticipant();
   }, [roomId, room, dbCreatorParticipant, currentParticipant, getAudioConstraints]);
 
-  // Fetch and subscribe to participants
+  // Fetch and subscribe to participants (with polling fallback)
   useEffect(() => {
     if (!roomId) return;
+    let isMounted = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fetchParticipants = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("room_participants")
         .select("*")
         .eq("room_id", roomId)
         .eq("is_connected", true);
 
-      if (data) setParticipants(data as Participant[]);
+      if (error) {
+        // Handle JWT expiry gracefully
+        const msg = (error as any)?.message || '';
+        if (msg.includes('JWT expired') || (error as any)?.code === 'PGRST303') {
+          console.warn("[Room] JWT expired during participant fetch, refreshing…");
+          await supabase.auth.refreshSession();
+        }
+        return;
+      }
+
+      if (data && isMounted) setParticipants(data as Participant[]);
+    };
+
+    // Also poll room data for resilience
+    const fetchRoom = async () => {
+      const { data } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("id", roomId)
+        .single();
+      if (data && isMounted) setRoom(data as Room);
     };
 
     fetchParticipants();
+
+    // Polling fallback: re-fetch participants every 5s
+    const startPolling = () => {
+      const poll = () => {
+        if (!isMounted) return;
+        fetchParticipants().then(() => {
+          // Also refresh room state every other poll
+          fetchRoom();
+          if (isMounted) {
+            pollTimer = setTimeout(poll, 5000);
+          }
+        });
+      };
+      pollTimer = setTimeout(poll, 5000);
+    };
 
     // Subscribe to realtime changes
     const channel = supabase
@@ -385,11 +422,20 @@ const Room = () => {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${roomId}` },
-        (payload) => setRoom(payload.new as Room)
+        (payload) => { if (isMounted) setRoom(payload.new as Room); }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Room] Realtime subscription status: ${status}`);
+        // Always start polling as fallback
+        startPolling();
+      });
+
+    // Start polling immediately in case subscription takes time
+    startPolling();
 
     return () => {
+      isMounted = false;
+      if (pollTimer) clearTimeout(pollTimer);
       supabase.removeChannel(channel);
     };
   }, [roomId]);
