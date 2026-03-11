@@ -331,6 +331,8 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       supabase.from("webrtc_signals").delete().eq("id", signalId).then(() => {});
     };
 
+    let authRetrying = false;
+
     const processPendingSignals = async () => {
       if (!isMounted) return;
       try {
@@ -342,6 +344,23 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           .order("created_at", { ascending: true });
 
         if (error) {
+          // Detect JWT expired / auth errors and refresh the session
+          const msg = typeof error === 'object' && error !== null ? (error as any).message || '' : '';
+          if (msg.includes('JWT expired') || msg.includes('JWT') || (error as any).code === 'PGRST303') {
+            if (!authRetrying) {
+              authRetrying = true;
+              console.warn("[WebRTC] JWT expired, refreshing session…");
+              const { error: refreshError } = await supabase.auth.refreshSession();
+              if (refreshError) {
+                console.error("[WebRTC] Session refresh failed:", refreshError);
+              } else {
+                console.log("[WebRTC] Session refreshed successfully");
+              }
+              // Allow next attempt after a short cooldown
+              setTimeout(() => { authRetrying = false; }, 5000);
+            }
+            return;
+          }
           console.error("[WebRTC] Error fetching signals:", error);
           return;
         }
