@@ -141,6 +141,7 @@
     "totalWithdrawn": "Total Sacado",
     "codeUpdated": "Código de referral atualizado!",
     "linkCopied": "Link copiado!",
+    "noCodeYet": "Defina seu código abaixo",
     "invalidCode": "Código inválido",
     "codeTooShort": "Código deve ter pelo menos 3 caracteres",
     "codeInUse": "Este código já está em uso",

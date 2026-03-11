@@ -141,6 +141,7 @@
     "totalWithdrawn": "Total Withdrawn",
     "codeUpdated": "Referral code updated!",
     "linkCopied": "Link copied!",
+    "noCodeYet": "Set your code below",
     "invalidCode": "Invalid code",
     "codeTooShort": "Code must be at least 3 characters",
     "codeInUse": "This code is already in use",
