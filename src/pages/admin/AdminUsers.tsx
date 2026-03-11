@@ -274,6 +274,13 @@ export default function AdminUsers() {
                       >
                         <KeyRound className="h-4 w-4" />
                       </button>
+                      <button
+                        onClick={() => setDeleteUserId(p.id)}
+                        className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Excluir usuário"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
