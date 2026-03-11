@@ -56,16 +56,23 @@ Deno.serve(async (req) => {
 
     if (action === "get_user_email") {
       const { data: userData, error } = await adminClient.auth.admin.getUserById(user_id);
-      if (error) throw error;
+      if (error || !userData?.user) {
+        return new Response(JSON.stringify({ email: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ email: userData.user.email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "delete_user") {
-      // Delete profile first, then auth user
+      // Delete related data first, then auth user
+      await adminClient.from("earnings_ledger").delete().eq("user_id", user_id);
+      await adminClient.from("referrals").delete().eq("user_id", user_id);
+      await adminClient.from("campaign_participants").delete().eq("user_id", user_id);
+      await adminClient.from("campaign_waitlist").delete().eq("user_id", user_id);
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
       await adminClient.from("profiles").delete().eq("id", user_id);
+      // Auth user may not exist if already partially deleted
       const { error } = await adminClient.auth.admin.deleteUser(user_id);
-      if (error) throw error;
+      if (error && !error.message.includes("not found")) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
