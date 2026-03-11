@@ -1,6 +1,22 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper: insert signal with retry on auth errors
+async function insertSignalWithRetry(payload: any, maxRetries = 2): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { error } = await supabase.from("webrtc_signals").insert([payload]);
+    if (!error) return;
+    const msg = (error as any)?.message || '';
+    if ((msg.includes('JWT expired') || (error as any)?.code === 'PGRST303') && attempt < maxRetries) {
+      console.warn(`[WebRTC] Signal insert failed (JWT expired), refreshing session (attempt ${attempt + 1})…`);
+      await supabase.auth.refreshSession();
+      continue;
+    }
+    console.error(`[WebRTC] Signal insert failed:`, error);
+    return;
+  }
+}
+
 // Fallback ICE config used while fetching dynamic TURN credentials
 const FALLBACK_ICE_SERVERS: RTCConfiguration = {
   iceServers: [
