@@ -1023,7 +1023,7 @@ const Room = () => {
                 {room.is_recording ? `${t("room.recording")} ${formatDuration(recordingDuration)}` : room.status === "completed" ? t("room.completed") : t("room.waiting")}
               </span>
             </div>
-            <h1 className="font-mono text-4xl font-black uppercase tracking-tight mb-4" style={{ color: "var(--portal-text)" }}>
+            <h1 className="font-mono text-2xl sm:text-4xl font-black uppercase tracking-tight mb-4" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
             <div className="flex items-center gap-8">
