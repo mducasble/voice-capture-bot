@@ -409,7 +409,14 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           supabase.from("webrtc_signals").delete().eq("id", (payload.new as any).id).then(() => {});
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Re-poll pending signals once subscription is confirmed active
+        // This closes the race window where signals arrive between initial poll and subscription activation
+        if (status === "SUBSCRIBED") {
+          console.log("[WebRTC] Realtime subscription active, re-polling pending signals");
+          processPendingSignals();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
