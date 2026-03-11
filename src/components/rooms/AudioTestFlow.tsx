@@ -295,6 +295,10 @@ export const AudioTestFlow = ({
           <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
             {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </p>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider" style={{ background: "hsl(45 93% 47% / 0.15)", color: "hsl(45 93% 47%)", border: "1px solid hsl(45 93% 47% / 0.3)" }}>
+            <AlertTriangle className="h-3 w-3" />
+            {t("audioTest.idealRetestHint")}
+          </span>
           <div className="flex justify-center">
             <KGenButton onClick={startTest} scrambleText={t("audioTest.startTest")} icon={<Mic className="h-4 w-4" />} />
           </div>
@@ -308,6 +312,10 @@ export const AudioTestFlow = ({
           <CardDescription>
             {t("audioTest.idleDesc", { duration: TEST_DURATION })}
           </CardDescription>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider mx-auto" style={{ background: "hsl(45 93% 47% / 0.15)", color: "hsl(45 93% 47%)", border: "1px solid hsl(45 93% 47% / 0.3)" }}>
+            <AlertTriangle className="h-3 w-3" />
+            {t("audioTest.idealRetestHint")}
+          </span>
         </CardHeader>
         <CardContent className="flex justify-center">
           <Button onClick={startTest} size="lg" className="gap-2">
