@@ -1273,7 +1273,7 @@ const Room = () => {
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       {t("room.conversationTime")}
                     </span>
-                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
+                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
                       {room.duration_minutes.toString().padStart(2, "0")}:00
                     </p>
                   </div>
