@@ -1015,7 +1015,7 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex flex-col gap-6 pb-12 mb-12" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+        <div className="flex flex-col gap-4 sm:gap-6 pb-6 sm:pb-12 mb-6 sm:mb-12" style={{ borderBottom: "1px solid var(--portal-border)" }}>
           <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
