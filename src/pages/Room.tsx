@@ -1054,9 +1054,9 @@ const Room = () => {
           </div>
         </div>
 
-        <div className="flex gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          {/* LEFT COLUMN - Controls (30%) */}
-          <div className="space-y-4" style={{ width: "33%" }}>
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          {/* LEFT COLUMN - Controls */}
+          <div className="space-y-4 w-full lg:w-[33%] order-1">
             {/* Audio Test Flow */}
             {!room.is_recording && room.status !== "completed" && (
               <AudioTestFlow
