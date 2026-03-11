@@ -366,7 +366,7 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
         )}
         <div className="flex-1 min-w-0">
           <span className="font-mono text-sm truncate block text-foreground">
-            {rec.discord_username || rec.filename}
+            {rec.recording_type === "mixed" ? "Mixed" : (rec.discord_username || rec.filename)}
           </span>
         </div>
         {rec.duration_seconds != null && (
