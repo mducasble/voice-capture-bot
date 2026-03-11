@@ -471,15 +471,22 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
       mic_sr: metrics.mic_sr ?? null,
       file_sr: metrics.file_sr ?? null,
       rms_dbfs: metrics.rms_dbfs ?? null,
+      rms_level_db: metrics.rms_dbfs ?? existingMeta.rms_level_db ?? null,
       snr_db: metrics.snr_db ?? null,
       metrics_source: 'huggingface-space',
       metrics_estimated_at: new Date().toISOString(),
       metrics_mode: metricsMode,
     };
 
+    // Also update top-level snr_db column so the UI can read it directly
+    const updatePayload: Record<string, unknown> = { metadata };
+    if (metrics.snr_db != null) {
+      updatePayload.snr_db = metrics.snr_db;
+    }
+
     await supabase
       .from('voice_recordings')
-      .update({ metadata })
+      .update(updatePayload)
       .eq('id', recording_id);
   }
 
