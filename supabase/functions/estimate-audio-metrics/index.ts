@@ -433,9 +433,11 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
   const existingMeta = (recording?.metadata || {}) as Record<string, unknown>;
 
   if (target === 'enhanced') {
-    // Store enhanced metrics under a separate key
+    // Store enhanced metrics under a separate key AND as top-level enhanced_* fields for UI
     const metadata = {
       ...existingMeta,
+      enhanced_snr_db: metrics.snr_db ?? existingMeta.enhanced_snr_db ?? null,
+      enhanced_rms_level_db: metrics.rms_dbfs ?? existingMeta.enhanced_rms_level_db ?? null,
       enhanced_metrics: {
         srmr: metrics.srmr ?? null,
         sigmos_disc: metrics.sigmos_disc ?? null,
