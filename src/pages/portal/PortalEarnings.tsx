@@ -169,7 +169,7 @@ function ReferralSection({ userId, referralCode }: { userId?: string; referralCo
   const [copied, setCopied] = useState(false);
   const { t } = useTranslation();
 
-  const inviteUrl = `${window.location.origin}/invite/${referralCode || ""}`;
+  const inviteUrl = referralCode ? `${window.location.origin}/invite/${referralCode}` : "";
 
   const { data: referralStats } = useQuery({
     queryKey: ["referral-stats", userId],
@@ -234,9 +234,9 @@ function ReferralSection({ userId, referralCode }: { userId?: string; referralCo
 
       <div className="flex items-center gap-2">
         <div className="flex-1 px-3 py-2 font-mono text-sm truncate" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)", color: "var(--portal-text)" }}>
-          {inviteUrl}
+          {inviteUrl || t("earnings.noCodeYet")}
         </div>
-        <button onClick={handleCopy} className="p-2 transition-colors" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)", color: "var(--portal-text-muted)" }}>
+        <button onClick={handleCopy} disabled={!inviteUrl} className="p-2 transition-colors disabled:opacity-40" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-input-bg)", color: "var(--portal-text-muted)" }}>
           {copied ? <Check className="h-4 w-4" style={{ color: "var(--portal-accent)" }} /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
