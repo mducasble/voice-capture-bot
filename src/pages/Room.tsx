@@ -1531,14 +1531,13 @@ const Room = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    {p.id !== currentParticipant.id && (() => {
-                      const status = peerStatuses.get(p.id);
-                      if (status === "reconnecting") return <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">🔄 Reconectando</Badge>;
-                      if (status === "connecting") return <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500">⏳ Conectando</Badge>;
-                      if (status === "connected") return <Volume2 className="h-4 w-4 text-green-500" />;
-                      if (p.is_connected) return <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">📡 Aguardando</Badge>;
-                      return null;
-                    })()}
+                    {p.id !== currentParticipant.id && (
+                      <AudioLevelIndicator
+                        stream={remoteStreams.get(p.id) ?? null}
+                        isConnected={!!p.is_connected}
+                        status={peerStatuses.get(p.id)}
+                      />
+                    )}
                     <Mic className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
