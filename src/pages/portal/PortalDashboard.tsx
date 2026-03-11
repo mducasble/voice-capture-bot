@@ -1,7 +1,7 @@
 import { useCampaigns } from "@/hooks/useCampaigns"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Coins, ArrowRight, Layers, Bell, CheckCircle, BookOpen } from "lucide-react";
+import { Calendar, Clock, Coins, ArrowRight, Layers, Bell, CheckCircle, BookOpen, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import KGenButton from "@/components/portal/KGenButton";
@@ -86,7 +86,9 @@ function CampaignCard({ campaign, isOnWaitlist, user, onWaitlistToggle }: { camp
             <span className="font-mono text-xs font-extrabold uppercase tracking-widest px-2 py-1" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>{campaign.client.name}</span>
           )}
         </div>
-        {campaign.description && <p className="font-mono text-sm line-clamp-2" style={{ color: "var(--portal-text-muted)" }}>{campaign.description}</p>}
+        {campaign.description && (
+          <p className="font-mono text-sm leading-relaxed" style={{ color: "var(--portal-text-muted)" }}>{campaign.description}</p>
+        )}
       </div>
       <div className="p-5 space-y-3">
         <div className="flex flex-wrap gap-3 font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
@@ -97,13 +99,23 @@ function CampaignCard({ campaign, isOnWaitlist, user, onWaitlistToggle }: { camp
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{campaign.target_hours}{t("dashboard.goalHours")}</span>
           )}
         </div>
-        {campaign.language_variants && campaign.language_variants.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {campaign.language_variants.map((v: any) => (
+        <div className="flex flex-wrap items-center gap-2">
+          {campaign.language_variants && campaign.language_variants.length > 0 && (
+            campaign.language_variants.map((v: any) => (
               <span key={v.variant_id} className="font-mono text-xs px-2 py-0.5" style={{ background: "hsl(0 0% 15%)", border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>{v.label}</span>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+          {campaign.geographic_scope?.countries && campaign.geographic_scope.countries.length > 0 && (
+            <span className="font-mono text-xs flex items-center gap-1 px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
+              <Globe className="h-3 w-3" />
+              {campaign.geographic_scope.countries.map((code: string) => {
+                try {
+                  return new Intl.DisplayNames(["pt"], { type: "region" }).of(code);
+                } catch { return code; }
+              }).join(", ")}
+            </span>
+          )}
+        </div>
       </div>
       <div className="p-5 flex gap-2" style={{ borderTop: "1px solid var(--portal-border)" }}>
         <KGenButton
