@@ -1015,7 +1015,7 @@ const Room = () => {
       <div className="space-y-6">
         <RecordingGuidelinesSidebar />
         {/* Portal Room Header */}
-        <div className="flex flex-col gap-6 pb-12 mb-12" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+        <div className="flex flex-col gap-4 sm:gap-6 pb-6 sm:pb-12 mb-6 sm:mb-12" style={{ borderBottom: "1px solid var(--portal-border)" }}>
           <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-3 h-3" style={{ background: room.is_recording ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
@@ -1023,10 +1023,10 @@ const Room = () => {
                 {room.is_recording ? `${t("room.recording")} ${formatDuration(recordingDuration)}` : room.status === "completed" ? t("room.completed") : t("room.waiting")}
               </span>
             </div>
-            <h1 className="font-mono text-4xl font-black uppercase tracking-tight mb-4" style={{ color: "var(--portal-text)" }}>
+            <h1 className="font-mono text-2xl sm:text-4xl font-black uppercase tracking-tight mb-4" style={{ color: "var(--portal-text)" }}>
               {room.room_name || `Sala de ${room.creator_name}`}
             </h1>
-            <div className="flex items-center gap-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-8">
               <p className="font-mono text-base flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
                 <Users className="h-5 w-5" /> {participants.length} {t("room.participants")}
               </p>
@@ -1037,7 +1037,7 @@ const Room = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
             <KGenButton
               variant="primary"
               size="sm"
@@ -1054,9 +1054,9 @@ const Room = () => {
           </div>
         </div>
 
-        <div className="flex gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          {/* LEFT COLUMN - Controls (30%) */}
-          <div className="space-y-4" style={{ width: "33%" }}>
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          {/* LEFT COLUMN - Controls */}
+          <div className="space-y-4 w-full lg:w-[33%] order-1">
             {/* Audio Test Flow */}
             {!room.is_recording && room.status !== "completed" && (
               <AudioTestFlow
@@ -1242,8 +1242,8 @@ const Room = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - Content (67%) */}
-          <div className="space-y-4" style={{ width: "67%" }}>
+          {/* RIGHT COLUMN - Content */}
+          <div className="space-y-4 w-full lg:w-[67%] order-first lg:order-2">
             {/* Countdown Timer */}
             {room.duration_minutes && (() => {
               if (room.is_recording && room.recording_started_at) {
@@ -1258,7 +1258,7 @@ const Room = () => {
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       {t("room.timeRemaining")}
                     </span>
-                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
+                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
                       {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
                     </p>
                     <div className="w-full h-1.5" style={{ background: "var(--portal-border)" }}>
@@ -1273,7 +1273,7 @@ const Room = () => {
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       {t("room.conversationTime")}
                     </span>
-                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
+                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
                       {room.duration_minutes.toString().padStart(2, "0")}:00
                     </p>
                   </div>
