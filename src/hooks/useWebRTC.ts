@@ -191,18 +191,34 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       if (state === "connected" || state === "completed") {
         updatePeerStatus(remoteParticipantId, "connected");
         const peer = peersRef.current.get(remoteParticipantId);
-        if (peer) peer.reconnectAttempts = 0;
+        if (peer) {
+          peer.reconnectAttempts = 0;
+          // Clear any pending reconnect timer on successful connection
+          if (peer.reconnectTimer) {
+            clearTimeout(peer.reconnectTimer);
+            peer.reconnectTimer = null;
+          }
+        }
       } else if (state === "disconnected") {
-        updatePeerStatus(remoteParticipantId, "reconnecting");
+        // ICE "disconnected" is often transient (e.g. network switch).
+        // Wait longer before triggering reconnect.
         const peer = peersRef.current.get(remoteParticipantId);
         if (peer && !peer.reconnectTimer) {
           peer.reconnectTimer = setTimeout(() => {
             peer.reconnectTimer = null;
-            if (connection.iceConnectionState === "disconnected" || connection.iceConnectionState === "failed") {
+            const currentState = connection.iceConnectionState;
+            if (currentState === "disconnected" || currentState === "failed") {
+              console.log(`[WebRTC] ICE still ${currentState} after 15s for ${remoteParticipantId}, reconnecting…`);
+              updatePeerStatus(remoteParticipantId, "reconnecting");
               scheduleReconnect(remoteParticipantId);
+            } else {
+              console.log(`[WebRTC] ICE recovered to ${currentState} for ${remoteParticipantId}`);
             }
-          }, 5000);
+          }, 15000); // Wait 15s — ICE disconnected is often transient
         }
+      } else if (state === "failed") {
+        updatePeerStatus(remoteParticipantId, "reconnecting");
+        scheduleReconnect(remoteParticipantId);
       }
     };
 
@@ -258,6 +274,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         peersRef.current.delete(remoteParticipantId);
       }
 
+      // Only the side with smaller ID initiates the offer
       if (myId < remoteParticipantId) {
         const newPeer = createPeerConnection(remoteParticipantId);
         newPeer.reconnectAttempts = attempts + 1;
@@ -271,9 +288,20 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             signal_type: "offer",
             signal_data: { sdp: offer.sdp, type: offer.type } as any,
           });
+          console.log(`[WebRTC] Reconnect offer sent to ${remoteParticipantId}`);
         } catch (e) {
           console.error(`[WebRTC] Reconnect offer failed:`, e);
         }
+      } else {
+        // Larger-ID side: signal the other peer to re-initiate the connection
+        console.log(`[WebRTC] Requesting reconnect from ${remoteParticipantId} (they should initiate)`);
+        await insertSignalWithRetry({
+          room_id: myRoom,
+          sender_id: myId,
+          receiver_id: remoteParticipantId,
+          signal_type: "reconnect-request",
+          signal_data: {} as any,
+        });
       }
     }, delay);
 
@@ -337,6 +365,30 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             } else {
               peer.pendingCandidates.push(signal.signal_data);
             }
+          }
+        } else if (signal.signal_type === "reconnect-request") {
+          // The other side is requesting us to re-initiate the connection
+          console.log(`[WebRTC] Reconnect request from ${senderId}, re-initiating…`);
+          const existingPeer = peersRef.current.get(senderId);
+          if (existingPeer) {
+            if (existingPeer.reconnectTimer) clearTimeout(existingPeer.reconnectTimer);
+            existingPeer.connection.close();
+            peersRef.current.delete(senderId);
+          }
+          const newPeer = createPeerConnection(senderId);
+          try {
+            const offer = await newPeer.connection.createOffer();
+            await newPeer.connection.setLocalDescription(offer);
+            await insertSignalWithRetry({
+              room_id: roomId,
+              sender_id: participantId,
+              receiver_id: senderId,
+              signal_type: "offer",
+              signal_data: { sdp: offer.sdp, type: offer.type } as any,
+            });
+            console.log(`[WebRTC] Sent reconnect offer to ${senderId}`);
+          } catch (e) {
+            console.error(`[WebRTC] Failed to create reconnect offer for ${senderId}:`, e);
           }
         }
       } catch (e) {
