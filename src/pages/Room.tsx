@@ -99,6 +99,7 @@ const Room = () => {
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
   const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
   const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
+  const [uploadOverlayHold, setUploadOverlayHold] = useState(false);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
@@ -463,7 +464,20 @@ const Room = () => {
     };
   }, [room?.is_recording, room?.recording_started_at]);
 
-  // Handle joining room (for non-creators or creator first time)
+  // Prevent tab close while uploads are in progress
+  useEffect(() => {
+    const isUploading = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    if (!isUploading) return;
+
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isMixedUploading, remoteUploadsInProgress, uploadOverlayHold]);
+
+
   const handleJoin = async (asCreator = false, anonymous = false) => {
     if (!asCreator && !anonymous && !joinName.trim()) {
       toast.error("Digite seu nome");
@@ -682,11 +696,14 @@ const Room = () => {
   const handleStopRecording = async () => {
     if (!room || !roomId) return;
 
+    setUploadOverlayHold(true);
+    const uploadPromises: Promise<void>[] = [];
+
     // Stop mixed recording and upload
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
       const mixedBlob = await mixedRecorder.stopRecording();
       if (mixedBlob) {
-        uploadMixedRecording(mixedBlob);
+        uploadPromises.push(uploadMixedRecording(mixedBlob));
       }
     }
 
@@ -698,7 +715,7 @@ const Room = () => {
         setRemoteUploadsDone(0);
         
         for (const [peerId, { blob, participantName }] of remoteBlobs) {
-          uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+          const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
             setRemoteUploadsDone(prev => {
               const next = prev + 1;
               if (next >= remoteBlobs.size) {
@@ -710,6 +727,7 @@ const Room = () => {
               return next;
             });
           });
+          uploadPromises.push(p);
         }
       }
     }
@@ -722,7 +740,15 @@ const Room = () => {
       })
       .eq("id", roomId);
 
-    toast.success("Gravação finalizada! Processando uploads...");
+    toast.success(t("room.recordingStopped") || "Gravação finalizada! Processando uploads...");
+
+    // Wait for ALL uploads to finish, then hold overlay 3s so user sees confirmation toasts
+    if (uploadPromises.length > 0) {
+      await Promise.allSettled(uploadPromises);
+      setTimeout(() => setUploadOverlayHold(false), 3000);
+    } else {
+      setUploadOverlayHold(false);
+    }
   };
 
   // Copy room link with referral code
@@ -815,7 +841,7 @@ const Room = () => {
     );
   }
 
-    const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0;
+    const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
 
     // Full-screen upload overlay
     const uploadOverlay = isAnyUploadInProgress && (
