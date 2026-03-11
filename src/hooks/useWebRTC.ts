@@ -274,6 +274,7 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         peersRef.current.delete(remoteParticipantId);
       }
 
+      // Only the side with smaller ID initiates the offer
       if (myId < remoteParticipantId) {
         const newPeer = createPeerConnection(remoteParticipantId);
         newPeer.reconnectAttempts = attempts + 1;
@@ -287,9 +288,20 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             signal_type: "offer",
             signal_data: { sdp: offer.sdp, type: offer.type } as any,
           });
+          console.log(`[WebRTC] Reconnect offer sent to ${remoteParticipantId}`);
         } catch (e) {
           console.error(`[WebRTC] Reconnect offer failed:`, e);
         }
+      } else {
+        // Larger-ID side: signal the other peer to re-initiate the connection
+        console.log(`[WebRTC] Requesting reconnect from ${remoteParticipantId} (they should initiate)`);
+        await insertSignalWithRetry({
+          room_id: myRoom,
+          sender_id: myId,
+          receiver_id: remoteParticipantId,
+          signal_type: "reconnect-request",
+          signal_data: {} as any,
+        });
       }
     }, delay);
 
