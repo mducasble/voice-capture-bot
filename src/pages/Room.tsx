@@ -510,6 +510,89 @@ const Room = () => {
     toast.success("Gravação iniciada!");
   };
 
+  // Upload recording directly to S3 via pre-signed URL, then register in DB
+  const uploadViaPresignedUrl = async (
+    wavBlob: Blob,
+    filename: string,
+    participantId: string,
+    participantName: string,
+    recordingType: string,
+    onProgress?: (pct: number) => void,
+  ) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    onProgress?.(10);
+
+    // 1. Get pre-signed URL from edge function
+    const signRes = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-room-upload-url`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename,
+          content_type: "audio/wav",
+          session_id: room!.session_id,
+        }),
+      }
+    );
+
+    if (!signRes.ok) {
+      throw new Error(`Failed to get upload URL: ${await signRes.text()}`);
+    }
+
+    const { upload_url, upload_headers, public_url } = await signRes.json();
+
+    onProgress?.(30);
+
+    // 2. PUT the blob directly to S3
+    const putRes = await fetch(upload_url, {
+      method: "PUT",
+      headers: upload_headers,
+      body: wavBlob,
+    });
+
+    if (!putRes.ok) {
+      throw new Error(`S3 upload failed: ${putRes.status}`);
+    }
+
+    onProgress?.(70);
+
+    // 3. Register the recording in the database
+    const regRes = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-room-recording`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename,
+          file_url: public_url,
+          file_size_bytes: wavBlob.size,
+          session_id: room!.session_id,
+          participant_id: participantId,
+          participant_name: participantName,
+          recording_type: recordingType,
+          format: "wav",
+          campaign_id: campaignId || null,
+        }),
+      }
+    );
+
+    if (!regRes.ok) {
+      throw new Error(`Registration failed: ${await regRes.text()}`);
+    }
+
+    onProgress?.(100);
+    return await regRes.json();
+  };
+
   // Upload mixed recording
   const uploadMixedRecording = async (wavBlob: Blob) => {
     if (!room || !wavBlob || wavBlob.size === 0) return;
@@ -519,42 +602,15 @@ const Room = () => {
     const filename = `room_${room.session_id}_mixed_${Date.now()}.wav`;
 
     try {
-      setMixedUploadProgress(10);
-      const formData = new FormData();
-      formData.append("audio", wavBlob, filename);
-      formData.append("filename", filename);
-      formData.append("session_id", room.session_id);
-      formData.append("participant_id", currentParticipant?.id || "mixed");
-      formData.append("participant_name", "Mixed");
-      formData.append("recording_type", "mixed");
-      formData.append("format", "wav");
-      formData.append("campaign_id", campaignId || "");
-
-      setMixedUploadProgress(30);
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-          },
-          body: formData,
-        }
+      await uploadViaPresignedUrl(
+        wavBlob, filename,
+        currentParticipant?.id || "mixed", "Mixed", "mixed",
+        (pct) => setMixedUploadProgress(pct),
       );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Upload failed: ${errText}`);
-      }
-
-      setMixedUploadProgress(100);
       toast.success("Áudio mixado enviado!");
     } catch (error) {
       console.error("Mixed upload error:", error);
       toast.error("Erro ao enviar áudio mixado. Salvando localmente...");
-      // Fallback: save locally so the recording isn't lost
       try {
         const url = URL.createObjectURL(wavBlob);
         const a = document.createElement("a");
@@ -580,38 +636,14 @@ const Room = () => {
 
     const filename = `room_${room.session_id}_${peerId}_${Date.now()}.wav`;
     try {
-      const formData = new FormData();
-      formData.append("audio", wavBlob, filename);
-      formData.append("filename", filename);
-      formData.append("session_id", room.session_id);
-      formData.append("participant_id", peerId);
-      formData.append("participant_name", participantName);
-      formData.append("recording_type", "individual");
-      formData.append("format", "wav");
-      formData.append("noise_gate_enabled", "false");
-      formData.append("campaign_id", campaignId || "");
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-room-recording`,
-        {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${authToken}` },
-          body: formData,
-        }
+      await uploadViaPresignedUrl(
+        wavBlob, filename,
+        peerId, participantName, "individual",
       );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Upload failed: ${errText}`);
-      }
-
       console.log(`[RemoteBackup] Uploaded backup for ${participantName}`);
       toast.success(`Backup de ${participantName} enviado!`);
     } catch (error) {
       console.error(`[RemoteBackup] Upload error for ${participantName}:`, error);
-      // Fallback: save locally
       try {
         const url = URL.createObjectURL(wavBlob);
         const a = document.createElement("a");
@@ -647,9 +679,6 @@ const Room = () => {
         setRemoteUploadsInProgress(remoteBlobs.size);
         setRemoteUploadsDone(0);
         
-        // Check which participants already uploaded their own recording
-        // We upload all backups - the edge function will handle deduplication
-        // or we can skip if recording already exists
         for (const [peerId, { blob, participantName }] of remoteBlobs) {
           uploadRemoteBackup(peerId, blob, participantName).finally(() => {
             setRemoteUploadsDone(prev => {
