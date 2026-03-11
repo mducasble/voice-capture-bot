@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, ChevronDown, ChevronUp, Edit2, KeyRound, X, Check, Loader2, Mail } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Edit2, KeyRound, X, Check, Loader2, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";

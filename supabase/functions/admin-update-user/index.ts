@@ -60,6 +60,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ email: userData.user.email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "delete_user") {
+      // Delete profile first, then auth user
+      await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      await adminClient.from("profiles").delete().eq("id", user_id);
+      const { error } = await adminClient.auth.admin.deleteUser(user_id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
