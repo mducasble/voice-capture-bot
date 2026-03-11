@@ -156,14 +156,24 @@ export const ParticipantAudio = ({
 
       setUploadProgress(30);
 
-      // 2. PUT directly to S3
-      const putRes = await fetch(upload_url, {
-        method: "PUT",
-        headers: upload_headers,
+      // 2. Upload via streaming proxy (avoids S3 CORS issues)
+      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(filename)}&session_id=${encodeURIComponent(sessionId)}&content_type=${encodeURIComponent("audio/wav")}`;
+      const streamRes = await fetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "audio/wav",
+        },
         body: wavBlob,
       });
 
-      if (!putRes.ok) throw new Error(`S3 upload failed: ${putRes.status}`);
+      if (!streamRes.ok) {
+        const errText = await streamRes.text();
+        console.error("[ParticipantAudio] Stream proxy failed:", errText);
+        throw new Error(`Stream upload failed: ${streamRes.status}`);
+      }
+
+      const { public_url: finalUrl } = await streamRes.json();
 
       setUploadProgress(70);
 
@@ -178,7 +188,7 @@ export const ParticipantAudio = ({
           },
           body: JSON.stringify({
             filename,
-            file_url: public_url,
+            file_url: finalUrl,
             file_size_bytes: wavBlob.size,
             session_id: sessionId,
             participant_id: participantId,
