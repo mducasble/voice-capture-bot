@@ -464,7 +464,20 @@ const Room = () => {
     };
   }, [room?.is_recording, room?.recording_started_at]);
 
-  // Handle joining room (for non-creators or creator first time)
+  // Prevent tab close while uploads are in progress
+  useEffect(() => {
+    const isUploading = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    if (!isUploading) return;
+
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isMixedUploading, remoteUploadsInProgress, uploadOverlayHold]);
+
+
   const handleJoin = async (asCreator = false, anonymous = false) => {
     if (!asCreator && !anonymous && !joinName.trim()) {
       toast.error("Digite seu nome");
