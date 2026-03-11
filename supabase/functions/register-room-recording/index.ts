@@ -46,7 +46,32 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Registering room recording: ${filename} for ${participant_name}`);
+    console.log(`Registering room recording: ${filename} for ${participant_name} (${file_size_bytes} bytes)`);
+
+    // Check for duplicate: individual recording for this participant+session
+    if (recording_type === 'individual') {
+      const { data: existing } = await supabase
+        .from('voice_recordings')
+        .select('id')
+        .eq('discord_channel_id', session_id)
+        .eq('discord_user_id', participant_id)
+        .eq('recording_type', 'individual')
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        console.log(`Duplicate found for ${participant_id} in session ${session_id}, skipping`);
+        return new Response(
+          JSON.stringify({ success: true, recording_id: existing[0].id, file_url, skipped_duplicate: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Calculate duration from WAV file size (PCM 16-bit mono 48kHz + 44 byte header)
+    const sampleRate = 48000;
+    const headerSize = 44;
+    const pcmBytes = Math.max(0, (file_size_bytes || 0) - headerSize);
+    const durationSeconds = pcmBytes / (sampleRate * 1 * 2); // mono, 16-bit
 
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')
@@ -60,11 +85,12 @@ serve(async (req) => {
         filename,
         file_url,
         file_size_bytes: file_size_bytes || 0,
-        sample_rate: 48000,
+        duration_seconds: durationSeconds > 0 ? durationSeconds : null,
+        sample_rate: sampleRate,
         bit_depth: 16,
         channels: 1,
         format,
-        status: 'completed',
+        status: format === 'wav' ? 'processing' : 'completed',
         session_id,
         recording_type,
         transcription_status: 'pending',
