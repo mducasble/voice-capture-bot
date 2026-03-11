@@ -24,20 +24,20 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // ignore
-    }
-    // Always force local cleanup to guarantee logout
+    // Mark that we're intentionally logging out so /auth page doesn't auto-redirect
+    sessionStorage.setItem("is_logging_out", "true");
+    setUser(null);
+    setSession(null);
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
       // ignore
     }
-    // Force state clear and redirect
-    setUser(null);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore - server session may already be gone
+    }
     window.location.href = '/auth';
   }, []);
 
