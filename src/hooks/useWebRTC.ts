@@ -264,13 +264,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         try {
           const offer = await newPeer.connection.createOffer();
           await newPeer.connection.setLocalDescription(offer);
-          await supabase.from("webrtc_signals").insert([{
+          await insertSignalWithRetry({
             room_id: myRoom,
             sender_id: myId,
             receiver_id: remoteParticipantId,
             signal_type: "offer",
             signal_data: { sdp: offer.sdp, type: offer.type } as any,
-          }]);
+          });
         } catch (e) {
           console.error(`[WebRTC] Reconnect offer failed:`, e);
         }
