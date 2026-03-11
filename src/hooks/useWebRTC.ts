@@ -1,6 +1,22 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper: insert signal with retry on auth errors
+async function insertSignalWithRetry(payload: any, maxRetries = 2): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { error } = await supabase.from("webrtc_signals").insert([payload]);
+    if (!error) return;
+    const msg = (error as any)?.message || '';
+    if ((msg.includes('JWT expired') || (error as any)?.code === 'PGRST303') && attempt < maxRetries) {
+      console.warn(`[WebRTC] Signal insert failed (JWT expired), refreshing session (attempt ${attempt + 1})…`);
+      await supabase.auth.refreshSession();
+      continue;
+    }
+    console.error(`[WebRTC] Signal insert failed:`, error);
+    return;
+  }
+}
+
 // Fallback ICE config used while fetching dynamic TURN credentials
 const FALLBACK_ICE_SERVERS: RTCConfiguration = {
   iceServers: [
@@ -159,13 +175,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
 
     connection.onicecandidate = async (event) => {
       if (event.candidate && participantIdRef.current && roomIdRef.current) {
-        await supabase.from("webrtc_signals").insert([{
+        await insertSignalWithRetry({
           room_id: roomIdRef.current,
           sender_id: participantIdRef.current,
           receiver_id: remoteParticipantId,
           signal_type: "ice",
           signal_data: event.candidate.toJSON() as any,
-        }]);
+        });
       }
     };
 
@@ -248,13 +264,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
         try {
           const offer = await newPeer.connection.createOffer();
           await newPeer.connection.setLocalDescription(offer);
-          await supabase.from("webrtc_signals").insert([{
+          await insertSignalWithRetry({
             room_id: myRoom,
             sender_id: myId,
             receiver_id: remoteParticipantId,
             signal_type: "offer",
             signal_data: { sdp: offer.sdp, type: offer.type } as any,
-          }]);
+          });
         } catch (e) {
           console.error(`[WebRTC] Reconnect offer failed:`, e);
         }
@@ -293,13 +309,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
           const answer = await peer.connection.createAnswer();
           await peer.connection.setLocalDescription(answer);
 
-          await supabase.from("webrtc_signals").insert([{
+          await insertSignalWithRetry({
             room_id: roomId,
             sender_id: participantId,
             receiver_id: senderId,
             signal_type: "answer",
             signal_data: { sdp: answer.sdp, type: answer.type } as any,
-          }]);
+          });
           console.log(`[WebRTC] Sent answer to ${senderId}`);
           updateRemoteStreams();
         } else if (signal.signal_type === "answer") {
@@ -442,13 +458,13 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
             try {
               const offer = await peer.connection.createOffer();
               await peer.connection.setLocalDescription(offer);
-              await supabase.from("webrtc_signals").insert([{
+              await insertSignalWithRetry({
                 room_id: roomId,
                 sender_id: participantId,
                 receiver_id: p.id,
                 signal_type: "offer",
                 signal_data: { sdp: offer.sdp, type: offer.type } as any,
-              }]);
+              });
               console.log(`[WebRTC] Sent offer to ${p.id}`);
             } catch (e) {
               console.error(`[WebRTC] Failed to create offer for ${p.id}:`, e);
