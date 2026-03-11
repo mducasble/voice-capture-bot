@@ -1037,7 +1037,7 @@ const Room = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
             <KGenButton
               variant="primary"
               size="sm"
