@@ -239,6 +239,7 @@
   "audioTest": {
     "title": "Teste de Áudio",
     "idleDesc": "Grave {{duration}}s falando normalmente para avaliar a qualidade do seu setup",
+    "idealRetestHint": "O ideal é testar e ajustar pelo menos 3 vezes",
     "startTest": "INICIAR TESTE",
     "recordingTest": "Gravando Teste...",
     "recordingDesc": "Fale como se estivesse gravando normalmente. Evite pausas muito longas.",
