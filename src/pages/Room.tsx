@@ -99,6 +99,7 @@ const Room = () => {
   const [mixedUploadProgress, setMixedUploadProgress] = useState(0);
   const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
   const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
+  const [uploadOverlayHold, setUploadOverlayHold] = useState(false);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
