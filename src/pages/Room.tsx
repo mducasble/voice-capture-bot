@@ -1258,7 +1258,7 @@ const Room = () => {
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                       {t("room.timeRemaining")}
                     </span>
-                    <p className="font-mono text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
+                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
                       {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
                     </p>
                     <div className="w-full h-1.5" style={{ background: "var(--portal-border)" }}>
