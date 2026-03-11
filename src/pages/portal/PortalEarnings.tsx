@@ -15,7 +15,17 @@ const ACTIVITY_KEYS = [
 ];
 
 function fmt(v: number) {
-  return `$${v.toFixed(2)}`;
+  return v.toFixed(2);
+}
+
+function MoneyValue({ value, size = "sm", color }: { value: string; size?: "sm" | "lg"; color?: string }) {
+  const textSize = size === "lg" ? "text-lg" : "text-sm";
+  return (
+    <span className="inline-flex flex-col items-center leading-none">
+      <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>US$</span>
+      <span className={`font-mono ${textSize} font-bold`} style={{ color: color || "var(--portal-text)" }}>{value}</span>
+    </span>
+  );
 }
 
 export default function PortalEarnings() {
