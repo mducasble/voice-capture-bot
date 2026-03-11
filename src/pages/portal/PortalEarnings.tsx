@@ -15,7 +15,17 @@ const ACTIVITY_KEYS = [
 ];
 
 function fmt(v: number) {
-  return `$${v.toFixed(2)}`;
+  return v.toFixed(2);
+}
+
+function MoneyValue({ value, size = "sm", color }: { value: string; size?: "sm" | "lg"; color?: string }) {
+  const textSize = size === "lg" ? "text-lg" : "text-sm";
+  return (
+    <span className="inline-flex flex-col items-center leading-none">
+      <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>US$</span>
+      <span className={`font-mono ${textSize} font-bold`} style={{ color: color || "var(--portal-text)" }}>{value}</span>
+    </span>
+  );
 }
 
 export default function PortalEarnings() {
@@ -120,13 +130,13 @@ export default function PortalEarnings() {
                   <p className="font-mono text-xs font-bold" style={{ color: "var(--portal-text)" }}>{t(activity.i18n)}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.direct)}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
+                <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
+                    <MoneyValue value={fmt(s.direct)} />
+                    <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.directEarnings")}</p>
                   </div>
                   <div className="p-2 text-center" style={{ background: "hsl(0 0% 10%)" }}>
-                    <p className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>{fmt(s.referral)}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.referralEarnings")}</p>
+                    <MoneyValue value={fmt(s.referral)} />
+                    <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{t("earnings.referralEarnings")}</p>
                   </div>
                 </div>
                 {s.pending > 0 && (
@@ -138,7 +148,7 @@ export default function PortalEarnings() {
                   </div>
                 )}
                 <p className="font-mono text-xs text-right" style={{ color: "var(--portal-text-muted)" }}>
-                  {s.tasks} {t("earnings.tasks")} · {t("earnings.total")}: {fmt(s.total)}
+                  {s.tasks} {t("earnings.tasks")} · {t("earnings.total")}: US$ {fmt(s.total)}
                 </p>
               </div>
             );
@@ -152,7 +162,7 @@ export default function PortalEarnings() {
             { label: t("earnings.totalWithdrawn"), value: fmt(stats.totalPaid) },
           ].map(item => (
             <div key={item.label} className="flex flex-col items-center justify-center p-4" style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}>
-              <span className="font-mono text-lg font-black" style={{ color: "var(--portal-accent)" }}>{item.value}</span>
+              <MoneyValue value={item.value} size="lg" color="var(--portal-accent)" />
               <span className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{item.label}</span>
             </div>
           ))}
