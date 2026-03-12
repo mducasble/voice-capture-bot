@@ -5,7 +5,7 @@
 
 import torch
 import torch.nn.functional as F
-from .vector_quantize_pytorch import VectorQuantize
+from models.vector_quantize_pytorch import VectorQuantize
 
 ######## Model for speech enhancement
 class CNN_1D_encoder_SE(torch.nn.Module):
