@@ -410,7 +410,9 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     className={`flex items-center gap-1 ${
                       recording.recording_type === 'individual' 
                         ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' 
-                        : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                        : recording.recording_type === 'remote_backup'
+                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
                     }`}
                   >
                     {recording.recording_type === 'individual' ? (
@@ -418,7 +420,7 @@ export function RecordingCard({ recording }: RecordingCardProps) {
                     ) : (
                       <Users className="h-3 w-3" />
                     )}
-                    {recording.recording_type === 'individual' ? 'Individual' : 'Mixed'}
+                    {recording.recording_type === 'individual' ? 'Individual' : recording.recording_type === 'remote_backup' ? 'Remote Backup' : 'Mixed'}
                   </Badge>
                 )}
                 {/* Language Badge */}
