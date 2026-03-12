@@ -22,6 +22,8 @@ export default function AdminMaintenance() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [customMinutes, setCustomMinutes] = useState("15");
+  const [estimatedHours, setEstimatedHours] = useState("0");
+  const [estimatedMinutes, setEstimatedMinutes] = useState("30");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
