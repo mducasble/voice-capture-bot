@@ -6,6 +6,7 @@ export interface MaintenanceConfig {
   is_active: boolean;
   scheduled_at: string | null;
   message: string | null;
+  estimated_duration_minutes: number | null;
 }
 
 const CONFIG_ID = "00000000-0000-0000-0000-000000000001";
