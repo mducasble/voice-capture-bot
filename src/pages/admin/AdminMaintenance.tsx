@@ -35,12 +35,14 @@ export default function AdminMaintenance() {
   const scheduleIn = async (minutes: number) => {
     setSaving(true);
     const scheduledAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    const estDuration = (parseInt(estimatedHours) || 0) * 60 + (parseInt(estimatedMinutes) || 0);
     const { error } = await supabase
       .from("maintenance_config")
       .update({
         is_active: true,
         scheduled_at: scheduledAt,
         message: message || null,
+        estimated_duration_minutes: estDuration > 0 ? estDuration : null,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", CONFIG_ID);
