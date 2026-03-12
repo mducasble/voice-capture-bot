@@ -667,7 +667,7 @@ function SessionBlock({
           </div>
         )}
         {session.individuals.map(r => {
-          const userName = r.user_id ? (profileMap.get(r.user_id) || r.discord_username || "Participante") : (r.discord_username || "Participante");
+          const userName = r.discord_username || (r.user_id ? profileMap.get(r.user_id) : null) || "Participante";
           return (
             <div key={r.id}>
               <div className="px-4 py-1 bg-secondary/20">
