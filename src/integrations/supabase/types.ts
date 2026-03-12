@@ -1807,6 +1807,7 @@ export type Database = {
         Row: {
           created_at: string
           creator_name: string
+          daily_room_name: string | null
           duration_minutes: number | null
           id: string
           is_recording: boolean | null
@@ -1821,6 +1822,7 @@ export type Database = {
         Insert: {
           created_at?: string
           creator_name: string
+          daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
           is_recording?: boolean | null
@@ -1835,6 +1837,7 @@ export type Database = {
         Update: {
           created_at?: string
           creator_name?: string
+          daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
           is_recording?: boolean | null
