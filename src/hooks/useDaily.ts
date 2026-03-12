@@ -13,11 +13,12 @@ interface UseDailyOptions {
 /**
  * useDaily — drop-in replacement for useWebRTC using Daily.co SFU.
  * Returns the same interface: { remoteStreams, peerStatuses }
- * Uses dynamic import for @daily-co/daily-js to avoid blocking page load.
+ * Plus: leave() to disconnect, rejoin() to reconnect, isDailyConnected state.
  */
 export function useDaily({ roomId, participantId, localStream, participants }: UseDailyOptions) {
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [peerStatuses, setPeerStatuses] = useState<Map<string, PeerConnectionStatus>>(new Map());
+  const [isDailyConnected, setIsDailyConnected] = useState(false);
   const callRef = useRef<any>(null);
   const joinedRef = useRef(false);
   const participantIdRef = useRef<string | undefined>();
@@ -47,14 +48,12 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
       if (sessionId === "local") continue;
       
       const dailyPart = dp as any;
-      // Try to match Daily participant to our participant by name
       const dailyName = dailyPart.user_name || "";
       const matchedParticipant = participants.find(p => p.name === dailyName && p.id !== participantIdRef.current);
       const localId = matchedParticipant?.id || sessionId;
       
       dailyToLocalId.current.set(sessionId, localId);
 
-      // Get the audio track
       const audioTrack = dailyPart.tracks?.audio;
       if (audioTrack?.persistentTrack) {
         const stream = new MediaStream([audioTrack.persistentTrack]);
@@ -68,143 +67,162 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     setRemoteStreams(newStreams);
   }, [participants, updatePeerStatus]);
 
-  // Join the Daily room
+  // Core join logic extracted for reuse
+  const joinDaily = useCallback(async () => {
+    if (!roomId || !participantId || joinedRef.current) return;
+
+    try {
+      let DailyIframe: any;
+      try {
+        const mod = await import("@daily-co/daily-js");
+        DailyIframe = mod.default;
+      } catch (importErr) {
+        console.warn("[Daily] @daily-co/daily-js not available, skipping SFU connection:", importErr);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const myParticipant = participants.find(p => p.id === participantId);
+      const participantName = myParticipant?.name || "Participant";
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-daily-token`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            room_id: roomId,
+            participant_name: participantName,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn("[Daily] Failed to get token:", errText);
+        return;
+      }
+
+      const { token, room_url } = await res.json();
+
+      const call = DailyIframe.createCallObject({
+        audioSource: true,
+        videoSource: false,
+        dailyConfig: {},
+      });
+
+      callRef.current = call;
+
+      call.on("participant-joined", (event?: any) => {
+        if (!event) return;
+        console.log(`[Daily] Participant joined: ${event.participant.user_name}`);
+        rebuildRemoteStreams(call);
+      });
+
+      call.on("participant-left", (event?: any) => {
+        if (!event) return;
+        const sessionId = event.participant.session_id;
+        const localId = dailyToLocalId.current.get(sessionId) || sessionId;
+        console.log(`[Daily] Participant left: ${event.participant.user_name}`);
+        
+        dailyToLocalId.current.delete(sessionId);
+        
+        setRemoteStreams(prev => {
+          const next = new Map(prev);
+          next.delete(localId);
+          return next;
+        });
+        updatePeerStatus(localId, "failed");
+      });
+
+      call.on("track-started", (event?: any) => {
+        if (!event) return;
+        rebuildRemoteStreams(call);
+      });
+
+      call.on("track-stopped", (event?: any) => {
+        if (!event) return;
+        rebuildRemoteStreams(call);
+      });
+
+      call.on("error", (event: any) => {
+        console.error("[Daily] Error:", event);
+      });
+
+      call.on("network-quality-change", (event: any) => {
+        if (event && event.threshold === "very-low") {
+          console.warn("[Daily] Network quality very low");
+        }
+      });
+
+      await call.join({
+        url: room_url,
+        token,
+        userName: participantName,
+        startVideoOff: true,
+        startAudioOff: false,
+      });
+
+      joinedRef.current = true;
+      setIsDailyConnected(true);
+      console.log("[Daily] Joined room successfully");
+
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          const deviceId = audioTrack.getSettings().deviceId;
+          if (deviceId) {
+            await call.setInputDevicesAsync({ audioDeviceId: deviceId });
+          }
+        }
+      }
+
+      rebuildRemoteStreams(call);
+    } catch (error) {
+      console.error("[Daily] Join error:", error);
+    }
+  }, [roomId, participantId, localStream, participants, rebuildRemoteStreams, updatePeerStatus]);
+
+  // Leave Daily (without destroying the hook)
+  const leaveDaily = useCallback(async () => {
+    if (callRef.current) {
+      try {
+        await callRef.current.leave();
+        await callRef.current.destroy();
+      } catch {}
+      callRef.current = null;
+      joinedRef.current = false;
+      setIsDailyConnected(false);
+      setRemoteStreams(new Map());
+      setPeerStatuses(new Map());
+      dailyToLocalId.current.clear();
+      console.log("[Daily] Left room (idle timeout)");
+    }
+  }, []);
+
+  // Rejoin Daily after a leave
+  const rejoinDaily = useCallback(async () => {
+    if (joinedRef.current) return;
+    await joinDaily();
+  }, [joinDaily]);
+
+  // Auto-join on mount
   useEffect(() => {
     if (!roomId || !participantId || joinedRef.current) return;
 
     let cancelled = false;
 
-    const joinDaily = async () => {
-      try {
-        // Dynamically import Daily.js to avoid blocking page load
-        let DailyIframe: any;
-        try {
-          const mod = await import("@daily-co/daily-js");
-          DailyIframe = mod.default;
-        } catch (importErr) {
-          console.warn("[Daily] @daily-co/daily-js not available, skipping SFU connection:", importErr);
-          return;
-        }
-
-        // Get Daily token from our edge function
-        const { data: { session } } = await supabase.auth.getSession();
-        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        // Find participant name
-        const myParticipant = participants.find(p => p.id === participantId);
-        const participantName = myParticipant?.name || "Participant";
-
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-daily-token`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              room_id: roomId,
-              participant_name: participantName,
-            }),
-          }
-        );
-
-        if (!res.ok) {
-          const errText = await res.text();
-          console.warn("[Daily] Failed to get token (room may not have Daily configured):", errText);
-          return;
-        }
-
-        const { token, room_url } = await res.json();
-
-        if (cancelled) return;
-
-        // Create Daily call object
-        const call = DailyIframe.createCallObject({
-          audioSource: true,
-          videoSource: false,
-          dailyConfig: {},
-        });
-
-        callRef.current = call;
-
-        // Set up event handlers
-        call.on("participant-joined", (event?: any) => {
-          if (!event) return;
-          console.log(`[Daily] Participant joined: ${event.participant.user_name}`);
-          rebuildRemoteStreams(call);
-        });
-
-        call.on("participant-left", (event?: any) => {
-          if (!event) return;
-          const sessionId = event.participant.session_id;
-          const localId = dailyToLocalId.current.get(sessionId) || sessionId;
-          console.log(`[Daily] Participant left: ${event.participant.user_name}`);
-          
-          dailyToLocalId.current.delete(sessionId);
-          
-          setRemoteStreams(prev => {
-            const next = new Map(prev);
-            next.delete(localId);
-            return next;
-          });
-          updatePeerStatus(localId, "failed");
-        });
-
-        call.on("track-started", (event?: any) => {
-          if (!event) return;
-          console.log(`[Daily] Track started: ${event.track.kind} from ${event.participant?.user_name}`);
-          rebuildRemoteStreams(call);
-        });
-
-        call.on("track-stopped", (event?: any) => {
-          if (!event) return;
-          console.log(`[Daily] Track stopped: ${event.track.kind}`);
-          rebuildRemoteStreams(call);
-        });
-
-        call.on("error", (event: any) => {
-          console.error("[Daily] Error:", event);
-        });
-
-        call.on("network-quality-change", (event: any) => {
-          if (event && event.threshold === "very-low") {
-            console.warn("[Daily] Network quality very low");
-          }
-        });
-
-        // Join the room
-        await call.join({
-          url: room_url,
-          token,
-          userName: participantName,
-          startVideoOff: true,
-          startAudioOff: false,
-        });
-
-        joinedRef.current = true;
-        console.log("[Daily] Joined room successfully");
-
-        // Set input device from localStream if available
-        if (localStream) {
-          const audioTrack = localStream.getAudioTracks()[0];
-          if (audioTrack) {
-            const deviceId = audioTrack.getSettings().deviceId;
-            if (deviceId) {
-              await call.setInputDevicesAsync({ audioDeviceId: deviceId });
-            }
-          }
-        }
-
-        // Initial build of remote streams
-        rebuildRemoteStreams(call);
-
-      } catch (error) {
-        console.error("[Daily] Join error:", error);
-      }
+    const doJoin = async () => {
+      if (cancelled) return;
+      await joinDaily();
     };
 
-    joinDaily();
+    doJoin();
 
     return () => {
       cancelled = true;
@@ -226,7 +244,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     }
   }, [localStream]);
 
-  // Rebuild streams when our participants list changes (to improve name matching)
+  // Rebuild streams when our participants list changes
   useEffect(() => {
     if (callRef.current && joinedRef.current) {
       rebuildRemoteStreams(callRef.current);
@@ -245,5 +263,5 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     };
   }, []);
 
-  return { remoteStreams, peerStatuses };
+  return { remoteStreams, peerStatuses, isDailyConnected, leaveDaily, rejoinDaily };
 }
