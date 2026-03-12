@@ -196,8 +196,8 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             {allValidated && allIndividuals.length > 0 && (
               <CheckCircle className="h-4 w-4 shrink-0" style={{ color: "#22c55e" }} />
             )}
-            {hasRejected && (
-              <XCircle className="h-4 w-4 shrink-0" style={{ color: "#ef4444" }} />
+            {hasRejected && !allValidated && (
+              <XCircle className="h-4 w-4 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
             )}
           </div>
           {campaign.description && (
