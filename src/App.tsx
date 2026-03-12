@@ -87,6 +87,7 @@ const App = () => (
               <Route path="rooms-monitor" element={<RoomsMonitor />} />
               <Route path="faq" element={<AdminFaq />} />
               <Route path="maintenance" element={<AdminMaintenance />} />
+              <Route path="announcements" element={<AdminAnnouncements />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
