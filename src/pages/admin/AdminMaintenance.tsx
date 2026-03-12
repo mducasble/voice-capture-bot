@@ -139,6 +139,29 @@ export default function AdminMaintenance() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label>Tempo estimado de manutenção</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value)}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">h</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={estimatedMinutes}
+                  onChange={(e) => setEstimatedMinutes(e.target.value)}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">min</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label>Mensagem para os usuários (opcional)</Label>
               <Input
                 placeholder="Ex: Atualizações de sistema em andamento"

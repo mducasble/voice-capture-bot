@@ -73,9 +73,11 @@ export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
       <p className="text-lg text-center max-w-md" style={{ color: "hsl(0 0% 60%)" }}>
         {config.message || "Estamos aplicando melhorias. Volte em breve!"}
       </p>
-      <div className="mt-4 px-4 py-2 rounded font-mono text-sm" style={{ background: "hsl(0 0% 12%)", color: "hsl(0 0% 50%)" }}>
-        Previsão: {new Date(config.scheduled_at).toLocaleString("pt-BR")}
-      </div>
+      {config.estimated_duration_minutes && config.estimated_duration_minutes > 0 && (
+        <div className="mt-4 px-4 py-2 rounded font-mono text-sm" style={{ background: "hsl(0 0% 12%)", color: "hsl(0 0% 50%)" }}>
+          Previsão: {Math.floor(config.estimated_duration_minutes / 60) > 0 ? `${Math.floor(config.estimated_duration_minutes / 60)}h ` : ""}{config.estimated_duration_minutes % 60}min
+        </div>
+      )}
     </div>
   );
 }
