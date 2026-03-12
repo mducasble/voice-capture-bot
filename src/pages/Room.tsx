@@ -143,16 +143,34 @@ const Room = () => {
 
   // Start idle timer when Daily connects, clear when recording starts
   useEffect(() => {
-    if (isDailyConnected && !room?.is_recording && room?.status !== "completed" && !idleTimedOut) {
+    if (isDailyConnected && !room?.is_recording && room?.status !== "completed" && room?.status !== "expired" && !idleTimedOut) {
       setIdleSecondsLeft(IDLE_TIMEOUT_SECONDS);
       idleTimerRef.current = setInterval(() => {
         setIdleSecondsLeft(prev => {
           if (prev === null) return null;
           if (prev <= 1) {
-            // Time's up — disconnect from Daily
             clearInterval(idleTimerRef.current!);
             setIdleTimedOut(true);
             leaveDaily();
+            // Close room in DB as expired + save idle time
+            if (roomId) {
+              supabase
+                .from("rooms")
+                .update({
+                  status: "expired",
+                  is_recording: false,
+                  idle_seconds_before_recording: IDLE_TIMEOUT_SECONDS,
+                } as any)
+                .eq("id", roomId)
+                .then(() => {
+                  // Mark all participants as disconnected
+                  supabase
+                    .from("room_participants")
+                    .update({ is_connected: false, left_at: new Date().toISOString() })
+                    .eq("room_id", roomId)
+                    .then(() => {});
+                });
+            }
             return 0;
           }
           return prev - 1;
@@ -168,13 +186,26 @@ const Room = () => {
     return () => {
       if (idleTimerRef.current) clearInterval(idleTimerRef.current);
     };
-  }, [isDailyConnected, room?.is_recording, room?.status, idleTimedOut, leaveDaily]);
+  }, [isDailyConnected, room?.is_recording, room?.status, idleTimedOut, leaveDaily, roomId]);
 
   const handleReopenDaily = useCallback(async () => {
+    if (!roomId) return;
+    // Reactivate room in DB
+    await supabase
+      .from("rooms")
+      .update({ status: "active" } as any)
+      .eq("id", roomId);
+    // Re-mark current participant as connected
+    if (currentParticipant) {
+      await supabase
+        .from("room_participants")
+        .update({ is_connected: true, left_at: null })
+        .eq("id", currentParticipant.id);
+    }
     setIdleTimedOut(false);
     setIdleSecondsLeft(IDLE_TIMEOUT_SECONDS);
     await rejoinDaily();
-  }, [rejoinDaily]);
+  }, [rejoinDaily, roomId, currentParticipant]);
 
   // Play remote audio streams with volume boost via Web Audio API
   useEffect(() => {
