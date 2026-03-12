@@ -94,7 +94,7 @@ export const useMixedRecorder = () => {
     gain.gain.value = Math.min(1, 1.5 / Math.sqrt(count));
   }, []);
 
-  const stopRecording = useCallback(async (): Promise<Blob | null> => {
+  const stopRecording = useCallback(async (): Promise<{ blob: Blob; sampleRate: number } | null> => {
     const workletNode = workletNodeRef.current;
     const audioContext = audioContextRef.current;
 
