@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ParticipantAudio } from "@/components/rooms/ParticipantAudio";
 import { AudioTestFlow } from "@/components/rooms/AudioTestFlow";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useDaily } from "@/hooks/useDaily";
 import { useMixedRecorder } from "@/hooks/useMixedRecorder";
 import { useRemoteRecorders } from "@/hooks/useRemoteRecorders";
 import { RecordingGuidelinesSidebar } from "@/components/rooms/RecordingGuidelinesSidebar";
@@ -127,8 +127,8 @@ const Room = () => {
   // Remote individual recorders (creator records each remote stream as backup)
   const remoteRecorders = useRemoteRecorders();
 
-  // WebRTC peer-to-peer audio
-  const { remoteStreams, peerStatuses } = useWebRTC({
+  // Daily.co SFU audio connection (replaces P2P WebRTC)
+  const { remoteStreams, peerStatuses } = useDaily({
     roomId,
     participantId: currentParticipant?.id,
     localStream,
