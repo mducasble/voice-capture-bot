@@ -117,9 +117,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
         const call = DailyIframe.createCallObject({
           audioSource: true,
           videoSource: false,
-          dailyConfig: {
-            experimentalChromeVideoMuteLightOff: true,
-          },
+          dailyConfig: {},
         });
 
         callRef.current = call;
