@@ -17,15 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Auth check - admin only
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { recording_ids, delay_ms = 5000 } = await req.json();
+    const { recording_ids } = await req.json();
 
     if (!recording_ids || !Array.isArray(recording_ids) || recording_ids.length === 0) {
       return new Response(JSON.stringify({ error: 'recording_ids array required' }), {
@@ -44,10 +36,9 @@ serve(async (req) => {
     const baseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    console.log(`Batch reanalyze: ${recordings?.length} recordings, ${delay_ms}ms delay between each`);
+    console.log(`Batch reanalyze: firing ${recordings?.length} requests`);
 
-    // Fire-and-forget: trigger each one with a delay to avoid overwhelming the HF Space
-    let triggered = 0;
+    // Fire ALL requests immediately (fire-and-forget) — the HF Space will queue them
     for (const rec of recordings || []) {
       fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
         method: 'POST',
@@ -61,17 +52,10 @@ serve(async (req) => {
           mode: 'sampled',
         }),
       }).catch(err => console.error(`Failed to trigger ${rec.id}:`, err));
-
-      triggered++;
-      
-      // Stagger requests
-      if (triggered < (recordings?.length || 0)) {
-        await new Promise(r => setTimeout(r, delay_ms));
-      }
     }
 
     return new Response(
-      JSON.stringify({ success: true, triggered, total: recordings?.length }),
+      JSON.stringify({ success: true, triggered: recordings?.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
