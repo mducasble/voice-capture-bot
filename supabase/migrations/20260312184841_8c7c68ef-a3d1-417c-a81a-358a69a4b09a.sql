@@ -1,0 +1,1 @@
+ALTER TABLE public.maintenance_config ADD COLUMN IF NOT EXISTS estimated_duration_minutes integer DEFAULT NULL;

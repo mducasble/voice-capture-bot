@@ -1509,6 +1509,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          estimated_duration_minutes: number | null
           id: string
           is_active: boolean
           message: string | null
@@ -1518,6 +1519,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          estimated_duration_minutes?: number | null
           id?: string
           is_active?: boolean
           message?: string | null
@@ -1527,6 +1529,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          estimated_duration_minutes?: number | null
           id?: string
           is_active?: boolean
           message?: string | null

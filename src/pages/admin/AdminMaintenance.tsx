@@ -22,6 +22,8 @@ export default function AdminMaintenance() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [customMinutes, setCustomMinutes] = useState("15");
+  const [estimatedHours, setEstimatedHours] = useState("0");
+  const [estimatedMinutes, setEstimatedMinutes] = useState("30");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -33,12 +35,14 @@ export default function AdminMaintenance() {
   const scheduleIn = async (minutes: number) => {
     setSaving(true);
     const scheduledAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    const estDuration = (parseInt(estimatedHours) || 0) * 60 + (parseInt(estimatedMinutes) || 0);
     const { error } = await supabase
       .from("maintenance_config")
       .update({
         is_active: true,
         scheduled_at: scheduledAt,
         message: message || null,
+        estimated_duration_minutes: estDuration > 0 ? estDuration : null,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", CONFIG_ID);
@@ -60,6 +64,7 @@ export default function AdminMaintenance() {
         is_active: false,
         scheduled_at: null,
         message: null,
+        estimated_duration_minutes: null,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", CONFIG_ID);
@@ -133,6 +138,29 @@ export default function AdminMaintenance() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tempo estimado de manutenção</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value)}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">h</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={estimatedMinutes}
+                  onChange={(e) => setEstimatedMinutes(e.target.value)}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">min</span>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Mensagem para os usuários (opcional)</Label>
               <Input
