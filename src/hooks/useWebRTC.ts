@@ -49,7 +49,7 @@ const BASE_RECONNECT_DELAY = 1000;
 
 let cachedIceConfig: RTCConfiguration | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 12 * 60 * 60 * 1000;
+const CACHE_TTL = 1 * 60 * 60 * 1000; // 1 hour — keep TURN credentials fresh
 
 async function getIceConfig(): Promise<RTCConfiguration> {
   if (cachedIceConfig && Date.now() - cacheTimestamp < CACHE_TTL) {
