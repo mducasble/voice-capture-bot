@@ -769,7 +769,7 @@ const Room = () => {
   };
 
   // Upload mixed recording
-  const uploadMixedRecording = async (wavBlob: Blob) => {
+  const uploadMixedRecording = async (wavBlob: Blob, actualSampleRate?: number) => {
     if (!room || !wavBlob || wavBlob.size === 0) return;
 
     setIsMixedUploading(true);
@@ -781,6 +781,7 @@ const Room = () => {
         wavBlob, filename,
         currentParticipant?.id || "mixed", "Mixed", "mixed",
         (pct) => setMixedUploadProgress(pct),
+        actualSampleRate,
       );
       toast.success("Áudio mixado enviado!");
     } catch (error) {
