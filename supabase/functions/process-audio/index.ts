@@ -997,6 +997,14 @@ async function finalizeProcessing(
     lockedAt: null as string | null
   };
 
+  // Merge with existing metadata to preserve audio_profile etc.
+  const { data: existingRec2 } = await supabase
+    .from('voice_recordings')
+    .select('metadata')
+    .eq('id', state.recording_id)
+    .single();
+  const existingMeta2 = (existingRec2?.metadata || {}) as Record<string, unknown>;
+
   // Update recording with SNR + RMS + quality + chunk state
   const { error: updateError } = await supabase
     .from('voice_recordings')
@@ -1007,6 +1015,7 @@ async function finalizeProcessing(
       gemini_chunk_state: geminiChunkState,
       transcription_status: 'pending',
       metadata: {
+        ...existingMeta2,
         rms_dbfs: rmsDbfs,
         quality_metrics: {
           snr_db: snrDb,
