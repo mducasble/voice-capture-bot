@@ -47,35 +47,42 @@ export default function PortalCampaignTask() {
     setCreating(true);
     try {
       const userName = user.user_metadata?.full_name || user.email || "User";
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          creator_name: userName,
-          room_name: `${campaign.name} - ${userName}`,
-          status: "waiting",
-          topic: topic.trim(),
-          duration_minutes: durationMinutes,
-        })
-        .select()
-        .single();
 
-      if (error) throw error;
+      // Use edge function to create room (also provisions Daily.co SFU room)
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-room`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            creator_name: userName,
+            room_name: `${campaign.name} - ${userName}`,
+            campaign_id: campaign.id,
+            topic: topic.trim(),
+          }),
+        }
+      );
 
-      const { data: participant, error: partError } = await supabase
-        .from("room_participants")
-        .insert({
-          room_id: room.id,
-          name: userName,
-          is_creator: true,
-          user_id: user?.id || null,
-        })
-        .select()
-        .single();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
 
-      if (partError) throw partError;
+      const result = await res.json();
+      const roomId = result.room?.id;
+      const participantId = result.creator_participant?.id;
 
-      localStorage.setItem(`room_${room.id}_participant`, participant.id);
-      navigate(`/room/${room.id}?campaign=${campaign.id}`);
+      if (!roomId) throw new Error("Room creation failed");
+
+      if (participantId) {
+        localStorage.setItem(`room_${roomId}_participant`, participantId);
+      }
+
+      navigate(`/room/${roomId}?campaign=${campaign.id}`);
     } catch (err: any) {
       toast.error(t("task.createRoomError") + err.message);
     } finally {
