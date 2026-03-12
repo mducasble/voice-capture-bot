@@ -64,6 +64,7 @@ export default function AdminMaintenance() {
         is_active: false,
         scheduled_at: null,
         message: null,
+        estimated_duration_minutes: null,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", CONFIG_ID);
