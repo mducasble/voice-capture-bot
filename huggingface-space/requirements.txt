@@ -10,13 +10,17 @@ librosa==0.10.2.post1
 soundfile==0.13.1
 numpy==1.26.4
 scipy==1.14.1
+resampy>=0.4.3
 
-# SRMR (Speech-to-Reverberation Modulation Ratio)
-SRMRpy @ git+https://github.com/jfsantos/SRMRpy.git
+# SRMR (Speech-to-Reverberation Modulation Ratio) - shimhz fork (matches TTS_Validation reference)
+SRMRpy @ git+https://github.com/shimhz/SRMRpy.git
 
-# DNSMOS / SigMOS (Microsoft speech quality models)
-speechmos==0.0.1.1
+# SigMOS - uses local ONNX model (P.804 Microsoft SIG-Challenge)
 onnxruntime==1.20.1
+
+# VQScore - VQVAE model (requires PyTorch, einops, pyyaml)
+pyyaml>=6.0
+einops>=0.7.0
 
 # WVMOS (wav2vec 2.0 MOS predictor)
 wvmos @ git+https://github.com/AndreevP/wvmos.git
@@ -26,3 +30,6 @@ wvmos @ git+https://github.com/AndreevP/wvmos.git
 # PyTorch (CPU only, >=2.6 required for safe torch.load)
 torch==2.6.0
 torchaudio==2.6.0
+
+# For model downloads at build time
+requests>=2.31.0

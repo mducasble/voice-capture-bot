@@ -1,0 +1,47 @@
+name: QE_cbook_size_2048_1_32_IN_input_encoder_z_Librispeech_clean_github
+###########################################################
+#                   DATA SETTING                          #
+###########################################################
+sampling_rate: 16000
+data:
+    path: ""
+    subset:
+        clean_train: "./Librispeech_clean.csv"
+        clean_valid: "./VCTK_clean_test.csv"
+
+###########################################################
+#                   MODEL SETTING                         #
+###########################################################
+task: Quality_Estimation
+train_mode: autoencoder
+cos_loss: True
+input_transform: None
+
+VQVAE_params:
+    codebook_size: 2048
+    codebook_num: 1
+    codebook_dim: 32
+    orthogonal_reg_weight: 0
+    use_cosine_sim: True
+    ema_update: True
+    learnable_codebook: False
+    stochastic_sample_codes: False
+    sample_codebook_temp: 6
+    straight_through: False
+    reinmax: False
+    kmeans_init: True
+    threshold_ema_dead_code: -1000
+
+###########################################################
+#                  LOSS WEIGHT SETTING                    #
+###########################################################
+lambda_vq_loss: 1.0
+lambda_stft_loss: 45.0
+
+###########################################################
+#                  DATA LOADER SETTING                    #
+###########################################################
+batch_size: 64
+batch_length: 48000
+pin_memory: True
+num_workers: 4
