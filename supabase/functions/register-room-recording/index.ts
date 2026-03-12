@@ -104,7 +104,7 @@ serve(async (req) => {
         duration_seconds: durationSeconds > 0 ? durationSeconds : null,
         sample_rate: sampleRate,
         bit_depth: 16,
-        channels: 1,
+        channels: wavChannels,
         format,
         status: format === 'wav' ? 'processing' : 'completed',
         session_id,
