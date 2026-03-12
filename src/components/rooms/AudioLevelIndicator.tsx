@@ -25,8 +25,10 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.3;
+      analyser.minDecibels = -90;
+      analyser.maxDecibels = -10;
       source.connect(analyser);
       analyserRef.current = analyser;
 
@@ -56,7 +58,7 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
   }, [stream, status]);
 
   const isOnline = isConnected && (status === "connected" || !status);
-  const isActive = levels.some(l => l > 0.15);
+  const isActive = levels.some(l => l > 0.05);
   const statusText = !isConnected
     ? "Offline"
     : status === "connecting"
@@ -87,7 +89,7 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
                 key={i}
                 className="w-[3px] rounded-full transition-all duration-75"
                 style={{
-                  height: `${Math.max(3, level * 14)}px`,
+                  height: `${Math.max(3, Math.min(1, level * 3) * 14)}px`,
                   backgroundColor: isActive ? "hsl(142 71% 45%)" : "var(--portal-text-muted, #555)",
                   opacity: isActive ? 1 : 0.4,
                 }}
@@ -114,7 +116,7 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
               key={i}
               className="w-[3.5px] rounded-full transition-all duration-75"
               style={{
-                height: `${Math.max(4, level * 16)}px`,
+                height: `${Math.max(4, Math.min(1, level * 3) * 16)}px`,
                 backgroundColor: isActive ? "hsl(142 71% 45%)" : "var(--portal-text-muted, #555)",
                 opacity: isActive ? 1 : 0.3,
               }}
