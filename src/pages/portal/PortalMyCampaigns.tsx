@@ -33,27 +33,39 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function StatusBadge({ label, status, reason }: { label: string; status: string | null; reason?: string | null }) {
-  const config: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
-    validated: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    approved: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    rejected: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
-    failed: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
-    pending: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)" },
-    processing: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: "var(--portal-accent)", bg: "rgba(255,255,255,0.05)" },
-  };
-  const s = status || "pending";
-  const c = config[s] || config.pending;
+function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg: string; icon: React.ReactNode; reason?: string | null } {
+  const qa = rec.quality_status;
+  const val = rec.validation_status;
 
-  return (
-    <span
-      className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
-      style={{ color: c.color, background: c.bg }}
-      title={reason || undefined}
-    >
-      {c.icon} {label}
-    </span>
-  );
+  // If either is rejected → REPROVADO
+  if (qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed") {
+    const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
+    return {
+      label: reason ? `Reprovado: ${reason}` : "Reprovado",
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.15)",
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      reason,
+    };
+  }
+
+  // If both approved → APROVADO
+  if ((qa === "approved" || qa === "validated") && (val === "approved" || val === "validated")) {
+    return {
+      label: "Aprovado",
+      color: "#22c55e",
+      bg: "rgba(34,197,94,0.15)",
+      icon: <CheckCircle className="h-3.5 w-3.5" />,
+    };
+  }
+
+  // Otherwise → EM ANÁLISE
+  return {
+    label: "Em análise",
+    color: "var(--portal-text-muted)",
+    bg: "rgba(255,255,255,0.05)",
+    icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  };
 }
 
 function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
@@ -99,8 +111,18 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
             <Signal className="h-3.5 w-3.5" /> {rec.snr_db.toFixed(1)}dB
           </span>
         )}
-        <StatusBadge label="QA" status={rec.quality_status} reason={rec.quality_rejection_reason} />
-        <StatusBadge label="Val" status={rec.validation_status} reason={rec.validation_rejection_reason} />
+        {(() => {
+          const s = getUnifiedStatus(rec);
+          return (
+            <span
+              className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
+              style={{ color: s.color, background: s.bg }}
+              title={s.reason || undefined}
+            >
+              {s.icon} {s.label}
+            </span>
+          );
+        })()}
         {rec.duration_seconds != null && (
           <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
             {formatDuration(rec.duration_seconds)}
@@ -116,47 +138,40 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
 
 function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
   const individuals = recordings.filter(r => r.recording_type === "individual");
-
-  const countByStatus = (field: "quality_status" | "validation_status") => {
-    return {
-      validated: individuals.filter(r => r[field] === "validated" || r[field] === "approved").length,
-      rejected: individuals.filter(r => r[field] === "rejected" || r[field] === "failed").length,
-      pending: individuals.filter(r => !r[field] || r[field] === "pending" || r[field] === "processing").length,
-    };
-  };
-
-  const qa = countByStatus("quality_status");
-  const val = countByStatus("validation_status");
-
   if (individuals.length === 0) return null;
 
-  const StatusPill = ({ label, counts }: { label: string; counts: { validated: number; rejected: number; pending: number } }) => (
-    <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}>
-      <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>{label}</span>
-      <div className="flex items-center gap-1.5">
-        {counts.validated > 0 && (
-          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-            <CheckCircle className="h-3 w-3" /> {counts.validated}
-          </span>
-        )}
-        {counts.rejected > 0 && (
-          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#ef4444", background: "rgba(239,68,68,0.15)" }}>
-            <XCircle className="h-3 w-3" /> {counts.rejected}
-          </span>
-        )}
-        {counts.pending > 0 && (
-          <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "var(--portal-text-muted)", background: "rgba(255,255,255,0.05)" }}>
-            <AlertCircle className="h-3 w-3" /> {counts.pending}
-          </span>
-        )}
-      </div>
-    </div>
-  );
+  const approved = individuals.filter(r => {
+    const s = getUnifiedStatus(r);
+    return s.label === "Aprovado";
+  }).length;
+  const rejected = individuals.filter(r => {
+    const s = getUnifiedStatus(r);
+    return s.label.startsWith("Reprovado");
+  }).length;
+  const pending = individuals.length - approved - rejected;
 
   return (
     <div className="px-4 py-3.5 flex items-center justify-end gap-3 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
-      <StatusPill label="QA" counts={qa} />
-      <StatusPill label="Val" counts={val} />
+      <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}>
+        <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Status</span>
+        <div className="flex items-center gap-1.5">
+          {approved > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+              <CheckCircle className="h-3 w-3" /> {approved}
+            </span>
+          )}
+          {rejected > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#ef4444", background: "rgba(239,68,68,0.15)" }}>
+              <XCircle className="h-3 w-3" /> {rejected}
+            </span>
+          )}
+          {pending > 0 && (
+            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "var(--portal-text-muted)", background: "rgba(255,255,255,0.05)" }}>
+              <Loader2 className="h-3 w-3 animate-spin" /> {pending}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -182,8 +197,8 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 
   // Overall validation summary for header
   const allIndividuals = individuals;
-  const allValidated = allIndividuals.length > 0 && allIndividuals.every(r => r.validation_status === "validated" || r.validation_status === "approved");
-  const hasRejected = allIndividuals.some(r => r.quality_status === "rejected" || r.validation_status === "rejected");
+  const allValidated = allIndividuals.length > 0 && allIndividuals.every(r => getUnifiedStatus(r).label === "Aprovado");
+  const hasRejected = allIndividuals.some(r => getUnifiedStatus(r).label.startsWith("Reprovado"));
 
   return (
     <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
