@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { FaqSidebar } from "./FaqSidebar";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useAutoFillCountry } from "@/hooks/useAutoFillCountry";
+import { AnnouncementBanners } from "@/components/AnnouncementBanner";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
