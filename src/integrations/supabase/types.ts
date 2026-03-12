@@ -1810,6 +1810,7 @@ export type Database = {
           daily_room_name: string | null
           duration_minutes: number | null
           id: string
+          idle_seconds_before_recording: number | null
           is_recording: boolean | null
           noise_gate_enabled: boolean
           recording_started_at: string | null
@@ -1825,6 +1826,7 @@ export type Database = {
           daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
+          idle_seconds_before_recording?: number | null
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
           recording_started_at?: string | null
@@ -1840,6 +1842,7 @@ export type Database = {
           daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
+          idle_seconds_before_recording?: number | null
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
           recording_started_at?: string | null
