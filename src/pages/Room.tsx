@@ -127,8 +127,8 @@ const Room = () => {
   // Remote individual recorders (creator records each remote stream as backup)
   const remoteRecorders = useRemoteRecorders();
 
-  // WebRTC peer-to-peer audio
-  const { remoteStreams, peerStatuses } = useWebRTC({
+  // Daily.co SFU audio connection (replaces P2P WebRTC)
+  const { remoteStreams, peerStatuses } = useDaily({
     roomId,
     participantId: currentParticipant?.id,
     localStream,
