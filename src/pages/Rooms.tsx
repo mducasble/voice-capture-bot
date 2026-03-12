@@ -27,44 +27,46 @@ const Rooms = () => {
 
     setIsCreating(true);
     try {
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          creator_name: creatorName.trim(),
-          room_name: roomName.trim() || `Sala de ${creatorName.trim()}`,
-          status: "waiting",
-        })
-        .select()
-        .single();
+      // Use edge function to create room (also provisions Daily.co SFU room)
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
 
-      if (error) throw error;
-
-      // Add creator as first participant
-      const currentUser = (await supabase.auth.getUser()).data.user;
-      const { data: participant } = await supabase.from("room_participants").insert({
-        room_id: room.id,
-        name: creatorName.trim(),
-        is_creator: true,
-        user_id: currentUser?.id || null,
-      }).select().single();
-
-      // Store creator participant ID so Room page recognises them
-      if (participant) {
-        localStorage.setItem(`room_${room.id}_participant`, participant.id);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      // Build URL with campaign and referral code
-      let roomUrl = `/room/${room.id}?campaign=${selectedCampaignId}`;
-      if (currentUser) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("referral_code")
-          .eq("id", currentUser.id)
-          .single();
-        if (profile?.referral_code) {
-          roomUrl += `&ref=${profile.referral_code}`;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-room`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            creator_name: creatorName.trim(),
+            room_name: roomName.trim() || `Sala de ${creatorName.trim()}`,
+            campaign_id: selectedCampaignId,
+          }),
         }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errData.error || `HTTP ${res.status}`);
       }
+
+      const result = await res.json();
+      const roomId = result.room?.id;
+      const participantId = result.creator_participant?.id;
+
+      if (!roomId) throw new Error("Room creation failed");
+
+      if (participantId) {
+        localStorage.setItem(`room_${roomId}_participant`, participantId);
+      }
+
+      const roomUrl = result.room_url || `/room/${roomId}?campaign=${selectedCampaignId}`;
 
       toast.success("Sala criada com sucesso!");
       navigate(roomUrl);
