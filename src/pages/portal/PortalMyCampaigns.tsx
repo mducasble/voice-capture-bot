@@ -298,7 +298,10 @@ export default function PortalMyCampaigns() {
           p_campaign_ids: campaignIds,
         });
       if (error) throw error;
-      return (data || []) as (RecordingRow & { campaign_id: string })[];
+      // Filter out remote_backup recordings (creator-side redundancy, admin-only)
+      return ((data || []) as (RecordingRow & { campaign_id: string })[]).filter(
+        r => r.recording_type !== 'remote_backup'
+      );
     },
     enabled: campaignIds.length > 0,
   });
