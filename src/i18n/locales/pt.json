@@ -377,5 +377,11 @@
     "error": "Erro",
     "loading": "Carregando...",
     "back": "Voltar"
+  },
+  "maintenance": {
+    "bannerTitle": "MANUTENÇÃO EM",
+    "blockTitle": "Em Manutenção",
+    "blockMessage": "Estamos aplicando melhorias. Volte em breve!",
+    "forecast": "Previsão"
   }
 }

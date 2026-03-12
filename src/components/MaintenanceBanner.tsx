@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useMaintenance } from "@/hooks/useMaintenance";
 import { AlertTriangle, Wrench } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useTranslation } from "react-i18next";
+import kgenLogo from "@/assets/kgen-logo-green.png";
 
 function formatCountdown(diff: number) {
   const h = Math.floor(diff / 3600);
@@ -14,6 +16,7 @@ function formatCountdown(diff: number) {
 
 export function MaintenanceBanner() {
   const { data: config } = useMaintenance();
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -27,19 +30,19 @@ export function MaintenanceBanner() {
   const diffSec = Math.max(0, Math.floor((scheduledMs - now) / 1000));
   const isDown = diffSec <= 0;
 
-  if (isDown) return null; // MaintenanceBlock handles this
+  if (isDown) return null;
 
   return (
     <div
-      className="w-full py-2 px-4 flex items-center justify-center gap-3 text-sm font-mono tracking-wide z-[100] animate-pulse"
+      className="w-full py-4 px-6 flex items-center justify-center gap-3 text-base font-mono tracking-wide z-[100] animate-pulse"
       style={{
         background: "linear-gradient(90deg, hsl(45 100% 50%), hsl(30 100% 50%))",
         color: "hsl(0 0% 10%)",
       }}
     >
-      <AlertTriangle className="h-4 w-4 shrink-0" />
+      <AlertTriangle className="h-5 w-5 shrink-0" />
       <span className="font-bold uppercase">
-        Manutenção em {formatCountdown(diffSec)}
+        {t("maintenance.bannerTitle")} {formatCountdown(diffSec)}
       </span>
       {config.message && <span className="hidden sm:inline">— {config.message}</span>}
     </div>
@@ -49,6 +52,7 @@ export function MaintenanceBanner() {
 export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
   const { data: config } = useMaintenance();
   const { isAdmin } = useAdminAuth();
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -66,16 +70,17 @@ export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8" style={{ background: "hsl(0 0% 5%)" }}>
+      <img src={kgenLogo} alt="KGen" className="h-12 mb-2" />
       <Wrench className="h-16 w-16" style={{ color: "hsl(45 100% 50%)" }} />
       <h1 className="text-3xl font-mono font-black uppercase tracking-widest" style={{ color: "hsl(0 0% 95%)" }}>
-        Em Manutenção
+        {t("maintenance.blockTitle")}
       </h1>
       <p className="text-lg text-center max-w-md" style={{ color: "hsl(0 0% 60%)" }}>
-        {config.message || "Estamos aplicando melhorias. Volte em breve!"}
+        {config.message || t("maintenance.blockMessage")}
       </p>
       {config.estimated_duration_minutes && config.estimated_duration_minutes > 0 && (
         <div className="mt-4 px-4 py-2 rounded font-mono text-sm" style={{ background: "hsl(0 0% 12%)", color: "hsl(0 0% 50%)" }}>
-          Previsão: {Math.floor(config.estimated_duration_minutes / 60) > 0 ? `${Math.floor(config.estimated_duration_minutes / 60)}h ` : ""}{config.estimated_duration_minutes % 60}min
+          {t("maintenance.forecast")}: {Math.floor(config.estimated_duration_minutes / 60) > 0 ? `${Math.floor(config.estimated_duration_minutes / 60)}h ` : ""}{config.estimated_duration_minutes % 60}min
         </div>
       )}
     </div>
