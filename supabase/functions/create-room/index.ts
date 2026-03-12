@@ -110,6 +110,7 @@ serve(async (req) => {
         status: 'waiting',
         topic: topic || null,
         daily_room_name: dailyRoomName,
+        duration_minutes: duration_minutes || null,
       })
       .select()
       .single();

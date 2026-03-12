@@ -63,6 +63,7 @@ export default function PortalCampaignTask() {
             room_name: `${campaign.name} - ${userName}`,
             campaign_id: campaign.id,
             topic: topic.trim(),
+            duration_minutes: durationMinutes,
           }),
         }
       );
