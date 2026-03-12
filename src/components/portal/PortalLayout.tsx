@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { FaqSidebar } from "./FaqSidebar";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useAutoFillCountry } from "@/hooks/useAutoFillCountry";
+import { AnnouncementBanners } from "@/components/AnnouncementBanner";
 
 export default function PortalLayout() { // layout-root
   const { user, loading, signOut } = useAuth();
@@ -55,6 +56,9 @@ export default function PortalLayout() { // layout-root
       <div className="absolute inset-0 portal-grid-bg" />
 
       <div className="relative z-10">
+        {/* Announcements */}
+        <AnnouncementBanners />
+
         {/* Header */}
         <PortalHeader navItems={navItems} user={user} signOut={signOut} />
 

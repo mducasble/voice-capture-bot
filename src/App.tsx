@@ -23,6 +23,7 @@ const RoomsMonitor = lazy(() => import("./pages/admin/RoomsMonitor"));
 const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminMaintenance = lazy(() => import("./pages/admin/AdminMaintenance"));
+const AdminAnnouncements = lazy(() => import("./pages/admin/AdminAnnouncements"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="rooms-monitor" element={<RoomsMonitor />} />
               <Route path="faq" element={<AdminFaq />} />
               <Route path="maintenance" element={<AdminMaintenance />} />
+              <Route path="announcements" element={<AdminAnnouncements />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

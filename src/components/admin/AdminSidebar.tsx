@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Users,
   Wrench,
+  Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -62,6 +63,7 @@ const navSections = [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
       { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
       { title: "Manutenção", url: "/admin/maintenance", icon: Wrench },
+      { title: "Anúncios", url: "/admin/announcements", icon: Megaphone },
     ],
   },
 ];
