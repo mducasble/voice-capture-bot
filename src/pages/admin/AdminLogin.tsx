@@ -126,11 +126,14 @@ export default function AdminLogin() {
 
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/admin/login",
+        extraParams: {
+          prompt: "select_account",
+        },
       });
 
       if (result.error) {
-        toast.error("Erro ao autenticar com Google.");
+        const errorMessage = result.error instanceof Error ? result.error.message : String(result.error);
+        toast.error(errorMessage || "Erro ao autenticar com Google.");
         return;
       }
 
