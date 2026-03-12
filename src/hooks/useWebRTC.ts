@@ -459,8 +459,24 @@ export function useWebRTC({ roomId, participantId, localStream, participants }: 
       pollTimer = setTimeout(poll, 500);
     };
 
-    // Initial fetch
-    processPendingSignals();
+    // Clean up any stale signals for this participant before starting
+    const cleanupStaleSignals = async () => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from("webrtc_signals")
+        .delete()
+        .eq("room_id", roomId)
+        .eq("receiver_id", participantId)
+        .lt("created_at", fiveMinAgo);
+      if (error) {
+        console.warn("[WebRTC] Failed to clean stale signals:", error);
+      } else {
+        console.log("[WebRTC] Cleaned stale signals older than 5 min");
+      }
+    };
+
+    // Clean stale signals, then start processing
+    cleanupStaleSignals().then(() => processPendingSignals());
 
     // Subscribe to realtime as well (belt-and-suspenders)
     const channel = supabase
