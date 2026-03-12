@@ -22,7 +22,7 @@ export function SessionGroup({ sessionId, recordings }: SessionGroupProps) {
 
   // Separate mixed and individual recordings
   const mixedRecording = recordings.find(r => r.recording_type === 'mixed');
-  const individualRecordings = recordings.filter(r => r.recording_type === 'individual');
+  const individualRecordings = recordings.filter(r => r.recording_type === 'individual' || r.recording_type === 'remote_backup');
   
   // Get session metadata from any recording
   const firstRecording = recordings[0];

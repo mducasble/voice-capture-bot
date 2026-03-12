@@ -670,7 +670,7 @@ const Room = () => {
     try {
       await uploadViaPresignedUrl(
         wavBlob, filename,
-        peerId, participantName, "individual",
+        peerId, participantName, "remote_backup",
       );
       console.log(`[RemoteBackup] Uploaded backup for ${participantName}`);
       toast.success(`Backup de ${participantName} enviado!`);

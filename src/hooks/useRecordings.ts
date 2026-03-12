@@ -44,7 +44,7 @@ interface Recording {
   gemini_chunk_state: GeminiChunkState | null;
   language: string | null;
   session_id: string | null;
-  recording_type: 'individual' | 'mixed' | null;
+  recording_type: 'individual' | 'mixed' | 'remote_backup' | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
