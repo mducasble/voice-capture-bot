@@ -25,8 +25,10 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.3;
+      analyser.minDecibels = -90;
+      analyser.maxDecibels = -10;
       source.connect(analyser);
       analyserRef.current = analyser;
 
