@@ -47,3 +47,5 @@ project_id = "qfxustvmwdyjduzpeafk"
     verify_jwt = false
   [functions.stream-upload-to-s3]
     verify_jwt = false
+  [functions.get-daily-token]
+    verify_jwt = false
