@@ -655,13 +655,17 @@ const Room = () => {
       await remoteRecorders.startRecording(remoteStreams, participants);
     }
 
+    // Calculate idle seconds (time spent connected before recording)
+    const elapsedIdle = idleSecondsLeft != null ? IDLE_TIMEOUT_SECONDS - idleSecondsLeft : null;
+
     await supabase
       .from("rooms")
       .update({ 
         is_recording: true, 
         status: "live",
-        recording_started_at: new Date().toISOString()
-      })
+        recording_started_at: new Date().toISOString(),
+        idle_seconds_before_recording: elapsedIdle,
+      } as any)
       .eq("id", roomId);
 
     toast.success("Gravação iniciada!");
