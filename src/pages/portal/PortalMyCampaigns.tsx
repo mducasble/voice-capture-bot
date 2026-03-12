@@ -111,8 +111,18 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
             <Signal className="h-3.5 w-3.5" /> {rec.snr_db.toFixed(1)}dB
           </span>
         )}
-        <StatusBadge label="QA" status={rec.quality_status} reason={rec.quality_rejection_reason} />
-        <StatusBadge label="Val" status={rec.validation_status} reason={rec.validation_rejection_reason} />
+        {(() => {
+          const s = getUnifiedStatus(rec);
+          return (
+            <span
+              className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
+              style={{ color: s.color, background: s.bg }}
+              title={s.reason || undefined}
+            >
+              {s.icon} {s.label}
+            </span>
+          );
+        })()}
         {rec.duration_seconds != null && (
           <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
             {formatDuration(rec.duration_seconds)}
