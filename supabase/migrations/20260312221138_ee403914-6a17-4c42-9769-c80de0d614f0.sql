@@ -1,0 +1,1 @@
+UPDATE voice_recordings SET channels = 2, duration_seconds = (file_size_bytes - 44.0) / (48000.0 * 2 * 2) WHERE id = 'bc747b83-657b-4d78-aa7f-0a47696a2639'

@@ -160,7 +160,7 @@ serve(async (req) => {
     console.log(`Successfully uploaded to S3: ${s3Url}`);
 
     // Calculate duration from WAV file size (PCM: size = duration * sampleRate * channels * bytesPerSample + 44 header)
-    const wavChannels = format === 'wav' ? 1 : 2;
+    const wavChannels = recording_type === 'mixed' ? 2 : 1;
     const bytesPerSample = 2; // 16-bit
     const sampleRate = 48000;
     const headerSize = 44;
