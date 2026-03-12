@@ -94,7 +94,7 @@ export const useMixedRecorder = () => {
     gain.gain.value = Math.min(1, 1.5 / Math.sqrt(count));
   }, []);
 
-  const stopRecording = useCallback(async (): Promise<Blob | null> => {
+  const stopRecording = useCallback(async (): Promise<{ blob: Blob; sampleRate: number } | null> => {
     const workletNode = workletNodeRef.current;
     const audioContext = audioContextRef.current;
 
@@ -140,9 +140,11 @@ export const useMixedRecorder = () => {
       offset += chunk.length;
     }
 
-    // Convert to 16-bit WAV
+    // Convert to 16-bit WAV using the ACTUAL sample rate from the context
+    const actualSampleRate = audioContext.sampleRate;
+    console.log(`[MixedRecorder] Context sampleRate: ${actualSampleRate}, total samples: ${totalLength}`);
     const pcm = float32ToInt16(merged);
-    const wavBlob = createWavBlob(pcm, 48000, 1);
+    const wavBlob = createWavBlob(pcm, actualSampleRate, 1);
 
     await audioContext.close();
     audioContextRef.current = null;
@@ -150,7 +152,7 @@ export const useMixedRecorder = () => {
     chunksRef.current = [];
 
     setState({ isRecording: false });
-    return wavBlob;
+    return { blob: wavBlob, sampleRate: actualSampleRate };
   }, []);
 
   return {

@@ -47,6 +47,7 @@ serve(async (req) => {
       campaign_id,
       audio_profile,
       user_id: bodyUserId,
+      sample_rate: clientSampleRate,
     } = await req.json();
 
     // Resolve user_id: from JWT or from body (bot/electron)
@@ -82,9 +83,10 @@ serve(async (req) => {
       }
     }
 
-    // Calculate duration from WAV file size (PCM 16-bit 48kHz + 44 byte header)
-    const sampleRate = 48000;
-    const wavChannels = recording_type === 'mixed' ? 2 : 1;
+    // Calculate duration from WAV file size (PCM 16-bit + 44 byte header)
+    // Mixed recordings from useMixedRecorder are MONO (channelCount=1)
+    const sampleRate = clientSampleRate || 48000;
+    const wavChannels = 1; // All room recordings are mono (including mixed)
     const headerSize = 44;
     const pcmBytes = Math.max(0, (file_size_bytes || 0) - headerSize);
     const durationSeconds = pcmBytes / (sampleRate * wavChannels * 2); // 16-bit

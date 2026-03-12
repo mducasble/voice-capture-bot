@@ -710,6 +710,7 @@ const Room = () => {
     participantName: string,
     recordingType: string,
     onProgress?: (pct: number) => void,
+    actualSampleRate?: number,
   ) => {
     const { data: { session } } = await supabase.auth.getSession();
     const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -756,6 +757,7 @@ const Room = () => {
           recording_type: recordingType,
           format: "wav",
           campaign_id: campaignId || null,
+          sample_rate: actualSampleRate || 48000,
         }),
       }
     );
@@ -769,7 +771,7 @@ const Room = () => {
   };
 
   // Upload mixed recording
-  const uploadMixedRecording = async (wavBlob: Blob) => {
+  const uploadMixedRecording = async (wavBlob: Blob, actualSampleRate?: number) => {
     if (!room || !wavBlob || wavBlob.size === 0) return;
 
     setIsMixedUploading(true);
@@ -781,6 +783,7 @@ const Room = () => {
         wavBlob, filename,
         currentParticipant?.id || "mixed", "Mixed", "mixed",
         (pct) => setMixedUploadProgress(pct),
+        actualSampleRate,
       );
       toast.success("Áudio mixado enviado!");
     } catch (error) {
@@ -832,9 +835,9 @@ const Room = () => {
 
     // Stop mixed recording and upload
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
-      const mixedBlob = await mixedRecorder.stopRecording();
-      if (mixedBlob) {
-        uploadPromises.push(uploadMixedRecording(mixedBlob));
+      const mixedResult = await mixedRecorder.stopRecording();
+      if (mixedResult) {
+        uploadPromises.push(uploadMixedRecording(mixedResult.blob, mixedResult.sampleRate));
       }
     }
 
