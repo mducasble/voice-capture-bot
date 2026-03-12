@@ -50,6 +50,7 @@ serve(async (req) => {
       campaign_id,
       user_id,        // for bot/electron: the user_id to associate
       topic,
+      duration_minutes, // optional: session duration in minutes
       participants,   // optional: array of { name, user_id? } to pre-register
     } = body;
 
