@@ -197,8 +197,8 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 
   // Overall validation summary for header
   const allIndividuals = individuals;
-  const allValidated = allIndividuals.length > 0 && allIndividuals.every(r => r.validation_status === "validated" || r.validation_status === "approved");
-  const hasRejected = allIndividuals.some(r => r.quality_status === "rejected" || r.validation_status === "rejected");
+  const allValidated = allIndividuals.length > 0 && allIndividuals.every(r => getUnifiedStatus(r).label === "Aprovado");
+  const hasRejected = allIndividuals.some(r => getUnifiedStatus(r).label.startsWith("Reprovado"));
 
   return (
     <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
