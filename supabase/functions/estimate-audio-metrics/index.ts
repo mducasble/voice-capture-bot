@@ -391,10 +391,26 @@ serve(async (req) => {
         metricsMode = `full_segments`;
         console.log(`Averaged metrics from ${results.length} segments`);
       } else {
-        // Sampled mode (default): download only needed byte ranges, build one small WAV
-        const sampledWav = await buildSampledWavStreaming(file_url, header);
-        console.log(`Sending sampled ${(sampledWav.size / 1024).toFixed(0)}KB to metrics API`);
-        metrics = await callMetricsApi(sampledWav, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+        // Sampled mode (default): download individual samples via Range requests,
+        // send each separately to avoid concatenation artifacts (WVMOS/SigMOS sensitive)
+        const sampleBlobs = await buildSampledWavSegments(file_url, header);
+        
+        if (sampleBlobs.length === 1) {
+          // Short file or single sample — one call is enough
+          console.log(`Sending single sample ${(sampleBlobs[0].size / 1024).toFixed(0)}KB to metrics API`);
+          metrics = await callMetricsApi(sampleBlobs[0], 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+        } else {
+          // Multiple samples — send each individually and average
+          console.log(`Sending ${sampleBlobs.length} individual samples to metrics API`);
+          const results: Record<string, number | null>[] = [];
+          for (let i = 0; i < sampleBlobs.length; i++) {
+            console.log(`  Analyzing sample ${i + 1}/${sampleBlobs.length} (${(sampleBlobs[i].size / 1024).toFixed(0)}KB)`);
+            const result = await callMetricsApi(sampleBlobs[i], `sample_${i}.wav`, METRICS_API_URL, METRICS_API_SECRET);
+            results.push(result);
+          }
+          metrics = averageMetrics(results);
+          console.log(`Averaged metrics from ${results.length} individual samples`);
+        }
         metricsMode = `sampled_${SAMPLE_SECONDS}s_per_${SEGMENT_SECONDS}s`;
       }
     }
