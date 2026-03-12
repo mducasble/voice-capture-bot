@@ -56,6 +56,9 @@ export default function PortalLayout() { // layout-root
       <div className="absolute inset-0 portal-grid-bg" />
 
       <div className="relative z-10">
+        {/* Announcements */}
+        <AnnouncementBanners />
+
         {/* Header */}
         <PortalHeader navItems={navItems} user={user} signOut={signOut} />
 
