@@ -1258,33 +1258,70 @@ const Room = () => {
             {/* Recording Controls (Creator only) */}
             {currentParticipant.is_creator && (
               <div className="p-4 space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-                {!canStartRecording && !room.is_recording && (
-                  <div className="flex items-center gap-2 px-3 py-2" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.3)" }}>
-                    <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "hsl(40 80% 50%)" }} />
-                    <p className="font-mono text-xs" style={{ color: "hsl(40 80% 50%)" }}>
-                      {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
-                    </p>
+                {/* Idle timeout — Daily disconnected */}
+                {idleTimedOut && !room.is_recording && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-3 py-2" style={{ background: "hsl(0 80% 50% / 0.1)", border: "1px solid hsl(0 80% 50% / 0.3)" }}>
+                      <Timer className="h-4 w-4 shrink-0" style={{ color: "hsl(0 80% 50%)" }} />
+                      <p className="font-mono text-xs" style={{ color: "hsl(0 80% 50%)" }}>
+                        Conexão de áudio encerrada por inatividade (5 min sem gravar).
+                      </p>
+                    </div>
+                    <KGenButton
+                      onClick={handleReopenDaily}
+                      scrambleText="REABRIR SALA"
+                      icon={<Radio className="h-5 w-5" />}
+                      className="w-full"
+                    />
                   </div>
                 )}
-                <div className="flex items-center justify-center">
-                  {!room.is_recording ? (
-                    <KGenButton
-                      onClick={handleStartRecording}
-                      disabled={room.status === "completed" || !canStartRecording}
-                      scrambleText={t("room.startRecording")}
-                      icon={<Circle className="h-5 w-5 fill-red-500 text-red-500" />}
-                      className="w-full"
-                    />
-                  ) : (
-                    <KGenButton
-                      variant="dark"
-                      onClick={handleStopRecording}
-                      scrambleText={t("room.stopRecording")}
-                      icon={<Square className="h-4 w-4 fill-current" />}
-                      className="w-full"
-                    />
-                  )}
-                </div>
+
+                {!idleTimedOut && (
+                  <>
+                    {!canStartRecording && !room.is_recording && (
+                      <div className="flex items-center gap-2 px-3 py-2" style={{ background: "hsl(40 80% 50% / 0.1)", border: "1px solid hsl(40 80% 50% / 0.3)" }}>
+                        <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "hsl(40 80% 50%)" }} />
+                        <p className="font-mono text-xs" style={{ color: "hsl(40 80% 50%)" }}>
+                          {t("room.minParticipantsWarning", { count: minParticipants || 2, current: connectedCount })}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-center">
+                      {!room.is_recording ? (
+                        <KGenButton
+                          onClick={handleStartRecording}
+                          disabled={room.status === "completed" || !canStartRecording}
+                          scrambleText={
+                            idleSecondsLeft != null && idleSecondsLeft > 0
+                              ? `${t("room.startRecording")} (${Math.floor(idleSecondsLeft / 60)}:${String(idleSecondsLeft % 60).padStart(2, "0")})`
+                              : t("room.startRecording")
+                          }
+                          icon={<Circle className="h-5 w-5 fill-red-500 text-red-500" />}
+                          className="w-full"
+                        />
+                      ) : (
+                        <KGenButton
+                          variant="dark"
+                          onClick={handleStopRecording}
+                          scrambleText={t("room.stopRecording")}
+                          icon={<Square className="h-4 w-4 fill-current" />}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                    {/* Idle countdown bar */}
+                    {idleSecondsLeft != null && idleSecondsLeft > 0 && !room.is_recording && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-mono text-[10px]" style={{ color: idleSecondsLeft < 60 ? "hsl(0 80% 50%)" : "var(--portal-text-muted)" }}>
+                          <span>TEMPO PARA INICIAR GRAVAÇÃO</span>
+                          <span>{Math.floor(idleSecondsLeft / 60)}:{String(idleSecondsLeft % 60).padStart(2, "0")}</span>
+                        </div>
+                        <Progress value={(idleSecondsLeft / IDLE_TIMEOUT_SECONDS) * 100} className="h-1" />
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {isMixedUploading && (
                   <div className="space-y-1">
                     <div className="flex justify-between font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
