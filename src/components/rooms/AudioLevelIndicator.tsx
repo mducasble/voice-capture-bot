@@ -58,7 +58,7 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
   }, [stream, status]);
 
   const isOnline = isConnected && (status === "connected" || !status);
-  const isActive = levels.some(l => l > 0.15);
+  const isActive = levels.some(l => l > 0.05);
   const statusText = !isConnected
     ? "Offline"
     : status === "connecting"
