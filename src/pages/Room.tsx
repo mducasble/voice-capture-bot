@@ -757,6 +757,7 @@ const Room = () => {
           recording_type: recordingType,
           format: "wav",
           campaign_id: campaignId || null,
+          sample_rate: actualSampleRate || 48000,
         }),
       }
     );

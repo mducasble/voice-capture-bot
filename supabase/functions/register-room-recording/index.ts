@@ -47,6 +47,7 @@ serve(async (req) => {
       campaign_id,
       audio_profile,
       user_id: bodyUserId,
+      sample_rate: clientSampleRate,
     } = await req.json();
 
     // Resolve user_id: from JWT or from body (bot/electron)
