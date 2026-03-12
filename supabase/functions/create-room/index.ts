@@ -50,6 +50,7 @@ serve(async (req) => {
       campaign_id,
       user_id,        // for bot/electron: the user_id to associate
       topic,
+      duration_minutes, // optional: session duration in minutes
       participants,   // optional: array of { name, user_id? } to pre-register
     } = body;
 
@@ -109,6 +110,7 @@ serve(async (req) => {
         status: 'waiting',
         topic: topic || null,
         daily_room_name: dailyRoomName,
+        duration_minutes: duration_minutes || null,
       })
       .select()
       .single();
