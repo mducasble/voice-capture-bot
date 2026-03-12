@@ -1,0 +1,1 @@
+ALTER TABLE public.rooms ADD COLUMN idle_seconds_before_recording integer DEFAULT NULL;
