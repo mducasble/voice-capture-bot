@@ -1614,13 +1614,11 @@ const Room = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    {p.id !== currentParticipant.id && (
-                      <AudioLevelIndicator
-                        stream={remoteStreams.get(p.id) ?? null}
-                        isConnected={!!p.is_connected}
-                        status={peerStatuses.get(p.id)}
-                      />
-                    )}
+                    <AudioLevelIndicator
+                      stream={p.id === currentParticipant.id ? localStream : (remoteStreams.get(p.id) ?? null)}
+                      isConnected={!!p.is_connected}
+                      status={p.id === currentParticipant.id ? "connected" : peerStatuses.get(p.id)}
+                    />
                     <Mic className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
