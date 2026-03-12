@@ -82,11 +82,12 @@ serve(async (req) => {
       }
     }
 
-    // Calculate duration from WAV file size (PCM 16-bit mono 48kHz + 44 byte header)
+    // Calculate duration from WAV file size (PCM 16-bit 48kHz + 44 byte header)
     const sampleRate = 48000;
+    const wavChannels = recording_type === 'mixed' ? 2 : 1;
     const headerSize = 44;
     const pcmBytes = Math.max(0, (file_size_bytes || 0) - headerSize);
-    const durationSeconds = pcmBytes / (sampleRate * 1 * 2); // mono, 16-bit
+    const durationSeconds = pcmBytes / (sampleRate * wavChannels * 2); // 16-bit
 
     const { data: recordData, error: recordError } = await supabase
       .from('voice_recordings')
