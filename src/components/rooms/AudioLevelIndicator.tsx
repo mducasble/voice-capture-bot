@@ -116,7 +116,7 @@ export function AudioLevelIndicator({ stream, isConnected, status, compact = fal
               key={i}
               className="w-[3.5px] rounded-full transition-all duration-75"
               style={{
-                height: `${Math.max(4, level * 16)}px`,
+                height: `${Math.max(4, Math.min(1, level * 3) * 16)}px`,
                 backgroundColor: isActive ? "hsl(142 71% 45%)" : "var(--portal-text-muted, #555)",
                 opacity: isActive ? 1 : 0.3,
               }}
