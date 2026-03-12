@@ -128,12 +128,53 @@ const Room = () => {
   const remoteRecorders = useRemoteRecorders();
 
   // Daily.co SFU audio connection (replaces P2P WebRTC)
-  const { remoteStreams, peerStatuses } = useDaily({
+  const { remoteStreams, peerStatuses, isDailyConnected, leaveDaily, rejoinDaily } = useDaily({
     roomId,
     participantId: currentParticipant?.id,
     localStream,
     participants,
   });
+
+  // Idle timer: 5 minutes to start recording or Daily disconnects
+  const IDLE_TIMEOUT_SECONDS = 5 * 60;
+  const [idleSecondsLeft, setIdleSecondsLeft] = useState<number | null>(null);
+  const [idleTimedOut, setIdleTimedOut] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Start idle timer when Daily connects, clear when recording starts
+  useEffect(() => {
+    if (isDailyConnected && !room?.is_recording && room?.status !== "completed" && !idleTimedOut) {
+      setIdleSecondsLeft(IDLE_TIMEOUT_SECONDS);
+      idleTimerRef.current = setInterval(() => {
+        setIdleSecondsLeft(prev => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            // Time's up — disconnect from Daily
+            clearInterval(idleTimerRef.current!);
+            setIdleTimedOut(true);
+            leaveDaily();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (room?.is_recording) {
+      // Recording started, clear idle timer
+      if (idleTimerRef.current) clearInterval(idleTimerRef.current);
+      setIdleSecondsLeft(null);
+      setIdleTimedOut(false);
+    }
+
+    return () => {
+      if (idleTimerRef.current) clearInterval(idleTimerRef.current);
+    };
+  }, [isDailyConnected, room?.is_recording, room?.status, idleTimedOut, leaveDaily]);
+
+  const handleReopenDaily = useCallback(async () => {
+    setIdleTimedOut(false);
+    setIdleSecondsLeft(IDLE_TIMEOUT_SECONDS);
+    await rejoinDaily();
+  }, [rejoinDaily]);
 
   // Play remote audio streams with volume boost via Web Audio API
   useEffect(() => {
