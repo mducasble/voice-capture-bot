@@ -63,7 +63,44 @@ serve(async (req) => {
     // Resolve user_id: from JWT or from body (bot/electron)
     const resolvedUserId = authUserId || user_id || null;
 
-    // 1. Create the room
+    // 1. Create Daily.co room for SFU-based audio
+    let dailyRoomName: string | null = null;
+    const DAILY_API_KEY = Deno.env.get('DAILY_API_KEY');
+    if (DAILY_API_KEY) {
+      try {
+        const dailyRes = await fetch('https://api.daily.co/v1/rooms', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${DAILY_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            properties: {
+              enable_chat: false,
+              enable_screenshare: false,
+              start_video_off: true,
+              start_audio_off: false,
+              // Auto-delete after 8 hours
+              exp: Math.floor(Date.now() / 1000) + 8 * 60 * 60,
+              max_participants: 10,
+              enable_knocking: false,
+              enable_prejoin_ui: false,
+            },
+          }),
+        });
+        if (dailyRes.ok) {
+          const dailyRoom = await dailyRes.json();
+          dailyRoomName = dailyRoom.name;
+          console.log(`Created Daily room: ${dailyRoomName}`);
+        } else {
+          console.error('Daily room creation failed:', await dailyRes.text());
+        }
+      } catch (e) {
+        console.error('Daily room creation error:', e);
+      }
+    }
+
+    // 2. Create the room in our database
     const { data: room, error: roomError } = await supabase
       .from('rooms')
       .insert({
@@ -71,6 +108,7 @@ serve(async (req) => {
         room_name: room_name?.trim() || `Sala de ${creator_name.trim()}`,
         status: 'waiting',
         topic: topic || null,
+        daily_room_name: dailyRoomName,
       })
       .select()
       .single();
