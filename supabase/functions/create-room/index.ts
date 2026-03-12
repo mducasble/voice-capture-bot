@@ -66,7 +66,6 @@ serve(async (req) => {
     // 1. Create Daily.co room for SFU-based audio
     let dailyRoomName: string | null = null;
     const DAILY_API_KEY = Deno.env.get('DAILY_API_KEY');
-    console.log(`DAILY_API_KEY present: ${!!DAILY_API_KEY}, length: ${DAILY_API_KEY?.length ?? 0}`);
     if (DAILY_API_KEY) {
       try {
         const dailyRes = await fetch('https://api.daily.co/v1/rooms', {
