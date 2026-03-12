@@ -359,6 +359,61 @@ const Room = () => {
     checkCreatorParticipant();
   }, [roomId, room, dbCreatorParticipant, currentParticipant, getAudioConstraints]);
 
+  // Auto-reconnect non-creator participants on refresh
+  useEffect(() => {
+    if (!roomId || !room || currentParticipant) return;
+    // Skip if we already handled creator reconnection
+    if (dbCreatorParticipant) {
+      const storedId = localStorage.getItem(`room_${roomId}_participant`);
+      if (storedId === dbCreatorParticipant.id) return;
+    }
+
+    const reconnectParticipant = async () => {
+      const storedParticipantId = localStorage.getItem(`room_${roomId}_participant`);
+      if (!storedParticipantId) return;
+
+      // Verify participant exists in DB and belongs to this room
+      const { data: existingParticipant } = await supabase
+        .from("room_participants")
+        .select("*")
+        .eq("id", storedParticipantId)
+        .eq("room_id", roomId)
+        .single();
+
+      if (!existingParticipant) {
+        // Stale localStorage entry, clear it
+        localStorage.removeItem(`room_${roomId}_participant`);
+        return;
+      }
+
+      // Also verify user_id matches if authenticated
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (currentUser && existingParticipant.user_id && existingParticipant.user_id !== currentUser.id) {
+        localStorage.removeItem(`room_${roomId}_participant`);
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+        mediaStreamRef.current = stream;
+        setLocalStream(stream);
+
+        // Re-mark as connected in DB
+        await supabase
+          .from("room_participants")
+          .update({ is_connected: true, left_at: null })
+          .eq("id", existingParticipant.id);
+
+        setCurrentParticipant(existingParticipant as Participant);
+        toast.success("Reconectado à sala!");
+      } catch (error) {
+        console.error("Error reconnecting participant:", error);
+      }
+    };
+
+    reconnectParticipant();
+  }, [roomId, room, dbCreatorParticipant, currentParticipant, getAudioConstraints]);
+
   // Fetch and subscribe to participants (with polling fallback)
   useEffect(() => {
     if (!roomId) return;
