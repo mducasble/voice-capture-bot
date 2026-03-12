@@ -564,20 +564,14 @@ async def analyze_audio(
                 break  # Only one chunk for short files
         vqscore_val = round(float(np.mean(vq_scores)), 4) if vq_scores else None
 
-        # --- WVMOS (averaged over chunk files) ---
+        # --- WVMOS (always chunked to avoid discontinuity artifacts) ---
+        # Uses compute_wvmos_chunked which splits audio into 10s segments
+        # This prevents low scores from concatenated pre-sampled audio
         wvmos_scores = []
-        for i, (chunk_audio, chunk_sr) in enumerate(chunks):
-            if is_sampled:
-                chunk_path = os.path.join(tempfile.gettempdir(), f"wvmos_chunk_{i}.wav")
-                sf.write(chunk_path, chunk_audio, chunk_sr)
-                chunk_paths.append(chunk_path)
-                s = compute_wvmos(chunk_path)
-            else:
-                s = compute_wvmos(wav_path)
+        for chunk_audio, chunk_sr in chunks:
+            s = compute_wvmos_chunked(chunk_audio, chunk_sr, chunk_seconds=10.0)
             if s is not None:
                 wvmos_scores.append(s)
-            if not is_sampled:
-                break
         wvmos_val = round(float(np.mean(wvmos_scores)), 4) if wvmos_scores else None
 
         # --- UTMOS (averaged over chunks, extra metric) ---
