@@ -38,7 +38,7 @@ function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg
   const val = rec.validation_status;
 
   // If either is rejected → REPROVADO
-  if (qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed") {
+  if (qa === "rejected" || val === "rejected") {
     const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
     return {
       label: reason ? `Reprovado: ${reason}` : "Reprovado",
