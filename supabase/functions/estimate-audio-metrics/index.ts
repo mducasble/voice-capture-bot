@@ -321,41 +321,51 @@ serve(async (req) => {
           metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
           metricsMode = 'full_unparsed';
         } else {
-          // Extract sampled WAV in-memory
+          // Extract individual samples in-memory (no concatenation)
           const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
           const bytesPerFrame = channels * (bitsPerSample / 8);
           const totalFrames = Math.floor(dataSize / bytesPerFrame);
           const totalDuration = totalFrames / sampleRate;
           const segmentFrames = sampleRate * SEGMENT_SECONDS;
-          const sampleFrames = sampleRate * SAMPLE_SECONDS;
+          const sampleFramesCount = sampleRate * SAMPLE_SECONDS;
           const sampleOffsetFrames = sampleRate * 25;
 
-          const extractedChunks: Uint8Array[] = [];
-          let totalExtractedFrames = 0;
-
           if (totalDuration <= SAMPLE_SECONDS) {
-            extractedChunks.push(fullBytes.slice(dataOffset, dataOffset + dataSize));
-            totalExtractedFrames = totalFrames;
+            // Very short file — send as-is
+            const audioBlob = new Blob([fullBytes], { type: 'audio/wav' });
+            metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
           } else {
+            // Build individual WAV blobs per sample, send each separately
             const numSegments = Math.ceil(totalFrames / segmentFrames);
+            const sampleBlobs: Blob[] = [];
+            
             for (let seg = 0; seg < numSegments; seg++) {
               const segStartFrame = seg * segmentFrames;
               const segEndFrame = Math.min(segStartFrame + segmentFrames, totalFrames);
               const segLength = segEndFrame - segStartFrame;
               let extractStart: number;
-              const framesToExtract = Math.min(sampleFrames, segLength);
-              if (segLength <= sampleFrames) extractStart = segStartFrame;
-              else if (segLength > sampleOffsetFrames + sampleFrames) extractStart = segStartFrame + sampleOffsetFrames;
+              const framesToExtract = Math.min(sampleFramesCount, segLength);
+              if (segLength <= sampleFramesCount) extractStart = segStartFrame;
+              else if (segLength > sampleOffsetFrames + sampleFramesCount) extractStart = segStartFrame + sampleOffsetFrames;
               else extractStart = segStartFrame + Math.floor((segLength - framesToExtract) / 2);
               const byteStart = dataOffset + extractStart * bytesPerFrame;
               const byteEnd = Math.min(byteStart + framesToExtract * bytesPerFrame, fullBytes.length);
-              extractedChunks.push(fullBytes.slice(byteStart, byteEnd));
-              totalExtractedFrames += Math.floor((byteEnd - byteStart) / bytesPerFrame);
+              const chunk = fullBytes.slice(byteStart, byteEnd);
+              const extractedFrames = Math.floor(chunk.length / bytesPerFrame);
+              sampleBlobs.push(buildWav([chunk], extractedFrames, sampleRate, channels, bitsPerSample));
+            }
+
+            if (sampleBlobs.length === 1) {
+              metrics = await callMetricsApi(sampleBlobs[0], 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+            } else {
+              const results: Record<string, number | null>[] = [];
+              for (let i = 0; i < sampleBlobs.length; i++) {
+                const result = await callMetricsApi(sampleBlobs[i], `sample_${i}.wav`, METRICS_API_URL, METRICS_API_SECRET);
+                results.push(result);
+              }
+              metrics = averageMetrics(results);
             }
           }
-
-          const sampledWav = buildWav(extractedChunks, totalExtractedFrames, sampleRate, channels, bitsPerSample);
-          metrics = await callMetricsApi(sampledWav, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
           metricsMode = `sampled_${SAMPLE_SECONDS}s_per_${SEGMENT_SECONDS}s`;
         }
 
