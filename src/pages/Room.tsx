@@ -832,9 +832,9 @@ const Room = () => {
 
     // Stop mixed recording and upload
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
-      const mixedBlob = await mixedRecorder.stopRecording();
-      if (mixedBlob) {
-        uploadPromises.push(uploadMixedRecording(mixedBlob));
+      const mixedResult = await mixedRecorder.stopRecording();
+      if (mixedResult) {
+        uploadPromises.push(uploadMixedRecording(mixedResult.blob, mixedResult.sampleRate));
       }
     }
 
