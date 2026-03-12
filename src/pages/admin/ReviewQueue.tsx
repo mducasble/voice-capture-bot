@@ -228,18 +228,20 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function snrColor(snr: number | null) {
-  if (snr == null) return "hsl(0 0% 50%)";
-  if (snr >= 25) return "hsl(120 60% 45%)";
-  if (snr >= 15) return "hsl(40 80% 50%)";
+/** Color by tier: >= hq = green, >= mq = yellow, below = red */
+function tierColor(value: number | null | undefined, hq: number, mq: number) {
+  if (value == null) return "hsl(0 0% 50%)";
+  if (value >= hq) return "hsl(120 60% 45%)";
+  if (value >= mq) return "hsl(40 80% 50%)";
   return "hsl(0 70% 50%)";
 }
 
-function metricColor(value: number | null | undefined, good: number, warn: number) {
-  if (value == null) return "hsl(0 0% 50%)";
-  if (value >= good) return "hsl(120 60% 45%)";
-  if (value >= warn) return "hsl(40 80% 50%)";
-  return "hsl(0 70% 50%)";
+function snrColor(snr: number | null) {
+  return tierColor(snr, 25, 25); // SNR only has one threshold (HQ >= 25)
+}
+
+function metricColor(value: number | null | undefined, hq: number, mq: number) {
+  return tierColor(value, hq, mq);
 }
 
 function formatBytes(bytes: number) {
