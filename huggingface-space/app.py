@@ -248,12 +248,58 @@ def compute_sigmos(audio: np.ndarray, sr: int) -> dict:
 
 
 def compute_wvmos(filepath: str) -> Optional[float]:
+    """Compute WVMOS on a single file. For chunked computation use compute_wvmos_chunked."""
     try:
         model = get_wvmos()
         score = model.calculate_one(filepath)
         return round(float(score), 4)
     except Exception as e:
         print(f"WVMOS error: {e}")
+        return None
+
+
+def compute_wvmos_chunked(audio: np.ndarray, sr: int, chunk_seconds: float = 10.0) -> Optional[float]:
+    """Compute WVMOS by splitting audio into small chunks and averaging.
+    This avoids artifacts from discontinuities in pre-sampled/concatenated audio.
+    Aligned with TTS_Validation which processes chunks independently."""
+    try:
+        model = get_wvmos()
+        chunk_samples = int(chunk_seconds * sr)
+        total_samples = len(audio)
+
+        if total_samples < sr:  # Less than 1 second, skip
+            return None
+
+        scores = []
+        num_chunks = max(1, total_samples // chunk_samples)
+
+        for i in range(num_chunks):
+            start = i * chunk_samples
+            end = min(start + chunk_samples, total_samples)
+            chunk = audio[start:end]
+
+            if len(chunk) < sr:  # Skip chunks shorter than 1 second
+                continue
+
+            # Write chunk to temp file for wvmos
+            chunk_path = os.path.join(tempfile.gettempdir(), f"wvmos_auto_chunk_{i}.wav")
+            sf.write(chunk_path, chunk, sr)
+            try:
+                score = model.calculate_one(chunk_path)
+                if score is not None:
+                    scores.append(float(score))
+            finally:
+                try:
+                    os.unlink(chunk_path)
+                except OSError:
+                    pass
+
+        if not scores:
+            return None
+        return round(float(np.mean(scores)), 4)
+    except Exception as e:
+        print(f"WVMOS chunked error: {e}")
+        traceback.print_exc()
         return None
 
 
