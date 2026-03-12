@@ -33,27 +33,39 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function StatusBadge({ label, status, reason }: { label: string; status: string | null; reason?: string | null }) {
-  const config: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
-    validated: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    approved: { icon: <CheckCircle className="h-3.5 w-3.5" />, color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-    rejected: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
-    failed: { icon: <XCircle className="h-3.5 w-3.5" />, color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
-    pending: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)" },
-    processing: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: "var(--portal-accent)", bg: "rgba(255,255,255,0.05)" },
-  };
-  const s = status || "pending";
-  const c = config[s] || config.pending;
+function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg: string; icon: React.ReactNode; reason?: string | null } {
+  const qa = rec.quality_status;
+  const val = rec.validation_status;
 
-  return (
-    <span
-      className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5"
-      style={{ color: c.color, background: c.bg }}
-      title={reason || undefined}
-    >
-      {c.icon} {label}
-    </span>
-  );
+  // If either is rejected → REPROVADO
+  if (qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed") {
+    const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
+    return {
+      label: reason ? `Reprovado: ${reason}` : "Reprovado",
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.15)",
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      reason,
+    };
+  }
+
+  // If both approved → APROVADO
+  if ((qa === "approved" || qa === "validated") && (val === "approved" || val === "validated")) {
+    return {
+      label: "Aprovado",
+      color: "#22c55e",
+      bg: "rgba(34,197,94,0.15)",
+      icon: <CheckCircle className="h-3.5 w-3.5" />,
+    };
+  }
+
+  // Otherwise → EM ANÁLISE
+  return {
+    label: "Em análise",
+    color: "var(--portal-text-muted)",
+    bg: "rgba(255,255,255,0.05)",
+    icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  };
 }
 
 function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
