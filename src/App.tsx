@@ -23,6 +23,7 @@ const RoomsMonitor = lazy(() => import("./pages/admin/RoomsMonitor"));
 const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminMaintenance = lazy(() => import("./pages/admin/AdminMaintenance"));
+const AdminAnnouncements = lazy(() => import("./pages/admin/AdminAnnouncements"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
