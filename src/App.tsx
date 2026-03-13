@@ -36,6 +36,7 @@ const PortalMyCampaigns = lazy(() => import("./pages/portal/PortalMyCampaigns"))
 const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
 const PortalEarnings = lazy(() => import("./pages/portal/PortalEarnings"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
+const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
 
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
             {/* Portal routes (public-facing, root) */}
             <Route path="/auth" element={<PortalAuth />} />
             <Route path="/invite/:code" element={<InvitePage />} />
+            <Route path="/c/:slug" element={<PrivateUpload />} />
             
             <Route path="/" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
