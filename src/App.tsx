@@ -89,6 +89,7 @@ const App = () => (
               <Route path="faq" element={<AdminFaq />} />
               <Route path="maintenance" element={<AdminMaintenance />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
+              <Route path="referral-network" element={<AdminReferralNetwork />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
