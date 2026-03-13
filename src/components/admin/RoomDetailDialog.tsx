@@ -39,7 +39,7 @@ interface RoomSummary {
   status: string;
   is_recording: boolean;
   created_at: string;
-  recording_started_at: string | null;
+  recording_started_at?: string | null;
   session_id: string | null;
   topic: string | null;
   duration_minutes: number | null;
