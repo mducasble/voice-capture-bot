@@ -1246,8 +1246,7 @@ const Room = () => {
                 stream={mediaStreamRef.current}
                 testStatus={currentParticipant.audio_test_status || "pending"}
                 testResults={currentParticipant.audio_test_results}
-                onProfileRecommended={handleProfileApplied}
-                currentProfile={audioProfile}
+                isPortal={isPortal}
                 isPortal={isPortal}
                 onTestComplete={() => {
                   const fetchParticipants = async () => {
