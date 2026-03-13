@@ -1352,11 +1352,7 @@ const Room = () => {
                   </div>
                 )}
                 <div className="flex items-center justify-center gap-3 pt-2 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
-                  {audioProfile && (
-                    <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                      🎛️ PERFIL ADAPTATIVO
-                    </span>
-                  )}
+                  {room.is_recording && (
                   {room.is_recording && (
                     <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-accent)" }}>
                       🎚️ MIX: {1 + remoteStreams.size} STREAMS
