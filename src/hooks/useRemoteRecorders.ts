@@ -147,6 +147,7 @@ export const useRemoteRecorders = () => {
     recordersRef.current.clear();
     connectedIdsRef.current.clear();
     setIsRecording(false);
+    isRecordingRef.current = false;
     return results;
   }, []);
 
