@@ -15,6 +15,7 @@ interface RemoteRecorderEntry {
  */
 export const useRemoteRecorders = () => {
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const recordersRef = useRef<Map<string, RemoteRecorderEntry>>(new Map());
   const connectedIdsRef = useRef<Set<string>>(new Set());
 
@@ -37,6 +38,7 @@ export const useRemoteRecorders = () => {
       }
 
       setIsRecording(true);
+      isRecordingRef.current = true;
     },
     []
   );
@@ -81,14 +83,14 @@ export const useRemoteRecorders = () => {
       stream: MediaStream,
       participantName: string
     ) => {
-      if (!isRecording) return;
+      if (!isRecordingRef.current) return;
       try {
         await addStream(peerId, stream, participantName);
       } catch (e) {
         console.error(`[RemoteRecorders] Failed to add ${peerId}:`, e);
       }
     },
-    [isRecording]
+    []
   );
 
   /** Stop all recorders and return Map<peerId, {blob, name}> */
@@ -145,6 +147,7 @@ export const useRemoteRecorders = () => {
     recordersRef.current.clear();
     connectedIdsRef.current.clear();
     setIsRecording(false);
+    isRecordingRef.current = false;
     return results;
   }, []);
 
