@@ -83,14 +83,14 @@ export const useRemoteRecorders = () => {
       stream: MediaStream,
       participantName: string
     ) => {
-      if (!isRecording) return;
+      if (!isRecordingRef.current) return;
       try {
         await addStream(peerId, stream, participantName);
       } catch (e) {
         console.error(`[RemoteRecorders] Failed to add ${peerId}:`, e);
       }
     },
-    [isRecording]
+    []
   );
 
   /** Stop all recorders and return Map<peerId, {blob, name}> */
