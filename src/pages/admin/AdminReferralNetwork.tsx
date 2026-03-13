@@ -35,63 +35,12 @@ function useNetworkSessions(userId: string | null) {
     queryKey: ["network-sessions", userId],
     enabled: !!userId,
     queryFn: async () => {
-      // 1. Get all users in this person's network from referrals
-      const { data: referrals, error: refErr } = await supabase
-        .from("referrals")
-        .select("user_id, level_1, level_2, level_3, level_4, level_5");
-
-      if (refErr) throw refErr;
-
-      // Find members at each level
-      const members: { user_id: string; level: number }[] = [];
-      for (const r of referrals || []) {
-        for (let lvl = 1; lvl <= 5; lvl++) {
-          const key = `level_${lvl}` as keyof typeof r;
-          if (r[key] === userId) {
-            members.push({ user_id: r.user_id, level: lvl });
-            break; // a user can only appear at one level for this referrer
-          }
-        }
-      }
-
-      if (members.length === 0) return [];
-
-      const memberIds = members.map((m) => m.user_id);
-
-      // 2. Get profiles for these members
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, country")
-        .in("id", memberIds);
-
-      // 3. Get session counts per user (distinct session_id from voice_recordings where recording_type = 'individual')
-      const { data: recordings } = await supabase
-        .from("voice_recordings" as any)
-        .select("user_id, session_id")
-        .in("user_id", memberIds)
-        .eq("recording_type", "individual");
-
-      // Count distinct sessions per user
-      const sessionCounts = new Map<string, Set<string>>();
-      for (const rec of (recordings as any[]) || []) {
-        if (!sessionCounts.has(rec.user_id)) sessionCounts.set(rec.user_id, new Set());
-        if (rec.session_id) sessionCounts.get(rec.user_id)!.add(rec.session_id);
-      }
-
-      const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-
-      const result: NetworkMember[] = members.map((m) => ({
-        user_id: m.user_id,
-        full_name: profileMap.get(m.user_id)?.full_name || null,
-        country: profileMap.get(m.user_id)?.country || null,
-        level: m.level,
-        session_count: sessionCounts.get(m.user_id)?.size || 0,
-      }));
-
-      // Sort by level, then by session count desc
-      result.sort((a, b) => a.level - b.level || b.session_count - a.session_count);
-
-      return result;
+      const { data, error } = await supabase.rpc(
+        "get_network_members_with_sessions" as any,
+        { p_user_id: userId }
+      );
+      if (error) throw error;
+      return (data as unknown as NetworkMember[]) || [];
     },
     staleTime: 60_000,
   });
