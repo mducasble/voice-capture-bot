@@ -1709,8 +1709,7 @@ const Room = () => {
               isRecording={room.is_recording}
               sessionId={room.session_id}
               isMuted={isMuted}
-              noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
-              audioProfile={audioProfile}
+              campaignId={campaignId}
               campaignId={campaignId}
             />
           </CardContent>
