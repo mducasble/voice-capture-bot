@@ -1456,7 +1456,6 @@ const Room = () => {
                   sessionId={room.session_id}
                   isMuted={isMuted}
                   campaignId={campaignId}
-                  campaignId={campaignId}
                 />
               </div>
             </div>
