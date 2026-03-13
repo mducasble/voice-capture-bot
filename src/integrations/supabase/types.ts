@@ -2477,6 +2477,16 @@ export type Database = {
           validation_status: string
         }[]
       }
+      get_network_members_with_sessions: {
+        Args: { p_user_id: string }
+        Returns: {
+          country: string
+          full_name: string
+          level: number
+          session_count: number
+          user_id: string
+        }[]
+      }
       get_referral_network_stats: {
         Args: never
         Returns: {
