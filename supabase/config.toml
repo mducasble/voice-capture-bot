@@ -49,3 +49,5 @@ project_id = "qfxustvmwdyjduzpeafk"
     verify_jwt = false
   [functions.get-daily-token]
     verify_jwt = false
+  [functions.batch-enhance]
+    verify_jwt = false
