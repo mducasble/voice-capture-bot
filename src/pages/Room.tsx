@@ -1658,7 +1658,6 @@ const Room = () => {
                     )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
                       {room.is_recording && (
-                      {room.is_recording && (
                         <Badge variant="outline" className="text-xs border-accent/50 text-accent">
                           🎚️ Mix: {1 + remoteStreams.size} streams
                         </Badge>
