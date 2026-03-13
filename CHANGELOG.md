@@ -1,8 +1,17 @@
 # Patch Notes
 
-## [Unreleased]
+## [1.01.0313.1]
 
 ### 2026-03-13
+
+#### Arquitetura — Pipeline de Gravação Limpo
+- **ParticipantAudio** — Substituído pipeline com audioProfile (gain, highpass, lowpass, RNNoise, Koala) por pipeline limpo idêntico ao mixed recorder: `source → gain(1.0) → AudioWorklet`. Garante que trilhas individuais e mixed tenham a mesma qualidade.
+- **AudioTestFlow** — Simplificado para modo diagnóstico-only: mantém gravação de teste, análise de métricas e orientações práticas; removido painel de configuração de perfil adaptativo (sliders, toggles, apply/skip).
+- **Room.tsx** — Removido estado `audioProfile`, `handleProfileApplied`, e todas as referências a filtros adaptativos. `getUserMedia` agora usa constraints fixas (echoCancellation/noiseSuppression/AGC = false) para captura crua consistente. Melhorias de áudio delegadas ao pós-processamento (Enhance via HuggingFace).
+
+## [Unreleased — pre-1.01]
+
+### 2026-03-13 (pre-release)
 
 #### Admin
 - **AdminReferralNetwork** — Nova página de visualização da rede de indicações com ranking por tamanho total (L1–L5), acordeão lazy-load por usuário mostrando membros com país, nível e contagem de sessões gravadas

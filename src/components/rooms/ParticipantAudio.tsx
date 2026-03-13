@@ -2,9 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { useWavRecorder } from "@/hooks/useWavRecorder";
-import type { AudioProfile } from "@/lib/audioProfile";
-
 
 interface ParticipantAudioProps {
   participantId: string;
@@ -13,11 +10,14 @@ interface ParticipantAudioProps {
   isRecording: boolean;
   sessionId: string;
   isMuted: boolean;
-  noiseGateEnabled?: boolean;
-  audioProfile?: AudioProfile | null;
   campaignId?: string;
 }
 
+/**
+ * Records each participant's individual audio using a clean pipeline
+ * identical to the mixed recorder: source → gain(1.0) → AudioWorklet.
+ * No audioProfile filters are applied — post-processing (Enhance) handles corrections.
+ */
 export const ParticipantAudio = ({
   participantId,
   participantName,
@@ -25,8 +25,6 @@ export const ParticipantAudio = ({
   isRecording,
   sessionId,
   isMuted,
-  noiseGateEnabled = false,
-  audioProfile = null,
   campaignId,
 }: ParticipantAudioProps) => {
   const [audioLevel, setAudioLevel] = useState(0);
@@ -37,11 +35,15 @@ export const ParticipantAudio = ({
   const animationFrameRef = useRef<number | null>(null);
   const levelAudioContextRef = useRef<AudioContext | null>(null);
   const isRecordingRef = useRef(false);
-  const pendingBlobRef = useRef<Blob | null>(null);
 
-  const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1, profile: audioProfile });
+  // Clean recording pipeline refs
+  const recAudioContextRef = useRef<AudioContext | null>(null);
+  const recWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const recSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recGainNodeRef = useRef<GainNode | null>(null);
+  const recChunksRef = useRef<Float32Array[]>([]);
 
-  // Audio level visualization - mirrors the recording chain for accurate display
+  // Audio level visualization — simple source → analyser, no filters
   useEffect(() => {
     if (!stream) return;
 
@@ -51,33 +53,7 @@ export const ParticipantAudio = ({
     analyserRef.current = analyser;
     
     const source = audioContext.createMediaStreamSource(stream);
-    
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = audioProfile?.gain ?? 1.0;
-
-    let lastNode: AudioNode = source;
-
-    // Mirror filters from profile
-    if (audioProfile && audioProfile.highpassFreq > 0) {
-      const highpass = audioContext.createBiquadFilter();
-      highpass.type = "highpass";
-      highpass.frequency.value = audioProfile.highpassFreq;
-      highpass.Q.value = 0.7;
-      lastNode.connect(highpass);
-      lastNode = highpass;
-    }
-
-    if (audioProfile && audioProfile.lowpassFreq > 0) {
-      const lowpass = audioContext.createBiquadFilter();
-      lowpass.type = "lowpass";
-      lowpass.frequency.value = audioProfile.lowpassFreq;
-      lowpass.Q.value = 0.7;
-      lastNode.connect(lowpass);
-      lastNode = lowpass;
-    }
-
-    lastNode.connect(gainNode);
-    gainNode.connect(analyser);
+    source.connect(analyser);
     
     analyser.fftSize = 256;
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -97,30 +73,102 @@ export const ParticipantAudio = ({
       }
       audioContext.close();
     };
-  }, [stream, audioProfile]);
+  }, [stream]);
 
-  // Start/stop WAV recording based on room state
+  // Start/stop recording based on room state — clean pipeline identical to mixed
   useEffect(() => {
     if (!stream) return;
 
     const handleRecordingChange = async () => {
       if (isRecording && !isRecordingRef.current) {
         isRecordingRef.current = true;
-        await wavRecorder.startRecording(stream);
+        recChunksRef.current = [];
+
+        const sampleRate = 48000;
+        const audioContext = new AudioContext({ sampleRate });
+        recAudioContextRef.current = audioContext;
+
+        await audioContext.audioWorklet.addModule("/wav-processor.js");
+
+        const source = audioContext.createMediaStreamSource(stream);
+        recSourceNodeRef.current = source;
+
+        // Clean pipeline: source → gain(1.0) → worklet (same as mixed)
+        const gain = audioContext.createGain();
+        gain.gain.value = 1.0;
+        recGainNodeRef.current = gain;
+
+        const workletNode = new AudioWorkletNode(audioContext, "wav-processor");
+        recWorkletNodeRef.current = workletNode;
+
+        workletNode.port.onmessage = (event) => {
+          if (event.data.type === "samples") {
+            recChunksRef.current.push(event.data.samples);
+          }
+        };
+
+        source.connect(gain);
+        gain.connect(workletNode);
+
       } else if (!isRecording && isRecordingRef.current) {
         isRecordingRef.current = false;
-        const wavBlob = await wavRecorder.stopRecording();
-        if (wavBlob) {
-          pendingBlobRef.current = wavBlob;
+        
+        const workletNode = recWorkletNodeRef.current;
+        const audioContext = recAudioContextRef.current;
+
+        if (!audioContext || !workletNode) return;
+
+        // Flush remaining samples
+        await new Promise<void>((resolve) => {
+          const handler = (event: MessageEvent) => {
+            if (event.data.type === "samples") {
+              recChunksRef.current.push(event.data.samples);
+            }
+            if (event.data.type === "done") {
+              workletNode.port.removeEventListener("message", handler);
+              resolve();
+            }
+          };
+          workletNode.port.addEventListener("message", handler);
+          workletNode.port.postMessage({ type: "stop" });
+        });
+
+        if (recChunksRef.current.length === 0) return;
+
+        // Disconnect all nodes
+        workletNode.disconnect();
+        recGainNodeRef.current?.disconnect();
+        try { recSourceNodeRef.current?.disconnect(); } catch { /* already disconnected */ }
+
+        // Merge chunks
+        const totalLength = recChunksRef.current.reduce((a, c) => a + c.length, 0);
+        const merged = new Float32Array(totalLength);
+        let offset = 0;
+        for (const chunk of recChunksRef.current) {
+          merged.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        // Convert to 16-bit WAV (same logic as mixed)
+        const actualSampleRate = audioContext.sampleRate;
+        const pcm = float32ToInt16(merged);
+        const wavBlob = createWavBlob(pcm, actualSampleRate, 1);
+
+        await audioContext.close();
+        recAudioContextRef.current = null;
+        recWorkletNodeRef.current = null;
+        recChunksRef.current = [];
+
+        if (wavBlob && wavBlob.size > 0) {
           await uploadRecording(wavBlob);
         }
       }
     };
 
     handleRecordingChange();
-  }, [isRecording, stream, wavRecorder]);
+  }, [isRecording, stream]);
 
-  // Upload WAV recording to S3 via pre-signed URL (avoids memory limits)
+  // Upload WAV recording to S3 via streaming proxy
   const uploadRecording = useCallback(async (wavBlob: Blob) => {
     if (!wavBlob || wavBlob.size === 0) return;
 
@@ -134,7 +182,6 @@ export const ParticipantAudio = ({
 
       setUploadProgress(10);
 
-      // 2. Upload via streaming proxy (avoids S3 CORS issues)
       const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(filename)}&session_id=${encodeURIComponent(sessionId)}&content_type=${encodeURIComponent("audio/wav")}`;
       const streamRes = await fetch(streamUrl, {
         method: "POST",
@@ -155,7 +202,6 @@ export const ParticipantAudio = ({
 
       setUploadProgress(70);
 
-      // 3. Register in database
       const regRes = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-room-recording`,
         {
@@ -164,7 +210,7 @@ export const ParticipantAudio = ({
             "Authorization": `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
-            body: JSON.stringify({
+          body: JSON.stringify({
             filename,
             file_url: finalUrl,
             file_size_bytes: wavBlob.size,
@@ -174,7 +220,6 @@ export const ParticipantAudio = ({
             recording_type: "individual",
             format: "wav",
             campaign_id: campaignId || null,
-            audio_profile: audioProfile || null,
           }),
         }
       );
@@ -186,7 +231,6 @@ export const ParticipantAudio = ({
       
     } catch (error) {
       console.error("Upload error:", error);
-      // Fallback: download the individual audio so it's not lost
       try {
         const fallbackFilename = `room_${sessionId}_${participantName}_${Date.now()}.wav`;
         const url = URL.createObjectURL(wavBlob);
@@ -204,7 +248,6 @@ export const ParticipantAudio = ({
       }
     } finally {
       setIsUploading(false);
-      pendingBlobRef.current = null;
     }
   }, [sessionId, participantId, participantName, campaignId]);
 
@@ -256,3 +299,51 @@ export const ParticipantAudio = ({
     </div>
   );
 };
+
+// --- WAV utilities (identical to useMixedRecorder) ---
+
+function float32ToInt16(buffer: Float32Array): Int16Array {
+  const result = new Int16Array(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    const s = Math.max(-1, Math.min(1, buffer[i]));
+    result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  return result;
+}
+
+function createWavBlob(pcmData: Int16Array, sampleRate: number, numChannels: number): Blob {
+  const byteRate = sampleRate * numChannels * 2;
+  const blockAlign = numChannels * 2;
+  const dataSize = pcmData.length * 2;
+  const bufferSize = 44 + dataSize;
+
+  const buffer = new ArrayBuffer(bufferSize);
+  const view = new DataView(buffer);
+
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(view, 8, "WAVE");
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, "data");
+  view.setUint32(40, dataSize, true);
+
+  const pcmOffset = 44;
+  for (let i = 0; i < pcmData.length; i++) {
+    view.setInt16(pcmOffset + i * 2, pcmData[i], true);
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}

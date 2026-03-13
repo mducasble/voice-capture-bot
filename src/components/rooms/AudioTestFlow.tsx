@@ -4,13 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Settings2, ChevronDown, ChevronUp, Play, Pause } from "lucide-react";
+import { Mic, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, ChevronDown, ChevronUp, Play, Pause } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { toast } from "sonner";
 import { useWavRecorder } from "@/hooks/useWavRecorder";
-import { computeAudioProfile, getProfileDescriptionKeys, DEFAULT_PROFILE, type AudioProfile, type TestMetrics } from "@/lib/audioProfile";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
 
@@ -42,13 +39,17 @@ interface AudioTestFlowProps {
   testStatus: string;
   testResults: TestResults | null;
   onTestComplete: () => void;
-  onProfileRecommended?: (profile: AudioProfile) => void;
-  currentProfile?: AudioProfile | null;
   isPortal?: boolean;
 }
 
 const TEST_DURATION = 10;
 
+/**
+ * AudioTestFlow — diagnostic-only component.
+ * Records a short audio sample, analyzes quality metrics via the backend,
+ * and shows diagnostic guidance. No longer applies audio profile filters
+ * to the recording pipeline (clean pipeline is used for all recordings).
+ */
 export const AudioTestFlow = ({
   participantId,
   participantName,
@@ -57,8 +58,6 @@ export const AudioTestFlow = ({
   testStatus,
   testResults: initialResults,
   onTestComplete,
-  onProfileRecommended,
-  currentProfile,
   isPortal = false,
 }: AudioTestFlowProps) => {
   const dismissedKey = `audio_test_dismissed_${roomId}_${participantId}`;
@@ -72,11 +71,8 @@ export const AudioTestFlow = ({
   const [countdown, setCountdown] = useState(TEST_DURATION);
   const [results, setResults] = useState<TestResults | null>(initialResults);
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [showProfileDetails, setShowProfileDetails] = useState(false);
   const [showResultDetails, setShowResultDetails] = useState(initialResults && !wasDismissed());
   const [fromCache, setFromCache] = useState(false);
-  const [recommendedProfile, setRecommendedProfile] = useState<AudioProfile | null>(null);
-  const [editedProfile, setEditedProfile] = useState<AudioProfile | null>(null);
   const testBlobUrlRef = useRef<string | null>(null);
   const { t } = useTranslation("translation");
 
@@ -84,31 +80,11 @@ export const AudioTestFlow = ({
   const wavRecorder = useWavRecorder({ sampleRate: 48000, channels: 1 });
   const audioPlayer = useAudioPlayer();
 
-  const STORAGE_KEY = `audio_test_profile`;
-
-  // Restore cached profile from localStorage on mount — apply silently, stay idle
-  useEffect(() => {
-    if (initialResults) return; // server data takes priority
-    try {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached) as { results: TestResults; profile: AudioProfile };
-        // Auto-apply cached profile without showing results UI
-        if (onProfileRecommended) onProfileRecommended(parsed.profile);
-      }
-    } catch { /* ignore corrupt data */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Update results when props change (realtime)
   useEffect(() => {
     if (initialResults) {
       setResults(initialResults);
       if (phase !== "results") setPhase("results");
-      // Compute profile from initial results
-      const metrics = extractMetrics(initialResults);
-      const profile = computeAudioProfile(metrics);
-      setRecommendedProfile(profile);
-      setEditedProfile(profile);
     }
   }, [initialResults]);
 
@@ -123,21 +99,6 @@ export const AudioTestFlow = ({
     return () => clearTimeout(timer);
   }, [phase, countdown]);
 
-  function extractMetrics(res: TestResults): TestMetrics {
-    return {
-      snr: res.metrics.snr?.value ?? null,
-      rms: res.metrics.rms?.value ?? null,
-      srmr: res.metrics.srmr?.value ?? null,
-      wvmos: res.metrics.wvmos?.value ?? null,
-      utmos: res.metrics.utmos?.value ?? null,
-      sigmos_ovrl: res.metrics.sigmos_ovrl?.value ?? null,
-      sigmos_disc: res.metrics.sigmos_disc?.value ?? null,
-      sigmos_reverb: res.metrics.sigmos_reverb?.value ?? null,
-      vqscore: res.metrics.vqscore?.value ?? null,
-      mic_sr: res.metrics.mic_sr?.value ?? null,
-    };
-  }
-
   const startTest = useCallback(async () => {
     if (!stream) {
       toast.error(t("audioTest.micNotAvailable"));
@@ -146,8 +107,6 @@ export const AudioTestFlow = ({
     setPhase("recording");
     setCountdown(TEST_DURATION);
     setResults(null);
-    setRecommendedProfile(null);
-    setEditedProfile(null);
     setFromCache(false);
     setShowResultDetails(true);
     await wavRecorder.startRecording(stream);
@@ -204,12 +163,6 @@ export const AudioTestFlow = ({
       setPhase("results");
       onTestComplete();
 
-      // Compute recommended profile
-      const metrics = extractMetrics(data);
-      const profile = computeAudioProfile(metrics);
-      setRecommendedProfile(profile);
-      setEditedProfile(profile);
-
       if (data.overall_status === "passed") {
         toast.success(t("audioTest.testPassed"));
       } else {
@@ -226,8 +179,6 @@ export const AudioTestFlow = ({
     setPhase("idle");
     setResults(null);
     setCountdown(TEST_DURATION);
-    setRecommendedProfile(null);
-    setEditedProfile(null);
     audioPlayer.cleanup();
     if (testBlobUrlRef.current) {
       URL.revokeObjectURL(testBlobUrlRef.current);
@@ -235,25 +186,7 @@ export const AudioTestFlow = ({
     }
   };
 
-  const applyProfile = () => {
-    if (editedProfile && onProfileRecommended) {
-      onProfileRecommended(editedProfile);
-      // Persist to localStorage
-      if (results) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ results, profile: editedProfile }));
-        } catch { /* quota exceeded */ }
-      }
-      toast.success(t("audioTest.configUpdated"));
-      setShowProfileDetails(false);
-      setShowResultDetails(false);
-      setPhase("idle");
-      try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
-    }
-  };
-
-  const skipProfile = () => {
-    setShowProfileDetails(false);
+  const dismissResults = () => {
     setShowResultDetails(false);
     setPhase("idle");
     try { localStorage.setItem(dismissedKey, "1"); } catch { /* */ }
@@ -406,11 +339,9 @@ export const AudioTestFlow = ({
     );
   }
 
-  // Results
+  // Results — diagnostic only (no profile configuration)
   if (phase === "results" && results) {
     const passed = results.overall_status === "passed";
-    const profileApplied = currentProfile != null && editedProfile != null;
-    const descriptions = editedProfile ? getProfileDescriptionKeys(editedProfile) : [];
 
     const Wrapper = isPortal ? "div" : Card;
     const wrapperProps = isPortal
@@ -421,7 +352,6 @@ export const AudioTestFlow = ({
       <Wrapper {...wrapperProps as any}>
         {isPortal ? (
           <div className="p-4 flex flex-col gap-4">
-            {/* Header row: Left Title, Right Badge */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text)" }}>
@@ -434,18 +364,16 @@ export const AudioTestFlow = ({
               </span>
             </div>
             
-            {/* Divider line */}
             <div className="w-full h-px" style={{ background: "var(--portal-border)" }} />
 
-            {/* Actions row */}
             <div className="flex gap-2">
               {testBlobUrlRef.current && (
                 <KGenButton variant="outline" size="sm" onClick={() => audioPlayer.toggle()} className="flex-1" scrambleText={audioPlayer.isPlaying ? t("audioTest.pause") : t("audioTest.listenTest")} />
               )}
               <KGenButton variant="outline" size="sm" onClick={retryTest} className="flex-1" scrambleText={t("audioTest.retryTest")} />
+              <KGenButton variant="outline" size="sm" onClick={dismissResults} className="flex-1" scrambleText={t("audioTest.skipConfig")} />
             </div>
 
-            {/* Toggle details */}
             <button 
               onClick={() => setShowResultDetails(v => !v)}
               className="font-mono text-[10px] text-center w-full uppercase flex justify-center items-center gap-1 mt-2 transition-colors hover:text-white"
@@ -529,235 +457,6 @@ export const AudioTestFlow = ({
               </div>
             )}
 
-            {/* Recommended Audio Profile */}
-            {editedProfile && (
-              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Settings2 className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">{t("audioTest.recommendedConfig")}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setShowProfileDetails(!showProfileDetails)}
-                  >
-                    {showProfileDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </div>
-
-                {/* Summary badges */}
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="text-xs">
-                    {t("audioTest.gain")}: {editedProfile.gain.toFixed(1)}x
-                  </Badge>
-                  {editedProfile.highpassFreq > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      HP: {editedProfile.highpassFreq}Hz
-                    </Badge>
-                  )}
-                  {editedProfile.lowpassFreq > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      LP: {(editedProfile.lowpassFreq / 1000).toFixed(0)}kHz
-                    </Badge>
-                  )}
-                  {editedProfile.enableRnnoise && (
-                    <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                      {t("audioTest.features.rnnoise")}
-                    </Badge>
-                  )}
-                  {editedProfile.enableKoala && (
-                    <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
-                      {t("audioTest.features.koala")}
-                    </Badge>
-                  )}
-                  {editedProfile.enableNoiseGate && (
-                    <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                      {t("audioTest.features.noiseGate")}
-                    </Badge>
-                  )}
-                  {editedProfile.enableEchoCancellation && (
-                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      {t("audioTest.features.echoCancellation")}
-                    </Badge>
-                  )}
-                  {editedProfile.enableNoiseSuppression && (
-                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      {t("audioTest.features.noiseSuppression")}
-                    </Badge>
-                  )}
-                  {editedProfile.enableAutoGainControl && (
-                    <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
-                      {t("audioTest.features.autoGainControl")}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Editable details */}
-                {showProfileDetails && (
-                  <div className="space-y-3 pt-2 border-t border-border/50">
-                    {/* Gain slider */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{t("audioTest.gain")}</span>
-                        <span className="font-mono">{editedProfile.gain.toFixed(2)}x</span>
-                      </div>
-                      <Slider
-                        value={[editedProfile.gain]}
-                        min={0.5}
-                        max={20}
-                        step={0.1}
-                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, gain: val } : p)}
-                      />
-                    </div>
-
-                    {/* Highpass slider */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{t("audioTest.highPass")}</span>
-                        <span className="font-mono">
-                          {editedProfile.highpassFreq > 0 ? `${editedProfile.highpassFreq} Hz` : t("audioTest.off")}
-                        </span>
-                      </div>
-                      <Slider
-                        value={[editedProfile.highpassFreq]}
-                        min={0}
-                        max={200}
-                        step={10}
-                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, highpassFreq: val } : p)}
-                      />
-                    </div>
-
-                    {/* Lowpass slider */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{t("audioTest.lowPass")}</span>
-                        <span className="font-mono">
-                          {editedProfile.lowpassFreq > 0 ? `${(editedProfile.lowpassFreq / 1000).toFixed(0)} kHz` : t("audioTest.off")}
-                        </span>
-                      </div>
-                      <Slider
-                        value={[editedProfile.lowpassFreq]}
-                        min={0}
-                        max={22000}
-                        step={1000}
-                        onValueChange={([val]) => setEditedProfile(p => p ? { ...p, lowpassFreq: val } : p)}
-                      />
-                    </div>
-
-                    {/* Toggles */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.rnnoise")}</span>
-                        <Switch
-                          checked={editedProfile.enableRnnoise}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableRnnoise: v, ...(v ? { enableKoala: false } : {}) } : p)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.koala")}</span>
-                        <Switch
-                          checked={editedProfile.enableKoala}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableKoala: v, ...(v ? { enableRnnoise: false } : {}) } : p)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.noiseGate")}</span>
-                        <Switch
-                          checked={editedProfile.enableNoiseGate}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseGate: v } : p)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.echoCancellation")}</span>
-                        <Switch
-                          checked={editedProfile.enableEchoCancellation}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableEchoCancellation: v } : p)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.noiseSuppression")}</span>
-                        <Switch
-                          checked={editedProfile.enableNoiseSuppression}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableNoiseSuppression: v } : p)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs text-muted-foreground">{t("audioTest.features.autoGainControl")}</span>
-                        <Switch
-                          checked={editedProfile.enableAutoGainControl}
-                          onCheckedChange={(v) => setEditedProfile(p => p ? { ...p, enableAutoGainControl: v } : p)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Descriptions */}
-                     <div className="space-y-1.5">
-                      {descriptions.map((d, i) => (
-                        <div key={i} className="text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">{t(`audioTest.profileDesc.${d.key}.label`)}:</span> {t(`audioTest.profileDesc.${d.key}.${d.detailKey}`, { value: d.value })}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Reset to recommended */}
-                    {recommendedProfile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={() => setEditedProfile(recommendedProfile)}
-                      >
-                        {t("audioTest.restoreOriginal")}
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Apply / Skip buttons */}
-                <div className="flex gap-2 mt-4">
-                  {isPortal ? (
-                    <>
-                      <KGenButton
-                        size="sm"
-                        className="flex-1"
-                        onClick={applyProfile}
-                        scrambleText={profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
-                        icon={<Settings2 className="h-4 w-4" />}
-                      />
-                      <KGenButton
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={skipProfile}
-                        scrambleText={t("audioTest.skipConfig")}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={applyProfile}
-                      >
-                        <Settings2 className="h-4 w-4 mr-1.5" />
-                        {profileApplied ? t("audioTest.updateConfig") : t("audioTest.applyConfig")}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={skipProfile}
-                      >
-                        {t("audioTest.skipConfig")}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Actions for non-portal inside details */}
             {!isPortal && (
               <div className="flex justify-center gap-3 mt-4">
@@ -770,6 +469,9 @@ export const AudioTestFlow = ({
                 <Button variant="outline" size="sm" onClick={retryTest} className="gap-1.5">
                   <RotateCcw className="h-4 w-4" />
                   {t("audioTest.retryTest")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={dismissResults} className="gap-1.5">
+                  {t("audioTest.skipConfig")}
                 </Button>
               </div>
             )}

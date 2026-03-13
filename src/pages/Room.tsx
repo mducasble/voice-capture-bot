@@ -22,7 +22,7 @@ import { useMixedRecorder } from "@/hooks/useMixedRecorder";
 import { useRemoteRecorders } from "@/hooks/useRemoteRecorders";
 import { RecordingGuidelinesSidebar } from "@/components/rooms/RecordingGuidelinesSidebar";
 import { TalkingPointsBlock } from "@/components/rooms/TalkingPointsBlock";
-import type { AudioProfile } from "@/lib/audioProfile";
+
 
 interface Room {
   id: string;
@@ -85,7 +85,7 @@ const Room = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  const [audioProfile, setAudioProfile] = useState<AudioProfile | null>(null);
+  
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [dbCreatorParticipant, setDbCreatorParticipant] = useState<Participant | null>(null);
   
@@ -290,18 +290,18 @@ const Room = () => {
     return () => navigator.mediaDevices.removeEventListener("devicechange", loadDevices);
   }, []);
 
-  // Helper to get audio constraints with selected device
+  // Helper to get audio constraints with selected device — clean capture, no processing
   const getAudioConstraints = useCallback(() => {
     return {
       audio: {
         deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-        echoCancellation: audioProfile?.enableEchoCancellation ?? false,
-        noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
-        autoGainControl: audioProfile?.enableAutoGainControl ?? false,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
         sampleRate: 48000,
       }
     };
-  }, [selectedDeviceId, audioProfile]);
+  }, [selectedDeviceId]);
 
   // Switch device while connected
   const handleDeviceChange = useCallback(async (deviceId: string) => {
@@ -316,9 +316,9 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: audioProfile?.enableEchoCancellation ?? false,
-          noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
-          autoGainControl: audioProfile?.enableAutoGainControl ?? false,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
           sampleRate: 48000,
         }
       });
@@ -333,33 +333,7 @@ const Room = () => {
       console.error("Error switching device:", err);
       toast.error("Erro ao trocar dispositivo");
     }
-  }, [currentParticipant, isMuted, audioProfile]);
-
-  // Handle profile application - re-acquire stream with new constraints
-  const handleProfileApplied = useCallback(async (profile: AudioProfile) => {
-    setAudioProfile(profile);
-    if (!currentParticipant || !mediaStreamRef.current) return;
-
-    try {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          echoCancellation: profile.enableEchoCancellation,
-          noiseSuppression: profile.enableNoiseSuppression,
-          autoGainControl: profile.enableAutoGainControl,
-          sampleRate: 48000,
-        }
-      });
-      stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
-      mediaStreamRef.current = stream;
-      setLocalStream(stream);
-      setCurrentParticipant(prev => prev ? { ...prev } : null);
-    } catch (err) {
-      console.error("Error applying audio profile:", err);
-      toast.error("Erro ao aplicar configuração de áudio");
-    }
-  }, [currentParticipant, selectedDeviceId, isMuted]);
+  }, [currentParticipant, isMuted]);
 
   // Fetch room data
   useEffect(() => {
@@ -1272,8 +1246,6 @@ const Room = () => {
                 stream={mediaStreamRef.current}
                 testStatus={currentParticipant.audio_test_status || "pending"}
                 testResults={currentParticipant.audio_test_results}
-                onProfileRecommended={handleProfileApplied}
-                currentProfile={audioProfile}
                 isPortal={isPortal}
                 onTestComplete={() => {
                   const fetchParticipants = async () => {
@@ -1379,11 +1351,6 @@ const Room = () => {
                   </div>
                 )}
                 <div className="flex items-center justify-center gap-3 pt-2 font-mono text-[10px]" style={{ borderTop: "1px solid var(--portal-border)" }}>
-                  {audioProfile && (
-                    <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
-                      🎛️ PERFIL ADAPTATIVO
-                    </span>
-                  )}
                   {room.is_recording && (
                     <span className="px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-accent)" }}>
                       🎚️ MIX: {1 + remoteStreams.size} STREAMS
@@ -1488,8 +1455,6 @@ const Room = () => {
                   isRecording={room.is_recording}
                   sessionId={room.session_id}
                   isMuted={isMuted}
-                  noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
-                  audioProfile={audioProfile}
                   campaignId={campaignId}
                 />
               </div>
@@ -1615,8 +1580,6 @@ const Room = () => {
             stream={mediaStreamRef.current}
             testStatus={currentParticipant.audio_test_status || "pending"}
             testResults={currentParticipant.audio_test_results}
-            onProfileRecommended={handleProfileApplied}
-            currentProfile={audioProfile}
             onTestComplete={() => {
               const fetchParticipants = async () => {
                 const { data } = await supabase
@@ -1692,11 +1655,6 @@ const Room = () => {
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
-                      {audioProfile && (
-                        <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                          🎛️ Perfil Adaptativo
-                        </Badge>
-                      )}
                       {room.is_recording && (
                         <Badge variant="outline" className="text-xs border-accent/50 text-accent">
                           🎚️ Mix: {1 + remoteStreams.size} streams
@@ -1746,8 +1704,6 @@ const Room = () => {
               isRecording={room.is_recording}
               sessionId={room.session_id}
               isMuted={isMuted}
-              noiseGateEnabled={audioProfile?.enableNoiseGate ?? false}
-              audioProfile={audioProfile}
               campaignId={campaignId}
             />
           </CardContent>
