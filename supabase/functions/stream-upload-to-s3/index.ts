@@ -39,15 +39,23 @@ serve(async (req) => {
   }
 
   try {
-    // Extract params from query string (body is the raw audio file)
+    // Extract params from query string (body is the raw file)
     const url = new URL(req.url);
     const filename = url.searchParams.get('filename');
     const sessionId = url.searchParams.get('session_id');
+    const folder = url.searchParams.get('folder');
     const contentType = url.searchParams.get('content_type') || 'audio/wav';
 
-    if (!filename || !sessionId) {
+    if (!filename) {
       return new Response(
-        JSON.stringify({ error: 'filename and session_id query params required' }),
+        JSON.stringify({ error: 'filename query param required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!folder && !sessionId) {
+      return new Response(
+        JSON.stringify({ error: 'folder or session_id query param required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -64,7 +72,8 @@ serve(async (req) => {
       );
     }
 
-    const s3Key = `rooms/${sessionId}/${filename}`;
+    // folder takes priority; fallback to rooms/{session_id}
+    const s3Key = folder ? `${folder}/${filename}` : `rooms/${sessionId}/${filename}`;
     const host = `${bucketName}.s3.${region}.amazonaws.com`;
     const s3Path = `/${s3Key}`;
 

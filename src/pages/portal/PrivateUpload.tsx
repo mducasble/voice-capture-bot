@@ -222,28 +222,48 @@ export default function PrivateUpload() {
 
         const ext = uf.file.name.split(".").pop() || "bin";
         const fn = `${typeConfig.filenamePrefix}_${ts}_${safeName}_${i + 1}.${ext}`;
-        const path = `${typeConfig.storagePath}/${campaign.id}/${user.id}/${fn}`;
+        const s3Folder = `campaigns/${campaign.id}/${typeConfig.storagePath}/${user.id}`;
 
-        const { error: ue } = await supabase.storage
-          .from("campaign-files")
-          .upload(path, uf.file);
-        if (ue) throw new Error(`Upload falhou: ${ue.message}`);
+        // Determine content type
+        const mimeType = uf.file.type || "application/octet-stream";
 
-        const { data: urlData } = supabase.storage
-          .from("campaign-files")
-          .getPublicUrl(path);
+        // Get auth token
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
+
+        // Stream upload to S3 via edge function
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const uploadUrl = `https://${projectId}.supabase.co/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(fn)}&folder=${encodeURIComponent(s3Folder)}&content_type=${encodeURIComponent(mimeType)}`;
+
+        const s3Response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${currentSession.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Content-Type": mimeType,
+          },
+          body: uf.file,
+        });
+
+        if (!s3Response.ok) {
+          const errData = await s3Response.json().catch(() => ({}));
+          throw new Error(`Upload S3 falhou: ${(errData as any).error || s3Response.statusText}`);
+        }
+
+        const s3Result = await s3Response.json();
 
         // Build insert payload based on type
         const basePayload: Record<string, any> = {
           campaign_id: campaign.id,
           user_id: user.id,
           filename: fn,
-          file_url: urlData.publicUrl,
+          file_url: s3Result.public_url,
           metadata: {
             source: "private_upload",
             original_filename: uf.file.name,
             sender_name: senderName.trim(),
             slug,
+            s3_key: s3Result.s3_key,
           },
         };
 
