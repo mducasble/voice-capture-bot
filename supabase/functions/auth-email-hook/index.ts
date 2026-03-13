@@ -216,6 +216,16 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Detect user language from country in user metadata
+  const SPANISH_COUNTRIES = ['AR', 'BO', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'ES', 'UY', 'VE']
+  const userCountry = (payload.data.user_metadata?.country || '').toUpperCase()
+  let lang = 'pt' // default Portuguese
+  if (SPANISH_COUNTRIES.includes(userCountry)) {
+    lang = 'es'
+  } else if (['US', 'GB', 'CA', 'AU', 'NZ', 'IE'].includes(userCountry)) {
+    lang = 'en'
+  }
+
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
@@ -225,6 +235,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     token: payload.data.token,
     email: payload.data.email,
     newEmail: payload.data.new_email,
+    lang,
   }
 
   // Render React Email to HTML and plain text
