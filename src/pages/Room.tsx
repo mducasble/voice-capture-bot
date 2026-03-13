@@ -1247,7 +1247,6 @@ const Room = () => {
                 testStatus={currentParticipant.audio_test_status || "pending"}
                 testResults={currentParticipant.audio_test_results}
                 isPortal={isPortal}
-                isPortal={isPortal}
                 onTestComplete={() => {
                   const fetchParticipants = async () => {
                     const { data } = await supabase
