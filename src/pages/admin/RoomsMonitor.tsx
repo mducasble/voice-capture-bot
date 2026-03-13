@@ -166,10 +166,10 @@ const RoomsMonitor = () => {
   );
 };
 
-function RoomCard({ room }: { room: RoomWithParticipants }) {
-  const navigate = useNavigate();
+function RoomCard({ room, onClick }: { room: RoomWithParticipants; onClick: () => void }) {
   const cfg = statusConfig[room.status] || statusConfig.waiting;
   const connectedCount = room.participants.filter((p) => p.is_connected && !p.left_at).length;
+  const totalParticipants = room.participants.length;
   const totalParticipants = room.participants.length;
 
   return (
