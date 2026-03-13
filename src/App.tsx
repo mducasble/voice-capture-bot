@@ -24,6 +24,7 @@ const AdminFaq = lazy(() => import("./pages/admin/AdminFaq"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminMaintenance = lazy(() => import("./pages/admin/AdminMaintenance"));
 const AdminAnnouncements = lazy(() => import("./pages/admin/AdminAnnouncements"));
+const AdminReferralNetwork = lazy(() => import("./pages/admin/AdminReferralNetwork"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -88,6 +89,7 @@ const App = () => (
               <Route path="faq" element={<AdminFaq />} />
               <Route path="maintenance" element={<AdminMaintenance />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
+              <Route path="referral-network" element={<AdminReferralNetwork />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

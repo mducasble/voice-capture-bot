@@ -2477,6 +2477,22 @@ export type Database = {
           validation_status: string
         }[]
       }
+      get_referral_network_stats: {
+        Args: never
+        Returns: {
+          country: string
+          email_contact: string
+          full_name: string
+          level_1_count: number
+          level_2_count: number
+          level_3_count: number
+          level_4_count: number
+          level_5_count: number
+          referral_code: string
+          total_network: number
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
