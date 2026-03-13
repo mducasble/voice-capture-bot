@@ -290,18 +290,18 @@ const Room = () => {
     return () => navigator.mediaDevices.removeEventListener("devicechange", loadDevices);
   }, []);
 
-  // Helper to get audio constraints with selected device
+  // Helper to get audio constraints with selected device — clean capture, no processing
   const getAudioConstraints = useCallback(() => {
     return {
       audio: {
         deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-        echoCancellation: audioProfile?.enableEchoCancellation ?? false,
-        noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
-        autoGainControl: audioProfile?.enableAutoGainControl ?? false,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
         sampleRate: 48000,
       }
     };
-  }, [selectedDeviceId, audioProfile]);
+  }, [selectedDeviceId]);
 
   // Switch device while connected
   const handleDeviceChange = useCallback(async (deviceId: string) => {
