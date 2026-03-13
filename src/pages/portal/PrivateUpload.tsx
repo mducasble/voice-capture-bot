@@ -65,8 +65,8 @@ export default function PrivateUpload() {
 
   // Redirect to auth if not logged in
   if (!authLoading && !user) {
-    const returnUrl = `/c/${slug}`;
-    navigate(`/auth?redirect=${encodeURIComponent(returnUrl)}`, { replace: true });
+    sessionStorage.setItem("redirect_after_login", `/c/${slug}`);
+    navigate("/auth", { replace: true });
     return null;
   }
 
