@@ -1659,11 +1659,7 @@ const Room = () => {
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-6 pt-2 border-t border-border/50">
-                      {audioProfile && (
-                        <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                          🎛️ Perfil Adaptativo
-                        </Badge>
-                      )}
+                      {room.is_recording && (
                       {room.is_recording && (
                         <Badge variant="outline" className="text-xs border-accent/50 text-accent">
                           🎚️ Mix: {1 + remoteStreams.size} streams
