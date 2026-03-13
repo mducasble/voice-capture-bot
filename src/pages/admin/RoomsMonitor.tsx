@@ -170,12 +170,11 @@ function RoomCard({ room, onClick }: { room: RoomWithParticipants; onClick: () =
   const cfg = statusConfig[room.status] || statusConfig.waiting;
   const connectedCount = room.participants.filter((p) => p.is_connected && !p.left_at).length;
   const totalParticipants = room.participants.length;
-  const totalParticipants = room.participants.length;
 
   return (
     <div
       className="border border-border/50 rounded-xl bg-card/70 backdrop-blur-sm hover:bg-card/90 transition-all duration-200 cursor-pointer"
-      onClick={() => navigate(`/admin/room/${room.id}`)}
+      onClick={onClick}
     >
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
