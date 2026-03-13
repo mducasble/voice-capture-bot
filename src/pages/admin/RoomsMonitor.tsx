@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Radio, Users, Clock, RefreshCw, Mic, Filter } from "lucide-react";
+import { Radio, Users, Clock, RefreshCw, Mic } from "lucide-react";
+import RoomDetailDialog from "@/components/admin/RoomDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
@@ -25,6 +25,7 @@ interface RoomWithParticipants {
   status: string;
   is_recording: boolean;
   created_at: string;
+  recording_started_at: string | null;
   session_id: string | null;
   topic: string | null;
   duration_minutes: number | null;
@@ -49,10 +50,10 @@ const filterTabs: { key: FilterKey; label: string }[] = [
 ];
 
 const RoomsMonitor = () => {
-  const navigate = useNavigate();
   const [rooms, setRooms] = useState<RoomWithParticipants[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [selectedRoom, setSelectedRoom] = useState<RoomWithParticipants | null>(null);
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -143,7 +144,7 @@ const RoomsMonitor = () => {
 
       <div className="space-y-3">
         {filtered.map((room) => (
-          <RoomCard key={room.id} room={room} />
+          <RoomCard key={room.id} room={room} onClick={() => setSelectedRoom(room)} />
         ))}
 
         {filtered.length === 0 && !loading && (
@@ -153,12 +154,17 @@ const RoomsMonitor = () => {
           </div>
         )}
       </div>
+
+      <RoomDetailDialog
+        room={selectedRoom}
+        open={!!selectedRoom}
+        onOpenChange={(open) => { if (!open) setSelectedRoom(null); }}
+      />
     </div>
   );
 };
 
-function RoomCard({ room }: { room: RoomWithParticipants }) {
-  const navigate = useNavigate();
+function RoomCard({ room, onClick }: { room: RoomWithParticipants; onClick: () => void }) {
   const cfg = statusConfig[room.status] || statusConfig.waiting;
   const connectedCount = room.participants.filter((p) => p.is_connected && !p.left_at).length;
   const totalParticipants = room.participants.length;
@@ -166,7 +172,7 @@ function RoomCard({ room }: { room: RoomWithParticipants }) {
   return (
     <div
       className="border border-border/50 rounded-xl bg-card/70 backdrop-blur-sm hover:bg-card/90 transition-all duration-200 cursor-pointer"
-      onClick={() => navigate(`/admin/room/${room.id}`)}
+      onClick={onClick}
     >
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
