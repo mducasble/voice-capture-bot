@@ -304,22 +304,22 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   // Build metrics list
   const metrics: { label: string; value: string; color: string }[] = [];
   if (rec.snr_db != null) metrics.push({ label: "SNR", value: `${rec.snr_db.toFixed(1)}dB`, color: snrColor(rec.snr_db) });
-  if (m?.rms_level_db != null) metrics.push({ label: "RMS", value: `${m.rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.rms_level_db, -26, -28) });
-  if (m?.srmr != null) metrics.push({ label: "SRMR", value: m.srmr.toFixed(2), color: metricColor(m.srmr, 5.4, 4) });
-  if (m?.sigmos_ovrl != null) metrics.push({ label: "SigMOS Ovrl", value: m.sigmos_ovrl.toFixed(2), color: metricColor(m.sigmos_ovrl, 2.3, 2.0) });
-  if (m?.sigmos_sig != null) metrics.push({ label: "SigMOS SIG", value: m.sigmos_sig.toFixed(2), color: metricColor(m.sigmos_sig, 3.2, 2.5) });
-  if (m?.sigmos_bak != null) metrics.push({ label: "SigMOS BAK", value: m.sigmos_bak.toFixed(2), color: metricColor(m.sigmos_bak, 3.2, 2.5) });
-  if (m?.sigmos_disc != null) metrics.push({ label: "SigMOS DISC", value: m.sigmos_disc.toFixed(2), color: metricColor(m.sigmos_disc, 3.2, 2.5) });
-  if (m?.sigmos_reverb != null) metrics.push({ label: "SigMOS Rev", value: m.sigmos_reverb.toFixed(2), color: metricColor(m.sigmos_reverb, 3.2, 2.5) });
-  if (m?.wvmos != null) metrics.push({ label: "WVMOS", value: m.wvmos.toFixed(2), color: metricColor(m.wvmos, 1.3, 1.0) });
-  if (m?.utmos != null) metrics.push({ label: "UTMOS", value: m.utmos.toFixed(2), color: metricColor(m.utmos, 3.5, 2.5) });
-  if (m?.vqscore != null) metrics.push({ label: "VQScore", value: m.vqscore.toFixed(1), color: metricColor(m.vqscore, 4, 3) });
-  if (m?.mos_score != null) metrics.push({ label: "MOS", value: m.mos_score.toFixed(2), color: metricColor(m.mos_score, 3.5, 2.5) });
+  if (m?.rms_level_db != null) metrics.push({ label: "RMS", value: `${m.rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.rms_level_db, -24, -26, -28) });
+  if (m?.srmr != null) metrics.push({ label: "SRMR", value: m.srmr.toFixed(2), color: metricColor(m.srmr, 7, 5.4, 4) });
+  if (m?.sigmos_ovrl != null) metrics.push({ label: "SigMOS Ovrl", value: m.sigmos_ovrl.toFixed(2), color: metricColor(m.sigmos_ovrl, 3.0, 2.3, 2.0) });
+  if (m?.sigmos_sig != null) metrics.push({ label: "SigMOS SIG", value: m.sigmos_sig.toFixed(2), color: metricColor(m.sigmos_sig, 3.8, 3.2, 2.5) });
+  if (m?.sigmos_bak != null) metrics.push({ label: "SigMOS BAK", value: m.sigmos_bak.toFixed(2), color: metricColor(m.sigmos_bak, 3.8, 3.2, 2.5) });
+  if (m?.sigmos_disc != null) metrics.push({ label: "SigMOS DISC", value: m.sigmos_disc.toFixed(2), color: metricColor(m.sigmos_disc, 3.8, 3.2, 2.5) });
+  if (m?.sigmos_reverb != null) metrics.push({ label: "SigMOS Rev", value: m.sigmos_reverb.toFixed(2), color: metricColor(m.sigmos_reverb, 3.8, 3.2, 2.5) });
+  if (m?.wvmos != null) metrics.push({ label: "WVMOS", value: m.wvmos.toFixed(2), color: metricColor(m.wvmos, 1.8, 1.3, 1.0) });
+  if (m?.utmos != null) metrics.push({ label: "UTMOS", value: m.utmos.toFixed(2), color: metricColor(m.utmos, 4.0, 3.5, 2.5) });
+  if (m?.vqscore != null) metrics.push({ label: "VQScore", value: m.vqscore.toFixed(1), color: metricColor(m.vqscore, 4.5, 4, 3) });
+  if (m?.mos_score != null) metrics.push({ label: "MOS", value: m.mos_score.toFixed(2), color: metricColor(m.mos_score, 4.0, 3.5, 2.5) });
 
   // Enhanced metrics
   const enhancedMetrics: { label: string; value: string; color: string }[] = [];
   if (m?.enhanced_snr_db != null) enhancedMetrics.push({ label: "SNR✨", value: `${m.enhanced_snr_db.toFixed(1)}dB`, color: snrColor(m.enhanced_snr_db) });
-  if (m?.enhanced_rms_level_db != null) enhancedMetrics.push({ label: "RMS✨", value: `${m.enhanced_rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.enhanced_rms_level_db, -26, -35) });
+  if (m?.enhanced_rms_level_db != null) enhancedMetrics.push({ label: "RMS✨", value: `${m.enhanced_rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.enhanced_rms_level_db, -22, -26, -35) });
 
   const hasElevenLabs = rec.transcription_elevenlabs_status === "completed";
   const isTranscribing = rec.transcription_elevenlabs_status === "processing" || rec.transcription_status === "processing";
