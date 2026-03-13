@@ -228,18 +228,20 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function snrColor(snr: number | null) {
-  if (snr == null) return "hsl(0 0% 50%)";
-  if (snr >= 25) return "hsl(120 60% 45%)";
-  if (snr >= 15) return "hsl(40 80% 50%)";
+/** Color by tier: >= hq = green, >= mq = yellow, below = red */
+function tierColor(value: number | null | undefined, hq: number, mq: number) {
+  if (value == null) return "hsl(0 0% 50%)";
+  if (value >= hq) return "hsl(120 60% 45%)";
+  if (value >= mq) return "hsl(40 80% 50%)";
   return "hsl(0 70% 50%)";
 }
 
-function metricColor(value: number | null | undefined, good: number, warn: number) {
-  if (value == null) return "hsl(0 0% 50%)";
-  if (value >= good) return "hsl(120 60% 45%)";
-  if (value >= warn) return "hsl(40 80% 50%)";
-  return "hsl(0 70% 50%)";
+function snrColor(snr: number | null) {
+  return tierColor(snr, 25, 25); // SNR only has one threshold (HQ >= 25)
+}
+
+function metricColor(value: number | null | undefined, hq: number, mq: number) {
+  return tierColor(value, hq, mq);
 }
 
 function formatBytes(bytes: number) {
@@ -301,14 +303,14 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   // Build metrics list
   const metrics: { label: string; value: string; color: string }[] = [];
   if (rec.snr_db != null) metrics.push({ label: "SNR", value: `${rec.snr_db.toFixed(1)}dB`, color: snrColor(rec.snr_db) });
-  if (m?.rms_level_db != null) metrics.push({ label: "RMS", value: `${m.rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.rms_level_db, -26, -35) });
-  if (m?.srmr != null) metrics.push({ label: "SRMR", value: m.srmr.toFixed(2), color: metricColor(m.srmr, 6, 4) });
-  if (m?.sigmos_ovrl != null) metrics.push({ label: "SigMOS Ovrl", value: m.sigmos_ovrl.toFixed(2), color: metricColor(m.sigmos_ovrl, 3.5, 2.5) });
-  if (m?.sigmos_sig != null) metrics.push({ label: "SigMOS SIG", value: m.sigmos_sig.toFixed(2), color: metricColor(m.sigmos_sig, 3.5, 2.5) });
-  if (m?.sigmos_bak != null) metrics.push({ label: "SigMOS BAK", value: m.sigmos_bak.toFixed(2), color: metricColor(m.sigmos_bak, 3.5, 2.5) });
-  if (m?.sigmos_disc != null) metrics.push({ label: "SigMOS DISC", value: m.sigmos_disc.toFixed(2), color: metricColor(m.sigmos_disc, 3.5, 2.5) });
-  if (m?.sigmos_reverb != null) metrics.push({ label: "SigMOS Rev", value: m.sigmos_reverb.toFixed(2), color: metricColor(m.sigmos_reverb, 3.5, 2.5) });
-  if (m?.wvmos != null) metrics.push({ label: "WVMOS", value: m.wvmos.toFixed(2), color: metricColor(m.wvmos, 3.0, 2.0) });
+  if (m?.rms_level_db != null) metrics.push({ label: "RMS", value: `${m.rms_level_db.toFixed(1)}dBFS`, color: metricColor(m.rms_level_db, -26, -28) });
+  if (m?.srmr != null) metrics.push({ label: "SRMR", value: m.srmr.toFixed(2), color: metricColor(m.srmr, 5.4, 4) });
+  if (m?.sigmos_ovrl != null) metrics.push({ label: "SigMOS Ovrl", value: m.sigmos_ovrl.toFixed(2), color: metricColor(m.sigmos_ovrl, 2.3, 2.0) });
+  if (m?.sigmos_sig != null) metrics.push({ label: "SigMOS SIG", value: m.sigmos_sig.toFixed(2), color: metricColor(m.sigmos_sig, 3.2, 2.5) });
+  if (m?.sigmos_bak != null) metrics.push({ label: "SigMOS BAK", value: m.sigmos_bak.toFixed(2), color: metricColor(m.sigmos_bak, 3.2, 2.5) });
+  if (m?.sigmos_disc != null) metrics.push({ label: "SigMOS DISC", value: m.sigmos_disc.toFixed(2), color: metricColor(m.sigmos_disc, 3.2, 2.5) });
+  if (m?.sigmos_reverb != null) metrics.push({ label: "SigMOS Rev", value: m.sigmos_reverb.toFixed(2), color: metricColor(m.sigmos_reverb, 3.2, 2.5) });
+  if (m?.wvmos != null) metrics.push({ label: "WVMOS", value: m.wvmos.toFixed(2), color: metricColor(m.wvmos, 1.3, 1.0) });
   if (m?.utmos != null) metrics.push({ label: "UTMOS", value: m.utmos.toFixed(2), color: metricColor(m.utmos, 3.5, 2.5) });
   if (m?.vqscore != null) metrics.push({ label: "VQScore", value: m.vqscore.toFixed(1), color: metricColor(m.vqscore, 4, 3) });
   if (m?.mos_score != null) metrics.push({ label: "MOS", value: m.mos_score.toFixed(2), color: metricColor(m.mos_score, 3.5, 2.5) });
