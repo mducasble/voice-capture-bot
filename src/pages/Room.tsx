@@ -333,33 +333,7 @@ const Room = () => {
       console.error("Error switching device:", err);
       toast.error("Erro ao trocar dispositivo");
     }
-  }, [currentParticipant, isMuted, audioProfile]);
-
-  // Handle profile application - re-acquire stream with new constraints
-  const handleProfileApplied = useCallback(async (profile: AudioProfile) => {
-    setAudioProfile(profile);
-    if (!currentParticipant || !mediaStreamRef.current) return;
-
-    try {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          echoCancellation: profile.enableEchoCancellation,
-          noiseSuppression: profile.enableNoiseSuppression,
-          autoGainControl: profile.enableAutoGainControl,
-          sampleRate: 48000,
-        }
-      });
-      stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
-      mediaStreamRef.current = stream;
-      setLocalStream(stream);
-      setCurrentParticipant(prev => prev ? { ...prev } : null);
-    } catch (err) {
-      console.error("Error applying audio profile:", err);
-      toast.error("Erro ao aplicar configuração de áudio");
-    }
-  }, [currentParticipant, selectedDeviceId, isMuted]);
+  }, [currentParticipant, isMuted]);
 
   // Fetch room data
   useEffect(() => {
