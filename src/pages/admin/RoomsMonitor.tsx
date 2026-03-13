@@ -50,7 +50,6 @@ const filterTabs: { key: FilterKey; label: string }[] = [
 ];
 
 const RoomsMonitor = () => {
-  const navigate = useNavigate();
   const [rooms, setRooms] = useState<RoomWithParticipants[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
