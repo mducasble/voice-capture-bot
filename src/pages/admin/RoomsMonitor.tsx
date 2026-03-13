@@ -54,6 +54,7 @@ const RoomsMonitor = () => {
   const [rooms, setRooms] = useState<RoomWithParticipants[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [selectedRoom, setSelectedRoom] = useState<RoomWithParticipants | null>(null);
 
   const fetchRooms = async () => {
     setLoading(true);
