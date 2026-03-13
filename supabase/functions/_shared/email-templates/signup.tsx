@@ -20,6 +20,45 @@ interface SignupEmailProps {
   siteUrl: string
   recipient: string
   confirmationUrl: string
+  lang?: string
+}
+
+const i18n: Record<string, Record<string, string>> = {
+  pt: {
+    preview: 'Confirme seu cadastro na KGeN',
+    heading: 'Confirme seu email',
+    welcome: 'Bem-vindo à',
+    community: '! Estamos felizes em ter você na nossa comunidade.',
+    confirm: 'Confirme seu endereço de email (',
+    confirmEnd: ') clicando no botão abaixo:',
+    button: 'VERIFICAR EMAIL',
+    footer: 'Se você não criou uma conta na KGeN, pode ignorar este email com segurança.',
+  },
+  es: {
+    preview: 'Confirma tu registro en KGeN',
+    heading: 'Confirma tu email',
+    welcome: '¡Bienvenido a',
+    community: '! Estamos felices de tenerte en nuestra comunidad.',
+    confirm: 'Confirma tu dirección de email (',
+    confirmEnd: ') haciendo clic en el botón de abajo:',
+    button: 'VERIFICAR EMAIL',
+    footer: 'Si no creaste una cuenta en KGeN, puedes ignorar este email con seguridad.',
+  },
+  en: {
+    preview: 'Confirm your KGeN signup',
+    heading: 'Confirm your email',
+    welcome: 'Welcome to',
+    community: '! We\'re happy to have you in our community.',
+    confirm: 'Confirm your email address (',
+    confirmEnd: ') by clicking the button below:',
+    button: 'VERIFY EMAIL',
+    footer: 'If you didn\'t create a KGeN account, you can safely ignore this email.',
+  },
+}
+
+function getLang(lang?: string): string {
+  if (lang && i18n[lang]) return lang
+  return 'pt'
 }
 
 export const SignupEmail = ({
@@ -27,44 +66,48 @@ export const SignupEmail = ({
   siteUrl,
   recipient,
   confirmationUrl,
-}: SignupEmailProps) => (
-  <Html lang="pt" dir="ltr">
-    <Head />
-    <Preview>Confirme seu cadastro na KGeN</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Img
-          src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
-          width="120"
-          height="40"
-          alt="KGeN"
-          style={{ marginBottom: '24px' }}
-        />
-        <Heading style={h1}>Confirme seu email</Heading>
-        <Text style={text}>
-          Bem-vindo à{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>KGeN</strong>
-          </Link>
-          ! Estamos felizes em ter você na nossa comunidade.
-        </Text>
-        <Text style={text}>
-          Confirme seu endereço de email (
-          <Link href={`mailto:${recipient}`} style={link}>
-            {recipient}
-          </Link>
-          ) clicando no botão abaixo:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          VERIFICAR EMAIL
-        </Button>
-        <Text style={footer}>
-          Se você não criou uma conta na KGeN, pode ignorar este email com segurança.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lang,
+}: SignupEmailProps) => {
+  const t = i18n[getLang(lang)]
+  const htmlLang = getLang(lang)
+
+  return (
+    <Html lang={htmlLang} dir="ltr">
+      <Head />
+      <Preview>{t.preview}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Img
+            src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
+            width="120"
+            height="40"
+            alt="KGeN"
+            style={{ marginBottom: '24px' }}
+          />
+          <Heading style={h1}>{t.heading}</Heading>
+          <Text style={text}>
+            {t.welcome}{' '}
+            <Link href={siteUrl} style={link}>
+              <strong>KGeN</strong>
+            </Link>
+            {t.community}
+          </Text>
+          <Text style={text}>
+            {t.confirm}
+            <Link href={`mailto:${recipient}`} style={link}>
+              {recipient}
+            </Link>
+            {t.confirmEnd}
+          </Text>
+          <Button style={button} href={confirmationUrl}>
+            {t.button}
+          </Button>
+          <Text style={footer}>{t.footer}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default SignupEmail
 
