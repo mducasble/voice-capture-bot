@@ -1583,7 +1583,6 @@ const Room = () => {
             testStatus={currentParticipant.audio_test_status || "pending"}
             testResults={currentParticipant.audio_test_results}
             onTestComplete={() => {
-            onTestComplete={() => {
               const fetchParticipants = async () => {
                 const { data } = await supabase
                   .from("room_participants")
