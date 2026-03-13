@@ -150,7 +150,11 @@ export default function PortalAuth() {
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      if (error.message?.toLowerCase().includes('email not confirmed')) {
+        toast.error(t("auth.emailNotConfirmed"), { duration: 8000 });
+      } else {
+        toast.error(error.message);
+      }
     } else {
       const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
       sessionStorage.removeItem("redirect_after_login");
