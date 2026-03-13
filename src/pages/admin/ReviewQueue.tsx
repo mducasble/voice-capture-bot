@@ -228,20 +228,21 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-/** Color by tier: >= hq = green, >= mq = yellow, below = red */
-function tierColor(value: number | null | undefined, hq: number, mq: number) {
+/** Color by tier: PQ = blue, HQ = green, MQ = yellow, below = red */
+function tierColor(value: number | null | undefined, pq: number, hq: number, mq: number) {
   if (value == null) return "hsl(0 0% 50%)";
-  if (value >= hq) return "hsl(120 60% 45%)";
-  if (value >= mq) return "hsl(40 80% 50%)";
-  return "hsl(0 70% 50%)";
+  if (value >= pq) return "hsl(210 80% 55%)";  // Blue (PQ)
+  if (value >= hq) return "hsl(120 60% 45%)";  // Green (HQ)
+  if (value >= mq) return "hsl(40 80% 50%)";   // Yellow (MQ)
+  return "hsl(0 70% 50%)";                     // Red (below)
 }
 
 function snrColor(snr: number | null) {
-  return tierColor(snr, 25, 25); // SNR only has one threshold (HQ >= 25)
+  return tierColor(snr, 30, 25, 25); // SNR: PQ >= 30, HQ >= 25
 }
 
-function metricColor(value: number | null | undefined, hq: number, mq: number) {
-  return tierColor(value, hq, mq);
+function metricColor(value: number | null | undefined, pq: number, hq: number, mq: number) {
+  return tierColor(value, pq, hq, mq);
 }
 
 function formatBytes(bytes: number) {
