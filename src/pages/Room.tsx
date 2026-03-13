@@ -85,7 +85,7 @@ const Room = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  const [audioProfile, setAudioProfile] = useState<AudioProfile | null>(null);
+  
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [dbCreatorParticipant, setDbCreatorParticipant] = useState<Participant | null>(null);
   
