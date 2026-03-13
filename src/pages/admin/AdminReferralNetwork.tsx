@@ -1,12 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, Network, TrendingUp } from "lucide-react";
+import { Search, Users, Network, TrendingUp, ChevronDown, Mic, Loader2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface NetworkUser {
   user_id: string;
@@ -20,6 +20,209 @@ interface NetworkUser {
   level_4_count: number;
   level_5_count: number;
   total_network: number;
+}
+
+interface NetworkMember {
+  user_id: string;
+  full_name: string | null;
+  country: string | null;
+  level: number;
+  session_count: number;
+}
+
+function useNetworkSessions(userId: string | null) {
+  return useQuery({
+    queryKey: ["network-sessions", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      // 1. Get all users in this person's network from referrals
+      const { data: referrals, error: refErr } = await supabase
+        .from("referrals")
+        .select("user_id, level_1, level_2, level_3, level_4, level_5");
+
+      if (refErr) throw refErr;
+
+      // Find members at each level
+      const members: { user_id: string; level: number }[] = [];
+      for (const r of referrals || []) {
+        for (let lvl = 1; lvl <= 5; lvl++) {
+          const key = `level_${lvl}` as keyof typeof r;
+          if (r[key] === userId) {
+            members.push({ user_id: r.user_id, level: lvl });
+            break; // a user can only appear at one level for this referrer
+          }
+        }
+      }
+
+      if (members.length === 0) return [];
+
+      const memberIds = members.map((m) => m.user_id);
+
+      // 2. Get profiles for these members
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, country")
+        .in("id", memberIds);
+
+      // 3. Get session counts per user (distinct session_id from voice_recordings where recording_type = 'individual')
+      const { data: recordings } = await supabase
+        .from("voice_recordings" as any)
+        .select("user_id, session_id")
+        .in("user_id", memberIds)
+        .eq("recording_type", "individual");
+
+      // Count distinct sessions per user
+      const sessionCounts = new Map<string, Set<string>>();
+      for (const rec of (recordings as any[]) || []) {
+        if (!sessionCounts.has(rec.user_id)) sessionCounts.set(rec.user_id, new Set());
+        if (rec.session_id) sessionCounts.get(rec.user_id)!.add(rec.session_id);
+      }
+
+      const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+
+      const result: NetworkMember[] = members.map((m) => ({
+        user_id: m.user_id,
+        full_name: profileMap.get(m.user_id)?.full_name || null,
+        country: profileMap.get(m.user_id)?.country || null,
+        level: m.level,
+        session_count: sessionCounts.get(m.user_id)?.size || 0,
+      }));
+
+      // Sort by level, then by session count desc
+      result.sort((a, b) => a.level - b.level || b.session_count - a.session_count);
+
+      return result;
+    },
+    staleTime: 60_000,
+  });
+}
+
+function NetworkAccordionRow({
+  user,
+  index,
+  countryLabel,
+}: {
+  user: NetworkUser;
+  index: number;
+  countryLabel: (c: string | null) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loadUserId, setLoadUserId] = useState<string | null>(null);
+
+  const handleOpen = useCallback(
+    (isOpen: boolean) => {
+      setOpen(isOpen);
+      if (isOpen && !loadUserId) {
+        setLoadUserId(user.user_id);
+      }
+    },
+    [user.user_id, loadUserId]
+  );
+
+  const { data: members = [], isLoading } = useNetworkSessions(loadUserId);
+
+  const totalSessions = members.reduce((s, m) => s + m.session_count, 0);
+
+  return (
+    <Collapsible open={open} onOpenChange={handleOpen}>
+      <CollapsibleTrigger asChild>
+        <div
+          className="grid items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors border-b border-border"
+          style={{ gridTemplateColumns: "2rem 1fr 6rem 5rem repeat(5,3rem) 3.5rem 3.5rem 2rem" }}
+        >
+          <span className="text-muted-foreground font-mono text-xs">{index + 1}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium truncate">{user.full_name || "—"}</span>
+            {user.email_contact && (
+              <span className="text-xs text-muted-foreground truncate">{user.email_contact}</span>
+            )}
+          </div>
+          <span className="text-sm truncate">{countryLabel(user.country)}</span>
+          <code className="text-xs bg-muted px-1.5 py-0.5 rounded truncate">{user.referral_code || "—"}</code>
+          {[user.level_1_count, user.level_2_count, user.level_3_count, user.level_4_count, user.level_5_count].map(
+            (count, i) => (
+              <span key={i} className="text-center text-sm">
+                {count > 0 ? <Badge variant="secondary">{count}</Badge> : <span className="text-muted-foreground">0</span>}
+              </span>
+            )
+          )}
+          <span className="text-center">
+            <Badge className="bg-primary text-primary-foreground">{user.total_network}</Badge>
+          </span>
+          <span className="text-center">
+            {loadUserId && !isLoading ? (
+              <Badge variant="outline" className="gap-1">
+                <Mic className="h-3 w-3" />
+                {totalSessions}
+              </Badge>
+            ) : null}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="bg-muted/20 border-b border-border">
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando rede...
+            </div>
+          ) : members.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">Nenhum membro na rede.</div>
+          ) : (
+            <div className="px-6 py-3">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Membros da rede
+                </span>
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Mic className="h-3 w-3" /> {totalSessions} sessões
+                </Badge>
+              </div>
+              <div className="grid gap-1">
+                {/* Header */}
+                <div
+                  className="grid items-center gap-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1"
+                  style={{ gridTemplateColumns: "1fr 5rem 4rem 5rem" }}
+                >
+                  <span>Nome</span>
+                  <span>País</span>
+                  <span className="text-center">Nível</span>
+                  <span className="text-center">Sessões</span>
+                </div>
+                {members.map((m) => (
+                  <div
+                    key={m.user_id}
+                    className="grid items-center gap-3 px-3 py-2 rounded hover:bg-muted/40 transition-colors"
+                    style={{ gridTemplateColumns: "1fr 5rem 4rem 5rem" }}
+                  >
+                    <span className="text-sm truncate">{m.full_name || "—"}</span>
+                    <span className="text-xs text-muted-foreground">{countryLabel(m.country)}</span>
+                    <span className="text-center">
+                      <Badge variant="secondary" className="text-xs">
+                        L{m.level}
+                      </Badge>
+                    </span>
+                    <span className="text-center">
+                      {m.session_count > 0 ? (
+                        <Badge variant="outline" className="gap-1 text-xs">
+                          <Mic className="h-3 w-3" />
+                          {m.session_count}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">0</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export default function AdminReferralNetwork() {
@@ -46,7 +249,6 @@ export default function AdminReferralNetwork() {
 
   const filtered = useMemo(() => {
     let list = [...users];
-
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -56,16 +258,11 @@ export default function AdminReferralNetwork() {
           u.referral_code?.toLowerCase().includes(q)
       );
     }
-
-    if (countryFilter !== "all") {
-      list = list.filter((u) => u.country === countryFilter);
-    }
-
+    if (countryFilter !== "all") list = list.filter((u) => u.country === countryFilter);
     if (levelFilter !== "all") {
       const key = `level_${levelFilter}_count` as keyof NetworkUser;
       list = list.filter((u) => (u[key] as number) > 0);
     }
-
     return list;
   }, [users, search, countryFilter, levelFilter]);
 
@@ -134,12 +331,7 @@ export default function AdminReferralNetwork() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, email ou código..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Buscar por nome, email ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={countryFilter} onValueChange={setCountryFilter}>
           <SelectTrigger className="w-[200px]">
@@ -148,9 +340,7 @@ export default function AdminReferralNetwork() {
           <SelectContent>
             <SelectItem value="all">Todos os países</SelectItem>
             {countries.map((c) => (
-              <SelectItem key={c} value={c}>
-                {countryLabel(c)}
-              </SelectItem>
+              <SelectItem key={c} value={c}>{countryLabel(c)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -169,103 +359,41 @@ export default function AdminReferralNetwork() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Accordion list */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center h-40 text-muted-foreground">
-              Carregando...
-            </div>
+            <div className="flex items-center justify-center h-40 text-muted-foreground">Carregando...</div>
           ) : filtered.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">
               Nenhum usuário com rede de indicações encontrado.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">#</TableHead>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>País</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead className="text-center">N1</TableHead>
-                  <TableHead className="text-center">N2</TableHead>
-                  <TableHead className="text-center">N3</TableHead>
-                  <TableHead className="text-center">N4</TableHead>
-                  <TableHead className="text-center">N5</TableHead>
-                  <TableHead className="text-center">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((u, i) => (
-                  <TableRow key={u.user_id}>
-                    <TableCell className="text-muted-foreground font-mono text-xs">
-                      {i + 1}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium truncate max-w-[200px]">
-                          {u.full_name || "—"}
-                        </span>
-                        {u.email_contact && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {u.email_contact}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{countryLabel(u.country)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {u.referral_code || "—"}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {u.level_1_count > 0 ? (
-                        <Badge variant="secondary">{u.level_1_count}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {u.level_2_count > 0 ? (
-                        <Badge variant="secondary">{u.level_2_count}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {u.level_3_count > 0 ? (
-                        <Badge variant="secondary">{u.level_3_count}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {u.level_4_count > 0 ? (
-                        <Badge variant="secondary">{u.level_4_count}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {u.level_5_count > 0 ? (
-                        <Badge variant="secondary">{u.level_5_count}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge className="bg-primary text-primary-foreground">
-                        {u.total_network}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              {/* Header */}
+              <div
+                className="grid items-center gap-3 px-4 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                style={{ gridTemplateColumns: "2rem 1fr 6rem 5rem repeat(5,3rem) 3.5rem 3.5rem 2rem" }}
+              >
+                <span>#</span>
+                <span>Usuário</span>
+                <span>País</span>
+                <span>Código</span>
+                <span className="text-center">N1</span>
+                <span className="text-center">N2</span>
+                <span className="text-center">N3</span>
+                <span className="text-center">N4</span>
+                <span className="text-center">N5</span>
+                <span className="text-center">Total</span>
+                <span className="text-center">
+                  <Mic className="h-3 w-3 mx-auto" />
+                </span>
+                <span></span>
+              </div>
+              {filtered.map((u, i) => (
+                <NetworkAccordionRow key={u.user_id} user={u} index={i} countryLabel={countryLabel} />
+              ))}
+            </>
           )}
         </CardContent>
       </Card>
