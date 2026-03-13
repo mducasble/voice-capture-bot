@@ -38,6 +38,7 @@ export const useRemoteRecorders = () => {
       }
 
       setIsRecording(true);
+      isRecordingRef.current = true;
     },
     []
   );
