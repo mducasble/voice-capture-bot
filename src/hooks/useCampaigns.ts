@@ -399,6 +399,35 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   }
 }
 
+// --- Auto short link ---
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+}
+
+async function autoCreateShortLink(campaignId: string, campaignName: string) {
+  const baseSlug = toSlug(campaignName);
+  let slug = baseSlug;
+  let attempt = 0;
+
+  // Try slug, then slug-2, slug-3, etc.
+  while (attempt < 10) {
+    const { error } = await supabase.from("short_links").insert({
+      slug,
+      target_path: `/campaign/${campaignId}/task`,
+      created_by: (await supabase.auth.getUser()).data.user?.id,
+    });
+    if (!error) return;
+    // duplicate slug — append suffix
+    attempt++;
+    slug = `${baseSlug}-${attempt + 1}`;
+  }
+}
+
 // --- Mutations ---
 export function useCreateCampaign() {
   const queryClient = useQueryClient();
@@ -429,6 +458,8 @@ export function useCreateCampaign() {
         .single();
       if (error) throw error;
       await upsertRelations(data.id, payload);
+      // Auto-create short link for private access
+      await autoCreateShortLink(data.id, c.name!);
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["campaigns"] }),
