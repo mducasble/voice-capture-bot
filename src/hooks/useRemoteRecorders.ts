@@ -15,6 +15,7 @@ interface RemoteRecorderEntry {
  */
 export const useRemoteRecorders = () => {
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const recordersRef = useRef<Map<string, RemoteRecorderEntry>>(new Map());
   const connectedIdsRef = useRef<Set<string>>(new Set());
 
