@@ -429,6 +429,8 @@ export function useCreateCampaign() {
         .single();
       if (error) throw error;
       await upsertRelations(data.id, payload);
+      // Auto-create short link for private access
+      await autoCreateShortLink(data.id, c.name!);
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["campaigns"] }),
