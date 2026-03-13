@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Radio, Users, Clock, RefreshCw, Mic } from "lucide-react";
 import RoomDetailDialog from "@/components/admin/RoomDetailDialog";
