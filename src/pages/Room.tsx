@@ -1583,8 +1583,7 @@ const Room = () => {
             stream={mediaStreamRef.current}
             testStatus={currentParticipant.audio_test_status || "pending"}
             testResults={currentParticipant.audio_test_results}
-            onProfileRecommended={handleProfileApplied}
-            currentProfile={audioProfile}
+            onTestComplete={() => {
             onTestComplete={() => {
               const fetchParticipants = async () => {
                 const { data } = await supabase
