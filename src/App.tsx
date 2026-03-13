@@ -60,6 +60,7 @@ const App = () => (
             {/* Portal routes (public-facing, root) */}
             <Route path="/auth" element={<PortalAuth />} />
             <Route path="/invite/:code" element={<InvitePage />} />
+            <Route path="/c/:slug" element={<PrivateUpload />} />
             
             <Route path="/" element={<PortalLayout />}>
               <Route index element={<PortalDashboard />} />
