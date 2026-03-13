@@ -20,6 +20,7 @@
     "vendorButton": "SOLICITAR ACCESO VENDOR",
     "googleButton": "Ingresar con Google",
     "checkEmail": "Verifique su correo electrónico para confirmar el registro.",
+    "emailNotConfirmed": "Tu correo electrónico aún no ha sido verificado. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación que te enviamos.",
     "vendorSuccess": "¡Registro de Vendor enviado! Verifique su correo y espere la aprobación del administrador.",
     "openOpportunities": "Oportunidades Abiertas",
     "noOpportunities": "No hay oportunidades disponibles en este momento.",
