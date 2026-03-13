@@ -145,7 +145,7 @@ const RoomsMonitor = () => {
 
       <div className="space-y-3">
         {filtered.map((room) => (
-          <RoomCard key={room.id} room={room} />
+          <RoomCard key={room.id} room={room} onClick={() => setSelectedRoom(room)} />
         ))}
 
         {filtered.length === 0 && !loading && (
@@ -155,6 +155,12 @@ const RoomsMonitor = () => {
           </div>
         )}
       </div>
+
+      <RoomDetailDialog
+        room={selectedRoom}
+        open={!!selectedRoom}
+        onOpenChange={(open) => { if (!open) setSelectedRoom(null); }}
+      />
     </div>
   );
 };
