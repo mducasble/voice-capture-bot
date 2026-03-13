@@ -316,9 +316,9 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: audioProfile?.enableEchoCancellation ?? false,
-          noiseSuppression: audioProfile?.enableNoiseSuppression ?? false,
-          autoGainControl: audioProfile?.enableAutoGainControl ?? false,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
           sampleRate: 48000,
         }
       });
