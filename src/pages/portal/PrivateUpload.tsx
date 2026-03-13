@@ -6,22 +6,95 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Upload, Loader2, Film, X, Plus, CheckCircle2, AlertCircle,
+  Mic, Image as ImageIcon, FileText,
 } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import KGenButton from "@/components/portal/KGenButton";
 
-interface VideoFile {
+interface UploadFile {
   id: string;
   file: File;
   label: string;
 }
 
+// --- Type config map ---
+interface TypeConfig {
+  icon: React.ReactNode;
+  label: string;
+  accepts: string;
+  hint: string;
+  table: "video_submissions" | "image_submissions" | "voice_recordings";
+  storagePath: string;
+  filenamePrefix: string;
+  formatFromExt: boolean;
+  extraInsertFields?: (file: File) => Record<string, any>;
+}
+
+function getTypeConfig(campaignType: string | null): TypeConfig {
+  switch (campaignType) {
+    case "image_submission":
+      return {
+        icon: <ImageIcon className="h-8 w-8" style={{ color: "var(--portal-accent)" }} />,
+        label: "Upload de Imagem",
+        accepts: ".jpg,.jpeg,.png,.webp,.heic,.heif,.bmp,.tiff,image/jpeg,image/png,image/webp",
+        hint: "JPG, PNG, WebP, HEIC",
+        table: "image_submissions",
+        storagePath: "images",
+        filenamePrefix: "img",
+        formatFromExt: true,
+      };
+    case "audio_capture_solo":
+    case "audio_capture_group":
+      return {
+        icon: <Mic className="h-8 w-8" style={{ color: "var(--portal-accent)" }} />,
+        label: "Upload de Áudio",
+        accepts: ".wav,.mp3,.flac,.ogg,.m4a,.aac,audio/wav,audio/mpeg,audio/flac,audio/ogg",
+        hint: "WAV, MP3, FLAC, OGG, M4A",
+        table: "voice_recordings",
+        storagePath: "audio",
+        filenamePrefix: "audio",
+        formatFromExt: true,
+        extraInsertFields: () => ({
+          recording_type: "individual",
+          status: "uploaded",
+        }),
+      };
+    case "video_submission":
+    default:
+      return {
+        icon: <Film className="h-8 w-8" style={{ color: "var(--portal-accent)" }} />,
+        label: "Upload de Vídeo",
+        accepts: ".mp4,.mov,.avi,.mkv,.webm,video/mp4,video/quicktime,video/x-msvideo,video/webm",
+        hint: "MP4, MOV, AVI, MKV, WebM",
+        table: "video_submissions",
+        storagePath: "videos",
+        filenamePrefix: "video",
+        formatFromExt: true,
+      };
+  }
+}
+
+// --- Small icon for file list ---
+function FileListIcon({ campaignType }: { campaignType: string | null }) {
+  const cls = "h-3.5 w-3.5 shrink-0";
+  const style = { color: "var(--portal-text-muted)" };
+  switch (campaignType) {
+    case "image_submission":
+      return <ImageIcon className={cls} style={style} />;
+    case "audio_capture_solo":
+    case "audio_capture_group":
+      return <Mic className={cls} style={style} />;
+    default:
+      return <Film className={cls} style={style} />;
+  }
+}
+
+// --- Hook: resolve slug → campaign ---
 function useSlugCampaign(slug: string | undefined) {
   return useQuery({
     queryKey: ["private-upload", slug],
     queryFn: async () => {
       if (!slug) throw new Error("No slug");
-      // Resolve slug → campaign id
       const { data: link, error: le } = await supabase
         .from("short_links")
         .select("target_path")
@@ -29,14 +102,15 @@ function useSlugCampaign(slug: string | undefined) {
         .single();
       if (le || !link) throw new Error("Link não encontrado");
 
-      // Extract campaign id from target_path (format: /campaign/:id or just the uuid)
-      const match = link.target_path.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      const match = link.target_path.match(
+        /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+      );
       if (!match) throw new Error("Campanha inválida");
       const campaignId = match[1];
 
       const { data: campaign, error: ce } = await supabase
         .from("campaigns")
-        .select("id, name, description")
+        .select("id, name, description, campaign_type")
         .eq("id", campaignId)
         .single();
       if (ce || !campaign) throw new Error("Campanha não encontrada");
@@ -47,13 +121,14 @@ function useSlugCampaign(slug: string | undefined) {
   });
 }
 
+// --- Main component ---
 export default function PrivateUpload() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { data: campaign, isLoading, error } = useSlugCampaign(slug);
 
-  const [files, setFiles] = useState<VideoFile[]>([]);
+  const [files, setFiles] = useState<UploadFile[]>([]);
   const [senderName, setSenderName] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -61,7 +136,7 @@ export default function PrivateUpload() {
   const [uploadDone, setUploadDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const ACCEPTED = ".mp4,.mov,.avi,.mkv,.webm,video/mp4,video/quicktime,video/x-msvideo,video/webm";
+  const typeConfig = getTypeConfig(campaign?.campaign_type ?? null);
 
   // Redirect to auth if not logged in
   if (!authLoading && !user) {
@@ -94,28 +169,28 @@ export default function PrivateUpload() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (!selected) return;
-    const newFiles: VideoFile[] = Array.from(selected).map(f => ({
+    const newFiles: UploadFile[] = Array.from(selected).map((f) => ({
       id: crypto.randomUUID(),
       file: f,
       label: f.name,
     }));
-    setFiles(prev => [...prev, ...newFiles]);
+    setFiles((prev) => [...prev, ...newFiles]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const dropped = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("video/"));
+    const dropped = Array.from(e.dataTransfer.files);
     if (dropped.length === 0) {
-      toast.error("Apenas arquivos de vídeo são aceitos.");
+      toast.error("Nenhum arquivo válido detectado.");
       return;
     }
-    const newFiles: VideoFile[] = dropped.map(f => ({
+    const newFiles: UploadFile[] = dropped.map((f) => ({
       id: crypto.randomUUID(),
       file: f,
       label: f.name,
     }));
-    setFiles(prev => [...prev, ...newFiles]);
+    setFiles((prev) => [...prev, ...newFiles]);
   };
 
   const formatSize = (bytes: number) =>
@@ -134,47 +209,67 @@ export default function PrivateUpload() {
 
     try {
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeName = senderName
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_\-]/g, "_");
 
       for (let i = 0; i < files.length; i++) {
-        const vf = files[i];
-        const pct = Math.round(((i) / files.length) * 90);
+        const uf = files[i];
+        const pct = Math.round((i / files.length) * 90);
         setUploadProgress(pct);
-        setCurrentStep(`Enviando ${vf.file.name}...`);
+        setCurrentStep(`Enviando ${uf.file.name}...`);
 
-        const ext = vf.file.name.split(".").pop() || "mp4";
-        const safeName = senderName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_\-]/g, "_");
-        const fn = `video_${ts}_${safeName}_${i + 1}.${ext}`;
-        const path = `videos/${campaign.id}/${user.id}/${fn}`;
+        const ext = uf.file.name.split(".").pop() || "bin";
+        const fn = `${typeConfig.filenamePrefix}_${ts}_${safeName}_${i + 1}.${ext}`;
+        const path = `${typeConfig.storagePath}/${campaign.id}/${user.id}/${fn}`;
 
         const { error: ue } = await supabase.storage
           .from("campaign-files")
-          .upload(path, vf.file);
+          .upload(path, uf.file);
         if (ue) throw new Error(`Upload falhou: ${ue.message}`);
 
         const { data: urlData } = supabase.storage
           .from("campaign-files")
           .getPublicUrl(path);
 
-        const { error: ie } = await supabase.from("video_submissions").insert({
+        // Build insert payload based on type
+        const basePayload: Record<string, any> = {
           campaign_id: campaign.id,
           user_id: user.id,
           filename: fn,
           file_url: urlData.publicUrl,
-          file_size_bytes: vf.file.size,
-          format: ext,
           metadata: {
             source: "private_upload",
-            original_filename: vf.file.name,
+            original_filename: uf.file.name,
             sender_name: senderName.trim(),
             slug,
           },
-        });
+        };
+
+        // Type-specific fields
+        if (typeConfig.table === "video_submissions" || typeConfig.table === "image_submissions") {
+          basePayload.file_size_bytes = uf.file.size;
+          basePayload.format = ext;
+        }
+
+        if (typeConfig.table === "voice_recordings") {
+          basePayload.file_size_bytes = uf.file.size;
+          basePayload.discord_username = senderName.trim();
+          if (typeConfig.extraInsertFields) {
+            Object.assign(basePayload, typeConfig.extraInsertFields(uf.file));
+          }
+        }
+
+        const { error: ie } = await (supabase as any)
+          .from(typeConfig.table)
+          .insert(basePayload);
         if (ie) throw new Error(`Registro falhou: ${ie.message}`);
       }
 
       setUploadProgress(100);
       setUploadDone(true);
-      toast.success("Vídeos enviados com sucesso!");
+      toast.success("Arquivos enviados com sucesso!");
       setFiles([]);
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "Tente novamente"));
@@ -194,7 +289,7 @@ export default function PrivateUpload() {
               Envio Concluído
             </h2>
             <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-              Seus vídeos foram recebidos com sucesso. Obrigado!
+              Seus arquivos foram recebidos com sucesso. Obrigado!
             </p>
             <KGenButton
               onClick={() => { setUploadDone(false); setUploadProgress(0); }}
@@ -217,7 +312,7 @@ export default function PrivateUpload() {
           <div className="flex items-center gap-3 mb-3">
             <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
             <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-              Upload de Vídeo
+              {typeConfig.label}
             </span>
           </div>
           <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
@@ -240,7 +335,7 @@ export default function PrivateUpload() {
               className="portal-brutalist-input w-full"
               placeholder="Digite seu nome..."
               value={senderName}
-              onChange={e => setSenderName(e.target.value)}
+              onChange={(e) => setSenderName(e.target.value)}
               disabled={isUploading}
             />
           </div>
@@ -249,7 +344,7 @@ export default function PrivateUpload() {
           <input
             ref={fileInputRef}
             type="file"
-            accept={ACCEPTED}
+            accept={typeConfig.accepts}
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -258,24 +353,24 @@ export default function PrivateUpload() {
           {files.length === 0 ? (
             <button
               onClick={() => fileInputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
+              onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               className="w-full p-10 flex flex-col items-center gap-3 transition-colors cursor-pointer"
               style={{ border: "2px dashed var(--portal-border)", background: "var(--portal-card-bg)" }}
             >
-              <Film className="h-8 w-8" style={{ color: "var(--portal-accent)" }} />
+              {typeConfig.icon}
               <span className="font-mono text-xs text-center" style={{ color: "var(--portal-text-muted)" }}>
-                Arraste vídeos aqui ou clique para selecionar
+                Arraste arquivos aqui ou clique para selecionar
               </span>
               <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-                MP4, MOV, AVI, MKV, WebM
+                {typeConfig.hint}
               </span>
             </button>
           ) : (
             <div className="space-y-2">
-              {files.map((vf, idx) => (
+              {files.map((uf, idx) => (
                 <div
-                  key={vf.id}
+                  key={uf.id}
                   className="flex items-center gap-3 p-3"
                   style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}
                 >
@@ -284,18 +379,18 @@ export default function PrivateUpload() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Film className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--portal-text-muted)" }} />
+                      <FileListIcon campaignType={campaign.campaign_type} />
                       <span className="font-mono text-xs truncate" style={{ color: "var(--portal-text)" }}>
-                        {vf.file.name}
+                        {uf.file.name}
                       </span>
                       <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--portal-text-muted)" }}>
-                        {formatSize(vf.file.size)}
+                        {formatSize(uf.file.size)}
                       </span>
                     </div>
                   </div>
                   {!isUploading && (
                     <button
-                      onClick={() => setFiles(prev => prev.filter(f => f.id !== vf.id))}
+                      onClick={() => setFiles((prev) => prev.filter((f) => f.id !== uf.id))}
                       style={{ color: "var(--portal-text-muted)" }}
                     >
                       <X className="h-4 w-4" />
@@ -310,12 +405,12 @@ export default function PrivateUpload() {
           {files.length > 0 && !isUploading && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
+              onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               className="w-full flex items-center justify-center gap-2 py-2 font-mono text-xs uppercase tracking-widest transition-colors"
               style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
             >
-              <Plus className="h-3.5 w-3.5" /> Adicionar Vídeo
+              <Plus className="h-3.5 w-3.5" /> Adicionar Arquivo
             </button>
           )}
 
@@ -343,7 +438,7 @@ export default function PrivateUpload() {
             disabled={!canSubmit || isUploading}
             className="w-full"
             size="default"
-            scrambleText={isUploading ? "ENVIANDO..." : "ENVIAR VÍDEOS"}
+            scrambleText={isUploading ? "ENVIANDO..." : "ENVIAR ARQUIVOS"}
             icon={isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           />
         </div>
