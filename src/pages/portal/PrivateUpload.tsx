@@ -17,6 +17,48 @@ interface UploadFile {
   label: string;
 }
 
+function getVideoDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    try {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      const url = URL.createObjectURL(file);
+      video.onloadedmetadata = () => {
+        const dur = video.duration;
+        URL.revokeObjectURL(url);
+        resolve(dur && isFinite(dur) ? Math.round(dur * 100) / 100 : null);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      video.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function getImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 // --- Type config map ---
 interface TypeConfig {
   icon: React.ReactNode;
