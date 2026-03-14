@@ -216,9 +216,10 @@ export default function PrivateUpload() {
 
       for (let i = 0; i < files.length; i++) {
         const uf = files[i];
-        const pct = Math.round((i / files.length) * 90);
-        setUploadProgress(pct);
-        setCurrentStep(`Enviando ${uf.file.name}...`);
+        const fileBase = (i / files.length) * 90;
+        const fileSlice = 90 / files.length;
+        setUploadProgress(Math.round(fileBase));
+        setCurrentStep(`Enviando ${uf.file.name} (${i + 1}/${files.length})...`);
 
         const ext = uf.file.name.split(".").pop() || "bin";
         const fn = `${typeConfig.filenamePrefix}_${ts}_${safeName}_${i + 1}.${ext}`;
@@ -231,26 +232,47 @@ export default function PrivateUpload() {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (!currentSession?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
 
-        // Stream upload to S3 via edge function
+        // Stream upload to S3 via edge function with XHR for progress
         const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         const uploadUrl = `https://${projectId}.supabase.co/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(fn)}&folder=${encodeURIComponent(s3Folder)}&content_type=${encodeURIComponent(mimeType)}`;
 
-        const s3Response = await fetch(uploadUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${currentSession.access_token}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Content-Type": mimeType,
-          },
-          body: uf.file,
+        const s3Result = await new Promise<any>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", uploadUrl);
+          xhr.setRequestHeader("Authorization", `Bearer ${currentSession.access_token}`);
+          xhr.setRequestHeader("apikey", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+          xhr.setRequestHeader("Content-Type", mimeType);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const filePct = (e.loaded / e.total) * fileSlice;
+              setUploadProgress(Math.round(fileBase + filePct));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch {
+                reject(new Error("Resposta inválida do servidor"));
+              }
+            } else {
+              try {
+                const errData = JSON.parse(xhr.responseText);
+                reject(new Error(`Upload S3 falhou: ${errData.error || xhr.statusText}`));
+              } catch {
+                reject(new Error(`Upload S3 falhou: ${xhr.statusText}`));
+              }
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Erro de rede no upload"));
+          xhr.ontimeout = () => reject(new Error("Upload expirou (timeout)"));
+          xhr.timeout = 10 * 60 * 1000; // 10 min timeout
+
+          xhr.send(uf.file);
         });
-
-        if (!s3Response.ok) {
-          const errData = await s3Response.json().catch(() => ({}));
-          throw new Error(`Upload S3 falhou: ${(errData as any).error || s3Response.statusText}`);
-        }
-
-        const s3Result = await s3Response.json();
 
         // Build insert payload based on type
         const basePayload: Record<string, any> = {
