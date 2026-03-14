@@ -502,7 +502,40 @@ export function MediaReviewTab({ mediaType }: MediaReviewTabProps) {
         </div>
       )}
 
-      {!isLoading && filtered.length > 0 && (
+      {!isLoading && filtered.length > 0 && mediaType === "video" && groupedByUser && (
+        <div className="space-y-5">
+          {groupedByUser.map(group => (
+            <div key={group.userId} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">
+                  {profileMap.get(group.userId) || "Desconhecido"}
+                </span>
+                <span className="flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded-sm bg-secondary text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {formatDuration(group.totalSeconds)}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  ({group.items.length} {group.items.length === 1 ? "vídeo" : "vídeos"})
+                </span>
+              </div>
+              {group.items.map(item => (
+                <SubmissionRow
+                  key={item.id}
+                  item={item}
+                  mediaType={mediaType}
+                  profileName={profileMap.get(item.user_id) || "Desconhecido"}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  isPending={isMutating}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && filtered.length > 0 && mediaType !== "video" && (
         <div className="space-y-2">
           {filtered.map(item => (
             <SubmissionRow
