@@ -83,7 +83,47 @@ function createDefaultTaskSet(taskType: string, catalog: any[]): CampaignTaskSet
   };
 }
 
-export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: CampaignDialogProps) {
+function ShortLinkDisplay({ campaignId }: { campaignId: string }) {
+  const [copied, setCopied] = useState(false);
+  const { data: slug } = useQuery({
+    queryKey: ["short-link", campaignId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("short_links")
+        .select("slug")
+        .like("target_path", `%${campaignId}%`)
+        .maybeSingle();
+      return data?.slug ?? null;
+    },
+  });
+
+  if (!slug) return null;
+
+  const fullUrl = `${window.location.origin}/c/${slug}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1.5">
+        <Link2 className="h-3.5 w-3.5" />
+        Link Curto
+      </Label>
+      <div className="flex items-center gap-2">
+        <Input value={fullUrl} readOnly className="font-mono text-xs" />
+        <Button variant="outline" size="icon" className="shrink-0" onClick={handleCopy}>
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
   const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? duplicateFromId ?? undefined);
   const { data: clients } = useClients();
   const { data: catalog } = useTaskTypeCatalog();
