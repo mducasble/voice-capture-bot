@@ -1388,94 +1388,124 @@ export default function ReviewQueue() {
       <div>
         <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Fila de Aprovação</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {allTabs.length} {allTabs.length === 1 ? "campanha" : "campanhas"}
-          {hasNoCampaign && " + legados sem campanha"}
+          Revisão de submissões por tipo de mídia.
         </p>
       </div>
 
-      {!isLoading && recordings && recordings.length > 0 && (
-        <SubmissionSummary recordings={recordings} campaignMap={campaignMap} />
-      )}
+      {/* Top-level type tabs */}
+      <Tabs defaultValue="audio" className="w-full">
+        <TabsList className="w-auto gap-1 bg-secondary/50 p-1">
+          <TabsTrigger value="audio" className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <FileAudio className="h-4 w-4" />
+            Áudio
+          </TabsTrigger>
+          <TabsTrigger value="video" className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Film className="h-4 w-4" />
+            Vídeo
+          </TabsTrigger>
+          <TabsTrigger value="image" className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <ImageIcon className="h-4 w-4" />
+            Imagem
+          </TabsTrigger>
+        </TabsList>
 
-      {isLoading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
-        </div>
-      )}
-
-      {!isLoading && allTabs.length === 0 && !hasNoCampaign && (
-        <div className="text-center py-16 border border-border bg-card rounded-lg">
-          <FileAudio className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold text-foreground">Nenhuma sessão encontrada</h3>
-          <p className="text-sm text-muted-foreground mt-1">As sessões enviadas pelo portal aparecerão aqui.</p>
-        </div>
-      )}
-
-      {!isLoading && (allTabs.length > 0 || hasNoCampaign) && (
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="w-full flex-wrap h-auto gap-1.5 bg-secondary/50 p-1.5">
-            {allTabs.map(({ campaign, pendingCount }) => (
-              <TabsTrigger
-                key={campaign.id}
-                value={campaign.id}
-                className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <span className="truncate max-w-[160px]">{campaign.name}</span>
-                {pendingCount > 0 && (
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/40 text-amber-500">
-                    {pendingCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
-            {hasNoCampaign && (
-              <TabsTrigger
-                value="__none__"
-                className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-muted-foreground"
-              >
-                Sem campanha
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          {allTabs.map(({ campaign, hosts }) => (
-            <TabsContent key={campaign.id} value={campaign.id} className="mt-5">
-              <div className="mb-4">
-                <h2 className="text-base font-bold text-foreground">{campaign.name}</h2>
-                {campaign.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{campaign.description}</p>
-                )}
-              </div>
-              <CampaignTabContent
-                hosts={hosts}
-                profileMap={profileMap}
-                onApproveSession={handleApproveSession}
-                onRejectSession={handleRejectSession}
-                onTranscribe={handleTranscribe}
-                isPending={isMutating}
-                validationRules={validationRulesMap.get(campaign.id)}
-              />
-            </TabsContent>
-          ))}
-
-          {hasNoCampaign && (
-            <TabsContent value="__none__" className="mt-5">
-              <div className="mb-4">
-                <h2 className="text-base font-bold text-foreground">Sem campanha</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Gravações legadas sem vínculo de campanha.</p>
-              </div>
-              <CampaignTabContent
-                hosts={noCampaignHosts}
-                profileMap={profileMap}
-                onApproveSession={handleApproveSession}
-                onRejectSession={handleRejectSession}
-                onTranscribe={handleTranscribe}
-                isPending={isMutating}
-              />
-            </TabsContent>
+        {/* AUDIO TAB — existing content */}
+        <TabsContent value="audio" className="mt-5 space-y-6">
+          {!isLoading && recordings && recordings.length > 0 && (
+            <SubmissionSummary recordings={recordings} campaignMap={campaignMap} />
           )}
-        </Tabs>
-      )}
+
+          {isLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
+            </div>
+          )}
+
+          {!isLoading && allTabs.length === 0 && !hasNoCampaign && (
+            <div className="text-center py-16 border border-border bg-card rounded-lg">
+              <FileAudio className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold text-foreground">Nenhuma sessão encontrada</h3>
+              <p className="text-sm text-muted-foreground mt-1">As sessões enviadas pelo portal aparecerão aqui.</p>
+            </div>
+          )}
+
+          {!isLoading && (allTabs.length > 0 || hasNoCampaign) && (
+            <Tabs defaultValue={defaultTab} className="w-full">
+              <TabsList className="w-full flex-wrap h-auto gap-1.5 bg-secondary/50 p-1.5">
+                {allTabs.map(({ campaign, pendingCount }) => (
+                  <TabsTrigger
+                    key={campaign.id}
+                    value={campaign.id}
+                    className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  >
+                    <span className="truncate max-w-[160px]">{campaign.name}</span>
+                    {pendingCount > 0 && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/40 text-amber-500">
+                        {pendingCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                ))}
+                {hasNoCampaign && (
+                  <TabsTrigger
+                    value="__none__"
+                    className="text-sm px-4 py-2 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-muted-foreground"
+                  >
+                    Sem campanha
+                  </TabsTrigger>
+                )}
+              </TabsList>
+
+              {allTabs.map(({ campaign, hosts }) => (
+                <TabsContent key={campaign.id} value={campaign.id} className="mt-5">
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-foreground">{campaign.name}</h2>
+                    {campaign.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{campaign.description}</p>
+                    )}
+                  </div>
+                  <CampaignTabContent
+                    hosts={hosts}
+                    profileMap={profileMap}
+                    onApproveSession={handleApproveSession}
+                    onRejectSession={handleRejectSession}
+                    onTranscribe={handleTranscribe}
+                    isPending={isMutating}
+                    validationRules={validationRulesMap.get(campaign.id)}
+                  />
+                </TabsContent>
+              ))}
+
+              {hasNoCampaign && (
+                <TabsContent value="__none__" className="mt-5">
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-foreground">Sem campanha</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Gravações legadas sem vínculo de campanha.</p>
+                  </div>
+                  <CampaignTabContent
+                    hosts={noCampaignHosts}
+                    profileMap={profileMap}
+                    onApproveSession={handleApproveSession}
+                    onRejectSession={handleRejectSession}
+                    onTranscribe={handleTranscribe}
+                    isPending={isMutating}
+                  />
+                </TabsContent>
+              )}
+            </Tabs>
+          )}
+        </TabsContent>
+
+        {/* VIDEO TAB */}
+        <TabsContent value="video" className="mt-5">
+          <MediaReviewTab mediaType="video" />
+        </TabsContent>
+
+        {/* IMAGE TAB */}
+        <TabsContent value="image" className="mt-5">
+          <MediaReviewTab mediaType="image" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
