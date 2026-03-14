@@ -17,7 +17,14 @@ interface UploadFile {
   label: string;
 }
 
-function getVideoDuration(file: File): Promise<number | null> {
+interface VideoMeta {
+  duration_seconds: number | null;
+  width: number | null;
+  height: number | null;
+  frame_rate: number | null;
+}
+
+function getVideoMetadata(file: File): Promise<VideoMeta> {
   return new Promise((resolve) => {
     try {
       const video = document.createElement("video");
@@ -25,16 +32,53 @@ function getVideoDuration(file: File): Promise<number | null> {
       const url = URL.createObjectURL(file);
       video.onloadedmetadata = () => {
         const dur = video.duration;
-        URL.revokeObjectURL(url);
-        resolve(dur && isFinite(dur) ? Math.round(dur * 100) / 100 : null);
+        const meta: VideoMeta = {
+          duration_seconds: dur && isFinite(dur) ? Math.round(dur * 100) / 100 : null,
+          width: video.videoWidth || null,
+          height: video.videoHeight || null,
+          frame_rate: null,
+        };
+
+        // Try to get frame rate via requestVideoFrameCallback
+        if ("requestVideoFrameCallback" in video) {
+          let firstTs: number | null = null;
+          let firstFrame: number | null = null;
+          const cb = (_now: number, md: any) => {
+            if (firstTs === null) {
+              firstTs = md.mediaTime;
+              firstFrame = md.presentedFrames;
+              (video as any).requestVideoFrameCallback(cb);
+            } else {
+              const elapsed = md.mediaTime - firstTs;
+              const frames = md.presentedFrames - (firstFrame ?? 0);
+              if (elapsed > 0 && frames > 0) {
+                meta.frame_rate = Math.round(frames / elapsed);
+              }
+              URL.revokeObjectURL(url);
+              video.pause();
+              video.src = "";
+              resolve(meta);
+            }
+          };
+          video.muted = true;
+          video.playsInline = true;
+          (video as any).requestVideoFrameCallback(cb);
+          video.play().catch(() => {
+            URL.revokeObjectURL(url);
+            resolve(meta);
+          });
+        } else {
+          URL.revokeObjectURL(url);
+          resolve(meta);
+        }
       };
       video.onerror = () => {
         URL.revokeObjectURL(url);
-        resolve(null);
+        resolve({ duration_seconds: null, width: null, height: null, frame_rate: null });
       };
       video.src = url;
     } catch {
-      resolve(null);
+      resolve({ duration_seconds: null, width: null, height: null, frame_rate: null });
     }
   });
 }
@@ -335,8 +379,11 @@ export default function PrivateUpload() {
         if (typeConfig.table === "video_submissions") {
           basePayload.file_size_bytes = uf.file.size;
           basePayload.format = ext;
-          const duration = await getVideoDuration(uf.file);
-          if (duration != null) basePayload.duration_seconds = duration;
+          const vm = await getVideoMetadata(uf.file);
+          if (vm.duration_seconds != null) basePayload.duration_seconds = vm.duration_seconds;
+          if (vm.width != null) basePayload.width = vm.width;
+          if (vm.height != null) basePayload.height = vm.height;
+          if (vm.frame_rate != null) basePayload.frame_rate = vm.frame_rate;
         } else if (typeConfig.table === "image_submissions") {
           basePayload.file_size_bytes = uf.file.size;
           basePayload.format = ext;
