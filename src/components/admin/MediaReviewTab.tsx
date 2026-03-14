@@ -292,10 +292,13 @@ export function MediaReviewTab({ mediaType }: MediaReviewTabProps) {
   const { data: submissions, isLoading } = useQuery({
     queryKey: [`admin_review_${mediaType}`, selectedCampaign],
     queryFn: async () => {
+      const columns = mediaType === "video"
+        ? "id, campaign_id, user_id, filename, file_url, file_size_bytes, format, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at, metadata, duration_seconds, width, height, frame_rate"
+        : "id, campaign_id, user_id, filename, file_url, file_size_bytes, format, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at, metadata, width, height";
+
       let query = supabase
         .from(table)
-        .select("id, campaign_id, user_id, filename, file_url, file_size_bytes, format, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at, metadata" +
-          (mediaType === "video" ? ", duration_seconds, width, height, frame_rate" : ", width, height"))
+        .select(columns)
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -305,7 +308,7 @@ export function MediaReviewTab({ mediaType }: MediaReviewTabProps) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as MediaSubmission[];
+      return (data || []) as unknown as MediaSubmission[];
     },
   });
 
