@@ -1091,6 +1091,9 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
                     <Label>Pública</Label>
                   </div>
                 </div>
+
+                {/* Short Link */}
+                {campaignId && <ShortLinkDisplay campaignId={campaignId} />}
               </TabsContent>
 
               {/* GLOBAL INSTRUCTIONS — 3 sections */}
