@@ -379,8 +379,11 @@ export default function PrivateUpload() {
         if (typeConfig.table === "video_submissions") {
           basePayload.file_size_bytes = uf.file.size;
           basePayload.format = ext;
-          const duration = await getVideoDuration(uf.file);
-          if (duration != null) basePayload.duration_seconds = duration;
+          const vm = await getVideoMetadata(uf.file);
+          if (vm.duration_seconds != null) basePayload.duration_seconds = vm.duration_seconds;
+          if (vm.width != null) basePayload.width = vm.width;
+          if (vm.height != null) basePayload.height = vm.height;
+          if (vm.frame_rate != null) basePayload.frame_rate = vm.frame_rate;
         } else if (typeConfig.table === "image_submissions") {
           basePayload.file_size_bytes = uf.file.size;
           basePayload.format = ext;
