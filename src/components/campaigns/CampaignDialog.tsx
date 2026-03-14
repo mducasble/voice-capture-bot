@@ -123,7 +123,7 @@ function ShortLinkDisplay({ campaignId }: { campaignId: string }) {
   );
 }
 
-
+export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: CampaignDialogProps) {
   const { data: campaign, isLoading: loadingCampaign } = useCampaign(campaignId ?? duplicateFromId ?? undefined);
   const { data: clients } = useClients();
   const { data: catalog } = useTaskTypeCatalog();
