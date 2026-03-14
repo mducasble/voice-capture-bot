@@ -350,6 +350,22 @@ export function MediaReviewTab({ mediaType }: MediaReviewTabProps) {
     return submissions.filter(s => getOverallStatus(s) === filter);
   }, [submissions, filter]);
 
+  // Group by user (for video)
+  const groupedByUser = useMemo(() => {
+    if (mediaType !== "video" || !filtered.length) return null;
+    const groups = new Map<string, { items: MediaSubmission[]; totalSeconds: number }>();
+    for (const item of filtered) {
+      const uid = item.user_id;
+      if (!groups.has(uid)) groups.set(uid, { items: [], totalSeconds: 0 });
+      const g = groups.get(uid)!;
+      g.items.push(item);
+      g.totalSeconds += item.duration_seconds ?? 0;
+    }
+    return Array.from(groups.entries())
+      .map(([userId, { items, totalSeconds }]) => ({ userId, items, totalSeconds }))
+      .sort((a, b) => b.totalSeconds - a.totalSeconds);
+  }, [filtered, mediaType]);
+
   const counts = useMemo(() => {
     if (!submissions) return { pending: 0, approved: 0, rejected: 0 };
     let pending = 0, approved = 0, rejected = 0;
