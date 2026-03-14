@@ -224,6 +224,12 @@ function SubmissionRow({
           {/* Approval controls */}
           {status === "pending" && (
             <div className="p-4 border-t border-border/30 bg-secondary/10 space-y-3">
+              {mediaType === "video" && item.duration_seconds != null && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                  <Film className="h-3.5 w-3.5" />
+                  Duração: {formatDuration(item.duration_seconds)}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
