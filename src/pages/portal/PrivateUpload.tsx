@@ -332,9 +332,19 @@ export default function PrivateUpload() {
         };
 
         // Type-specific fields
-        if (typeConfig.table === "video_submissions" || typeConfig.table === "image_submissions") {
+        if (typeConfig.table === "video_submissions") {
           basePayload.file_size_bytes = uf.file.size;
           basePayload.format = ext;
+          const duration = await getVideoDuration(uf.file);
+          if (duration != null) basePayload.duration_seconds = duration;
+        } else if (typeConfig.table === "image_submissions") {
+          basePayload.file_size_bytes = uf.file.size;
+          basePayload.format = ext;
+          const dims = await getImageDimensions(uf.file);
+          if (dims) {
+            basePayload.width = dims.width;
+            basePayload.height = dims.height;
+          }
         }
 
         if (typeConfig.table === "voice_recordings") {
