@@ -28,7 +28,7 @@ serve(async (req) => {
     // Fetch all recordings
     const { data: recordings, error } = await supabase
       .from('voice_recordings')
-      .select('id, file_url')
+      .select('id, file_url, mp3_file_url')
       .in('id', recording_ids);
 
     if (error) throw error;
@@ -36,26 +36,70 @@ serve(async (req) => {
     const baseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    console.log(`Batch reanalyze: firing ${recordings?.length} requests`);
+    console.log(`Batch reanalyze: processing ${recordings?.length} recordings`);
 
-    // Fire ALL requests immediately (fire-and-forget) — the HF Space will queue them
-    for (const rec of recordings || []) {
-      fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${serviceKey}`,
-        },
-        body: JSON.stringify({
-          recording_id: rec.id,
-          file_url: rec.file_url,
-          mode: 'sampled',
-        }),
-      }).catch(err => console.error(`Failed to trigger ${rec.id}:`, err));
+    // Process in batches of 5 with concurrency control using waitUntil
+    const BATCH_SIZE = 5;
+    const recs = recordings || [];
+    let triggered = 0;
+    let errors = 0;
+
+    const processAll = async () => {
+      for (let i = 0; i < recs.length; i += BATCH_SIZE) {
+        const batch = recs.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (rec) => {
+            const audioUrl = rec.mp3_file_url || rec.file_url;
+            if (!audioUrl) {
+              console.warn(`Skipping ${rec.id}: no file URL`);
+              return;
+            }
+            const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${serviceKey}`,
+              },
+              body: JSON.stringify({
+                recording_id: rec.id,
+                file_url: audioUrl,
+                mode: 'sampled',
+              }),
+            });
+            if (!resp.ok) {
+              const text = await resp.text();
+              console.error(`Failed ${rec.id}: ${resp.status} ${text.slice(0, 200)}`);
+              throw new Error(`${resp.status}`);
+            } else {
+              await resp.text(); // consume body
+              console.log(`OK ${rec.id}`);
+            }
+          })
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') triggered++;
+          else errors++;
+        }
+        // Small delay between batches to avoid overwhelming
+        if (i + BATCH_SIZE < recs.length) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+      console.log(`Batch reanalyze complete: ${triggered} ok, ${errors} errors out of ${recs.length}`);
+    };
+
+    // Use EdgeRuntime.waitUntil to keep processing after response
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(processAll());
+    } else {
+      // Fallback: await directly (will block response but at least work)
+      await processAll();
     }
 
     return new Response(
-      JSON.stringify({ success: true, triggered: recordings?.length }),
+      JSON.stringify({ success: true, queued: recs.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
