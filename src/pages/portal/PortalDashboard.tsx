@@ -197,7 +197,13 @@ export default function PortalDashboard() {
   };
 
   const allActive = campaigns?.filter(c => c.is_active) || [];
-  const allVisible = allActive.filter(c => isCampaignVisibleForCountry(c.geographic_scope, userCountry));
+  // Filter by geo AND visibility: private campaigns only show if user is already a participant
+  const allVisible = allActive.filter(c => {
+    const geoOk = isCampaignVisibleForCountry(c.geographic_scope, userCountry);
+    const isPublic = c.visibility_is_public !== false;
+    const isParticipant = userParticipationIds?.has(c.id);
+    return geoOk && (isPublic || isParticipant);
+  });
   
   const readyNow = allVisible
     .filter(c => !isWaitlist(c))
