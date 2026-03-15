@@ -17,19 +17,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { recording_ids } = await req.json();
+    const { recording_ids, campaign_id } = await req.json();
 
-    if (!recording_ids || !Array.isArray(recording_ids) || recording_ids.length === 0) {
-      return new Response(JSON.stringify({ error: 'recording_ids array required' }), {
+    if (!recording_ids && !campaign_id) {
+      return new Response(JSON.stringify({ error: 'recording_ids array or campaign_id required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Fetch all recordings
-    const { data: recordings, error } = await supabase
+    // Fetch recordings - by campaign_id or by explicit IDs
+    let query = supabase
       .from('voice_recordings')
-      .select('id, file_url, mp3_file_url')
-      .in('id', recording_ids);
+      .select('id, file_url, mp3_file_url');
+    
+    if (campaign_id) {
+      query = query.eq('campaign_id', campaign_id);
+    } else {
+      query = query.in('id', recording_ids);
+    }
+
+    const { data: recordings, error } = await query;
 
     if (error) throw error;
 
