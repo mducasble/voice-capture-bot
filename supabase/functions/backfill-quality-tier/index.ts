@@ -60,34 +60,8 @@ serve(async (req) => {
       else { updated++; }
     }
 
-    console.log(`offset=${offset} updated=${updated} skipped=${skipped} fetched=${recs.length}`);
-
-    // Self-chain if there are more
-    if (recs.length === batch_size) {
-      const baseUrl = Deno.env.get('SUPABASE_URL');
-      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      const nextOffset = offset + batch_size;
-
-      // @ts-ignore
-      const chain = async () => {
-        try {
-          await fetch(`${baseUrl}/functions/v1/backfill-quality-tier`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
-            body: JSON.stringify({ campaign_id, offset: nextOffset, batch_size }),
-          });
-          console.log(`→ chained offset=${nextOffset}`);
-        } catch (e) { console.error(`→ chain fail: ${(e as Error).message}`); }
-      };
-
-      // @ts-ignore
-      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-        // @ts-ignore
-        EdgeRuntime.waitUntil(chain());
-      } else {
-        await chain();
-      }
-    }
+    const hasMore = recs.length === batch_size;
+    console.log(`updated=${updated} skipped=${skipped} fetched=${recs.length} hasMore=${hasMore}`);
 
     return new Response(JSON.stringify({ success: true, status: 'processing', offset, updated, skipped, fetched: recs.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
