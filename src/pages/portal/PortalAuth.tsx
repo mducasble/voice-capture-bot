@@ -100,12 +100,19 @@ export default function PortalAuth() {
   );
 
   useEffect(() => {
-    // Clear logout flag on mount
     const wasLoggingOut = sessionStorage.getItem("is_logging_out");
     if (wasLoggingOut) {
       sessionStorage.removeItem("is_logging_out");
-      return; // Don't auto-redirect after intentional logout
+      return;
     }
+
+    const forceLocalSignOut = async () => {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // ignore
+      }
+    };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') return;
@@ -116,13 +123,23 @@ export default function PortalAuth() {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
-        sessionStorage.removeItem("redirect_after_login");
-        navigate(redirectTo);
-      }
-    });
+    void supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session) {
+          const redirectTo = sessionStorage.getItem("redirect_after_login") || "/";
+          sessionStorage.removeItem("redirect_after_login");
+          navigate(redirectTo);
+          return;
+        }
+
+        const hasStoredSession = Object.keys(localStorage).some((key) => key.startsWith("sb-"));
+        if (hasStoredSession) {
+          await forceLocalSignOut();
+        }
+      })
+      .catch(async () => {
+        await forceLocalSignOut();
+      });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
