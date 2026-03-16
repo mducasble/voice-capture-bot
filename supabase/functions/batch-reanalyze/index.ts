@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { recording_ids, campaign_id } = await req.json();
+    const { recording_ids, campaign_id, offset = 0, _stats } = await req.json();
 
     if (!recording_ids && !campaign_id) {
       return new Response(JSON.stringify({ error: 'recording_ids array or campaign_id required' }), {
@@ -25,11 +25,15 @@ serve(async (req) => {
       });
     }
 
-    // Fetch recordings - by campaign_id or by explicit IDs
+    const stats = _stats || { triggered: 0, errors: 0, skipped: 0 };
+
+    // Fetch ONE recording at current offset
     let query = supabase
       .from('voice_recordings')
-      .select('id, file_url, mp3_file_url');
-    
+      .select('id, file_url, mp3_file_url')
+      .order('created_at', { ascending: true })
+      .range(offset, offset);
+
     if (campaign_id) {
       query = query.eq('campaign_id', campaign_id);
     } else {
@@ -37,83 +41,94 @@ serve(async (req) => {
     }
 
     const { data: recordings, error } = await query;
-
     if (error) throw error;
+
+    const rec = recordings?.[0];
+
+    if (!rec) {
+      console.log(`✅ DONE offset=${offset} | ok=${stats.triggered} err=${stats.errors} skip=${stats.skipped}`);
+      return new Response(
+        JSON.stringify({ success: true, status: 'complete', stats }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const baseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    console.log(`Batch reanalyze: processing ${recordings?.length} recordings`);
+    console.log(`▶ offset=${offset} rec=${rec.id} (ok=${stats.triggered} err=${stats.errors})`);
 
-    // Process in batches of 5 with concurrency control using waitUntil
-    const BATCH_SIZE = 5;
-    const recs = recordings || [];
-    let triggered = 0;
-    let errors = 0;
-
-    const processAll = async () => {
-      for (let i = 0; i < recs.length; i += BATCH_SIZE) {
-        const batch = recs.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map(async (rec) => {
-            const audioUrl = rec.mp3_file_url || rec.file_url;
-            if (!audioUrl) {
-              console.warn(`Skipping ${rec.id}: no file URL`);
-              return;
-            }
-            const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${serviceKey}`,
-              },
-              body: JSON.stringify({
-                recording_id: rec.id,
-                file_url: audioUrl,
-                mode: 'sampled',
-              }),
-            });
-            if (!resp.ok) {
-              const text = await resp.text();
-              console.error(`Failed ${rec.id}: ${resp.status} ${text.slice(0, 200)}`);
-              throw new Error(`${resp.status}`);
-            } else {
-              await resp.text(); // consume body
-              console.log(`OK ${rec.id}`);
-            }
-          })
-        );
-        for (const r of results) {
-          if (r.status === 'fulfilled') triggered++;
-          else errors++;
-        }
-        // Small delay between batches to avoid overwhelming
-        if (i + BATCH_SIZE < recs.length) {
-          await new Promise(r => setTimeout(r, 500));
+    // Background: process this recording then chain
+    const work = async () => {
+      const audioUrl = rec.mp3_file_url || rec.file_url;
+      if (!audioUrl) {
+        console.warn(`⏭ ${rec.id}: no URL`);
+        stats.skipped++;
+      } else {
+        try {
+          const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({
+              recording_id: rec.id,
+              file_url: audioUrl,
+              mode: 'sampled',
+            }),
+          });
+          const body = await resp.text();
+          if (!resp.ok) {
+            console.error(`❌ ${rec.id}: ${resp.status}`);
+            stats.errors++;
+          } else {
+            stats.triggered++;
+            console.log(`✓ ${rec.id} [${stats.triggered}]`);
+          }
+        } catch (e) {
+          console.error(`❌ ${rec.id}: ${(e as Error).message}`);
+          stats.errors++;
         }
       }
-      console.log(`Batch reanalyze complete: ${triggered} ok, ${errors} errors out of ${recs.length}`);
+
+      // Chain to next — this POST returns fast since next invocation also responds immediately
+      const nextOffset = offset + 1;
+      try {
+        const chainBody: Record<string, unknown> = { offset: nextOffset, _stats: stats };
+        if (campaign_id) chainBody.campaign_id = campaign_id;
+        if (recording_ids) chainBody.recording_ids = recording_ids;
+
+        const cr = await fetch(`${baseUrl}/functions/v1/batch-reanalyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+          body: JSON.stringify(chainBody),
+        });
+        await cr.text();
+        console.log(`→ chained ${nextOffset}`);
+      } catch (e) {
+        console.error(`→ chain fail ${nextOffset}: ${(e as Error).message}`);
+      }
     };
 
-    // Use EdgeRuntime.waitUntil to keep processing after response
-    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    // @ts-ignore - EdgeRuntime.waitUntil keeps work alive after response (~150s max)
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(processAll());
+      EdgeRuntime.waitUntil(work());
     } else {
-      // Fallback: await directly (will block response but at least work)
-      await processAll();
+      await work();
     }
 
+    // Respond immediately so the caller doesn't block
     return new Response(
-      JSON.stringify({ success: true, queued: recs.length }),
+      JSON.stringify({ success: true, status: 'processing', offset, rec: rec.id, stats }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
