@@ -15,31 +15,61 @@ import {
 
 interface ReauthenticationEmailProps {
   token: string
+  lang?: string
 }
 
-export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
-  <Html lang="pt" dir="ltr">
-    <Head />
-    <Preview>Seu código de verificação KGeN</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Img
-          src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
-          width="120"
-          height="40"
-          alt="KGeN"
-          style={{ marginBottom: '24px' }}
-        />
-        <Heading style={h1}>Código de verificação</Heading>
-        <Text style={text}>Use o código abaixo para confirmar sua identidade:</Text>
-        <Text style={codeStyle}>{token}</Text>
-        <Text style={footer}>
-          Este código expira em breve. Se você não solicitou, pode ignorar este email com segurança.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+const i18n: Record<string, Record<string, string>> = {
+  pt: {
+    preview: 'Seu código de verificação KGeN',
+    heading: 'Código de verificação',
+    body: 'Use o código abaixo para confirmar sua identidade:',
+    footer: 'Este código expira em breve. Se você não solicitou, pode ignorar este email com segurança.',
+  },
+  es: {
+    preview: 'Tu código de verificación KGeN',
+    heading: 'Código de verificación',
+    body: 'Usa el código de abajo para confirmar tu identidad:',
+    footer: 'Este código expira pronto. Si no lo solicitaste, puedes ignorar este email con seguridad.',
+  },
+  en: {
+    preview: 'Your KGeN verification code',
+    heading: 'Verification code',
+    body: 'Use the code below to confirm your identity:',
+    footer: "This code expires shortly. If you didn't request it, you can safely ignore this email.",
+  },
+}
+
+function getLang(lang?: string): string {
+  if (lang && i18n[lang]) return lang
+  return 'pt'
+}
+
+export const ReauthenticationEmail = ({ token, lang }: ReauthenticationEmailProps) => {
+  const t = i18n[getLang(lang)]
+  const htmlLang = getLang(lang)
+
+  return (
+    <Html lang={htmlLang} dir="ltr">
+      <Head />
+      <Preview>{t.preview}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Img
+            src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
+            width="120"
+            height="40"
+            alt="KGeN"
+            style={{ marginBottom: '24px' }}
+          />
+          <Heading style={h1}>{t.heading}</Heading>
+          <Text style={text}>{t.body}</Text>
+          <Text style={codeStyle}>{token}</Text>
+          <Text style={footer}>{t.footer}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default ReauthenticationEmail
 

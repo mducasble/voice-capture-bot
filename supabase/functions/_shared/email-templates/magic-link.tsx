@@ -17,38 +17,70 @@ import {
 interface MagicLinkEmailProps {
   siteName: string
   confirmationUrl: string
+  lang?: string
+}
+
+const i18n: Record<string, Record<string, string>> = {
+  pt: {
+    preview: 'Seu link de acesso à KGeN',
+    heading: 'Seu link de acesso',
+    body: 'Clique no botão abaixo para entrar na sua conta KGeN. Este link expira em breve.',
+    button: 'ENTRAR',
+    footer: 'Se você não solicitou este link, pode ignorar este email com segurança.',
+  },
+  es: {
+    preview: 'Tu enlace de acceso a KGeN',
+    heading: 'Tu enlace de acceso',
+    body: 'Haz clic en el botón de abajo para ingresar a tu cuenta KGeN. Este enlace expira pronto.',
+    button: 'INGRESAR',
+    footer: 'Si no solicitaste este enlace, puedes ignorar este email con seguridad.',
+  },
+  en: {
+    preview: 'Your KGeN login link',
+    heading: 'Your login link',
+    body: 'Click the button below to sign in to your KGeN account. This link expires shortly.',
+    button: 'SIGN IN',
+    footer: "If you didn't request this link, you can safely ignore this email.",
+  },
+}
+
+function getLang(lang?: string): string {
+  if (lang && i18n[lang]) return lang
+  return 'pt'
 }
 
 export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
-}: MagicLinkEmailProps) => (
-  <Html lang="pt" dir="ltr">
-    <Head />
-    <Preview>Seu link de acesso à KGeN</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Img
-          src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
-          width="120"
-          height="40"
-          alt="KGeN"
-          style={{ marginBottom: '24px' }}
-        />
-        <Heading style={h1}>Seu link de acesso</Heading>
-        <Text style={text}>
-          Clique no botão abaixo para entrar na sua conta KGeN. Este link expira em breve.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          ENTRAR
-        </Button>
-        <Text style={footer}>
-          Se você não solicitou este link, pode ignorar este email com segurança.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lang,
+}: MagicLinkEmailProps) => {
+  const t = i18n[getLang(lang)]
+  const htmlLang = getLang(lang)
+
+  return (
+    <Html lang={htmlLang} dir="ltr">
+      <Head />
+      <Preview>{t.preview}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Img
+            src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
+            width="120"
+            height="40"
+            alt="KGeN"
+            style={{ marginBottom: '24px' }}
+          />
+          <Heading style={h1}>{t.heading}</Heading>
+          <Text style={text}>{t.body}</Text>
+          <Button style={button} href={confirmationUrl}>
+            {t.button}
+          </Button>
+          <Text style={footer}>{t.footer}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default MagicLinkEmail
 

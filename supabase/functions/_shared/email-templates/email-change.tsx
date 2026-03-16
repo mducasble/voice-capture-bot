@@ -20,6 +20,42 @@ interface EmailChangeEmailProps {
   email: string
   newEmail: string
   confirmationUrl: string
+  lang?: string
+}
+
+const i18n: Record<string, Record<string, string>> = {
+  pt: {
+    preview: 'Confirme a alteração de email na KGeN',
+    heading: 'Alteração de email',
+    body1: 'Você solicitou a alteração do seu email na KGeN de',
+    body2: 'para',
+    body3: 'Clique no botão abaixo para confirmar esta alteração:',
+    button: 'CONFIRMAR ALTERAÇÃO',
+    footer: 'Se você não solicitou esta alteração, proteja sua conta imediatamente.',
+  },
+  es: {
+    preview: 'Confirma el cambio de email en KGeN',
+    heading: 'Cambio de email',
+    body1: 'Solicitaste el cambio de tu email en KGeN de',
+    body2: 'a',
+    body3: 'Haz clic en el botón de abajo para confirmar este cambio:',
+    button: 'CONFIRMAR CAMBIO',
+    footer: 'Si no solicitaste este cambio, protege tu cuenta de inmediato.',
+  },
+  en: {
+    preview: 'Confirm your KGeN email change',
+    heading: 'Email change',
+    body1: 'You requested to change your KGeN email from',
+    body2: 'to',
+    body3: 'Click the button below to confirm this change:',
+    button: 'CONFIRM CHANGE',
+    footer: "If you didn't request this change, please secure your account immediately.",
+  },
+}
+
+function getLang(lang?: string): string {
+  if (lang && i18n[lang]) return lang
+  return 'pt'
 }
 
 export const EmailChangeEmail = ({
@@ -27,44 +63,46 @@ export const EmailChangeEmail = ({
   email,
   newEmail,
   confirmationUrl,
-}: EmailChangeEmailProps) => (
-  <Html lang="pt" dir="ltr">
-    <Head />
-    <Preview>Confirme a alteração de email na KGeN</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Img
-          src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
-          width="120"
-          height="40"
-          alt="KGeN"
-          style={{ marginBottom: '24px' }}
-        />
-        <Heading style={h1}>Alteração de email</Heading>
-        <Text style={text}>
-          Você solicitou a alteração do seu email na KGeN de{' '}
-          <Link href={`mailto:${email}`} style={link}>
-            {email}
-          </Link>{' '}
-          para{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
-        </Text>
-        <Text style={text}>
-          Clique no botão abaixo para confirmar esta alteração:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          CONFIRMAR ALTERAÇÃO
-        </Button>
-        <Text style={footer}>
-          Se você não solicitou esta alteração, proteja sua conta imediatamente.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lang,
+}: EmailChangeEmailProps) => {
+  const t = i18n[getLang(lang)]
+  const htmlLang = getLang(lang)
+
+  return (
+    <Html lang={htmlLang} dir="ltr">
+      <Head />
+      <Preview>{t.preview}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Img
+            src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
+            width="120"
+            height="40"
+            alt="KGeN"
+            style={{ marginBottom: '24px' }}
+          />
+          <Heading style={h1}>{t.heading}</Heading>
+          <Text style={text}>
+            {t.body1}{' '}
+            <Link href={`mailto:${email}`} style={linkStyle}>
+              {email}
+            </Link>{' '}
+            {t.body2}{' '}
+            <Link href={`mailto:${newEmail}`} style={linkStyle}>
+              {newEmail}
+            </Link>
+            .
+          </Text>
+          <Text style={text}>{t.body3}</Text>
+          <Button style={button} href={confirmationUrl}>
+            {t.button}
+          </Button>
+          <Text style={footer}>{t.footer}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default EmailChangeEmail
 
@@ -84,7 +122,7 @@ const text = {
   lineHeight: '1.6',
   margin: '0 0 24px',
 }
-const link = { color: '#1f3338', textDecoration: 'underline' }
+const linkStyle = { color: '#1f3338', textDecoration: 'underline' }
 const button = {
   backgroundColor: '#8cff05',
   color: '#1f3338',
