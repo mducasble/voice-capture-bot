@@ -64,11 +64,11 @@ export const RecoveryEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Img
-            src="https://wvsixcvsfndhoygbkzkj.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green-v2.png"
-            width="120"
-            height="120"
+            src="https://wvsixcvsfndhoygbkzkj.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green-v3.png"
+            width="56"
+            height="56"
             alt="KGeN"
-            style={{ marginBottom: '24px', display: 'block' }}
+            style={{ marginBottom: '24px', display: 'block', width: '56px', height: '56px', objectFit: 'contain' }}
           />
           <Heading style={h1}>{t.heading}</Heading>
           <Text style={text}>{t.body}</Text>
