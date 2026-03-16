@@ -296,13 +296,12 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
     queryFn: async () => {
       const { data } = await supabase
         .from('analysis_queue')
-        .select('status')
+        .select('status, recording_id')
         .eq('recording_id', rec.id)
+        .filter('job_type', 'eq', 'enhance')
         .in('status', ['pending', 'processing'])
         .limit(1);
-      // Filter for enhance jobs client-side since job_type might not be in generated types yet
-      const job = data?.find((j: any) => (j as any).job_type === 'enhance' || true);
-      return (job?.status as string | undefined) ?? null;
+      return (data?.[0]?.status as string | undefined) ?? null;
     },
     enabled: !hasEnhanced,
     refetchInterval: (query) => query.state.data ? 10000 : false,
