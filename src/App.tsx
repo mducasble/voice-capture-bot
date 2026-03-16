@@ -26,6 +26,7 @@ const AdminMaintenance = lazy(() => import("./pages/admin/AdminMaintenance"));
 const AdminAnnouncements = lazy(() => import("./pages/admin/AdminAnnouncements"));
 const AdminReferralNetwork = lazy(() => import("./pages/admin/AdminReferralNetwork"));
 const AdminAnalysisQueue = lazy(() => import("./pages/admin/AdminAnalysisQueue"));
+const AdminQualityHours = lazy(() => import("./pages/admin/AdminQualityHours"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
