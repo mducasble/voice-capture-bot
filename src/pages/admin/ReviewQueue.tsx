@@ -568,6 +568,18 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
 
         <div className="w-px h-3 bg-border" />
 
+        {/* Enhance audio */}
+        {rec.file_url && !m?.enhanced_file_url && (
+          <button
+            onClick={() => enhance.mutate({ recordingId: rec.id, fileUrl: rec.file_url! })}
+            disabled={enhance.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+            title="Gerar cópia enhanced (mantém original)"
+          >
+            {enhance.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Enhance
+          </button>
+        )}
+
         {/* Reanalyze original */}
         {rec.file_url && (
           <button
