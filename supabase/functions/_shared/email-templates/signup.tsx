@@ -78,9 +78,8 @@ export const SignupEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Img
-            src="https://qfxustvmwdyjduzpeafk.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
+            src="https://wvsixcvsfndhoygbkzkj.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green.png"
             width="120"
-            height="40"
             alt="KGeN"
             style={{ marginBottom: '24px' }}
           />
