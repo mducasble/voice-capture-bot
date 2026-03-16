@@ -17,6 +17,7 @@ import {
   Wrench,
   Megaphone,
   Network,
+  Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -63,6 +64,7 @@ const navSections = [
     items: [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
       { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
+      { title: "Fila de Análise", url: "/admin/analysis-queue", icon: Activity },
       { title: "Manutenção", url: "/admin/maintenance", icon: Wrench },
       { title: "Anúncios", url: "/admin/announcements", icon: Megaphone },
       { title: "Rede de Indicações", url: "/admin/referral-network", icon: Network },

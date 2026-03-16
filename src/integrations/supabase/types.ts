@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_queue: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          priority: number
+          recording_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          priority?: number
+          recording_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          priority?: number
+          recording_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       annotation_submissions: {
         Row: {
           annotation_data: Json | null
