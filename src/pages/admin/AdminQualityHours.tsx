@@ -234,9 +234,9 @@ export default function AdminQualityHours() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SummaryCard label="PQ (Platina)" value={fmtHours(totals.pq)} color="hsl(210 80% 55%)" />
-        <SummaryCard label="HQ (Ouro)" value={fmtHours(totals.hq)} color="hsl(155 72% 42%)" />
-        <SummaryCard label="MQ (Prata)" value={fmtHours(totals.mq)} color="hsl(45 90% 55%)" />
+        <SummaryCard label="PQ (Premium)" value={fmtHours(totals.pq)} color="hsl(210 80% 55%)" />
+        <SummaryCard label="HQ (High)" value={fmtHours(totals.hq)} color="hsl(155 72% 42%)" />
+        <SummaryCard label="MQ (Medium)" value={fmtHours(totals.mq)} color="hsl(45 90% 55%)" />
       </div>
 
       {/* Chart */}
