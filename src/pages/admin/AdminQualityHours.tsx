@@ -155,7 +155,7 @@ export default function AdminQualityHours() {
     let totalPq = 0, totalHq = 0, totalMq = 0;
 
     for (const rec of recordings) {
-      if (!rec.duration_seconds || rec.duration_seconds <= 0) continue;
+      if (!rec.duration_seconds || rec.duration_seconds < 600) continue;
       const createdAt = new Date(rec.created_at);
       if (!isWithinInterval(createdAt, { start: startOfDay(range.from), end: endOfDay(range.to) })) continue;
 
