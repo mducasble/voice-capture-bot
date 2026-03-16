@@ -63,7 +63,7 @@ serve(async (req) => {
     const hasMore = recs.length === batch_size;
     console.log(`updated=${updated} skipped=${skipped} fetched=${recs.length} hasMore=${hasMore}`);
 
-    return new Response(JSON.stringify({ success: true, status: 'processing', offset, updated, skipped, fetched: recs.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, status: hasMore ? 'processing' : 'complete', updated, skipped, fetched: recs.length, hasMore }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     console.error('Error:', e);
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
