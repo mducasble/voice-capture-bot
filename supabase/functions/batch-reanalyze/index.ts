@@ -86,12 +86,12 @@ serve(async (req) => {
           console.log(`✓ ${rec.id} [${stats.triggered}] (offset=${offset})`);
         }
       } catch (e) {
-        console.error(`❌ ${rec.id}: ${e.message} (offset=${offset})`);
+        console.error(`❌ ${rec.id}: ${(e as Error).message} (offset=${offset})`);
         stats.errors++;
       }
     }
 
-    // Chain to next recording
+    // Always chain to next recording regardless of success/failure
     const nextOffset = offset + 1;
     const chainBody: Record<string, unknown> = {
       offset: nextOffset,
@@ -100,17 +100,24 @@ serve(async (req) => {
     if (campaign_id) chainBody.campaign_id = campaign_id;
     if (recording_ids) chainBody.recording_ids = recording_ids;
 
-    // Fire the chain call - use waitUntil so it survives after response
-    const chainPromise = fetch(`${baseUrl}/functions/v1/batch-reanalyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify(chainBody),
-    }).then(async r => {
-      await r.text(); // consume body
-    }).catch(e => console.error('Chain fail:', e.message));
+    // Small delay to avoid overloading the metrics API
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Fire the chain call synchronously before responding (more reliable than waitUntil)
+    try {
+      const chainResp = await fetch(`${baseUrl}/functions/v1/batch-reanalyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify(chainBody),
+      });
+      await chainResp.text(); // consume body
+      console.log(`→ Chained to offset ${nextOffset}`);
+    } catch (e) {
+      console.error(`Chain fail at offset ${nextOffset}: ${(e as Error).message}`);
+    }
 
     // @ts-ignore
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
