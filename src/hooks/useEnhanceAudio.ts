@@ -6,27 +6,38 @@ export function useEnhanceAudio() {
 
   return useMutation({
     mutationFn: async (params: { recordingId: string; fileUrl: string }) => {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-audio`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            recording_id: params.recordingId,
-            file_url: params.fileUrl,
-          }),
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-audio`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              recording_id: params.recordingId,
+              file_url: params.fileUrl,
+            }),
+            signal: AbortSignal.timeout(10 * 60 * 1000), // 10 min timeout
+          }
+        );
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(err.error || `HTTP ${response.status}`);
         }
-      );
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || `HTTP ${response.status}`);
+        return response.json();
+      } catch (e: any) {
+        if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+          throw new Error("Timeout — o áudio é muito grande. O processamento continua em background, verifique em alguns minutos.");
+        }
+        if (e.message === 'Failed to fetch') {
+          throw new Error("Conexão perdida — o processamento pode estar em andamento em background. Verifique em alguns minutos.");
+        }
+        throw e;
       }
-
-      return response.json();
     },
     onSuccess: (data) => {
       if (data.skipped) {
