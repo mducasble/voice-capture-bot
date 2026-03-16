@@ -23,7 +23,8 @@ export function useMaintenance() {
       if (error) throw error;
       return data as unknown as MaintenanceConfig;
     },
-    refetchInterval: 30_000, // poll every 30s
+    refetchInterval: 30_000,
+    retry: false,
   });
 }
 

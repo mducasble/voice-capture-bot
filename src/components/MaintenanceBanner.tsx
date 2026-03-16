@@ -60,7 +60,7 @@ export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  if (!config?.is_active || !config.scheduled_at) return <>{children}</>;
+  if (error || !config?.is_active || !config.scheduled_at) return <>{children}</>;
 
   const scheduledMs = new Date(config.scheduled_at).getTime();
   const isDown = now >= scheduledMs;
