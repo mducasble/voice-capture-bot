@@ -27,14 +27,15 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    // Fetch batch of recordings that have metrics but no quality_tier
+    // Fetch recordings that have metrics but no quality_tier
     const { data: recs, error } = await supabase
       .from('voice_recordings')
       .select('id, metadata')
       .eq('campaign_id', campaign_id)
       .not('metadata->metrics_estimated_at', 'is', null)
+      .is('metadata->quality_tier', null)
       .order('created_at', { ascending: true })
-      .range(offset, offset + batch_size - 1);
+      .limit(batch_size);
 
     if (error) throw error;
     if (!recs || recs.length === 0) {
