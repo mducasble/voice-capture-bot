@@ -191,7 +191,7 @@ export default function AdminQualityHours() {
       .sort((a, b) => b.total - a.total);
 
     // Fill all days in range
-    const dayEntries: typeof byDay = [];
+    const dayEntries: Array<{ date: string; pq: number; hq: number; mq: number }> = [];
     const cursor = new Date(startOfDay(range.from));
     const end = endOfDay(range.to);
     while (cursor <= end) {
