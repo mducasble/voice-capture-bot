@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { recording_ids, campaign_id, offset = 0, batch_size = 2, _internal_stats } = await req.json();
+    const { recording_ids, campaign_id, offset = 0, _stats } = await req.json();
 
     if (!recording_ids && !campaign_id) {
       return new Response(JSON.stringify({ error: 'recording_ids array or campaign_id required' }), {
@@ -25,12 +25,14 @@ serve(async (req) => {
       });
     }
 
-    // Fetch recordings for this batch only
+    const stats = _stats || { triggered: 0, errors: 0, skipped: 0 };
+
+    // Fetch ONE recording at current offset
     let query = supabase
       .from('voice_recordings')
       .select('id, file_url, mp3_file_url')
       .order('created_at', { ascending: true })
-      .range(offset, offset + batch_size - 1);
+      .range(offset, offset);
 
     if (campaign_id) {
       query = query.eq('campaign_id', campaign_id);
@@ -41,108 +43,90 @@ serve(async (req) => {
     const { data: recordings, error } = await query;
     if (error) throw error;
 
-    const recs = recordings || [];
-    const baseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const rec = recordings?.[0];
 
-    const stats = _internal_stats || { triggered: 0, errors: 0, skipped: 0 };
-
-    console.log(`Batch reanalyze: offset=${offset}, got ${recs.length} recordings (stats: t=${stats.triggered} e=${stats.errors} s=${stats.skipped})`);
-
-    if (recs.length === 0) {
-      console.log(`Batch reanalyze COMPLETE. Final stats: ${JSON.stringify(stats)}`);
+    if (!rec) {
+      // No more recordings — done
+      console.log(`✅ BATCH COMPLETE at offset=${offset}. Final: triggered=${stats.triggered}, errors=${stats.errors}, skipped=${stats.skipped}`);
       return new Response(
         JSON.stringify({ success: true, status: 'complete', stats }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Process this batch + chain in background, respond immediately
-    const processAndChain = async () => {
-      for (const rec of recs) {
-        const audioUrl = rec.mp3_file_url || rec.file_url;
-        if (!audioUrl) {
-          console.warn(`Skipping ${rec.id}: no file URL`);
-          stats.skipped++;
-          continue;
-        }
+    const baseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const audioUrl = rec.mp3_file_url || rec.file_url;
 
-        try {
-          const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify({
-              recording_id: rec.id,
-              file_url: audioUrl,
-              mode: 'sampled',
-            }),
-          });
+    if (!audioUrl) {
+      console.warn(`⏭️ Skip ${rec.id}: no URL (offset=${offset})`);
+      stats.skipped++;
+    } else {
+      // Process this single recording synchronously
+      try {
+        const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({
+            recording_id: rec.id,
+            file_url: audioUrl,
+            mode: 'sampled',
+          }),
+        });
 
-          const body = await resp.text();
-          if (!resp.ok) {
-            console.error(`FAIL ${rec.id}: ${resp.status} ${body.slice(0, 200)}`);
-            stats.errors++;
-          } else {
-            console.log(`OK ${rec.id} (total: ${stats.triggered + 1})`);
-            stats.triggered++;
-          }
-        } catch (e) {
-          console.error(`ERR ${rec.id}: ${e.message}`);
+        const body = await resp.text();
+        if (!resp.ok) {
+          console.error(`❌ ${rec.id}: ${resp.status} (offset=${offset})`);
           stats.errors++;
+        } else {
+          stats.triggered++;
+          console.log(`✓ ${rec.id} [${stats.triggered}] (offset=${offset})`);
         }
+      } catch (e) {
+        console.error(`❌ ${rec.id}: ${e.message} (offset=${offset})`);
+        stats.errors++;
       }
+    }
 
-      // Chain to next batch if we got a full batch
-      if (recs.length === batch_size) {
-        const nextOffset = offset + batch_size;
-        console.log(`Chaining to offset ${nextOffset}...`);
-
-        const chainBody: Record<string, unknown> = {
-          offset: nextOffset,
-          batch_size,
-          _internal_stats: stats,
-        };
-        if (campaign_id) chainBody.campaign_id = campaign_id;
-        if (recording_ids) chainBody.recording_ids = recording_ids;
-
-        try {
-          const chainResp = await fetch(`${baseUrl}/functions/v1/batch-reanalyze`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify(chainBody),
-          });
-          const chainText = await chainResp.text();
-          console.log(`Chain response: ${chainResp.status}`);
-        } catch (e) {
-          console.error(`Chain error: ${e.message}`);
-        }
-      } else {
-        console.log(`Batch reanalyze COMPLETE. Final: ${JSON.stringify(stats)}`);
-      }
+    // Chain to next recording
+    const nextOffset = offset + 1;
+    const chainBody: Record<string, unknown> = {
+      offset: nextOffset,
+      _stats: stats,
     };
+    if (campaign_id) chainBody.campaign_id = campaign_id;
+    if (recording_ids) chainBody.recording_ids = recording_ids;
 
-    // Use waitUntil to keep processing after response
+    // Fire the chain call - use waitUntil so it survives after response
+    const chainPromise = fetch(`${baseUrl}/functions/v1/batch-reanalyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify(chainBody),
+    }).then(async r => {
+      await r.text(); // consume body
+    }).catch(e => console.error('Chain fail:', e.message));
+
     // @ts-ignore
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(processAndChain());
+      EdgeRuntime.waitUntil(chainPromise);
     } else {
-      await processAndChain();
+      await chainPromise;
     }
 
-    // Respond immediately
     return new Response(
       JSON.stringify({
         success: true,
         status: 'processing',
+        processed: rec.id,
         offset,
-        batch_count: recs.length,
+        next_offset: nextOffset,
         stats,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
