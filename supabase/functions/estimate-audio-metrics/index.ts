@@ -443,6 +443,28 @@ serve(async (req) => {
   }
 });
 
+/** Classify quality tier based on metrics thresholds */
+function computeQualityTier(metrics: Record<string, number | null>): string {
+  const snr = metrics.snr_db ?? null;
+  const sigmos = metrics.sigmos_ovrl ?? null;
+  const srmr = metrics.srmr ?? null;
+  const rms = metrics.rms_dbfs ?? null;
+
+  // PQ (Premium): ALL must pass
+  if (snr !== null && snr >= 30 && sigmos !== null && sigmos >= 3.0 && srmr !== null && srmr >= 7.0 && rms !== null && rms >= -24) {
+    return 'pq';
+  }
+  // HQ (High): ALL must pass
+  if (snr !== null && snr >= 25 && sigmos !== null && sigmos >= 2.3 && srmr !== null && srmr >= 5.4 && rms !== null && rms >= -26) {
+    return 'hq';
+  }
+  // MQ (Medium): sigmos, srmr, rms must pass
+  if (sigmos !== null && sigmos >= 2.0 && srmr !== null && srmr >= 4.0 && rms !== null && rms >= -28) {
+    return 'mq';
+  }
+  return 'lq';
+}
+
 async function saveMetrics(recording_id: string, metrics: Record<string, number | null>, metricsMode: string, target: string = 'original') {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
