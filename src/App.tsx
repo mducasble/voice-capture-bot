@@ -39,7 +39,16 @@ const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
 
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 30_000,
+    },
+  },
+});
 
 function AppInner() {
   useGlobalAuthReferral();

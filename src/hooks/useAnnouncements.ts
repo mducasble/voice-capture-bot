@@ -26,13 +26,13 @@ export function useAnnouncements() {
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      // Filter expired client-side
       const now = new Date().toISOString();
       return (data as unknown as Announcement[]).filter(
         (a) => !a.expires_at || a.expires_at > now
       );
     },
-    refetchInterval: 60_000,
+    refetchInterval: false,
+    retry: false,
   });
 
   const { data: dismissedIds = [] } = useQuery({

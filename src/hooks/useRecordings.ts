@@ -78,7 +78,6 @@ export function useRecordings(guildId?: string, userId?: string) {
         throw error;
       }
 
-      // Cast the data, handling the chunk state JSON fields
       return (data || []).map((row: any) => ({
         ...row,
         elevenlabs_chunk_state: row.elevenlabs_chunk_state as ElevenLabsChunkState | null,
@@ -86,14 +85,8 @@ export function useRecordings(guildId?: string, userId?: string) {
         topic: row.recording_topics as { name: string; emoji: string | null } | null,
       })) as Recording[];
     },
-    refetchInterval: (query) => {
-      // Refetch every 5 seconds if any recording is processing
-      const data = query.state.data;
-      const hasProcessing = data?.some(
-        (r: Recording) => r.status === "processing" || r.transcription_status === "processing" || r.transcription_elevenlabs_status === "processing"
-      );
-      return hasProcessing ? 5000 : 30000;
-    },
+    refetchInterval: false,
+    retry: false,
   });
 }
 

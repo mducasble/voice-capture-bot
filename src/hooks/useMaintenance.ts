@@ -23,7 +23,7 @@ export function useMaintenance() {
       if (error) throw error;
       return data as unknown as MaintenanceConfig;
     },
-    refetchInterval: 30_000,
+    refetchInterval: false,
     retry: false,
   });
 }
