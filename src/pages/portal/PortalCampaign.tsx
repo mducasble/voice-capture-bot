@@ -159,6 +159,10 @@ export default function PortalCampaign() {
 
   const isParticipant = !!participationEntry;
 
+  // Block access to private campaigns unless user is already a participant
+  const isPrivate = campaign?.visibility_is_public === false;
+  const blockedByVisibility = isPrivate && !isParticipant && !isLoading;
+
   // Check if campaign hasn't started yet (by date or by status)
   const isBeforeStartDate = useMemo(() => {
     if (campaign?.campaign_status === "waiting_list") return true;
