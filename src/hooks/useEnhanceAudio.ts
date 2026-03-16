@@ -22,11 +22,12 @@ export function useEnhanceAudio() {
       if (error) throw new Error(error.message);
       return { queued: true, job_id: data.id };
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast.success("Enhancement enfileirado!", {
         description: "O áudio será processado em background. Acompanhe o status na fila.",
       });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
+      queryClient.invalidateQueries({ queryKey: ["enhance-job", variables.recordingId] });
     },
     onError: (error: Error) => {
       toast.error("Erro ao enfileirar enhancement", {
