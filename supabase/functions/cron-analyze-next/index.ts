@@ -41,7 +41,7 @@ serve(async (req) => {
     // 3. Claim ONE pending job (highest priority, oldest first)
     const { data: jobs, error: fetchErr } = await supabase
       .from('analysis_queue')
-      .select('id, recording_id, attempts, max_attempts')
+      .select('id, recording_id, attempts, max_attempts, job_type')
       .eq('status', 'pending')
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
@@ -113,21 +113,39 @@ serve(async (req) => {
       );
     }
 
-    // 6. Call estimate-audio-metrics (the actual work)
+    // 6. Route to the correct function based on job_type
     const baseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const jobType = (job as any).job_type || 'analyze';
 
-    const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
+    let targetFunction: string;
+    let requestBody: Record<string, unknown>;
+
+    if (jobType === 'enhance') {
+      targetFunction = 'enhance-audio';
+      // Always use original file_url for enhancement (not mp3)
+      requestBody = {
+        recording_id: rec.id,
+        file_url: rec.file_url || audioUrl,
+      };
+    } else {
+      targetFunction = 'estimate-audio-metrics';
+      requestBody = {
+        recording_id: rec.id,
+        file_url: audioUrl,
+        mode: 'sampled',
+      };
+    }
+
+    console.log(`🔄 Job ${job.id} type=${jobType} rec=${rec.id} → ${targetFunction}`);
+
+    const resp = await fetch(`${baseUrl}/functions/v1/${targetFunction}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({
-        recording_id: rec.id,
-        file_url: audioUrl,
-        mode: 'sampled',
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const respText = await resp.text();
@@ -168,9 +186,9 @@ serve(async (req) => {
       })
       .eq('id', job.id);
 
-    console.log(`✓ Job ${job.id} rec=${rec.id} done`);
+    console.log(`✓ Job ${job.id} type=${jobType} rec=${rec.id} done`);
     return new Response(
-      JSON.stringify({ status: 'done', job_id: job.id, recording_id: rec.id }),
+      JSON.stringify({ status: 'done', job_id: job.id, recording_id: rec.id, job_type: jobType }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

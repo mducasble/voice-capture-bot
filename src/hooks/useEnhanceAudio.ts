@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function useEnhanceAudio() {
@@ -6,57 +7,29 @@ export function useEnhanceAudio() {
 
   return useMutation({
     mutationFn: async (params: { recordingId: string; fileUrl: string }) => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-audio`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({
-              recording_id: params.recordingId,
-              file_url: params.fileUrl,
-            }),
-            signal: AbortSignal.timeout(10 * 60 * 1000), // 10 min timeout
-          }
-        );
+      // Enqueue an enhance job in analysis_queue instead of calling the edge function directly
+      const { data, error } = await supabase
+        .from('analysis_queue')
+        .insert({
+          recording_id: params.recordingId,
+          status: 'pending',
+          priority: 5, // higher priority than normal analysis (default 0)
+          job_type: 'enhance',
+        } as any)
+        .select('id')
+        .single();
 
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(err.error || `HTTP ${response.status}`);
-        }
-
-        return response.json();
-      } catch (e: any) {
-        if (e.name === 'TimeoutError' || e.name === 'AbortError') {
-          throw new Error("Timeout — o áudio é muito grande. O processamento continua em background, verifique em alguns minutos.");
-        }
-        if (e.message === 'Failed to fetch') {
-          throw new Error("Conexão perdida — o processamento pode estar em andamento em background. Verifique em alguns minutos.");
-        }
-        throw e;
-      }
+      if (error) throw new Error(error.message);
+      return { queued: true, job_id: data.id };
     },
-    onSuccess: (data) => {
-      if (data.skipped) {
-        toast.info("Áudio já está bom — nenhum enhancement necessário", {
-          description: data.message,
-        });
-      } else {
-        const reasonsSummary = data.adaptive_reasons
-          ?.filter((r: string) => !r.includes('SKIP'))
-          ?.map((r: string) => r.split(':')[0])
-          ?.join(', ') || data.steps || 'N/A';
-        toast.success("Áudio melhorado com sucesso!", {
-          description: `Aplicado: ${reasonsSummary}`,
-        });
-      }
+    onSuccess: () => {
+      toast.success("Enhancement enfileirado!", {
+        description: "O áudio será processado em background. Acompanhe o status na fila.",
+      });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error: Error) => {
-      toast.error("Erro ao melhorar áudio", {
+      toast.error("Erro ao enfileirar enhancement", {
         description: error.message,
       });
     },
