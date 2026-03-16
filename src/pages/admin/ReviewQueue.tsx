@@ -18,6 +18,7 @@ import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElev
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { useReanalyzeAudio } from "@/hooks/useReanalyzeAudio";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
+import { useEnhanceAudio } from "@/hooks/useEnhanceAudio";
 
 // ---- types ----
 
