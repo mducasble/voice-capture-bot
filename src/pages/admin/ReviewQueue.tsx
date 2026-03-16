@@ -279,13 +279,14 @@ function getSessionStatus(recs: Recording[]) {
 
 // ---- Track Row ----
 
-function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[] }) {
+function TrackRow({ rec, onTranscribe, validationRules, enhanceJobs }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[]; enhanceJobs?: Record<string, string> }) {
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const reanalyze = useReanalyzeAudio("sampled", "original");
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
   const enhance = useEnhanceAudio();
+  const enhanceJobStatus = enhanceJobs?.[rec.id]; // 'pending' | 'processing' | undefined
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
