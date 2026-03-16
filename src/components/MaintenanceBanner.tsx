@@ -15,7 +15,7 @@ function formatCountdown(diff: number) {
 }
 
 export function MaintenanceBanner() {
-  const { data: config } = useMaintenance();
+  const { data: config, error } = useMaintenance();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
