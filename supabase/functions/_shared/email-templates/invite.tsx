@@ -31,13 +31,13 @@ export const InviteEmail = ({
     <Preview>Você foi convidado para a KGeN</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img
-          src="https://wvsixcvsfndhoygbkzkj.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green-v2.png"
-          width="120"
-          height="120"
-          alt="KGeN"
-          style={{ marginBottom: '24px', display: 'block' }}
-        />
+          <Img
+            src="https://wvsixcvsfndhoygbkzkj.supabase.co/storage/v1/object/public/email-assets/kgen-logo-green-v3.png"
+            width="56"
+            height="56"
+            alt="KGeN"
+            style={{ marginBottom: '24px', display: 'block', width: '56px', height: '56px', objectFit: 'contain' }}
+          />
         <Heading style={h1}>Você foi convidado</Heading>
         <Text style={text}>
           Você recebeu um convite para participar da{' '}
