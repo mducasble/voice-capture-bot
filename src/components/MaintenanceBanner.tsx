@@ -24,7 +24,7 @@ export function MaintenanceBanner() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!config?.is_active || !config.scheduled_at) return null;
+  if (error || !config?.is_active || !config.scheduled_at) return null;
 
   const scheduledMs = new Date(config.scheduled_at).getTime();
   const diffSec = Math.max(0, Math.floor((scheduledMs - now) / 1000));
