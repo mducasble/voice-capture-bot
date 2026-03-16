@@ -1,0 +1,38 @@
+# VPS Audio Metrics API
+# Runtime: Python 3.10+
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Task queue
+celery[redis]==5.4.0
+redis==5.2.1
+
+# Audio processing
+librosa==0.10.2.post1
+soundfile==0.13.1
+numpy==1.26.4
+scipy==1.14.1
+resampy>=0.4.3
+
+# SRMR (Speech-to-Reverberation Modulation Ratio)
+SRMRpy @ git+https://github.com/shimhz/SRMRpy.git
+
+# SigMOS - ONNX model (P.804 Microsoft SIG-Challenge)
+onnxruntime==1.20.1
+
+# VQScore - VQVAE model
+pyyaml>=6.0
+einops>=0.7.0
+
+# WVMOS (wav2vec 2.0 MOS predictor)
+wvmos @ git+https://github.com/AndreevP/wvmos.git
+
+# PyTorch (CPU by default — see README for GPU upgrade)
+torch==2.6.0
+torchaudio==2.6.0
+
+# For model downloads
+requests>=2.31.0

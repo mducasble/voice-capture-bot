@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ROLE=api
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_cache:/app/models/weights
+      - tmp_audio:/tmp/audio-metrics
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ROLE=worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_cache:/app/models/weights
+      - tmp_audio:/tmp/audio-metrics
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - api
+
+volumes:
+  redis_data:
+  model_cache:
+  tmp_audio:
+  certbot_webroot:
