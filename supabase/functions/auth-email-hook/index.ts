@@ -15,13 +15,13 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-lovable-signature, x-lovable-timestamp, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+const EMAIL_SUBJECTS: Record<string, Record<string, string>> = {
+  signup: { pt: 'Confirme seu email', es: 'Confirma tu email', en: 'Confirm your email' },
+  invite: { pt: 'Você foi convidado', es: 'Has sido invitado', en: "You've been invited" },
+  magiclink: { pt: 'Seu link de acesso', es: 'Tu enlace de acceso', en: 'Your login link' },
+  recovery: { pt: 'Redefinir sua senha', es: 'Restablecer tu contraseña', en: 'Reset your password' },
+  email_change: { pt: 'Confirme a alteração de email', es: 'Confirma el cambio de email', en: 'Confirm your new email' },
+  reauthentication: { pt: 'Seu código de verificação', es: 'Tu código de verificación', en: 'Your verification code' },
 }
 
 // Template mapping
@@ -264,7 +264,7 @@ async function handleWebhook(req: Request): Promise<Response> {
         to: payload.data.email,
         from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
         sender_domain: SENDER_DOMAIN,
-        subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+        subject: EMAIL_SUBJECTS[emailType]?.[lang] || EMAIL_SUBJECTS[emailType]?.en || 'Notification',
         html,
         text,
         purpose: 'transactional',
