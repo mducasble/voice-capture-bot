@@ -159,6 +159,10 @@ export default function PortalCampaign() {
 
   const isParticipant = !!participationEntry;
 
+  // Block access to private campaigns unless user is already a participant
+  const isPrivate = campaign?.visibility_is_public === false;
+  const blockedByVisibility = isPrivate && !isParticipant && !isLoading;
+
   // Check if campaign hasn't started yet (by date or by status)
   const isBeforeStartDate = useMemo(() => {
     if (campaign?.campaign_status === "waiting_list") return true;
@@ -229,10 +233,12 @@ export default function PortalCampaign() {
     return <Skeleton className="h-64" style={{ background: "var(--portal-card-bg)" }} />;
   }
 
-  if (!campaign) {
+  if (!campaign || blockedByVisibility) {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
-        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>Campanha não encontrada.</p>
+        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+          {blockedByVisibility ? "Esta campanha é privada e requer um convite para acesso." : "Campanha não encontrada."}
+        </p>
         <button
           onClick={() => navigate("/")}
           className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"

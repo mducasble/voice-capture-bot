@@ -74,7 +74,11 @@ export default function PortalAuth() {
 
       if (!campaigns || campaigns.length === 0) return [];
 
-      const ids = campaigns.map(c => c.id);
+      // Filter out private campaigns from public listing
+      const publicOnly = campaigns.filter(c => c.visibility_is_public !== false);
+
+      const ids = publicOnly.map(c => c.id);
+      if (ids.length === 0) return [];
       const [taskSetsRes, rewardRes, langVarRes, geoRes] = await Promise.all([
         supabase.from("campaign_task_sets").select("campaign_id, task_type, enabled").in("campaign_id", ids),
         supabase.from("campaign_reward_config").select("campaign_id, currency, base_rate, payout_model").in("campaign_id", ids),
@@ -82,7 +86,7 @@ export default function PortalAuth() {
         supabase.from("campaign_geographic_scope").select("campaign_id, restriction_mode, countries").in("campaign_id", ids),
       ]);
 
-      return campaigns.map(c => ({
+      return publicOnly.map(c => ({
         ...c,
         task_sets: (taskSetsRes.data || []).filter(ts => ts.campaign_id === c.id && ts.enabled),
         reward: (rewardRes.data || []).find(r => r.campaign_id === c.id),
