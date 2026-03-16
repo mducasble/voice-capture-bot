@@ -1,5 +1,8 @@
 version: "3.8"
 
+# CPU-only override — use with:
+#   docker compose -f docker-compose.cpu.yml up -d
+
 services:
   redis:
     image: redis:7-alpine
@@ -17,7 +20,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.cpu
     restart: always
     ports:
       - "127.0.0.1:8000:8000"
@@ -25,7 +28,6 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - ROLE=api
-      - NVIDIA_VISIBLE_DEVICES=all
     depends_on:
       redis:
         condition: service_healthy
@@ -37,37 +39,22 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.cpu
     restart: always
     env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379/0
       - ROLE=worker
-      - NVIDIA_VISIBLE_DEVICES=all
     depends_on:
       redis:
         condition: service_healthy
     volumes:
       - model_cache:/app/models/weights
       - tmp_audio:/tmp/audio-metrics
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   nginx:
     image: nginx:alpine

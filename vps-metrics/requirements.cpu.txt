@@ -1,5 +1,5 @@
-# Local Audio Metrics API (GPU - RTX 4080 Super)
-# Runtime: Python 3.10+ / CUDA 12.4
+# Local Audio Metrics API (CPU fallback)
+# Runtime: Python 3.10+
 
 # Web framework
 fastapi==0.115.6
@@ -21,7 +21,7 @@ resampy>=0.4.3
 SRMRpy @ git+https://github.com/shimhz/SRMRpy.git
 
 # SigMOS - ONNX model (P.804 Microsoft SIG-Challenge)
-onnxruntime-gpu==1.20.1
+onnxruntime==1.20.1
 
 # VQScore - VQVAE model
 pyyaml>=6.0
@@ -30,10 +30,9 @@ einops>=0.7.0
 # WVMOS (wav2vec 2.0 MOS predictor)
 wvmos @ git+https://github.com/AndreevP/wvmos.git
 
-# PyTorch with CUDA 12.4 support
---extra-index-url https://download.pytorch.org/whl/cu124
-torch==2.6.0+cu124
-torchaudio==2.6.0+cu124
+# PyTorch (CPU only)
+torch==2.6.0
+torchaudio==2.6.0
 
 # For model downloads
 requests>=2.31.0
