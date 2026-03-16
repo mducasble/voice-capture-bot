@@ -213,9 +213,9 @@ export default function AdminQualityHours() {
   };
 
   const chartConfig = {
-    pq: { label: "PQ (Platina)", color: "hsl(210 80% 55%)" },
-    hq: { label: "HQ (Ouro)", color: "hsl(155 72% 42%)" },
-    mq: { label: "MQ (Prata)", color: "hsl(45 90% 55%)" },
+    pq: { label: "PQ (Premium)", color: "hsl(210 80% 55%)" },
+    hq: { label: "HQ (High)", color: "hsl(155 72% 42%)" },
+    mq: { label: "MQ (Medium)", color: "hsl(45 90% 55%)" },
   };
 
   return (
@@ -234,9 +234,9 @@ export default function AdminQualityHours() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SummaryCard label="PQ (Platina)" value={fmtHours(totals.pq)} color="hsl(210 80% 55%)" />
-        <SummaryCard label="HQ (Ouro)" value={fmtHours(totals.hq)} color="hsl(155 72% 42%)" />
-        <SummaryCard label="MQ (Prata)" value={fmtHours(totals.mq)} color="hsl(45 90% 55%)" />
+        <SummaryCard label="PQ (Premium)" value={fmtHours(totals.pq)} color="hsl(210 80% 55%)" />
+        <SummaryCard label="HQ (High)" value={fmtHours(totals.hq)} color="hsl(155 72% 42%)" />
+        <SummaryCard label="MQ (Medium)" value={fmtHours(totals.mq)} color="hsl(45 90% 55%)" />
       </div>
 
       {/* Chart */}
@@ -331,9 +331,9 @@ export default function AdminQualityHours() {
 
       {/* Legend */}
       <div className="flex items-center gap-5 justify-center">
-        <LegendDot color="hsl(210 80% 55%)" label="PQ (Platina)" />
-        <LegendDot color="hsl(155 72% 42%)" label="HQ (Ouro)" />
-        <LegendDot color="hsl(45 90% 55%)" label="MQ (Prata)" />
+        <LegendDot color="hsl(210 80% 55%)" label="PQ (Premium)" />
+        <LegendDot color="hsl(155 72% 42%)" label="HQ (High)" />
+        <LegendDot color="hsl(45 90% 55%)" label="MQ (Medium)" />
       </div>
 
       {/* Country Breakdown */}
