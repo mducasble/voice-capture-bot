@@ -50,7 +50,7 @@ export function MaintenanceBanner() {
 }
 
 export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
-  const { data: config } = useMaintenance();
+  const { data: config, error } = useMaintenance();
   const { isAdmin } = useAdminAuth();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
