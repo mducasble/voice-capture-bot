@@ -287,8 +287,8 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
   const enhance = useEnhanceAudio();
 
-  const m = rec.metadata as RecordingMetadata | null;
-  const hasEnhanced = !!m?.enhanced_file_url;
+  const mCheck = rec.metadata as any;
+  const hasEnhanced = !!mCheck?.enhanced_file_url;
 
   // Check if there's a pending/processing enhance job for this recording
   const { data: enhanceJobStatus } = useQuery({
@@ -301,10 +301,10 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
         .eq('job_type' as any, 'enhance')
         .in('status', ['pending', 'processing'])
         .limit(1);
-      return data?.[0]?.status as string | undefined ?? null;
+      return (data?.[0]?.status as string | undefined) ?? null;
     },
     enabled: !hasEnhanced,
-    refetchInterval: (query) => query.state.data ? 10000 : false, // poll every 10s if job exists
+    refetchInterval: (query) => query.state.data ? 10000 : false,
   });
 
   const toggle = useCallback(() => {
