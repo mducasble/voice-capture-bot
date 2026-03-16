@@ -119,14 +119,6 @@ serve(async (req) => {
       console.error(`Chain fail at offset ${nextOffset}: ${(e as Error).message}`);
     }
 
-    // @ts-ignore
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(chainPromise);
-    } else {
-      await chainPromise;
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
