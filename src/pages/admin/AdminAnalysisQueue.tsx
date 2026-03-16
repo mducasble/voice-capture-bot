@@ -100,11 +100,12 @@ export default function AdminAnalysisQueue() {
       }
 
       // Insert in batches of 50
+      const { data: { user } } = await supabase.auth.getUser();
       for (let i = 0; i < toEnqueue.length; i += 50) {
         const batch = toEnqueue.slice(i, i + 50).map((id: string) => ({
           recording_id: id,
           status: "pending",
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: user?.id,
         }));
         const { error: insertErr } = await supabase
           .from("analysis_queue" as any)
