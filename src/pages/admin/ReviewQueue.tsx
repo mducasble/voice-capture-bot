@@ -18,6 +18,7 @@ import { useElevenLabsTranscription, type ElevenLabsMode } from "@/hooks/useElev
 import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 import { useReanalyzeAudio } from "@/hooks/useReanalyzeAudio";
 import { TranscriptionCostDialog } from "@/components/TranscriptionCostDialog";
+import { useEnhanceAudio } from "@/hooks/useEnhanceAudio";
 
 // ---- types ----
 
@@ -284,6 +285,7 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const reanalyze = useReanalyzeAudio("sampled", "original");
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
+  const enhance = useEnhanceAudio();
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
@@ -565,6 +567,18 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
         )}
 
         <div className="w-px h-3 bg-border" />
+
+        {/* Enhance audio */}
+        {rec.file_url && !m?.enhanced_file_url && (
+          <button
+            onClick={() => enhance.mutate({ recordingId: rec.id, fileUrl: rec.file_url! })}
+            disabled={enhance.isPending}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+            title="Gerar cópia enhanced (mantém original)"
+          >
+            {enhance.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Enhance
+          </button>
+        )}
 
         {/* Reanalyze original */}
         {rec.file_url && (
