@@ -213,9 +213,9 @@ export default function AdminQualityHours() {
   };
 
   const chartConfig = {
-    pq: { label: "PQ (Platina)", color: "hsl(210 80% 55%)" },
-    hq: { label: "HQ (Ouro)", color: "hsl(155 72% 42%)" },
-    mq: { label: "MQ (Prata)", color: "hsl(45 90% 55%)" },
+    pq: { label: "PQ (Premium)", color: "hsl(210 80% 55%)" },
+    hq: { label: "HQ (High)", color: "hsl(155 72% 42%)" },
+    mq: { label: "MQ (Medium)", color: "hsl(45 90% 55%)" },
   };
 
   return (
