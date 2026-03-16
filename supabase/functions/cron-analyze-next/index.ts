@@ -31,12 +31,23 @@ serve(async (req) => {
       );
     }
 
-    // 2. Release stuck jobs (processing > 5 min = likely dead)
+    // 2. Release stuck jobs
+    // Analyze jobs: stuck > 5 min
+    // Enhance jobs: stuck > 15 min (they take longer)
+    const now = Date.now();
     await supabase
       .from('analysis_queue')
       .update({ status: 'pending', started_at: null, updated_at: new Date().toISOString() })
       .eq('status', 'processing')
-      .lt('started_at', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+      .neq('job_type', 'enhance')
+      .lt('started_at', new Date(now - 5 * 60 * 1000).toISOString());
+
+    await supabase
+      .from('analysis_queue')
+      .update({ status: 'pending', started_at: null, updated_at: new Date().toISOString() })
+      .eq('status', 'processing')
+      .eq('job_type', 'enhance')
+      .lt('started_at', new Date(now - 15 * 60 * 1000).toISOString());
 
     // 3. Claim ONE pending job (highest priority, oldest first)
     const { data: jobs, error: fetchErr } = await supabase
@@ -67,7 +78,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       })
       .eq('id', job.id)
-      .eq('status', 'pending'); // CAS: only if still pending
+      .eq('status', 'pending');
 
     if (claimErr) throw claimErr;
 
@@ -118,39 +129,99 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const jobType = (job as any).job_type || 'analyze';
 
-    let targetFunction: string;
-    let requestBody: Record<string, unknown>;
-
     if (jobType === 'enhance') {
-      targetFunction = 'enhance-audio';
-      // Always use original file_url for enhancement (not mp3)
-      requestBody = {
-        recording_id: rec.id,
-        file_url: rec.file_url || audioUrl,
-      };
-    } else {
-      targetFunction = 'estimate-audio-metrics';
-      requestBody = {
-        recording_id: rec.id,
-        file_url: audioUrl,
-        mode: 'sampled',
-      };
+      // Fire-and-forget: enhance-audio can take 5-10 min for large files
+      // It will update the DB directly; we just need to mark the queue job
+      const enhancePromise = (async () => {
+        try {
+          const resp = await fetch(`${baseUrl}/functions/v1/enhance-audio`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({
+              recording_id: rec.id,
+              file_url: rec.file_url || audioUrl,
+            }),
+          });
+
+          const respText = await resp.text();
+
+          if (!resp.ok || respText.includes('<!DOCTYPE html>')) {
+            const errorMsg = `HTTP ${resp.status}: ${respText.substring(0, 200)}`;
+            const newStatus = (job.attempts + 1) >= job.max_attempts ? 'failed' : 'pending';
+            await supabase
+              .from('analysis_queue')
+              .update({
+                status: newStatus,
+                last_error: errorMsg,
+                started_at: null,
+                updated_at: new Date().toISOString(),
+                ...(newStatus === 'failed' ? { completed_at: new Date().toISOString() } : {}),
+              })
+              .eq('id', job.id);
+            console.error(`❌ Enhance job ${job.id} rec=${rec.id}: ${errorMsg}`);
+          } else {
+            // Parse response to check if skipped
+            let parsed: any = {};
+            try { parsed = JSON.parse(respText); } catch (_) { /* ok */ }
+
+            await supabase
+              .from('analysis_queue')
+              .update({
+                status: 'done',
+                completed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                last_error: parsed.skipped ? 'Skipped: audio already good' : null,
+              })
+              .eq('id', job.id);
+            console.log(`✓ Enhance job ${job.id} rec=${rec.id} done`);
+          }
+        } catch (err) {
+          const errorMsg = (err as Error).message || 'Unknown error';
+          const newStatus = (job.attempts + 1) >= job.max_attempts ? 'failed' : 'pending';
+          await supabase
+            .from('analysis_queue')
+            .update({
+              status: newStatus,
+              last_error: errorMsg,
+              started_at: null,
+              updated_at: new Date().toISOString(),
+              ...(newStatus === 'failed' ? { completed_at: new Date().toISOString() } : {}),
+            })
+            .eq('id', job.id);
+          console.error(`❌ Enhance job ${job.id} error: ${errorMsg}`);
+        }
+      })();
+
+      // Use waitUntil so the background work continues after response
+      (globalThis as any).EdgeRuntime?.waitUntil?.(enhancePromise);
+
+      console.log(`🔄 Enhance job ${job.id} rec=${rec.id} fired (async)`);
+      return new Response(
+        JSON.stringify({ status: 'dispatched', job_id: job.id, recording_id: rec.id, job_type: 'enhance' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log(`🔄 Job ${job.id} type=${jobType} rec=${rec.id} → ${targetFunction}`);
-
-    const resp = await fetch(`${baseUrl}/functions/v1/${targetFunction}`, {
+    // Standard analyze job
+    console.log(`🔄 Analyze job ${job.id} rec=${rec.id}`);
+    const resp = await fetch(`${baseUrl}/functions/v1/estimate-audio-metrics`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        recording_id: rec.id,
+        file_url: audioUrl,
+        mode: 'sampled',
+      }),
     });
 
     const respText = await resp.text();
 
-    // Detect HTML error pages or non-OK
     if (respText.includes('<!DOCTYPE html>') || respText.includes('Connection timed out') || !resp.ok) {
       const errorMsg = !resp.ok
         ? `HTTP ${resp.status}: ${respText.substring(0, 200)}`
@@ -186,9 +257,9 @@ serve(async (req) => {
       })
       .eq('id', job.id);
 
-    console.log(`✓ Job ${job.id} type=${jobType} rec=${rec.id} done`);
+    console.log(`✓ Job ${job.id} rec=${rec.id} done`);
     return new Response(
-      JSON.stringify({ status: 'done', job_id: job.id, recording_id: rec.id, job_type: jobType }),
+      JSON.stringify({ status: 'done', job_id: job.id, recording_id: rec.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
