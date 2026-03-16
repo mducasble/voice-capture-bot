@@ -11,6 +11,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // KILL SWITCH: stop all chaining immediately
+  const { _kill_switch_off } = await req.json().catch(() => ({}));
+  if (!_kill_switch_off) {
+    console.log('🛑 KILL SWITCH ACTIVE — stopping chain');
+    return new Response(
+      JSON.stringify({ success: true, status: 'killed', message: 'Kill switch active. Pass _kill_switch_off: true to resume.' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,7 +37,6 @@ serve(async (req) => {
 
     const stats = _stats || { triggered: 0, errors: 0, skipped: 0 };
 
-    // Fetch ONE recording at current offset
     let query = supabase
       .from('voice_recordings')
       .select('id, file_url, mp3_file_url')
@@ -58,7 +67,6 @@ serve(async (req) => {
 
     console.log(`▶ offset=${offset} rec=${rec.id} (ok=${stats.triggered} err=${stats.errors})`);
 
-    // Background: process this recording then chain
     const work = async () => {
       const audioUrl = rec.mp3_file_url || rec.file_url;
       if (!audioUrl) {
@@ -92,10 +100,9 @@ serve(async (req) => {
         }
       }
 
-      // Chain to next — this POST returns fast since next invocation also responds immediately
       const nextOffset = offset + 1;
       try {
-        const chainBody: Record<string, unknown> = { offset: nextOffset, _stats: stats };
+        const chainBody: Record<string, unknown> = { offset: nextOffset, _stats: stats, _kill_switch_off: true };
         if (campaign_id) chainBody.campaign_id = campaign_id;
         if (recording_ids) chainBody.recording_ids = recording_ids;
 
@@ -111,7 +118,7 @@ serve(async (req) => {
       }
     };
 
-    // @ts-ignore - EdgeRuntime.waitUntil keeps work alive after response (~150s max)
+    // @ts-ignore
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
       EdgeRuntime.waitUntil(work());
@@ -119,7 +126,6 @@ serve(async (req) => {
       await work();
     }
 
-    // Respond immediately so the caller doesn't block
     return new Response(
       JSON.stringify({ success: true, status: 'processing', offset, rec: rec.id, stats }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
