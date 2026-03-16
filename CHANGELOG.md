@@ -1,5 +1,24 @@
 # Patch Notes
 
+## [1.02.0316.1]
+
+### 2026-03-16
+
+#### Backend (Edge Functions)
+- **cron-analyze-next** — Worker cron unificado com suporte a job_type `enhance` (fire-and-forget via waitUntil) e `analyze`; release automático de jobs stuck (5 min analyze, 15 min enhance); claim otimista com prioridade + FIFO; checagem de maintenance_config antes de processar
+- **batch-reanalyze** — Reprocessamento em cadeia com kill switch (`_kill_switch_off`), MAX_CONSECUTIVE_ERRORS e delay entre invocações; suporte a re-enfileiramento massivo por campanha
+- **batch-enhance** — Enfileiramento em lote de jobs de enhance na analysis_queue a partir de array de recording_ids
+- **backfill-quality-tier** — Recalcula quality_tier (PQ/HQ/MQ/LQ) para gravações existentes com métricas mas sem tier; processamento paginado por campanha
+
+#### Admin
+- **AdminAnalysisQueue** — Nova página de gerenciamento da fila de análise com stats em tempo real (pending/processing/done/failed), enfileiramento por campanha, botões de trigger/flush/retry, listagem dos 20 jobs mais recentes
+- **MediaReviewTab** — Tab de revisão de mídia (imagens/vídeos) com filtros por campanha, status de qualidade/validação, preview inline e ações de aprovação/rejeição
+
+#### Infraestrutura
+- **vps-metrics/** — Pacote completo para servidor local de métricas de áudio: FastAPI + Celery + Redis + Nginx em Docker Compose; suporte GPU (CUDA 12.4, RTX 4080 Super) com fallback CPU; modelos pré-carregados (SigMOS, VQScore, WVMOS); endpoints `/analyze` e `/enhance`; setup.sh com detecção automática de GPU
+
+---
+
 ## [1.01.0313.1]
 
 ### 2026-03-13
