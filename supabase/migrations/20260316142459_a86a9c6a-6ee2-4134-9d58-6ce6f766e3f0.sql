@@ -1,0 +1,1 @@
+ALTER TABLE public.analysis_queue ADD COLUMN job_type text NOT NULL DEFAULT 'analyze';

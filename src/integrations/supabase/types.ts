@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          job_type: string
           last_error: string | null
           max_attempts: number
           priority: number
@@ -35,6 +36,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          job_type?: string
           last_error?: string | null
           max_attempts?: number
           priority?: number
@@ -49,6 +51,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          job_type?: string
           last_error?: string | null
           max_attempts?: number
           priority?: number

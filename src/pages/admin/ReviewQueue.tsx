@@ -287,6 +287,26 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
   const enhance = useEnhanceAudio();
 
+  const mCheck = rec.metadata as any;
+  const hasEnhanced = !!mCheck?.enhanced_file_url;
+
+  // Check if there's a pending/processing enhance job for this recording
+  const { data: enhanceJobStatus } = useQuery({
+    queryKey: ["enhance-job", rec.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('analysis_queue')
+        .select('status, recording_id')
+        .eq('recording_id', rec.id)
+        .filter('job_type', 'eq', 'enhance')
+        .in('status', ['pending', 'processing'])
+        .limit(1);
+      return (data?.[0]?.status as string | undefined) ?? null;
+    },
+    enabled: !hasEnhanced,
+    refetchInterval: (query) => query.state.data ? 10000 : false,
+  });
+
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
     if (!audioRef.current) {
@@ -570,14 +590,20 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
 
         {/* Enhance audio */}
         {rec.file_url && !m?.enhanced_file_url && (
-          <button
-            onClick={() => enhance.mutate({ recordingId: rec.id, fileUrl: rec.file_url! })}
-            disabled={enhance.isPending}
-            className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
-            title="Gerar cópia enhanced (mantém original)"
-          >
-            {enhance.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Enhance
-          </button>
+          enhanceJobStatus ? (
+            <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400">
+              <Loader2 className="h-3 w-3 animate-spin" /> {enhanceJobStatus === 'processing' ? 'Melhorando…' : 'Na fila'}
+            </span>
+          ) : (
+            <button
+              onClick={() => enhance.mutate({ recordingId: rec.id, fileUrl: rec.file_url! })}
+              disabled={enhance.isPending}
+              className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-sm bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+              title="Gerar cópia enhanced (mantém original)"
+            >
+              {enhance.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Enhance
+            </button>
+          )
         )}
 
         {/* Reanalyze original */}
