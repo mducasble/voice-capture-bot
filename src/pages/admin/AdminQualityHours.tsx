@@ -331,9 +331,9 @@ export default function AdminQualityHours() {
 
       {/* Legend */}
       <div className="flex items-center gap-5 justify-center">
-        <LegendDot color="hsl(210 80% 55%)" label="PQ (Platina)" />
-        <LegendDot color="hsl(155 72% 42%)" label="HQ (Ouro)" />
-        <LegendDot color="hsl(45 90% 55%)" label="MQ (Prata)" />
+        <LegendDot color="hsl(210 80% 55%)" label="PQ (Premium)" />
+        <LegendDot color="hsl(155 72% 42%)" label="HQ (High)" />
+        <LegendDot color="hsl(45 90% 55%)" label="MQ (Medium)" />
       </div>
 
       {/* Country Breakdown */}
