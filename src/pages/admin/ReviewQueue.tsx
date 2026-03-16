@@ -285,6 +285,7 @@ function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const reanalyze = useReanalyzeAudio("sampled", "original");
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
+  const enhance = useEnhanceAudio();
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
