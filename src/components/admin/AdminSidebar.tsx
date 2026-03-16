@@ -18,6 +18,7 @@ import {
   Megaphone,
   Network,
   Activity,
+  BarChart3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -56,6 +57,7 @@ const navSections = [
     items: [
       { title: "Revisão", url: "/admin/review", icon: FileCheck },
       { title: "Fila de Revisão", url: "/admin/review-queue", icon: ListChecks },
+      { title: "Horas por Qualidade", url: "/admin/quality-hours", icon: BarChart3 },
       { title: "Transcrição", url: "/admin/transcription", icon: FileText },
     ],
   },
