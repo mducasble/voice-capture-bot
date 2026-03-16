@@ -480,11 +480,12 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
   const existingMeta = (recording?.metadata || {}) as Record<string, unknown>;
 
   if (target === 'enhanced') {
-    // Store enhanced metrics under a separate key AND as top-level enhanced_* fields for UI
+    const enhancedTier = computeQualityTier(metrics);
     const metadata = {
       ...existingMeta,
       enhanced_snr_db: metrics.snr_db ?? existingMeta.enhanced_snr_db ?? null,
       enhanced_rms_level_db: metrics.rms_dbfs ?? existingMeta.enhanced_rms_level_db ?? null,
+      enhanced_quality_tier: enhancedTier,
       enhanced_metrics: {
         srmr: metrics.srmr ?? null,
         sigmos_disc: metrics.sigmos_disc ?? null,
@@ -497,6 +498,7 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
         file_sr: metrics.file_sr ?? null,
         rms_dbfs: metrics.rms_dbfs ?? null,
         snr_db: metrics.snr_db ?? null,
+        quality_tier: enhancedTier,
         metrics_source: 'huggingface-space',
         metrics_estimated_at: new Date().toISOString(),
         metrics_mode: metricsMode,
@@ -508,6 +510,7 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
       .update({ metadata })
       .eq('id', recording_id);
   } else {
+    const qualityTier = computeQualityTier(metrics);
     const metadata = {
       ...existingMeta,
       srmr: metrics.srmr ?? null,
@@ -522,12 +525,12 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
       rms_dbfs: metrics.rms_dbfs ?? null,
       rms_level_db: metrics.rms_dbfs ?? existingMeta.rms_level_db ?? null,
       snr_db: metrics.snr_db ?? null,
+      quality_tier: qualityTier,
       metrics_source: 'huggingface-space',
       metrics_estimated_at: new Date().toISOString(),
       metrics_mode: metricsMode,
     };
 
-    // Also update top-level snr_db column so the UI can read it directly
     const updatePayload: Record<string, unknown> = { metadata };
     if (metrics.snr_db != null) {
       updatePayload.snr_db = metrics.snr_db;
