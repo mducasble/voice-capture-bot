@@ -31,34 +31,33 @@ function computeRelaxedTier(meta: Record<string, unknown>): string | null {
   const srmr = typeof meta.srmr === "number" ? meta.srmr : null;
   const rms = typeof meta.rms_dbfs === "number" ? meta.rms_dbfs : null;
 
-  // At least one metric must exist
-  if (snr === null && sigmos === null && srmr === null && rms === null) return null;
+  const present = [snr, sigmos, srmr, rms].filter((v) => v !== null).length;
+  // Need at least 2 metrics for a meaningful classification
+  if (present < 2) return null;
 
-  // PQ: all present metrics must meet PQ thresholds
-  const pqChecks = [
-    snr !== null ? snr >= 30 : true,
-    sigmos !== null ? sigmos >= 3.0 : true,
-    srmr !== null ? srmr >= 7.0 : true,
-    rms !== null ? rms >= -24 : true,
-  ];
-  if (pqChecks.every(Boolean)) return "pq";
+  // Count how many present metrics pass each tier threshold
+  const pqPass = [
+    snr !== null ? snr >= 30 : null,
+    sigmos !== null ? sigmos >= 3.0 : null,
+    srmr !== null ? srmr >= 7.0 : null,
+    rms !== null ? rms >= -24 : null,
+  ].filter((v) => v !== null);
+  if (pqPass.length >= 2 && pqPass.every(Boolean)) return "pq";
 
-  // HQ: all present metrics must meet HQ thresholds
-  const hqChecks = [
-    snr !== null ? snr >= 25 : true,
-    sigmos !== null ? sigmos >= 2.3 : true,
-    srmr !== null ? srmr >= 5.4 : true,
-    rms !== null ? rms >= -26 : true,
-  ];
-  if (hqChecks.every(Boolean)) return "hq";
+  const hqPass = [
+    snr !== null ? snr >= 25 : null,
+    sigmos !== null ? sigmos >= 2.3 : null,
+    srmr !== null ? srmr >= 5.4 : null,
+    rms !== null ? rms >= -26 : null,
+  ].filter((v) => v !== null);
+  if (hqPass.length >= 2 && hqPass.every(Boolean)) return "hq";
 
-  // MQ: present metrics must meet MQ thresholds
-  const mqChecks = [
-    sigmos !== null ? sigmos >= 2.0 : true,
-    srmr !== null ? srmr >= 4.0 : true,
-    rms !== null ? rms >= -28 : true,
-  ];
-  if (mqChecks.every(Boolean)) return "mq";
+  const mqPass = [
+    sigmos !== null ? sigmos >= 2.0 : null,
+    srmr !== null ? srmr >= 4.0 : null,
+    rms !== null ? rms >= -28 : null,
+  ].filter((v) => v !== null);
+  if (mqPass.length >= 1 && mqPass.every(Boolean)) return "mq";
 
   return "lq";
 }
