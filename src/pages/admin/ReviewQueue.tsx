@@ -279,14 +279,33 @@ function getSessionStatus(recs: Recording[]) {
 
 // ---- Track Row ----
 
-function TrackRow({ rec, onTranscribe, validationRules, enhanceJobs }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[]; enhanceJobs?: Record<string, string> }) {
+function TrackRow({ rec, onTranscribe, validationRules }: { rec: Recording; onTranscribe?: (recId: string, sessionId: string | null, isMixed: boolean) => void; validationRules?: AudioValidationRule[] }) {
   const [playing, setPlaying] = useState(false);
   const [costDialogOpen, setCostDialogOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const reanalyze = useReanalyzeAudio("sampled", "original");
   const reanalyzeEnhanced = useReanalyzeAudio("sampled", "enhanced");
   const enhance = useEnhanceAudio();
-  const enhanceJobStatus = enhanceJobs?.[rec.id]; // 'pending' | 'processing' | undefined
+
+  const m = rec.metadata as RecordingMetadata | null;
+  const hasEnhanced = !!m?.enhanced_file_url;
+
+  // Check if there's a pending/processing enhance job for this recording
+  const { data: enhanceJobStatus } = useQuery({
+    queryKey: ["enhance-job", rec.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('analysis_queue')
+        .select('status')
+        .eq('recording_id', rec.id)
+        .eq('job_type' as any, 'enhance')
+        .in('status', ['pending', 'processing'])
+        .limit(1);
+      return data?.[0]?.status as string | undefined ?? null;
+    },
+    enabled: !hasEnhanced,
+    refetchInterval: (query) => query.state.data ? 10000 : false, // poll every 10s if job exists
+  });
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
