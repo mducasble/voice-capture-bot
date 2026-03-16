@@ -233,10 +233,12 @@ export default function PortalCampaign() {
     return <Skeleton className="h-64" style={{ background: "var(--portal-card-bg)" }} />;
   }
 
-  if (!campaign) {
+  if (!campaign || blockedByVisibility) {
     return (
       <div className="text-center py-16" style={{ border: "1px solid var(--portal-border)" }}>
-        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>Campanha não encontrada.</p>
+        <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
+          {blockedByVisibility ? "Esta campanha é privada e requer um convite para acesso." : "Campanha não encontrada."}
+        </p>
         <button
           onClick={() => navigate("/")}
           className="font-mono text-sm uppercase tracking-widest mt-4 px-4 py-2 transition-colors"

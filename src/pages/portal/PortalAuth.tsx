@@ -74,6 +74,9 @@ export default function PortalAuth() {
 
       if (!campaigns || campaigns.length === 0) return [];
 
+      // Filter out private campaigns from public listing
+      const publicOnly = campaigns.filter(c => c.visibility_is_public !== false);
+
       const ids = campaigns.map(c => c.id);
       const [taskSetsRes, rewardRes, langVarRes, geoRes] = await Promise.all([
         supabase.from("campaign_task_sets").select("campaign_id, task_type, enabled").in("campaign_id", ids),
