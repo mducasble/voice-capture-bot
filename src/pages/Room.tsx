@@ -290,14 +290,15 @@ const Room = () => {
     return () => navigator.mediaDevices.removeEventListener("devicechange", loadDevices);
   }, []);
 
-  // Helper to get audio constraints with selected device — clean capture, no processing
+  // Helper to get audio constraints with selected device — browser processing enabled
+  // to match the quality of WebRTC-processed streams in the mixed recording
   const getAudioConstraints = useCallback(() => {
     return {
       audio: {
         deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
         sampleRate: 48000,
       }
     };
@@ -316,9 +317,9 @@ const Room = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: { exact: deviceId },
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
           sampleRate: 48000,
         }
       });
