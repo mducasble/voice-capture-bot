@@ -2,29 +2,58 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
+const AUTH_FALLBACK_MS = 8000;
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    let cancelled = false;
+
+    const finishLoading = () => {
+      if (!cancelled) setLoading(false);
+    };
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setUser(null);
+      setSession(null);
       setLoading(false);
+    }, AUTH_FALLBACK_MS);
+
+    const applySession = (nextSession: Session | null) => {
+      if (cancelled) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      finishLoading();
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      applySession(nextSession);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data: { session: nextSession } }) => {
+        applySession(nextSession);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUser(null);
+        setSession(null);
+        finishLoading();
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallbackTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = useCallback(async () => {
-    // Mark that we're intentionally logging out so /auth page doesn't auto-redirect
     sessionStorage.setItem("is_logging_out", "true");
     setUser(null);
     setSession(null);

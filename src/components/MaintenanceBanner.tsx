@@ -15,7 +15,7 @@ function formatCountdown(diff: number) {
 }
 
 export function MaintenanceBanner() {
-  const { data: config } = useMaintenance();
+  const { data: config, error } = useMaintenance();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
@@ -24,7 +24,7 @@ export function MaintenanceBanner() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!config?.is_active || !config.scheduled_at) return null;
+  if (error || !config?.is_active || !config.scheduled_at) return null;
 
   const scheduledMs = new Date(config.scheduled_at).getTime();
   const diffSec = Math.max(0, Math.floor((scheduledMs - now) / 1000));
@@ -50,7 +50,7 @@ export function MaintenanceBanner() {
 }
 
 export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
-  const { data: config } = useMaintenance();
+  const { data: config, error } = useMaintenance();
   const { isAdmin } = useAdminAuth();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
@@ -60,7 +60,7 @@ export function MaintenanceBlock({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  if (!config?.is_active || !config.scheduled_at) return <>{children}</>;
+  if (error || !config?.is_active || !config.scheduled_at) return <>{children}</>;
 
   const scheduledMs = new Date(config.scheduled_at).getTime();
   const isDown = now >= scheduledMs;
