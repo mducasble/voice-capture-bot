@@ -76,8 +76,8 @@ export default function DataCampaignSelect() {
                 onClick={() => navigate(`/data/${mediaType}/task/${c.id}`)}
                 className="group w-full text-left p-5 md:p-6 rounded-2xl data-glass-card hover:bg-white/[0.06] hover:border-[hsl(var(--primary))]/30 transition-all flex items-center gap-5"
               >
-                <div className="h-12 w-12 rounded-xl bg-[hsl(var(--primary))]/10 flex items-center justify-center shrink-0">
-                  <FolderOpen className="h-6 w-6 text-[hsl(var(--primary))]" />
+                <div className="h-12 w-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                  <FolderOpen className="h-6 w-6 text-white/60" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-[17px] font-semibold text-white truncate">{c.name}</h3>
