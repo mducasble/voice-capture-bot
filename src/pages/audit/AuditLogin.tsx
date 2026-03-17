@@ -102,7 +102,7 @@ export default function AuditLogin() {
             variant="outline"
             disabled={googleLoading || loading}
             onClick={handleGoogle}
-            className="w-full h-14 text-[16px] font-semibold rounded-xl border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
+            className="w-full h-14 text-[16px] font-semibold rounded-xl border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]"
           >
             {googleLoading ? (
               <Loader2 className="h-5 w-5 animate-spin mr-3" />
