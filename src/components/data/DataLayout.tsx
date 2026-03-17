@@ -43,7 +43,7 @@ export default function DataLayout() {
   const initials = (profile?.full_name || user.email || "U").slice(0, 2).toUpperCase();
 
   return (
-    <div className="data-theme min-h-screen flex flex-col" style={{ background: "linear-gradient(135deg, hsl(230 25% 8%) 0%, hsl(260 20% 12%) 50%, hsl(220 25% 8%) 100%)" }}>
+    <div className="data-theme min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(220 4% 8%) 70%, hsl(0 0% 5%) 100%)" }}>
       {/* Top bar */}
       <header className="sticky top-0 z-50 h-16 md:h-[72px] flex items-center justify-between px-5 md:px-8 backdrop-blur-2xl bg-white/[0.03] border-b border-white/[0.06]">
         <div className="flex items-center gap-3">

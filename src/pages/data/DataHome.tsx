@@ -35,8 +35,8 @@ export default function DataHome() {
             className={`
               group relative flex flex-col items-center text-center p-8 md:p-10 rounded-3xl transition-all duration-300
               ${opt.ready
-                ? "data-glass-card hover:bg-white/[0.08] hover:border-[hsl(var(--primary))]/40 hover:shadow-lg hover:shadow-[hsl(var(--primary))]/10 hover:scale-[1.02] cursor-pointer"
-                : "data-glass-card opacity-40 cursor-not-allowed"
+                ? "data-glass-card hover:bg-white/[0.09] hover:border-white/[0.16] hover:shadow-lg hover:shadow-white/[0.03] hover:scale-[1.02] cursor-pointer"
+                : "data-glass-card opacity-30 cursor-not-allowed"
               }
             `}
           >
