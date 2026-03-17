@@ -39,17 +39,19 @@ function deriveTier(metricKey: string | undefined, value: string | number | null
   }
 }
 
-const statusStyles: Record<string, string> = {
-  good: "border-emerald-700 bg-emerald-600",
-  fair: "border-amber-600 bg-amber-500",
-  bad: "border-red-700 bg-red-600",
+const tierStyles: Record<string, string> = {
+  PQ: "border-blue-700 bg-blue-600",
+  HQ: "border-emerald-700 bg-emerald-600",
+  MQ: "border-amber-600 bg-amber-500",
+  LQ: "border-red-700 bg-red-600",
   neutral: "border-gray-600 bg-gray-500",
 };
 
-export function MetricCard({ label, value, unit, status, tier, metricKey, tooltip }: MetricCardProps) {
-  // Priority: explicit status > per-metric derivation > tier fallback
-  const resolved = status || deriveStatus(metricKey, value);
-  const style = statusStyles[resolved] || statusStyles.neutral;
+export function MetricCard({ label, value, unit, tier, metricKey, tooltip }: MetricCardProps) {
+  // Per-metric tier derivation takes priority, then fall back to track-level tier
+  const resolved = deriveTier(metricKey, value);
+  const finalTier = resolved !== "neutral" ? resolved : (tier || "neutral");
+  const style = tierStyles[finalTier] || tierStyles.neutral;
 
   return (
     <div className={cn("rounded-xl border px-4 py-3 transition-all flex items-center justify-between gap-2", style)}>
