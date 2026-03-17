@@ -124,6 +124,7 @@ const App = () => (
                 <Route path="referral-network" element={<AdminReferralNetwork />} />
                 <Route path="analysis-queue" element={<AdminAnalysisQueue />} />
                 <Route path="quality-hours" element={<AdminQualityHours />} />
+                <Route path="infrastructure" element={<AdminInfrastructure />} />
               </Route>
 
               {/* Audit login (standalone) */}

@@ -67,6 +67,7 @@ const navSections = [
       { title: "Social Art", url: "/admin/social-art", icon: Palette },
       { title: "FAQ / Dúvidas", url: "/admin/faq", icon: HelpCircle },
       { title: "Fila de Análise", url: "/admin/analysis-queue", icon: Activity },
+      { title: "Infraestrutura", url: "/admin/infrastructure", icon: Monitor },
       { title: "Manutenção", url: "/admin/maintenance", icon: Wrench },
       { title: "Anúncios", url: "/admin/announcements", icon: Megaphone },
       { title: "Rede de Indicações", url: "/admin/referral-network", icon: Network },
