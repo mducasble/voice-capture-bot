@@ -6,8 +6,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCallback } from "react";
 
 export default function AuditLayout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = useCallback(async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+    try { await supabase.auth.signOut(); } catch {}
+    navigate("/audit/login", { replace: true });
+  }, [navigate]);
 
   if (loading) {
     return (
