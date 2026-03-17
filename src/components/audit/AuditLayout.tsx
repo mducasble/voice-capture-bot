@@ -1,8 +1,9 @@
-import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuditSidebar } from "./AuditSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { LogOut, ChevronRight, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCallback } from "react";
 
 export default function AuditLayout() {
   const { user, loading, signOut } = useAuth();
