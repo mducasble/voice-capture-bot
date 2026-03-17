@@ -65,15 +65,20 @@ export default function AuditAudioDetail() {
 
   // Load siblings (same session)
   useEffect(() => {
-    if (!rec?.session_id || !rec.campaign_id) return;
-    supabase
-      .from("voice_recordings")
-      .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
-      .eq("session_id", rec.session_id)
-      .eq("campaign_id", rec.campaign_id)
-      .order("recording_type")
-      .then(({ data }) => setSiblings((data || []) as any[]));
-  }, [rec?.session_id, rec?.campaign_id]);
+    if (!rec) return;
+    if (rec.session_id && rec.campaign_id) {
+      supabase
+        .from("voice_recordings")
+        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+        .eq("session_id", rec.session_id)
+        .eq("campaign_id", rec.campaign_id)
+        .order("recording_type")
+        .then(({ data }) => setSiblings((data || []) as any[]));
+    } else {
+      // No session — show current recording as sole track
+      setSiblings([rec]);
+    }
+  }, [rec?.session_id, rec?.campaign_id, rec?.id]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
