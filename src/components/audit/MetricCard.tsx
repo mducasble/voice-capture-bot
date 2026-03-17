@@ -7,34 +7,32 @@ interface MetricCardProps {
   value: string | number | null;
   unit?: string;
   status?: "good" | "fair" | "bad" | "neutral";
+  tier?: "PQ" | "HQ" | "MQ" | "LQ" | string;
   tooltip?: string;
 }
 
-const statusStyles = {
-  good: "border-emerald-700 bg-emerald-600",
-  fair: "border-amber-600 bg-amber-500",
-  bad: "border-red-700 bg-red-600",
-  neutral: "border-gray-600 bg-gray-500",
+const tierStyles: Record<string, string> = {
+  PQ: "border-blue-700 bg-blue-600",
+  HQ: "border-emerald-700 bg-emerald-600",
+  MQ: "border-amber-600 bg-amber-500",
+  LQ: "border-red-700 bg-red-600",
 };
 
-const statusText = {
-  good: "text-white",
-  fair: "text-white",
-  bad: "text-white",
-  neutral: "text-white",
-};
+const fallbackStyle = "border-gray-600 bg-gray-500";
 
-export function MetricCard({ label, value, unit, status = "neutral", tooltip }: MetricCardProps) {
+export function MetricCard({ label, value, unit, tier, tooltip }: MetricCardProps) {
+  const style = tier ? (tierStyles[tier] || fallbackStyle) : fallbackStyle;
+
   return (
-    <div className={cn("rounded-xl border p-5 transition-all", statusStyles[status])}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[13px] font-semibold uppercase tracking-wide text-white/70">
+    <div className={cn("rounded-xl border p-4 transition-all", style)}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-white/70">
           {label}
         </span>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-white/50 cursor-help" />
+              <HelpCircle className="h-3.5 w-3.5 text-white/50 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-[13px]">
               {tooltip}
@@ -42,9 +40,9 @@ export function MetricCard({ label, value, unit, status = "neutral", tooltip }: 
           </Tooltip>
         )}
       </div>
-      <div className={cn("text-[22px] font-bold tabular-nums", statusText[status])}>
+      <div className="text-[22px] font-bold tabular-nums text-white">
         {value !== null && value !== undefined ? value : "—"}
-        {unit && <span className="text-[14px] font-medium ml-1 text-white/60">{unit}</span>}
+        {unit && <span className="text-[13px] font-medium ml-1 text-white/60">{unit}</span>}
       </div>
     </div>
   );
