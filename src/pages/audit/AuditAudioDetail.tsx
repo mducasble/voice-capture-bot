@@ -268,10 +268,10 @@ export default function AuditAudioDetail() {
   ].filter((m) => m.val !== null && m.val !== undefined);
 
   const tierColors: Record<string, string> = {
-    PQ: "bg-blue-100 text-blue-700 border-blue-200",
-    HQ: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    MQ: "bg-amber-100 text-amber-700 border-amber-200",
-    LQ: "bg-red-100 text-red-700 border-red-200",
+    PQ: "bg-blue-600 text-white border-blue-700",
+    HQ: "bg-emerald-600 text-white border-emerald-700",
+    MQ: "bg-amber-500 text-white border-amber-600",
+    LQ: "bg-red-600 text-white border-red-700",
   };
 
   const tierLabels: Record<string, string> = {
