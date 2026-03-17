@@ -24,15 +24,15 @@ export function MetricCard({ label, value, unit, tier, tooltip }: MetricCardProp
   const style = tier ? (tierStyles[tier] || fallbackStyle) : fallbackStyle;
 
   return (
-    <div className={cn("rounded-xl border p-4 transition-all", style)}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-white/70">
+    <div className={cn("rounded-xl border px-4 py-3 transition-all flex items-center justify-between gap-2", style)}>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-white/70 truncate">
           {label}
         </span>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 text-white/50 cursor-help" />
+              <HelpCircle className="h-3.5 w-3.5 text-white/50 cursor-help shrink-0" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-[13px]">
               {tooltip}
@@ -40,9 +40,9 @@ export function MetricCard({ label, value, unit, tier, tooltip }: MetricCardProp
           </Tooltip>
         )}
       </div>
-      <div className="text-[22px] font-bold tabular-nums text-white">
+      <div className="text-[18px] font-bold tabular-nums text-white whitespace-nowrap shrink-0">
         {value !== null && value !== undefined ? value : "—"}
-        {unit && <span className="text-[13px] font-medium ml-1 text-white/60">{unit}</span>}
+        {unit && <span className="text-[12px] font-medium ml-0.5 text-white/60">{unit}</span>}
       </div>
     </div>
   );
