@@ -52,17 +52,51 @@ const metricTooltips: Record<string, string> = {
   sigmos_disc: "Componente de distorção/descontinuidade.",
 };
 
+function deriveTierForMetric(key: string, v: number): "PQ" | "HQ" | "MQ" | "LQ" {
+  switch (key) {
+    case "snr_db": return v >= 30 ? "PQ" : v >= 25 ? "HQ" : v >= 18 ? "MQ" : "LQ";
+    case "sigmos_ovrl": return v >= 3.0 ? "PQ" : v >= 2.3 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
+    case "srmr": return v >= 7.0 ? "PQ" : v >= 5.4 ? "HQ" : v >= 4.0 ? "MQ" : "LQ";
+    case "rms_dbfs": return v >= -24 ? "PQ" : v >= -26 ? "HQ" : v >= -28 ? "MQ" : "LQ";
+    case "wvmos": return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
+    case "vqscore": return v >= 0.65 ? "PQ" : v >= 0.5 ? "HQ" : v >= 0.35 ? "MQ" : "LQ";
+    case "sigmos_reverb": return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
+    case "sigmos_disc": return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
+    default: return "MQ";
+  }
+}
+
+const TIER_ORDER: Record<string, number> = { LQ: 0, MQ: 1, HQ: 2, PQ: 3 };
+const TIER_FROM_ORDER = ["LQ", "MQ", "HQ", "PQ"];
+
 function deriveTier(sib: any): string | undefined {
   const meta = sib.metadata || {};
   const stored = typeof meta.quality_tier === "string" ? meta.quality_tier.toUpperCase() : undefined;
   if (stored) return stored;
-  const snr = sib.snr_db ?? meta.snr_db;
-  const mos = meta.sigmos_ovrl;
-  if (snr == null && mos == null) return undefined;
-  if ((snr != null && snr >= 30) || (mos != null && mos >= 4.0)) return "PQ";
-  if ((snr != null && snr >= 25) || (mos != null && mos >= 3.5)) return "HQ";
-  if ((snr != null && snr >= 18) || (mos != null && mos >= 2.5)) return "MQ";
-  return "LQ";
+
+  // Derive from individual metrics — overall tier = lowest tier among all available metrics
+  const metrics: [string, number | null | undefined][] = [
+    ["snr_db", sib.snr_db ?? meta.snr_db],
+    ["sigmos_ovrl", meta.sigmos_ovrl],
+    ["srmr", meta.srmr],
+    ["rms_dbfs", meta.rms_dbfs],
+    ["wvmos", meta.wvmos],
+    ["vqscore", meta.vqscore],
+    ["sigmos_reverb", meta.sigmos_reverb],
+    ["sigmos_disc", meta.sigmos_disc],
+  ];
+
+  let minOrder = 3; // start at PQ
+  let hasAny = false;
+  for (const [key, val] of metrics) {
+    if (val == null) continue;
+    hasAny = true;
+    const tier = deriveTierForMetric(key, Number(val));
+    const order = TIER_ORDER[tier] ?? 1;
+    if (order < minOrder) minOrder = order;
+  }
+  if (!hasAny) return undefined;
+  return TIER_FROM_ORDER[minOrder];
 }
 
 function getTrackMetrics(sib: any) {
