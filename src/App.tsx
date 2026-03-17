@@ -40,6 +40,21 @@ const PortalEarnings = lazy(() => import("./pages/portal/PortalEarnings"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
 
+// Audit pages
+const AuditLayout = lazy(() => import("./components/audit/AuditLayout"));
+const AuditLogin = lazy(() => import("./pages/audit/AuditLogin"));
+const AuditHome = lazy(() => import("./pages/audit/AuditHome"));
+const AuditCampaignSelect = lazy(() => import("./pages/audit/AuditCampaignSelect"));
+const AuditAudioValidation = lazy(() => import("./pages/audit/AuditAudioValidation"));
+const AuditAudioDetail = lazy(() => import("./pages/audit/AuditAudioDetail"));
+const AuditAudioTranscription = lazy(() => import("./pages/audit/AuditAudioTranscription"));
+const AuditVideoModule = lazy(() => import("./pages/audit/AuditVideoModule"));
+const AuditPhotoModule = lazy(() => import("./pages/audit/AuditPhotoModule"));
+const AuditSearch = lazy(() => import("./pages/audit/AuditSearch"));
+const AuditSettings = lazy(() => import("./pages/audit/AuditSettings"));
+const AuditHistory = lazy(() => import("./pages/audit/AuditHistory"));
+const AuditCampaigns = lazy(() => import("./pages/audit/AuditCampaigns"));
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +120,26 @@ const App = () => (
               <Route path="referral-network" element={<AdminReferralNetwork />} />
               <Route path="analysis-queue" element={<AdminAnalysisQueue />} />
               <Route path="quality-hours" element={<AdminQualityHours />} />
+            </Route>
+
+            {/* Audit login (standalone) */}
+            <Route path="/audit/login" element={<AuditLogin />} />
+
+            {/* Audit routes with sidebar layout */}
+            <Route path="/audit" element={<AuditLayout />}>
+              <Route index element={<AuditHome />} />
+              <Route path="audio/validation" element={<AuditCampaignSelect />} />
+              <Route path="audio/validation/:campaignId" element={<AuditAudioValidation />} />
+              <Route path="audio/validation/:campaignId/:recordingId" element={<AuditAudioDetail />} />
+              <Route path="audio/transcription" element={<AuditAudioTranscription />} />
+              <Route path="audio" element={<AuditCampaignSelect />} />
+              <Route path="video" element={<AuditVideoModule />} />
+              <Route path="photo" element={<AuditPhotoModule />} />
+              <Route path="transcription" element={<AuditAudioTranscription />} />
+              <Route path="campaigns" element={<AuditCampaigns />} />
+              <Route path="search" element={<AuditSearch />} />
+              <Route path="history" element={<AuditHistory />} />
+              <Route path="settings" element={<AuditSettings />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
