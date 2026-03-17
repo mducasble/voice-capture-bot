@@ -16,7 +16,8 @@ interface CampaignRow {
 }
 
 export default function AuditCampaignSelect() {
-  const { process } = useParams<{ process: string }>();
+  const location = useLocation();
+  const process = location.pathname.includes("/transcription") ? "transcription" : "validation";
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
