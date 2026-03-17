@@ -132,7 +132,7 @@ const App = () => (
               <Route path="audio/validation/:campaignId" element={<AuditAudioValidation />} />
               <Route path="audio/validation/:campaignId/:recordingId" element={<AuditAudioDetail />} />
               <Route path="audio/transcription" element={<AuditAudioTranscription />} />
-              <Route path="audio" element={<AuditCampaignSelect />} />
+              <Route path="audio" element={<AuditHome />} />
               <Route path="video" element={<AuditVideoModule />} />
               <Route path="photo" element={<AuditPhotoModule />} />
               <Route path="transcription" element={<AuditAudioTranscription />} />

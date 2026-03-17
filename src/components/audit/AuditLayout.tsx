@@ -1,12 +1,21 @@
-import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuditSidebar } from "./AuditSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { LogOut, ChevronRight, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCallback } from "react";
 
 export default function AuditLayout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = useCallback(async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+    try { await supabase.auth.signOut(); } catch {}
+    navigate("/audit/login", { replace: true });
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -60,7 +69,7 @@ export default function AuditLayout() {
               <div className="flex items-center gap-3">
                 <span className="text-[14px] text-[hsl(var(--muted-foreground))] hidden md:block">{user.email}</span>
                 <button
-                  onClick={() => signOut()}
+                  onClick={handleSignOut}
                   title="Sair"
                   className="h-10 w-10 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] transition-colors"
                 >
