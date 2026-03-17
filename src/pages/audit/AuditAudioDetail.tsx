@@ -329,7 +329,17 @@ export default function AuditAudioDetail() {
             const isCurrentRec = sib.id === rec.id;
             const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
             const sibMeta = sib.metadata || {};
-            const sibTier = typeof sibMeta.quality_tier === "string" ? sibMeta.quality_tier.toUpperCase() : undefined;
+            const sibTierStored = typeof sibMeta.quality_tier === "string" ? sibMeta.quality_tier.toUpperCase() : undefined;
+            // Derive tier from metrics when not stored (e.g. Mixed track)
+            const sibTier = sibTierStored ?? (() => {
+              const snr = sib.snr_db ?? sibMeta.snr_db;
+              const mos = sibMeta.sigmos_ovrl;
+              if (snr == null && mos == null) return undefined;
+              if ((snr != null && snr >= 30) || (mos != null && mos >= 4.0)) return "PQ";
+              if ((snr != null && snr >= 25) || (mos != null && mos >= 3.5)) return "HQ";
+              if ((snr != null && snr >= 18) || (mos != null && mos >= 2.5)) return "MQ";
+              return "LQ";
+            })();
             const sibMetrics = [
               { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? sibMeta.snr_db },
               { key: "sigmos_ovrl", label: "SigMOS Overall", val: sibMeta.sigmos_ovrl },
