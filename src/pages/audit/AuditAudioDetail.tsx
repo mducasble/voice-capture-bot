@@ -47,20 +47,50 @@ export default function AuditAudioDetail() {
 
   useEffect(() => {
     if (!recordingId) return;
+    let cancelled = false;
     setLoading(true);
+
     supabase
       .from("voice_recordings")
       .select("*")
       .eq("id", recordingId)
       .maybeSingle()
-      .then(({ data }) => {
-        setRec(data as any);
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("Failed to load audit recording", error);
+          setRec(null);
+          setLoading(false);
+          return;
+        }
+
+        setRec((data as any) ?? null);
         setLoading(false);
+
         if (data?.campaign_id) {
-          supabase.from("campaigns").select("name").eq("id", data.campaign_id).maybeSingle()
-            .then(({ data: c }) => setCampaignName(c?.name || ""));
+          supabase
+            .from("campaigns")
+            .select("name")
+            .eq("id", data.campaign_id)
+            .maybeSingle()
+            .then(({ data: c }) => {
+              if (!cancelled) setCampaignName(c?.name || "");
+            });
+        } else {
+          setCampaignName("");
+        }
+      })
+      .catch((error) => {
+        console.error("Unexpected audit recording load error", error);
+        if (!cancelled) {
+          setRec(null);
+          setLoading(false);
         }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [recordingId]);
 
   // Load siblings (same session)

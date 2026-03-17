@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
 import { MaintenanceBanner, MaintenanceBlock } from "@/components/MaintenanceBanner";
+import { AuditLoadingScreen } from "@/components/audit/AuditLoadingScreen";
+import { AuditErrorBoundary } from "@/components/audit/AuditErrorBoundary";
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
