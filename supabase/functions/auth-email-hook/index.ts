@@ -35,10 +35,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "voice-tracker"
-const SENDER_DOMAIN = "notify.www.kgen.quest"
+const SITE_NAME = "KGeN"
+const SENDER_DOMAIN = "notify.kgen.quest"
 const ROOT_DOMAIN = "kgen.quest"
-const FROM_DOMAIN = "kgen.quest" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "kgen.quest"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
