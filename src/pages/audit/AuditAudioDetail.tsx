@@ -37,9 +37,6 @@ export default function AuditAudioDetail() {
   const [rec, setRec] = useState<Recording | null>(null);
   const [loading, setLoading] = useState(true);
   const [siblings, setSiblings] = useState<any[]>([]);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [playbackRate, setPlaybackRate] = useState(1);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [campaignName, setCampaignName] = useState("");
