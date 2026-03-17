@@ -34,7 +34,7 @@ export function MetricCard({ label, value, unit, status = "neutral", tooltip }: 
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 cursor-help" />
+              <HelpCircle className="h-4 w-4 text-white/50 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-[13px]">
               {tooltip}
