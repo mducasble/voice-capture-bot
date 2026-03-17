@@ -327,89 +327,101 @@ export default function AuditAudioDetail() {
           ))}
         </div>
       </div>
-      {/* BLOCO C — Tracks with per-track metrics */}
+      {/* BLOCO C — Tracks with per-track player & metrics */}
       {siblings.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-7 mb-6">
-          <h2 className="text-[20px] font-bold text-[hsl(var(--foreground))] mb-5">
-            {siblings.length > 1 ? "Trilhas da Sessão" : "Métricas de Qualidade"}
+        <div className="space-y-6 mb-6">
+          <h2 className="text-[20px] font-bold text-[hsl(var(--foreground))]">
+            {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
           </h2>
-          <div className="space-y-5">
-            {siblings.map((sib) => {
-              const isCurrentRec = sib.id === rec.id;
-              const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
-              const sibMeta = sib.metadata || {};
-              const sibTier = typeof sibMeta.quality_tier === "string" ? sibMeta.quality_tier.toUpperCase() : undefined;
-              const sibMetrics = [
-                { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? sibMeta.snr_db },
-                { key: "sigmos_ovrl", label: "SigMOS", val: sibMeta.sigmos_ovrl },
-                { key: "srmr", label: "SRMR", val: sibMeta.srmr },
-                { key: "rms_dbfs", label: "RMS", unit: "dBFS", val: sibMeta.rms_dbfs },
-                { key: "wvmos", label: "WVMOS", val: sibMeta.wvmos },
-                { key: "vqscore", label: "VQScore", val: sibMeta.vqscore },
-              ].filter((m) => m.val !== null && m.val !== undefined);
+          {siblings.map((sib) => {
+            const isCurrentRec = sib.id === rec.id;
+            const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
+            const sibMeta = sib.metadata || {};
+            const sibTier = typeof sibMeta.quality_tier === "string" ? sibMeta.quality_tier.toUpperCase() : undefined;
+            const sibMetrics = [
+              { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? sibMeta.snr_db },
+              { key: "sigmos_ovrl", label: "SigMOS Overall", val: sibMeta.sigmos_ovrl },
+              { key: "srmr", label: "SRMR", val: sibMeta.srmr },
+              { key: "rms_dbfs", label: "RMS Level", unit: "dBFS", val: sibMeta.rms_dbfs },
+              { key: "wvmos", label: "WVMOS", val: sibMeta.wvmos },
+              { key: "vqscore", label: "VQScore", val: sibMeta.vqscore },
+              { key: "sigmos_reverb", label: "SigMOS Reverb", val: sibMeta.sigmos_reverb },
+              { key: "sigmos_disc", label: "SigMOS Disc", val: sibMeta.sigmos_disc },
+            ].filter((m) => m.val !== null && m.val !== undefined);
 
-              return (
-                <div
-                  key={sib.id}
-                  className={cn(
-                    "rounded-xl border p-5 transition-all",
-                    isCurrentRec
-                      ? "border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/5"
-                      : "border-[hsl(var(--border))]"
-                  )}
-                >
-                  {/* Track header */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-[hsl(var(--muted))] flex items-center justify-center shrink-0">
-                      <Headphones className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[15px] font-semibold text-[hsl(var(--foreground))] truncate">
-                          {sib.recording_type === "mixed" ? "Mixed" :
-                           sib.recording_type === "individual" ? (sib.discord_username || "Speaker") :
-                           sib.recording_type || sib.filename}
-                          {isCurrentRec && <span className="text-[hsl(var(--primary))] ml-2">(atual)</span>}
-                        </p>
-                        {sibTier && (
-                          <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md", tierColors[sibTier] || "bg-gray-600 text-white")}>
-                            {sibTier}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[13px] text-[hsl(var(--muted-foreground))]">
-                        {formatTime(sib.duration_seconds || 0)}
-                      </p>
-                    </div>
-                    {sibUrl && !isCurrentRec && (
-                      <button
-                        onClick={() => navigate(`/audit/audio/validation/${campaignId}/${sib.id}`)}
-                        className="text-[14px] font-medium text-[hsl(var(--primary))] hover:underline shrink-0"
-                      >
-                        Abrir
-                      </button>
-                    )}
+            return (
+              <div
+                key={sib.id}
+                className={cn(
+                  "bg-white rounded-2xl border p-6 transition-all",
+                  isCurrentRec
+                    ? "border-[hsl(var(--primary))]/40 ring-2 ring-[hsl(var(--primary))]/20"
+                    : "border-[hsl(var(--border))]"
+                )}
+              >
+                {/* Track header */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-[hsl(var(--muted))] flex items-center justify-center shrink-0">
+                    <Headphones className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
                   </div>
-
-                  {/* Per-track metrics */}
-                  {sibMetrics.length > 0 && (
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                      {sibMetrics.map((m) => (
-                        <MetricCard
-                          key={m.key}
-                          label={m.label}
-                          value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
-                          unit={m.unit}
-                          status={getMetricStatus(m.key, m.val)}
-                          tooltip={metricTooltips[m.key]}
-                        />
-                      ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[15px] font-semibold text-[hsl(var(--foreground))] truncate">
+                        {sib.recording_type === "mixed" ? "Mixed" :
+                         sib.recording_type === "individual" ? (sib.discord_username || "Speaker") :
+                         sib.recording_type || sib.filename}
+                        {isCurrentRec && <span className="text-[hsl(var(--primary))] ml-2">(atual)</span>}
+                      </p>
+                      {sibTier && (
+                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md uppercase", tierColors[sibTier] || "bg-gray-600 text-white")}>
+                          {sibTier} — {tierLabels[sibTier] || sibTier}
+                        </span>
+                      )}
                     </div>
+                    <p className="text-[13px] text-[hsl(var(--muted-foreground))]">
+                      {formatTime(sib.duration_seconds || 0)}
+                    </p>
+                  </div>
+                  {sibUrl && !isCurrentRec && (
+                    <button
+                      onClick={() => navigate(`/audit/audio/validation/${campaignId}/${sib.id}`)}
+                      className="text-[14px] font-medium text-[hsl(var(--primary))] hover:underline shrink-0"
+                    >
+                      Abrir
+                    </button>
                   )}
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Inline audio player */}
+                {sibUrl && (
+                  <div className="mb-4">
+                    <audio
+                      controls
+                      src={sibUrl}
+                      className="w-full h-10 rounded-lg"
+                      preload="none"
+                    />
+                  </div>
+                )}
+
+                {/* Per-track metrics */}
+                {sibMetrics.length > 0 && (
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                    {sibMetrics.map((m) => (
+                      <MetricCard
+                        key={m.key}
+                        label={m.label}
+                        value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
+                        unit={m.unit}
+                        status={getMetricStatus(m.key, m.val)}
+                        tooltip={metricTooltips[m.key]}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
