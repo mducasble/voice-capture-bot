@@ -110,27 +110,32 @@ export default function AuditAudioDetail() {
 
     let cancelled = false;
 
-    if (rec.session_id && rec.campaign_id) {
-      supabase
-        .from("voice_recordings")
-        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
-        .eq("session_id", rec.session_id)
-        .eq("campaign_id", rec.campaign_id)
-        .order("recording_type")
-        .then(({ data, error }) => {
+    const loadSiblings = async () => {
+      if (rec.session_id && rec.campaign_id) {
+        try {
+          const { data, error } = await supabase
+            .from("voice_recordings")
+            .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+            .eq("session_id", rec.session_id)
+            .eq("campaign_id", rec.campaign_id)
+            .order("recording_type");
+
           if (cancelled) return;
           if (error || !data?.length) {
             setSiblings([rec]);
             return;
           }
+
           setSiblings(data as any[]);
-        })
-        .catch(() => {
+        } catch {
           if (!cancelled) setSiblings([rec]);
-        });
-    } else {
-      setSiblings([rec]);
-    }
+        }
+      } else {
+        setSiblings([rec]);
+      }
+    };
+
+    void loadSiblings();
 
     return () => {
       cancelled = true;
