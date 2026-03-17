@@ -1627,6 +1627,45 @@ export type Database = {
           },
         ]
       }
+      infrastructure_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          job_type: string
+          notes: string | null
+          provider: string
+          provider_api_key: string | null
+          provider_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          job_type: string
+          notes?: string | null
+          provider?: string
+          provider_api_key?: string | null
+          provider_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          job_type?: string
+          notes?: string | null
+          provider?: string
+          provider_api_key?: string | null
+          provider_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       instruction_templates: {
         Row: {
           created_at: string
