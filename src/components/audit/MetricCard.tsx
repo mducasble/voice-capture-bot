@@ -28,7 +28,7 @@ export function MetricCard({ label, value, unit, status = "neutral", tooltip }: 
   return (
     <div className={cn("rounded-xl border p-5 transition-all", statusStyles[status])}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[13px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+        <span className="text-[13px] font-semibold uppercase tracking-wide text-white/70">
           {label}
         </span>
         {tooltip && (
