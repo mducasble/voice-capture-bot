@@ -59,6 +59,14 @@ const AuditSettings = lazy(() => import("./pages/audit/AuditSettings"));
 const AuditHistory = lazy(() => import("./pages/audit/AuditHistory"));
 const AuditCampaigns = lazy(() => import("./pages/audit/AuditCampaigns"));
 
+// Data pages
+const DataLogin = lazy(() => import("./pages/data/DataLogin"));
+const DataLayout = lazy(() => import("./components/data/DataLayout"));
+const DataHome = lazy(() => import("./pages/data/DataHome"));
+const DataCampaignSelect = lazy(() => import("./pages/data/DataCampaignSelect"));
+const DataAudioTask = lazy(() => import("./pages/data/DataAudioTask"));
+const DataProfile = lazy(() => import("./pages/data/DataProfile"));
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -147,6 +155,15 @@ const App = () => (
                 <Route path="search" element={<AuditSearch />} />
                 <Route path="history" element={<AuditHistory />} />
                 <Route path="settings" element={<AuditSettings />} />
+              </Route>
+
+              {/* Data contributor routes */}
+              <Route path="/data/login" element={<DataLogin />} />
+              <Route path="/data" element={<DataLayout />}>
+                <Route index element={<DataHome />} />
+                <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
+                <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
+                <Route path="profile" element={<DataProfile />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
