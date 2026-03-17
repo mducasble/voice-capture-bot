@@ -42,7 +42,7 @@ export function MetricCard({ label, value, unit, status = "neutral", tooltip }: 
           </Tooltip>
         )}
       </div>
-      <div className={cn("text-[24px] font-bold tabular-nums", statusText[status])}>
+      <div className={cn("text-[22px] font-bold tabular-nums", statusText[status])}>
         {value !== null && value !== undefined ? value : "—"}
         {unit && <span className="text-[14px] font-medium ml-1 text-[hsl(var(--muted-foreground))]">{unit}</span>}
       </div>
