@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/audit/StatusBadge";
 import { MetricCard } from "@/components/audit/MetricCard";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
 import {
-  Play, Pause, SkipForward, RotateCcw, Volume2, Loader2,
+  SkipForward, Loader2,
   ChevronRight, CheckCircle2, XCircle, Bookmark, RefreshCw,
   Sparkles, Headphones, User, Clock, Globe, Mic2,
 } from "lucide-react";
