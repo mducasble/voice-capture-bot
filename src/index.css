@@ -122,6 +122,29 @@
     --sidebar-ring: 221 83% 53%;
   }
 
+  /* Data contributor panel — dark glassmorphism */
+  .data-theme {
+    --background: 230 25% 8%;
+    --foreground: 0 0% 100%;
+    --card: 230 20% 12%;
+    --card-foreground: 0 0% 100%;
+    --popover: 230 20% 14%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 250 90% 68%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 15% 16%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 230 15% 16%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 160 70% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 15% 18%;
+    --input: 230 15% 18%;
+    --ring: 250 90% 68%;
+  }
+
   /* Floating panels on black canvas */
   .admin-theme .admin-panel {
     background: hsl(240 6% 10%);
