@@ -40,6 +40,7 @@ export default function AuditAudioDetail() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [campaignName, setCampaignName] = useState("");
+  const [queuedJobs, setQueuedJobs] = useState<Record<string, "analyze" | "enhance" | "both">>({});
 
   useEffect(() => {
     if (!recordingId) return;
