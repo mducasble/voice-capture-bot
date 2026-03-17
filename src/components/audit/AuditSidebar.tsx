@@ -2,6 +2,7 @@ import {
   Home, Headphones, Video, Image, FileText, FolderOpen,
   Search, Clock, Settings,
 } from "lucide-react";
+import kgenLogo from "@/assets/kgen-logo-green.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
