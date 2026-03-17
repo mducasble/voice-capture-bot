@@ -58,11 +58,11 @@ export function AuditSidebar() {
         {!collapsed && (
           <div className="px-5 pb-4 mb-2 border-b border-[hsl(var(--border))]">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-[hsl(var(--primary))] flex items-center justify-center">
-                <Headphones className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 rounded-xl bg-[hsl(var(--foreground))] flex items-center justify-center overflow-hidden">
+                <img src={kgenLogo} alt="KGeN" className="h-7 w-7 object-contain" />
               </div>
               <div>
-                <p className="text-[15px] font-bold text-[hsl(var(--foreground))]">Auditoria</p>
+                <p className="text-[15px] font-bold text-[hsl(var(--foreground))]">KGeN Auditoria</p>
                 <p className="text-[12px] text-[hsl(var(--muted-foreground))]">Data Labelling</p>
               </div>
             </div>

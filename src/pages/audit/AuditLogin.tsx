@@ -83,8 +83,8 @@ export default function AuditLogin() {
       <div className="w-full max-w-[440px]">
         {/* Branding */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-[hsl(var(--primary))] shadow-lg mb-5">
-            <Headphones className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-[hsl(var(--foreground))] shadow-lg mb-5 overflow-hidden">
+            <img src={kgenLogo} alt="KGeN" className="h-10 w-10 object-contain" />
           </div>
           <h1 className="text-[28px] font-bold text-[hsl(var(--foreground))] tracking-tight">
             Painel de Auditoria
