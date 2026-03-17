@@ -5,7 +5,8 @@ import { lovable } from "@/integrations/lovable/index";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Headphones, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
+import kgenLogo from "@/assets/kgen-logo-green.png";
 import { toast } from "sonner";
 
 export default function AuditLogin() {
