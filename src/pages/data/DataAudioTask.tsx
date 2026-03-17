@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
-  Headphones, SkipForward,
+  Headphones, SkipForward, RefreshCw, Sparkles, Mic2, User, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -30,11 +30,67 @@ interface Recording {
 
 type ActionEvent = { action: string; timestamp: string; detail?: string };
 
+const tierColors: Record<string, string> = {
+  PQ: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  HQ: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  MQ: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  LQ: "bg-red-500/20 text-red-400 border-red-500/30",
+};
+
+const tierLabels: Record<string, string> = {
+  PQ: "Premium Quality", HQ: "High Quality", MQ: "Medium Quality", LQ: "Low Quality",
+};
+
+const metricTooltips: Record<string, string> = {
+  snr_db: "Relação sinal-ruído. Quanto maior, menos ruído de fundo.",
+  sigmos_ovrl: "Qualidade perceptual geral do áudio (escala 1-5).",
+  srmr: "Taxa de modulação do reverberação.",
+  rms_dbfs: "Nível médio de volume em decibéis.",
+  wvmos: "Qualidade de fala estimada (escala 1-5).",
+  vqscore: "Pontuação de qualidade vetorial (0-1).",
+  sigmos_reverb: "Componente de reverberação na análise SigMOS.",
+  sigmos_disc: "Componente de distorção/descontinuidade.",
+};
+
+function deriveTier(sib: any): string | undefined {
+  const meta = sib.metadata || {};
+  const stored = typeof meta.quality_tier === "string" ? meta.quality_tier.toUpperCase() : undefined;
+  if (stored) return stored;
+  const snr = sib.snr_db ?? meta.snr_db;
+  const mos = meta.sigmos_ovrl;
+  if (snr == null && mos == null) return undefined;
+  if ((snr != null && snr >= 30) || (mos != null && mos >= 4.0)) return "PQ";
+  if ((snr != null && snr >= 25) || (mos != null && mos >= 3.5)) return "HQ";
+  if ((snr != null && snr >= 18) || (mos != null && mos >= 2.5)) return "MQ";
+  return "LQ";
+}
+
+function getTrackMetrics(sib: any) {
+  const meta = sib.metadata || {};
+  return [
+    { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? meta.snr_db },
+    { key: "sigmos_ovrl", label: "SigMOS Overall", val: meta.sigmos_ovrl },
+    { key: "srmr", label: "SRMR", val: meta.srmr },
+    { key: "rms_dbfs", label: "RMS Level", unit: "dBFS", val: meta.rms_dbfs },
+    { key: "wvmos", label: "WVMOS", val: meta.wvmos },
+    { key: "vqscore", label: "VQScore", val: meta.vqscore },
+    { key: "sigmos_reverb", label: "SigMOS Reverb", val: meta.sigmos_reverb },
+    { key: "sigmos_disc", label: "SigMOS Disc", val: meta.sigmos_disc },
+  ].filter((m) => m.val != null);
+}
+
+const formatTime = (s: number) => {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+};
+
 export default function DataAudioTask() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [rec, setRec] = useState<Recording | null>(null);
+  const [siblings, setSiblings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [campaignName, setCampaignName] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -44,6 +100,7 @@ export default function DataAudioTask() {
   const [elapsed, setElapsed] = useState(0);
   const [taskLogId, setTaskLogId] = useState<string | null>(null);
   const [taskSetId, setTaskSetId] = useState<string | null>(null);
+  const [queuedJobs, setQueuedJobs] = useState<Record<string, "analyze" | "enhance" | "both">>({});
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -69,12 +126,29 @@ export default function DataAudioTask() {
       });
   }, [campaignId]);
 
+  // Load siblings when rec changes
+  useEffect(() => {
+    if (!rec) { setSiblings([]); return; }
+    if (rec.session_id && rec.campaign_id) {
+      supabase
+        .from("voice_recordings")
+        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+        .eq("session_id", rec.session_id)
+        .eq("campaign_id", rec.campaign_id)
+        .order("recording_type")
+        .then(({ data }) => setSiblings(data?.length ? (data as any[]) : [rec]));
+    } else {
+      setSiblings([rec]);
+    }
+  }, [rec]);
+
   const loadNext = useCallback(async () => {
     if (!campaignId) return;
     setLoading(true);
     setElapsed(0);
     actionsLog.current = [];
     setTaskLogId(null);
+    setQueuedJobs({});
     if (timerRef.current) clearInterval(timerRef.current);
 
     const { data } = await supabase
@@ -89,7 +163,6 @@ export default function DataAudioTask() {
     setRec(data[0] as Recording);
     setLoading(false);
 
-    // Create task log entry
     if (user && taskSetId) {
       const { data: log } = await supabase.from("validation_task_log").insert({
         user_id: user.id,
@@ -113,10 +186,7 @@ export default function DataAudioTask() {
     timerRef.current = setInterval(() => {
       setElapsed((prev) => {
         const next = prev + 1;
-        if (next >= timeLimit) {
-          handleTimeout();
-          return next;
-        }
+        if (next >= timeLimit) { handleTimeout(); return next; }
         return next;
       });
     }, 1000);
@@ -131,16 +201,13 @@ export default function DataAudioTask() {
   const finishTask = async (status: "completed" | "timeout", result?: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!taskLogId || !user) return;
-
     await supabase.from("validation_task_log").update({
-      status,
-      result: result || null,
+      status, result: result || null,
       actions_log: actionsLog.current as any,
       time_spent_seconds: elapsed,
       completed_at: new Date().toISOString(),
     }).eq("id", taskLogId);
 
-    // Accumulate review time on profile
     const currentTotal = await supabase.from("profiles").select("total_review_seconds").eq("id", user.id).maybeSingle();
     const prev = (currentTotal.data as any)?.total_review_seconds || 0;
     await supabase.from("profiles").update({ total_review_seconds: prev + elapsed }).eq("id", user.id);
@@ -186,6 +253,22 @@ export default function DataAudioTask() {
     loadNext();
   };
 
+  const handleReanalyze = async (sibId: string) => {
+    logAction("reanalyze", sibId);
+    const { error } = await supabase.from("analysis_queue").insert({ recording_id: sibId, job_type: "analyze", priority: 5 });
+    if (error) { toast.error("Erro ao enfileirar reanálise"); return; }
+    toast.success("Reanálise enfileirada!");
+    setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "enhance" ? "both" : "analyze" }));
+  };
+
+  const handleEnhance = async (sibId: string) => {
+    logAction("enhance", sibId);
+    const { error } = await supabase.from("analysis_queue").insert({ recording_id: sibId, job_type: "enhance", priority: 10 });
+    if (error) { toast.error("Erro ao enfileirar enhance"); return; }
+    toast.success("Enhance enfileirado!");
+    setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "analyze" ? "both" : "enhance" }));
+  };
+
   const remaining = Math.max(0, timeLimit - elapsed);
   const timerMinutes = Math.floor(remaining / 60);
   const timerSeconds = remaining % 60;
@@ -195,7 +278,7 @@ export default function DataAudioTask() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
+        <Loader2 className="h-8 w-8 animate-spin text-white/60" />
       </div>
     );
   }
@@ -215,28 +298,10 @@ export default function DataAudioTask() {
   }
 
   const meta = rec.metadata || {};
-  const audioUrl = meta.enhanced_file_url || rec.file_url;
-  const tier = typeof meta.quality_tier === "string" ? meta.quality_tier.toUpperCase() : undefined;
-  const tierColors: Record<string, string> = {
-    PQ: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    HQ: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    MQ: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-    LQ: "bg-red-500/20 text-red-400 border-red-500/30",
-  };
-
-  const metricKeys = [
-    { key: "snr_db", label: "SNR", unit: "dB", val: rec.snr_db ?? meta.snr_db },
-    { key: "sigmos_ovrl", label: "SigMOS", val: meta.sigmos_ovrl },
-    { key: "srmr", label: "SRMR", val: meta.srmr },
-    { key: "rms_dbfs", label: "RMS", unit: "dBFS", val: meta.rms_dbfs },
-    { key: "wvmos", label: "WVMOS", val: meta.wvmos },
-    { key: "vqscore", label: "VQScore", val: meta.vqscore },
-    { key: "sigmos_reverb", label: "Reverb", val: meta.sigmos_reverb },
-    { key: "sigmos_disc", label: "Disc", val: meta.sigmos_disc },
-  ].filter((m) => m.val != null);
+  const mainTier = deriveTier(rec);
 
   return (
-    <div className="max-w-3xl mx-auto pb-32">
+    <div className="max-w-4xl mx-auto pb-32">
       {/* Back + Campaign */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate(`/data/audio/campaigns`)} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
@@ -259,64 +324,173 @@ export default function DataAudioTask() {
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
           <div
-            className={cn("h-full rounded-full transition-all duration-1000", isUrgent ? "bg-red-500" : "bg-[hsl(var(--primary))]")}
+            className={cn("h-full rounded-full transition-all duration-1000", isUrgent ? "bg-red-500" : "bg-white/30")}
             style={{ width: `${Math.min(100, timerPercent)}%` }}
           />
         </div>
       </div>
 
-      {/* Audio card */}
+      {/* Identification card */}
       <div className="data-glass-card rounded-2xl p-6 mb-6">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="h-12 w-12 rounded-xl bg-[hsl(var(--primary))]/10 flex items-center justify-center">
-            <Headphones className="h-6 w-6 text-[hsl(var(--primary))]" />
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h1 className="text-[22px] font-bold text-white mb-1">
+              {rec.discord_username || rec.filename}
+            </h1>
+            <p className="text-[14px] text-white/40">{campaignName}</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-[18px] font-bold text-white truncate">{rec.discord_username || rec.filename}</h2>
-            <p className="text-[13px] text-white/40">
-              {rec.duration_seconds ? `${Math.floor(rec.duration_seconds / 60)}:${String(Math.floor(rec.duration_seconds % 60)).padStart(2, "0")}` : "—"}
-              {rec.recording_type && ` · ${rec.recording_type}`}
-            </p>
-          </div>
-          {tier && (
-            <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[tier] || "bg-white/10 text-white/60 border-white/10")}>
-              {tier}
+          {mainTier && (
+            <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
+              {mainTier} — {tierLabels[mainTier] || mainTier}
             </span>
           )}
         </div>
 
-        {/* Player */}
-        {audioUrl && (
-          <audio
-            controls
-            src={audioUrl}
-            className="w-full h-12 rounded-xl mb-5"
-            preload="metadata"
-            onPlay={() => logAction("play")}
-            onPause={() => logAction("pause")}
-            onSeeked={() => logAction("seek")}
-          />
-        )}
-
-        {/* Metrics */}
-        {metricKeys.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {metricKeys.map((m) => (
-              <MetricCard
-                key={m.key}
-                label={m.label}
-                value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
-                unit={m.unit}
-                tier={tier}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { icon: Mic2, label: "Sessão", value: rec.session_id?.slice(0, 8) || "—" },
+            { icon: Clock, label: "Duração", value: formatTime(rec.duration_seconds || 0) },
+            { icon: Globe, label: "Data", value: new Date(rec.created_at).toLocaleDateString("pt-BR") },
+            { icon: User, label: "Tipo", value: rec.recording_type || "—" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+                <item.icon className="h-5 w-5 text-white/40" />
+              </div>
+              <div>
+                <p className="text-[11px] text-white/30 uppercase font-semibold tracking-wider">{item.label}</p>
+                <p className="text-[15px] font-semibold text-white/90">{item.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
+      {/* All tracks */}
+      {siblings.length > 0 && (
+        <div className="space-y-4 mb-6">
+          <h2 className="text-[18px] font-bold text-white/80">
+            {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
+          </h2>
+          {siblings.map((sib) => {
+            const isMain = sib.id === rec.id;
+            const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
+            const sibTier = deriveTier(sib);
+            const sibMetrics = getTrackMetrics(sib);
+            const jobState = queuedJobs[sib.id];
+            const analyzeQueued = jobState === "analyze" || jobState === "both";
+            const enhanceQueued = jobState === "enhance" || jobState === "both";
+
+            return (
+              <div
+                key={sib.id}
+                className={cn(
+                  "data-glass-card rounded-2xl p-5 transition-all",
+                  isMain && "ring-1 ring-white/[0.15]"
+                )}
+              >
+                {/* Track header */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                    <Headphones className="h-5 w-5 text-white/40" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[15px] font-semibold text-white truncate">
+                        {sib.recording_type === "mixed" ? "Mixed" :
+                         sib.recording_type === "individual" ? (sib.discord_username || "Speaker") :
+                         sib.recording_type || sib.filename}
+                        {isMain && <span className="text-white/30 ml-2 text-[13px]">(principal)</span>}
+                      </p>
+                      {sibTier && (
+                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md border", tierColors[sibTier] || "bg-white/10 text-white/50 border-white/10")}>
+                          {sibTier}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[13px] text-white/30">
+                      {formatTime(sib.duration_seconds || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Player */}
+                {sibUrl && (
+                  <div className="mb-4">
+                    <audio
+                      controls
+                      src={sibUrl}
+                      className="w-full h-10 rounded-lg"
+                      preload="none"
+                      onPlay={() => logAction("play", sib.recording_type || sib.id)}
+                      onPause={() => logAction("pause", sib.recording_type || sib.id)}
+                      onSeeked={() => logAction("seek", sib.recording_type || sib.id)}
+                    />
+                  </div>
+                )}
+
+                {/* Per-track metrics */}
+                {sibMetrics.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    {sibMetrics.map((m) => (
+                      <MetricCard
+                        key={m.key}
+                        label={m.label}
+                        value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
+                        unit={m.unit}
+                        tier={sibTier}
+                        tooltip={metricTooltips[m.key]}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Per-track actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    disabled={analyzeQueued}
+                    onClick={() => handleReanalyze(sib.id)}
+                    className={cn(
+                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
+                      analyzeQueued
+                        ? "bg-emerald-900/40 text-emerald-400/60 cursor-default"
+                        : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
+                    )}
+                  >
+                    {analyzeQueued ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+                    ) : (
+                      <><RefreshCw className="h-3.5 w-3.5" /> Reanalisar</>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={enhanceQueued}
+                    onClick={() => handleEnhance(sib.id)}
+                    className={cn(
+                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
+                      enhanceQueued
+                        ? "bg-blue-900/40 text-blue-400/60 cursor-default"
+                        : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20"
+                    )}
+                  >
+                    {enhanceQueued ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+                    ) : (
+                      <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Decision bar - fixed bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-2xl bg-black/60 border-t border-white/[0.06] p-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
+      <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-2xl bg-black/70 border-t border-white/[0.06] p-4">
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Button onClick={handleApprove} disabled={saving}
             className="flex-1 h-14 text-[16px] font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20">
             <CheckCircle2 className="h-5 w-5 mr-2" /> Aprovar
