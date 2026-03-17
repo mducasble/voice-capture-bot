@@ -11,17 +11,17 @@ interface MetricCardProps {
 }
 
 const statusStyles = {
-  good: "border-emerald-200 bg-emerald-50",
-  fair: "border-amber-200 bg-amber-50",
-  bad: "border-red-200 bg-red-50",
-  neutral: "border-[hsl(var(--border))] bg-white",
+  good: "border-emerald-700 bg-emerald-600",
+  fair: "border-amber-600 bg-amber-500",
+  bad: "border-red-700 bg-red-600",
+  neutral: "border-gray-600 bg-gray-500",
 };
 
 const statusText = {
-  good: "text-emerald-700",
-  fair: "text-amber-700",
-  bad: "text-red-700",
-  neutral: "text-[hsl(var(--foreground))]",
+  good: "text-white",
+  fair: "text-white",
+  bad: "text-white",
+  neutral: "text-white",
 };
 
 export function MetricCard({ label, value, unit, status = "neutral", tooltip }: MetricCardProps) {
