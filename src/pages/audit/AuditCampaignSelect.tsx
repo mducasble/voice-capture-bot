@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, FolderOpen, ChevronRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
