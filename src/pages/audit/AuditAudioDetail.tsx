@@ -8,7 +8,7 @@ import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
 import {
   SkipForward, Loader2,
   ChevronRight, CheckCircle2, XCircle, Bookmark, RefreshCw,
-  Sparkles, Headphones, User, Clock, Globe, Mic2,
+  Sparkles, Headphones, User, Clock, Globe, Mic2, Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -151,6 +151,19 @@ export default function AuditAudioDetail() {
     if (error) { toast.error("Erro ao aprovar"); return; }
     toast.success("Áudio aprovado com sucesso!");
     setRec({ ...rec, quality_status: "approved" });
+  };
+
+  const handleReserve = async () => {
+    if (!rec) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("voice_recordings")
+      .update({ quality_status: "reserve" })
+      .eq("id", rec.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao marcar como reserva"); return; }
+    toast.success("Áudio marcado como Reserva");
+    setRec({ ...rec, quality_status: "reserve" });
   };
 
   const handleReject = async (reasons: string[], note: string) => {
@@ -508,6 +521,14 @@ export default function AuditAudioDetail() {
               >
                 <Bookmark className={cn("h-5 w-5", meta.flagged_for_review && "fill-current")} />
                 {meta.flagged_for_review ? "Flagged" : "Flag p/ revisão"}
+              </Button>
+              <Button
+                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-sky-600 hover:bg-sky-700 text-white"
+                onClick={handleReserve}
+                disabled={saving}
+              >
+                <Archive className="h-5 w-5" />
+                Reserva
               </Button>
               <Button
                 className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-red-600 hover:bg-red-700 text-white"

@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Archive } from "lucide-react";
 
-type Status = "pending" | "approved" | "rejected" | "alert" | string;
+type Status = "pending" | "approved" | "rejected" | "reserve" | "alert" | string;
 
 const config: Record<string, { bg: string; text: string; icon: typeof Clock; label: string }> = {
   pending: { bg: "bg-amber-500", text: "text-white", icon: Clock, label: "Pendente" },
   approved: { bg: "bg-emerald-600", text: "text-white", icon: CheckCircle2, label: "Aprovado" },
   rejected: { bg: "bg-red-600", text: "text-white", icon: XCircle, label: "Reprovado" },
+  reserve: { bg: "bg-sky-600", text: "text-white", icon: Archive, label: "Reserva" },
   alert: { bg: "bg-orange-500", text: "text-white", icon: AlertTriangle, label: "Alerta" },
 };
 
