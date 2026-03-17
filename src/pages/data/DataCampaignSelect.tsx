@@ -51,7 +51,7 @@ export default function DataCampaignSelect() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar campanha..."
-          className="w-full h-14 pl-12 pr-4 text-[16px] rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/25 backdrop-blur-xl focus:outline-none focus:border-[hsl(var(--primary))]/40 focus:ring-1 focus:ring-[hsl(var(--primary))]/20 transition-all"
+          className="w-full h-14 pl-12 pr-4 text-[16px] rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/25 backdrop-blur-xl focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all"
         />
       </div>
 
