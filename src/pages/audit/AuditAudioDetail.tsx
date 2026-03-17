@@ -512,11 +512,17 @@ export default function AuditAudioDetail() {
             </div>
             <div className="flex items-center gap-3">
               <Button
-                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-slate-600 hover:bg-slate-700 text-white"
-                onClick={() => toast.info("Salvo para revisão posterior")}
+                className={cn(
+                  "h-13 px-6 text-[15px] rounded-xl gap-2 text-white",
+                  meta.flagged_for_review
+                    ? "bg-amber-500 hover:bg-amber-600"
+                    : "bg-slate-600 hover:bg-slate-700"
+                )}
+                onClick={handleToggleFlag}
+                disabled={saving}
               >
-                <Bookmark className="h-5 w-5" />
-                Salvar
+                <Bookmark className={cn("h-5 w-5", meta.flagged_for_review && "fill-current")} />
+                {meta.flagged_for_review ? "Flagged" : "Flag p/ revisão"}
               </Button>
               <Button
                 className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-red-600 hover:bg-red-700 text-white"
