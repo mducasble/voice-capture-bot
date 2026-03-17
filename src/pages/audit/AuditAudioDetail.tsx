@@ -190,6 +190,24 @@ export default function AuditAudioDetail() {
     toast.success("Enhance enfileirado!");
   };
 
+  const handleToggleFlag = async () => {
+    if (!rec) return;
+    setSaving(true);
+    const newMeta = { ...rec.metadata, flagged_for_review: !rec.metadata?.flagged_for_review };
+    const { error } = await supabase
+      .from("voice_recordings")
+      .update({ metadata: newMeta })
+      .eq("id", rec.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao salvar flag"); return; }
+    if (newMeta.flagged_for_review) {
+      toast.success("Marcado para revisão posterior");
+    } else {
+      toast.info("Flag removida");
+    }
+    setRec({ ...rec, metadata: newMeta });
+  };
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
