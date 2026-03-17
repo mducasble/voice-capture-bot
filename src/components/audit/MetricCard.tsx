@@ -11,30 +11,30 @@ interface MetricCardProps {
 }
 
 const statusStyles = {
-  good: "border-emerald-200 bg-emerald-50",
-  fair: "border-amber-200 bg-amber-50",
-  bad: "border-red-200 bg-red-50",
-  neutral: "border-[hsl(var(--border))] bg-white",
+  good: "border-emerald-700 bg-emerald-600",
+  fair: "border-amber-600 bg-amber-500",
+  bad: "border-red-700 bg-red-600",
+  neutral: "border-gray-600 bg-gray-500",
 };
 
 const statusText = {
-  good: "text-emerald-700",
-  fair: "text-amber-700",
-  bad: "text-red-700",
-  neutral: "text-[hsl(var(--foreground))]",
+  good: "text-white",
+  fair: "text-white",
+  bad: "text-white",
+  neutral: "text-white",
 };
 
 export function MetricCard({ label, value, unit, status = "neutral", tooltip }: MetricCardProps) {
   return (
     <div className={cn("rounded-xl border p-5 transition-all", statusStyles[status])}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[13px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+        <span className="text-[13px] font-semibold uppercase tracking-wide text-white/70">
           {label}
         </span>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 cursor-help" />
+              <HelpCircle className="h-4 w-4 text-white/50 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-[13px]">
               {tooltip}
@@ -44,7 +44,7 @@ export function MetricCard({ label, value, unit, status = "neutral", tooltip }: 
       </div>
       <div className={cn("text-[22px] font-bold tabular-nums", statusText[status])}>
         {value !== null && value !== undefined ? value : "—"}
-        {unit && <span className="text-[14px] font-medium ml-1 text-[hsl(var(--muted-foreground))]">{unit}</span>}
+        {unit && <span className="text-[14px] font-medium ml-1 text-white/60">{unit}</span>}
       </div>
     </div>
   );
