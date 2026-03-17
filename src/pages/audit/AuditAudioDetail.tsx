@@ -444,28 +444,6 @@ export default function AuditAudioDetail() {
         </div>
       )}
 
-      {/* BLOCO E — Technical Actions */}
-      <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-7 mb-6">
-        <h2 className="text-[20px] font-bold text-[hsl(var(--foreground))] mb-5">
-          Ações Técnicas
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={handleReanalyze}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <RefreshCw className="h-5 w-5" />
-            Reanalisar
-          </Button>
-          <Button
-            onClick={handleEnhance}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Sparkles className="h-5 w-5" />
-            Enhance
-          </Button>
-        </div>
-      </div>
 
       {/* BLOCO F — Decision Panel (sticky) */}
       <div className="fixed bottom-0 left-0 right-0 z-40">
