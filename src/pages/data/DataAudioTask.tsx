@@ -435,6 +435,7 @@ export default function DataAudioTask() {
                     {sibMetrics.map((m) => (
                       <MetricCard
                         key={m.key}
+                        metricKey={m.key}
                         label={m.label}
                         value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
                         unit={m.unit}
