@@ -68,7 +68,7 @@ export default function AuditAudioDetail() {
     if (!rec?.session_id || !rec.campaign_id) return;
     supabase
       .from("voice_recordings")
-      .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username")
+      .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
       .eq("session_id", rec.session_id)
       .eq("campaign_id", rec.campaign_id)
       .order("recording_type")
