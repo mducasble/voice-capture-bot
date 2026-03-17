@@ -58,6 +58,7 @@ export default function AuditLogin() {
     setGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/audit/login",
         extraParams: { prompt: "select_account" },
       });
       if (result.error) {
