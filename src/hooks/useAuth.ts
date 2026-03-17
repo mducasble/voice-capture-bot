@@ -11,13 +11,17 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
+    let resolved = false;
 
     const finishLoading = () => {
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        resolved = true;
+        setLoading(false);
+      }
     };
 
     const fallbackTimer = window.setTimeout(() => {
-      if (cancelled) return;
+      if (cancelled || resolved) return;
       setUser(null);
       setSession(null);
       setLoading(false);
