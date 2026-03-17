@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, FolderOpen, ChevronRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ interface CampaignRow {
 }
 
 export default function AuditCampaignSelect() {
-  const { process } = useParams<{ process: string }>();
+  const location = useLocation();
+  const process = location.pathname.includes("/transcription") ? "transcription" : "validation";
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
