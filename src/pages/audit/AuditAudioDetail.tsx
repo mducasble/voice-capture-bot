@@ -95,7 +95,13 @@ export default function AuditAudioDetail() {
 
   // Load siblings (same session)
   useEffect(() => {
-    if (!rec) return;
+    if (!rec) {
+      setSiblings([]);
+      return;
+    }
+
+    let cancelled = false;
+
     if (rec.session_id && rec.campaign_id) {
       supabase
         .from("voice_recordings")
@@ -103,12 +109,25 @@ export default function AuditAudioDetail() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type")
-        .then(({ data }) => setSiblings((data || []) as any[]));
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          if (error || !data?.length) {
+            setSiblings([rec]);
+            return;
+          }
+          setSiblings(data as any[]);
+        })
+        .catch(() => {
+          if (!cancelled) setSiblings([rec]);
+        });
     } else {
-      // No session — show current recording as sole track
       setSiblings([rec]);
     }
-  }, [rec?.session_id, rec?.campaign_id, rec?.id]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rec]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
