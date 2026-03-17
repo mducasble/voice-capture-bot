@@ -51,7 +51,7 @@ export default function DataCampaignSelect() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar campanha..."
-          className="w-full h-14 pl-12 pr-4 text-[16px] rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/25 backdrop-blur-xl focus:outline-none focus:border-[hsl(var(--primary))]/40 focus:ring-1 focus:ring-[hsl(var(--primary))]/20 transition-all"
+          className="w-full h-14 pl-12 pr-4 text-[16px] rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/25 backdrop-blur-xl focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all"
         />
       </div>
 
@@ -74,10 +74,10 @@ export default function DataCampaignSelect() {
               <button
                 key={c.id}
                 onClick={() => navigate(`/data/${mediaType}/task/${c.id}`)}
-                className="group w-full text-left p-5 md:p-6 rounded-2xl data-glass-card hover:bg-white/[0.06] hover:border-[hsl(var(--primary))]/30 transition-all flex items-center gap-5"
+                className="group w-full text-left p-5 md:p-6 rounded-2xl data-glass-card hover:bg-white/[0.08] hover:border-white/[0.15] transition-all flex items-center gap-5"
               >
-                <div className="h-12 w-12 rounded-xl bg-[hsl(var(--primary))]/10 flex items-center justify-center shrink-0">
-                  <FolderOpen className="h-6 w-6 text-[hsl(var(--primary))]" />
+                <div className="h-12 w-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                  <FolderOpen className="h-6 w-6 text-white/60" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-[17px] font-semibold text-white truncate">{c.name}</h3>

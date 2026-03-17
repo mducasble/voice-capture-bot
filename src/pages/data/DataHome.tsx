@@ -35,8 +35,8 @@ export default function DataHome() {
             className={`
               group relative flex flex-col items-center text-center p-8 md:p-10 rounded-3xl transition-all duration-300
               ${opt.ready
-                ? "data-glass-card hover:bg-white/[0.08] hover:border-[hsl(var(--primary))]/40 hover:shadow-lg hover:shadow-[hsl(var(--primary))]/10 hover:scale-[1.02] cursor-pointer"
-                : "data-glass-card opacity-40 cursor-not-allowed"
+                ? "data-glass-card hover:bg-white/[0.09] hover:border-white/[0.16] hover:shadow-lg hover:shadow-white/[0.03] hover:scale-[1.02] cursor-pointer"
+                : "data-glass-card opacity-30 cursor-not-allowed"
               }
             `}
           >
@@ -49,8 +49,8 @@ export default function DataHome() {
             <div className={`
               h-20 w-20 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300
               ${opt.ready
-                ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] group-hover:bg-[hsl(var(--primary))]/20 group-hover:shadow-lg group-hover:shadow-[hsl(var(--primary))]/20"
-                : "bg-white/[0.04] text-white/20"
+                ? "bg-white/[0.06] text-white/70 border border-white/[0.08] group-hover:bg-white/[0.12] group-hover:text-white group-hover:shadow-lg group-hover:shadow-white/[0.04]"
+                : "bg-white/[0.03] text-white/15"
               }
             `}>
               <opt.icon className="h-10 w-10" strokeWidth={1.5} />
