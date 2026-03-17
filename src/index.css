@@ -91,6 +91,37 @@
     --sidebar-ring: 265 75% 58%;
   }
 
+  /* Audit panel — light, accessible, enterprise */
+  .audit-theme {
+    --background: 220 14% 96%;
+    --foreground: 224 30% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 30% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 30% 14%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 30% 14%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 30% 14%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 9% 46%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 224 30% 14%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
   /* Floating panels on black canvas */
   .admin-theme .admin-panel {
     background: hsl(240 6% 10%);
