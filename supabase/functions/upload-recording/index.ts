@@ -541,28 +541,10 @@ serve(async (req) => {
       compressed_url: compressedPublicUrl
     });
 
-    // Trigger transcription using compressed URL if available
-    const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
-    const audioUrlForTranscription = compressedPublicUrl || wavPublicUrl;
-    
-    console.log(`Triggering transcription with ${compressedPublicUrl ? 'compressed' : 'original'} audio`);
-    
-    fetch(transcribeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      },
-      body: JSON.stringify({
-        recording_id: recordData.id,
-        audio_url: audioUrlForTranscription,
-        language: metadata.language || null
-      })
-    }).then(res => {
-      console.log(`Transcription triggered for ${recordData.id}, status: ${res.status}`);
-    }).catch(err => {
-      console.error(`Failed to trigger transcription for ${recordData.id}:`, err);
-    });
+    // DISABLED: Transcription is now on-demand only (cost optimization)
+    // const transcribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-audio`;
+    // const audioUrlForTranscription = compressedPublicUrl || wavPublicUrl;
+    console.log(`Transcription skipped for ${recordData.id} (on-demand only)`);
 
     return new Response(
       JSON.stringify({ 

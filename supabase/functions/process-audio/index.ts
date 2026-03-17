@@ -1032,8 +1032,8 @@ async function finalizeProcessing(
     throw updateError;
   }
 
-  // Start Gemini transcription with chunk-based processing (non-blocking)
-  transcribeChunksWithRetry(supabase, state.recording_id);
+  // DISABLED: Gemini transcription is now on-demand only (cost optimization)
+  // transcribeChunksWithRetry(supabase, state.recording_id);
 
   // Estimate MOS score using Lovable AI (non-blocking)
   estimateMOSScore(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
