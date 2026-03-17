@@ -454,7 +454,7 @@ export default function AuditAudioDetail() {
                           {isCurrentRec && <span className="text-[hsl(var(--primary))] ml-2">(atual)</span>}
                         </p>
                         {sibTier && (
-                          <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md", tierColors[sibTier] || "bg-gray-100 text-gray-600")}>
+                          <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md", tierColors[sibTier] || "bg-gray-600 text-white")}>
                             {sibTier}
                           </span>
                         )}
