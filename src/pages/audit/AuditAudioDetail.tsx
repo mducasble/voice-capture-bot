@@ -253,7 +253,7 @@ export default function AuditAudioDetail() {
 
   const meta = rec.metadata || {};
   const audioUrl = meta.enhanced_file_url || rec.file_url;
-  const tier = meta.quality_tier;
+  const tier = typeof meta.quality_tier === "string" ? meta.quality_tier.toUpperCase() : undefined;
 
   // Extract all metrics dynamically
   const metricKeys = [
