@@ -153,6 +153,19 @@ export default function AuditAudioDetail() {
     setRec({ ...rec, quality_status: "approved" });
   };
 
+  const handleReserve = async () => {
+    if (!rec) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("voice_recordings")
+      .update({ quality_status: "reserve" })
+      .eq("id", rec.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao marcar como reserva"); return; }
+    toast.success("Áudio marcado como Reserva");
+    setRec({ ...rec, quality_status: "reserve" });
+  };
+
   const handleReject = async (reasons: string[], note: string) => {
     if (!rec) return;
     setSaving(true);
