@@ -512,16 +512,14 @@ export default function AuditAudioDetail() {
             </div>
             <div className="flex items-center gap-3">
               <Button
-                variant="outline"
-                className="h-13 px-6 text-[15px] rounded-xl gap-2"
+                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-slate-600 hover:bg-slate-700 text-white"
                 onClick={() => toast.info("Salvo para revisão posterior")}
               >
                 <Bookmark className="h-5 w-5" />
                 Salvar
               </Button>
               <Button
-                variant="outline"
-                className="h-13 px-6 text-[15px] rounded-xl gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => setShowRejectModal(true)}
                 disabled={saving}
               >
@@ -537,8 +535,7 @@ export default function AuditAudioDetail() {
                 Aprovar
               </Button>
               <Button
-                variant="outline"
-                className="h-13 px-6 text-[15px] rounded-xl gap-2"
+                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => navigate(`/audit/audio/validation/${campaignId}`)}
               >
                 <SkipForward className="h-5 w-5" />
