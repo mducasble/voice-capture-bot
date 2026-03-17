@@ -410,34 +410,40 @@ export default function AuditAudioDetail() {
                     ))}
                   </div>
                 )}
+
+                {/* Per-track actions */}
+                <div className="flex items-center gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      toast.info("Reanálise enfileirada...");
+                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "analyze", priority: 5 });
+                      toast.success("Reanálise enfileirada!");
+                    }}
+                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Reanalisar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      toast.info("Enhance enfileirado...");
+                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "enhance", priority: 10 });
+                      toast.success("Enhance enfileirado!");
+                    }}
+                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Enhance
+                  </Button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* BLOCO E — Technical Actions */}
-      <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-7 mb-6">
-        <h2 className="text-[20px] font-bold text-[hsl(var(--foreground))] mb-5">
-          Ações Técnicas
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={handleReanalyze}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <RefreshCw className="h-5 w-5" />
-            Reanalisar
-          </Button>
-          <Button
-            onClick={handleEnhance}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Sparkles className="h-5 w-5" />
-            Enhance
-          </Button>
-        </div>
-      </div>
 
       {/* BLOCO F — Decision Panel (sticky) */}
       <div className="fixed bottom-0 left-0 right-0 z-40">
