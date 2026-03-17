@@ -32,8 +32,8 @@ export default function DataLayout() {
 
   if (loading) {
     return (
-      <div className="data-theme min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(230 25% 8%) 0%, hsl(260 20% 12%) 50%, hsl(220 25% 8%) 100%)" }}>
-        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
+      <div className="data-theme min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(220 4% 8%) 70%, hsl(0 0% 5%) 100%)" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-white/60" />
       </div>
     );
   }
