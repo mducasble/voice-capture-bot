@@ -36,7 +36,7 @@ export default function AuditAudioDetail() {
   const navigate = useNavigate();
   const [rec, setRec] = useState<Recording | null>(null);
   const [loading, setLoading] = useState(true);
-  const [siblings, setSiblings] = useState<Recording[]>([]);
+  const [siblings, setSiblings] = useState<any[]>([]);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
