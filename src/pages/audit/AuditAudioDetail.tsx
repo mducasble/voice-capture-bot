@@ -397,14 +397,14 @@ export default function AuditAudioDetail() {
 
                 {/* Per-track metrics */}
                 {sibMetrics.length > 0 && (
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                     {sibMetrics.map((m) => (
                       <MetricCard
                         key={m.key}
                         label={m.label}
                         value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
                         unit={m.unit}
-                        status={getMetricStatus(m.key, m.val)}
+                        tier={sibTier}
                         tooltip={metricTooltips[m.key]}
                       />
                     ))}
