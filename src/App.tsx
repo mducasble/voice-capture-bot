@@ -29,6 +29,7 @@ const AdminAnnouncements = lazy(() => import("./pages/admin/AdminAnnouncements")
 const AdminReferralNetwork = lazy(() => import("./pages/admin/AdminReferralNetwork"));
 const AdminAnalysisQueue = lazy(() => import("./pages/admin/AdminAnalysisQueue"));
 const AdminQualityHours = lazy(() => import("./pages/admin/AdminQualityHours"));
+const AdminTaskValidation = lazy(() => import("./pages/admin/AdminTaskValidation"));
 const AdminInfrastructure = lazy(() => import("./pages/admin/AdminInfrastructure"));
 
 // Portal pages
@@ -124,6 +125,7 @@ const App = () => (
                 <Route path="referral-network" element={<AdminReferralNetwork />} />
                 <Route path="analysis-queue" element={<AdminAnalysisQueue />} />
                 <Route path="quality-hours" element={<AdminQualityHours />} />
+                <Route path="task-validation" element={<AdminTaskValidation />} />
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
               </Route>
 

@@ -1796,6 +1796,7 @@ export type Database = {
           referral_code: string | null
           spoken_languages: string[] | null
           telegram: string | null
+          total_review_seconds: number
           updated_at: string
           wallet_id: string | null
           whatsapp: string | null
@@ -1812,6 +1813,7 @@ export type Database = {
           referral_code?: string | null
           spoken_languages?: string[] | null
           telegram?: string | null
+          total_review_seconds?: number
           updated_at?: string
           wallet_id?: string | null
           whatsapp?: string | null
@@ -1828,6 +1830,7 @@ export type Database = {
           referral_code?: string | null
           spoken_languages?: string[] | null
           telegram?: string | null
+          total_review_seconds?: number
           updated_at?: string
           wallet_id?: string | null
           whatsapp?: string | null
@@ -2300,6 +2303,120 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      validation_task_config: {
+        Row: {
+          campaign_id: string
+          content_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          task_set_id: string
+          time_limit_seconds: number
+          tracked_actions: string[]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          task_set_id: string
+          time_limit_seconds?: number
+          tracked_actions?: string[]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          task_set_id?: string
+          time_limit_seconds?: number
+          tracked_actions?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_task_config_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "validation_task_config_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: true
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_task_log: {
+        Row: {
+          actions_log: Json
+          campaign_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          result: Json | null
+          started_at: string
+          status: string
+          submission_id: string
+          submission_type: string
+          task_set_id: string
+          time_spent_seconds: number
+          user_id: string
+        }
+        Insert: {
+          actions_log?: Json
+          campaign_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          result?: Json | null
+          started_at?: string
+          status?: string
+          submission_id: string
+          submission_type?: string
+          task_set_id: string
+          time_spent_seconds?: number
+          user_id: string
+        }
+        Update: {
+          actions_log?: Json
+          campaign_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          result?: Json | null
+          started_at?: string
+          status?: string
+          submission_id?: string
+          submission_type?: string
+          task_set_id?: string
+          time_spent_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_task_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "validation_task_log_task_set_id_fkey"
+            columns: ["task_set_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_task_sets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_applications: {
         Row: {

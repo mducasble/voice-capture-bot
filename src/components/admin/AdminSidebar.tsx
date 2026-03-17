@@ -58,6 +58,7 @@ const navSections = [
       { title: "Revisão", url: "/admin/review", icon: FileCheck },
       { title: "Fila de Revisão", url: "/admin/review-queue", icon: ListChecks },
       { title: "Horas por Qualidade", url: "/admin/quality-hours", icon: BarChart3 },
+      { title: "Validação de Tarefas", url: "/admin/task-validation", icon: ListChecks },
       { title: "Transcrição", url: "/admin/transcription", icon: FileText },
     ],
   },
