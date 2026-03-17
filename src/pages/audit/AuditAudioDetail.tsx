@@ -414,30 +414,59 @@ export default function AuditAudioDetail() {
 
                 {/* Per-track actions */}
                 <div className="flex items-center gap-2 mt-3">
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      toast.info("Reanálise enfileirada...");
-                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "analyze", priority: 5 });
-                      toast.success("Reanálise enfileirada!");
-                    }}
-                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Reanalisar
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      toast.info("Enhance enfileirado...");
-                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "enhance", priority: 10 });
-                      toast.success("Enhance enfileirado!");
-                    }}
-                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Enhance
-                  </Button>
+                  {(() => {
+                    const jobState = queuedJobs[sib.id];
+                    const analyzeQueued = jobState === "analyze" || jobState === "both";
+                    const enhanceQueued = jobState === "enhance" || jobState === "both";
+                    return (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={analyzeQueued}
+                          onClick={async () => {
+                            const { error } = await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "analyze", priority: 5 });
+                            if (error) { toast.error("Erro ao enfileirar reanálise"); return; }
+                            toast.success("Reanálise enfileirada!");
+                            setQueuedJobs(prev => ({ ...prev, [sib.id]: prev[sib.id] === "enhance" ? "both" : "analyze" }));
+                          }}
+                          className={cn(
+                            "h-8 px-3 text-[13px] rounded-lg gap-1.5 text-white",
+                            analyzeQueued
+                              ? "bg-emerald-800 opacity-80 cursor-default"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          )}
+                        >
+                          {analyzeQueued ? (
+                            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+                          ) : (
+                            <><RefreshCw className="h-3.5 w-3.5" /> Reanalisar</>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={enhanceQueued}
+                          onClick={async () => {
+                            const { error } = await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "enhance", priority: 10 });
+                            if (error) { toast.error("Erro ao enfileirar enhance"); return; }
+                            toast.success("Enhance enfileirado!");
+                            setQueuedJobs(prev => ({ ...prev, [sib.id]: prev[sib.id] === "analyze" ? "both" : "enhance" }));
+                          }}
+                          className={cn(
+                            "h-8 px-3 text-[13px] rounded-lg gap-1.5 text-white",
+                            enhanceQueued
+                              ? "bg-blue-800 opacity-80 cursor-default"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          )}
+                        >
+                          {enhanceQueued ? (
+                            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+                          ) : (
+                            <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
+                          )}
+                        </Button>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
