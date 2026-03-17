@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
-  Headphones, Sparkles, RefreshCw, SkipForward,
+  Headphones, SkipForward,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -43,6 +43,7 @@ export default function DataAudioTask() {
   const [trackedActions, setTrackedActions] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [taskLogId, setTaskLogId] = useState<string | null>(null);
+  const [taskSetId, setTaskSetId] = useState<string | null>(null);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -52,10 +53,10 @@ export default function DataAudioTask() {
     supabase.from("campaigns").select("name").eq("id", campaignId).maybeSingle()
       .then(({ data }) => setCampaignName(data?.name || ""));
 
-    // Get validation_task_config for this campaign's task_sets
     supabase.from("campaign_task_sets").select("id").eq("campaign_id", campaignId).limit(1)
       .then(async ({ data: sets }) => {
         if (!sets?.length) return;
+        setTaskSetId(sets[0].id);
         const { data: config } = await supabase.from("validation_task_config")
           .select("time_limit_seconds, tracked_actions")
           .eq("task_set_id", sets[0].id)
@@ -68,13 +69,13 @@ export default function DataAudioTask() {
       });
   }, [campaignId]);
 
-  // Load next pending recording
   const loadNext = useCallback(async () => {
     if (!campaignId) return;
     setLoading(true);
     setElapsed(0);
     actionsLog.current = [];
     setTaskLogId(null);
+    if (timerRef.current) clearInterval(timerRef.current);
 
     const { data } = await supabase
       .from("voice_recordings")
@@ -89,18 +90,20 @@ export default function DataAudioTask() {
     setLoading(false);
 
     // Create task log entry
-    if (user) {
+    if (user && taskSetId) {
       const { data: log } = await supabase.from("validation_task_log").insert({
         user_id: user.id,
-        recording_id: data[0].id,
+        submission_id: data[0].id,
+        submission_type: "audio",
         campaign_id: campaignId,
+        task_set_id: taskSetId,
         status: "in_progress",
         actions_log: [],
         time_spent_seconds: 0,
       }).select("id").single();
       if (log) setTaskLogId(log.id);
     }
-  }, [campaignId, user]);
+  }, [campaignId, user, taskSetId]);
 
   useEffect(() => { loadNext(); }, [loadNext]);
 
@@ -121,7 +124,7 @@ export default function DataAudioTask() {
   }, [rec, loading, timeLimit]);
 
   const logAction = (action: string, detail?: string) => {
-    if (!trackedActions.includes(action) && trackedActions.length > 0) return;
+    if (trackedActions.length > 0 && !trackedActions.includes(action)) return;
     actionsLog.current.push({ action, timestamp: new Date().toISOString(), detail });
   };
 
@@ -132,18 +135,15 @@ export default function DataAudioTask() {
     await supabase.from("validation_task_log").update({
       status,
       result: result || null,
-      actions_log: actionsLog.current,
+      actions_log: actionsLog.current as any,
       time_spent_seconds: elapsed,
       completed_at: new Date().toISOString(),
     }).eq("id", taskLogId);
 
     // Accumulate review time on profile
-    await supabase.rpc("update_review_seconds" as any, { p_user_id: user.id, p_seconds: elapsed }).catch(() => {
-      // Fallback: direct update
-      supabase.from("profiles").update({
-        total_review_seconds: (elapsed)
-      }).eq("id", user.id);
-    });
+    const currentTotal = await supabase.from("profiles").select("total_review_seconds").eq("id", user.id).maybeSingle();
+    const prev = (currentTotal.data as any)?.total_review_seconds || 0;
+    await supabase.from("profiles").update({ total_review_seconds: prev + elapsed }).eq("id", user.id);
   };
 
   const handleTimeout = async () => {
@@ -191,20 +191,6 @@ export default function DataAudioTask() {
   const timerSeconds = remaining % 60;
   const timerPercent = (elapsed / timeLimit) * 100;
   const isUrgent = remaining <= 30;
-
-  const getMetricStatus = (key: string, val: number | null): "good" | "fair" | "bad" | "neutral" => {
-    if (val == null) return "neutral";
-    const v = Number(val);
-    switch (key) {
-      case "snr_db": return v >= 30 ? "good" : v >= 25 ? "fair" : "bad";
-      case "sigmos_ovrl": return v >= 3.0 ? "good" : v >= 2.3 ? "fair" : "bad";
-      case "srmr": return v >= 7 ? "good" : v >= 5.4 ? "fair" : "bad";
-      case "rms_dbfs": return v >= -24 ? "good" : v >= -26 ? "fair" : "bad";
-      case "wvmos": return v >= 3.5 ? "good" : v >= 2.5 ? "fair" : "bad";
-      case "vqscore": return v >= 0.65 ? "good" : v >= 0.5 ? "fair" : "bad";
-      default: return "neutral";
-    }
-  };
 
   if (loading) {
     return (
@@ -342,12 +328,14 @@ export default function DataAudioTask() {
         </div>
       </div>
 
-      <RejectionReasonModal
-        open={showRejectModal}
-        onClose={() => setShowRejectModal(false)}
-        onConfirm={handleReject}
-        loading={saving}
-      />
+      {campaignId && (
+        <RejectionReasonModal
+          open={showRejectModal}
+          onClose={() => setShowRejectModal(false)}
+          onConfirm={handleReject}
+          campaignId={campaignId}
+        />
+      )}
     </div>
   );
 }

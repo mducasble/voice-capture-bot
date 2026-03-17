@@ -157,6 +157,15 @@ const App = () => (
                 <Route path="settings" element={<AuditSettings />} />
               </Route>
 
+              {/* Data contributor routes */}
+              <Route path="/data/login" element={<DataLogin />} />
+              <Route path="/data" element={<DataLayout />}>
+                <Route index element={<DataHome />} />
+                <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
+                <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
+                <Route path="profile" element={<DataProfile />} />
+              </Route>
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
