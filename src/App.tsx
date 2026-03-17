@@ -122,6 +122,26 @@ const App = () => (
               <Route path="quality-hours" element={<AdminQualityHours />} />
             </Route>
 
+            {/* Audit login (standalone) */}
+            <Route path="/audit/login" element={<AuditLogin />} />
+
+            {/* Audit routes with sidebar layout */}
+            <Route path="/audit" element={<AuditLayout />}>
+              <Route index element={<AuditHome />} />
+              <Route path="audio/validation" element={<AuditCampaignSelect />} />
+              <Route path="audio/validation/:campaignId" element={<AuditAudioValidation />} />
+              <Route path="audio/validation/:campaignId/:recordingId" element={<AuditAudioDetail />} />
+              <Route path="audio/transcription" element={<AuditAudioTranscription />} />
+              <Route path="audio" element={<AuditCampaignSelect />} />
+              <Route path="video" element={<AuditVideoModule />} />
+              <Route path="photo" element={<AuditPhotoModule />} />
+              <Route path="transcription" element={<AuditAudioTranscription />} />
+              <Route path="campaigns" element={<AuditCampaigns />} />
+              <Route path="search" element={<AuditSearch />} />
+              <Route path="history" element={<AuditHistory />} />
+              <Route path="settings" element={<AuditSettings />} />
+            </Route>
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
