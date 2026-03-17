@@ -523,6 +523,14 @@ export default function AuditAudioDetail() {
                 {meta.flagged_for_review ? "Flagged" : "Flag p/ revisão"}
               </Button>
               <Button
+                className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-sky-600 hover:bg-sky-700 text-white"
+                onClick={handleReserve}
+                disabled={saving}
+              >
+                <Archive className="h-5 w-5" />
+                Reserva
+              </Button>
+              <Button
                 className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => setShowRejectModal(true)}
                 disabled={saving}
