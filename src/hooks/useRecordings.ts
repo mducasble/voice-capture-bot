@@ -58,27 +58,40 @@ export function useRecordings(guildId?: string, userId?: string) {
   return useQuery({
     queryKey: ["recordings", guildId, userId],
     queryFn: async (): Promise<Recording[]> => {
-      let query = supabase
-        .from("voice_recordings")
-        .select("*, elevenlabs_chunk_state, gemini_chunk_state, recording_topics(name, emoji)")
-        .or("quality_status.neq.transcription-only,quality_status.is.null")
-        .order("created_at", { ascending: false });
+      const pageSize = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (guildId) {
-        query = query.eq("discord_guild_id", guildId);
+      while (hasMore) {
+        let query = supabase
+          .from("voice_recordings")
+          .select("*, elevenlabs_chunk_state, gemini_chunk_state, recording_topics(name, emoji)")
+          .or("quality_status.neq.transcription-only,quality_status.is.null")
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (guildId) {
+          query = query.eq("discord_guild_id", guildId);
+        }
+
+        if (userId) {
+          query = query.eq("discord_user_id", userId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        const rows = data || [];
+        allData = allData.concat(rows);
+        hasMore = rows.length === pageSize;
+        from += pageSize;
       }
 
-      if (userId) {
-        query = query.eq("discord_user_id", userId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return (data || []).map((row: any) => ({
+      return allData.map((row: any) => ({
         ...row,
         elevenlabs_chunk_state: row.elevenlabs_chunk_state as ElevenLabsChunkState | null,
         gemini_chunk_state: row.gemini_chunk_state as GeminiChunkState | null,
