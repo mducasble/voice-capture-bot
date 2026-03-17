@@ -12,28 +12,28 @@ interface MetricCardProps {
   tooltip?: string;
 }
 
-function deriveStatus(metricKey: string | undefined, value: string | number | null): "good" | "fair" | "bad" | "neutral" {
+function deriveTier(metricKey: string | undefined, value: string | number | null): "PQ" | "HQ" | "MQ" | "LQ" | "neutral" {
   if (!metricKey || value == null) return "neutral";
   const v = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(v)) return "neutral";
 
   switch (metricKey) {
     case "snr_db":
-      return v >= 30 ? "good" : v >= 25 ? "fair" : v >= 18 ? "bad" : "bad";
+      return v >= 30 ? "PQ" : v >= 25 ? "HQ" : v >= 18 ? "MQ" : "LQ";
     case "sigmos_ovrl":
-      return v >= 3.0 ? "good" : v >= 2.3 ? "fair" : "bad";
+      return v >= 3.0 ? "PQ" : v >= 2.3 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
     case "srmr":
-      return v >= 7.0 ? "good" : v >= 5.4 ? "fair" : v >= 4.0 ? "bad" : "bad";
+      return v >= 7.0 ? "PQ" : v >= 5.4 ? "HQ" : v >= 4.0 ? "MQ" : "LQ";
     case "rms_dbfs":
-      return v >= -24 ? "good" : v >= -26 ? "fair" : "bad";
+      return v >= -24 ? "PQ" : v >= -26 ? "HQ" : v >= -28 ? "MQ" : "LQ";
     case "wvmos":
-      return v >= 3.5 ? "good" : v >= 2.5 ? "fair" : "bad";
+      return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
     case "vqscore":
-      return v >= 0.65 ? "good" : v >= 0.5 ? "fair" : "bad";
+      return v >= 0.65 ? "PQ" : v >= 0.5 ? "HQ" : v >= 0.35 ? "MQ" : "LQ";
     case "sigmos_reverb":
-      return v >= 3.5 ? "good" : v >= 2.5 ? "fair" : "bad";
+      return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
     case "sigmos_disc":
-      return v >= 3.5 ? "good" : v >= 2.5 ? "fair" : "bad";
+      return v >= 3.5 ? "PQ" : v >= 2.5 ? "HQ" : v >= 2.0 ? "MQ" : "LQ";
     default:
       return "neutral";
   }
