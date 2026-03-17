@@ -410,6 +410,34 @@ export default function AuditAudioDetail() {
                     ))}
                   </div>
                 )}
+
+                {/* Per-track actions */}
+                <div className="flex items-center gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      toast.info("Reanálise enfileirada...");
+                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "analyze", priority: 5 });
+                      toast.success("Reanálise enfileirada!");
+                    }}
+                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Reanalisar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      toast.info("Enhance enfileirado...");
+                      await supabase.from("analysis_queue").insert({ recording_id: sib.id, job_type: "enhance", priority: 10 });
+                      toast.success("Enhance enfileirado!");
+                    }}
+                    className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Enhance
+                  </Button>
+                </div>
               </div>
             );
           })}
