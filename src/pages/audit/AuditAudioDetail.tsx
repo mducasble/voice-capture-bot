@@ -8,7 +8,7 @@ import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
 import {
   SkipForward, Loader2,
   ChevronRight, CheckCircle2, XCircle, Bookmark, RefreshCw,
-  Sparkles, Headphones, User, Clock, Globe, Mic2,
+  Sparkles, Headphones, User, Clock, Globe, Mic2, Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
