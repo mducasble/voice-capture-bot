@@ -420,7 +420,7 @@ export default function AuditAudioDetail() {
               const isCurrentRec = sib.id === rec.id;
               const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
               const sibMeta = sib.metadata || {};
-              const sibTier = sibMeta.quality_tier;
+              const sibTier = typeof sibMeta.quality_tier === "string" ? sibMeta.quality_tier.toUpperCase() : undefined;
               const sibMetrics = [
                 { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? sibMeta.snr_db },
                 { key: "sigmos_ovrl", label: "SigMOS", val: sibMeta.sigmos_ovrl },
