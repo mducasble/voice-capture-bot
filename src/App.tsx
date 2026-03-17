@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useGlobalAuthReferral } from "@/hooks/useGlobalAuthReferral";
 import { MaintenanceBanner, MaintenanceBlock } from "@/components/MaintenanceBanner";
+import { AuditLoadingScreen } from "@/components/audit/AuditLoadingScreen";
+import { AuditErrorBoundary } from "@/components/audit/AuditErrorBoundary";
 
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -81,71 +83,73 @@ const App = () => (
         <AppInner />
         <MaintenanceBanner />
         <MaintenanceBlock>
-        <Suspense fallback={<div className="min-h-screen bg-background" />}>
-          <Routes>
-            {/* Portal routes (public-facing, root) */}
-            <Route path="/auth" element={<PortalAuth />} />
-            <Route path="/invite/:code" element={<InvitePage />} />
-            <Route path="/c/:slug" element={<PrivateUpload />} />
-            
-            <Route path="/" element={<PortalLayout />}>
-              <Route index element={<PortalDashboard />} />
-              <Route path="campaign/:id" element={<PortalCampaign />} />
-              <Route path="campaign/:id/task" element={<PortalCampaignTask />} />
-              <Route path="my-campaigns" element={<PortalMyCampaigns />} />
-              <Route path="earnings" element={<PortalEarnings />} />
-              <Route path="profile" element={<PortalProfile />} />
-              <Route path="room/:roomId" element={<Room />} />
-            </Route>
+        <AuditErrorBoundary>
+          <Suspense fallback={<AuditLoadingScreen />}>
+            <Routes>
+              {/* Portal routes (public-facing, root) */}
+              <Route path="/auth" element={<PortalAuth />} />
+              <Route path="/invite/:code" element={<InvitePage />} />
+              <Route path="/c/:slug" element={<PrivateUpload />} />
+              
+              <Route path="/" element={<PortalLayout />}>
+                <Route index element={<PortalDashboard />} />
+                <Route path="campaign/:id" element={<PortalCampaign />} />
+                <Route path="campaign/:id/task" element={<PortalCampaignTask />} />
+                <Route path="my-campaigns" element={<PortalMyCampaigns />} />
+                <Route path="earnings" element={<PortalEarnings />} />
+                <Route path="profile" element={<PortalProfile />} />
+                <Route path="room/:roomId" element={<Room />} />
+              </Route>
 
-            {/* Admin login (standalone, no layout) */}
-            <Route path="/admin/login" element={<AdminLogin />} />
+              {/* Admin login (standalone, no layout) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
 
-            {/* Admin routes with sidebar layout */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="recordings" element={<Index />} />
-              <Route path="campaigns" element={<Campaigns />} />
-              <Route path="rooms" element={<Rooms />} />
-              <Route path="room/:roomId" element={<Room />} />
-              <Route path="review" element={<Review />} />
-              <Route path="review-queue" element={<ReviewQueue />} />
-              <Route path="transcription" element={<Transcript />} />
-              <Route path="social-art" element={<SocialArt />} />
-              <Route path="rooms-monitor" element={<RoomsMonitor />} />
-              <Route path="faq" element={<AdminFaq />} />
-              <Route path="maintenance" element={<AdminMaintenance />} />
-              <Route path="announcements" element={<AdminAnnouncements />} />
-              <Route path="referral-network" element={<AdminReferralNetwork />} />
-              <Route path="analysis-queue" element={<AdminAnalysisQueue />} />
-              <Route path="quality-hours" element={<AdminQualityHours />} />
-            </Route>
+              {/* Admin routes with sidebar layout */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="recordings" element={<Index />} />
+                <Route path="campaigns" element={<Campaigns />} />
+                <Route path="rooms" element={<Rooms />} />
+                <Route path="room/:roomId" element={<Room />} />
+                <Route path="review" element={<Review />} />
+                <Route path="review-queue" element={<ReviewQueue />} />
+                <Route path="transcription" element={<Transcript />} />
+                <Route path="social-art" element={<SocialArt />} />
+                <Route path="rooms-monitor" element={<RoomsMonitor />} />
+                <Route path="faq" element={<AdminFaq />} />
+                <Route path="maintenance" element={<AdminMaintenance />} />
+                <Route path="announcements" element={<AdminAnnouncements />} />
+                <Route path="referral-network" element={<AdminReferralNetwork />} />
+                <Route path="analysis-queue" element={<AdminAnalysisQueue />} />
+                <Route path="quality-hours" element={<AdminQualityHours />} />
+              </Route>
 
-            {/* Audit login (standalone) */}
-            <Route path="/audit/login" element={<AuditLogin />} />
+              {/* Audit login (standalone) */}
+              <Route path="/audit/login" element={<AuditLogin />} />
 
-            {/* Audit routes with sidebar layout */}
-            <Route path="/audit" element={<AuditLayout />}>
-              <Route index element={<AuditHome />} />
-              <Route path="audio/validation" element={<AuditCampaignSelect />} />
-              <Route path="audio/validation/:campaignId" element={<AuditAudioValidation />} />
-              <Route path="audio/validation/:campaignId/:recordingId" element={<AuditAudioDetail />} />
-              <Route path="audio/transcription" element={<AuditAudioTranscription />} />
-              <Route path="audio" element={<AuditHome />} />
-              <Route path="video" element={<AuditVideoModule />} />
-              <Route path="photo" element={<AuditPhotoModule />} />
-              <Route path="transcription" element={<AuditAudioTranscription />} />
-              <Route path="campaigns" element={<AuditCampaigns />} />
-              <Route path="search" element={<AuditSearch />} />
-              <Route path="history" element={<AuditHistory />} />
-              <Route path="settings" element={<AuditSettings />} />
-            </Route>
+              {/* Audit routes with sidebar layout */}
+              <Route path="/audit" element={<AuditLayout />}>
+                <Route index element={<AuditHome />} />
+                <Route path="audio/validation" element={<AuditCampaignSelect />} />
+                <Route path="audio/validation/:campaignId" element={<AuditAudioValidation />} />
+                <Route path="audio/validation/:campaignId/:recordingId" element={<AuditAudioDetail />} />
+                <Route path="audio/transcription" element={<AuditAudioTranscription />} />
+                <Route path="audio" element={<AuditHome />} />
+                <Route path="video" element={<AuditVideoModule />} />
+                <Route path="photo" element={<AuditPhotoModule />} />
+                <Route path="transcription" element={<AuditAudioTranscription />} />
+                <Route path="campaigns" element={<AuditCampaigns />} />
+                <Route path="search" element={<AuditSearch />} />
+                <Route path="history" element={<AuditHistory />} />
+                <Route path="settings" element={<AuditSettings />} />
+              </Route>
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </AuditErrorBoundary>
         </MaintenanceBlock>
       </BrowserRouter>
     </TooltipProvider>

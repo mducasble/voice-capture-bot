@@ -47,38 +47,100 @@ export default function AuditAudioDetail() {
 
   useEffect(() => {
     if (!recordingId) return;
-    setLoading(true);
-    supabase
-      .from("voice_recordings")
-      .select("*")
-      .eq("id", recordingId)
-      .maybeSingle()
-      .then(({ data }) => {
-        setRec(data as any);
-        setLoading(false);
-        if (data?.campaign_id) {
-          supabase.from("campaigns").select("name").eq("id", data.campaign_id).maybeSingle()
-            .then(({ data: c }) => setCampaignName(c?.name || ""));
+    let cancelled = false;
+
+    const loadRecording = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("voice_recordings")
+          .select("*")
+          .eq("id", recordingId)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Failed to load audit recording", error);
+          setRec(null);
+          setCampaignName("");
+          setLoading(false);
+          return;
         }
-      });
+
+        setRec((data as any) ?? null);
+        setLoading(false);
+
+        if (data?.campaign_id) {
+          const { data: campaignData } = await supabase
+            .from("campaigns")
+            .select("name")
+            .eq("id", data.campaign_id)
+            .maybeSingle();
+
+          if (!cancelled) {
+            setCampaignName(campaignData?.name || "");
+          }
+        } else {
+          setCampaignName("");
+        }
+      } catch (error) {
+        console.error("Unexpected audit recording load error", error);
+        if (!cancelled) {
+          setRec(null);
+          setCampaignName("");
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadRecording();
+
+    return () => {
+      cancelled = true;
+    };
   }, [recordingId]);
 
   // Load siblings (same session)
   useEffect(() => {
-    if (!rec) return;
-    if (rec.session_id && rec.campaign_id) {
-      supabase
-        .from("voice_recordings")
-        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
-        .eq("session_id", rec.session_id)
-        .eq("campaign_id", rec.campaign_id)
-        .order("recording_type")
-        .then(({ data }) => setSiblings((data || []) as any[]));
-    } else {
-      // No session — show current recording as sole track
-      setSiblings([rec]);
+    if (!rec) {
+      setSiblings([]);
+      return;
     }
-  }, [rec?.session_id, rec?.campaign_id, rec?.id]);
+
+    let cancelled = false;
+
+    const loadSiblings = async () => {
+      if (rec.session_id && rec.campaign_id) {
+        try {
+          const { data, error } = await supabase
+            .from("voice_recordings")
+            .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+            .eq("session_id", rec.session_id)
+            .eq("campaign_id", rec.campaign_id)
+            .order("recording_type");
+
+          if (cancelled) return;
+          if (error || !data?.length) {
+            setSiblings([rec]);
+            return;
+          }
+
+          setSiblings(data as any[]);
+        } catch {
+          if (!cancelled) setSiblings([rec]);
+        }
+      } else {
+        setSiblings([rec]);
+      }
+    };
+
+    void loadSiblings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rec]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
