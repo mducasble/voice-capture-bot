@@ -275,7 +275,7 @@ export default function AuditAudioDetail() {
   };
 
   const tierLabels: Record<string, string> = {
-    PQ: "Platina", HQ: "Ouro", MQ: "Prata", LQ: "Bronze",
+    PQ: "Premium Quality", HQ: "High Quality", MQ: "Medium Quality", LQ: "Low Quality",
   };
 
   return (
