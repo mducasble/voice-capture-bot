@@ -138,11 +138,6 @@ export default function AuditAudioDetail() {
     };
   }, [rec]);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (playing) { audioRef.current.pause(); setPlaying(false); }
-    else { audioRef.current.play(); setPlaying(true); }
-  };
 
   const handleApprove = async () => {
     if (!rec) return;
