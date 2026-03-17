@@ -69,7 +69,7 @@ export default function AuditLayout() {
               <div className="flex items-center gap-3">
                 <span className="text-[14px] text-[hsl(var(--muted-foreground))] hidden md:block">{user.email}</span>
                 <button
-                  onClick={() => signOut()}
+                  onClick={handleSignOut}
                   title="Sair"
                   className="h-10 w-10 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] transition-colors"
                 >
