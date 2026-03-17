@@ -484,17 +484,15 @@ export default function AuditAudioDetail() {
         </h2>
         <div className="flex flex-wrap gap-3">
           <Button
-            variant="outline"
             onClick={handleReanalyze}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2"
+            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <RefreshCw className="h-5 w-5" />
             Reanalisar
           </Button>
           <Button
-            variant="outline"
             onClick={handleEnhance}
-            className="h-13 px-6 text-[15px] rounded-xl gap-2"
+            className="h-13 px-6 text-[15px] rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Sparkles className="h-5 w-5" />
             Enhance
