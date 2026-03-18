@@ -31,6 +31,7 @@ export interface QcConfig {
     minHandPresenceRate: number;
     maxFacePresenceRate: number;
     minDurationSec: number;
+    faceMinConfidence: number;
   };
 }
 
