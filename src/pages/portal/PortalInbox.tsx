@@ -72,7 +72,7 @@ export default function PortalInbox() {
           border: "1px solid rgba(255, 255, 255, 0.025)",
           height: "calc(100vh - 220px)",
           minHeight: "500px",
-          background: "rgba(255, 255, 255, 0.015)",
+          background: "rgba(255, 255, 255, 0.03)",
           backdropFilter: "blur(6px)",
         }}
       >
