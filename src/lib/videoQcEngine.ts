@@ -57,6 +57,7 @@ export const DEFAULT_QC_CONFIG: QcConfig = {
     minHandPresenceRate: 0.20,
     maxFacePresenceRate: 0.50,
     minDurationSec: 3,
+    faceMinConfidence: 0.70,
   },
 };
 
