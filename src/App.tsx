@@ -149,6 +149,7 @@ const App = () => (
                 <Route path="task-validation" element={<AdminTaskValidation />} />
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
                 <Route path="finance" element={<AdminFinance />} />
+                <Route path="inbox" element={<AdminInbox />} />
               </Route>
 
               {/* Audit login (standalone) */}
