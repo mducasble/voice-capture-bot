@@ -5,12 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
-  Headphones, SkipForward, RefreshCw, Sparkles, Mic2, User, Globe,
+  SkipForward, Mic2, User, Globe, Headphones,
   Archive, Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MetricCard } from "@/components/audit/MetricCard";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
+import { TrackCard } from "@/components/data/TrackCard";
 import { cn } from "@/lib/utils";
 
 interface Recording {
@@ -433,7 +433,9 @@ export default function DataAudioTask() {
           </h2>
           {siblings.map((sib) => {
             const isMain = sib.id === rec.id;
-            const sibUrl = (sib.metadata as any)?.enhanced_file_url || sib.file_url;
+            const enhancedUrl = (sib.metadata as any)?.enhanced_file_url;
+            const originalUrl = sib.file_url;
+            const hasEnhanced = !!enhancedUrl;
             const sibTier = deriveTier(sib);
             const sibMetrics = getTrackMetrics(sib);
             const jobState = queuedJobs[sib.id];
@@ -441,108 +443,22 @@ export default function DataAudioTask() {
             const enhanceQueued = jobState === "enhance" || jobState === "both";
 
             return (
-              <div
+              <TrackCard
                 key={sib.id}
-                className={cn(
-                  "data-glass-card rounded-2xl p-5 transition-all",
-                  isMain && "ring-1 ring-white/[0.15]"
-                )}
-              >
-                {/* Track header */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="h-10 w-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
-                    <Headphones className="h-5 w-5 text-white/40" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[15px] font-semibold text-white truncate">
-                        {sib.recording_type === "mixed" ? "Mixed" :
-                         sib.recording_type === "individual" ? (sib.discord_username || "Speaker") :
-                         sib.recording_type || sib.filename}
-                        {isMain && <span className="text-white/30 ml-2 text-[13px]">(principal)</span>}
-                      </p>
-                      {sibTier && (
-                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md border", tierColors[sibTier] || "bg-white/10 text-white/50 border-white/10")}>
-                          {sibTier}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[13px] text-white/30">
-                      {formatTime(sib.duration_seconds || 0)}
-                    </p>
-                  </div>
-                </div>
+                sib={sib}
+                isMain={isMain}
+                hasEnhanced={hasEnhanced}
+                enhancedUrl={enhancedUrl}
+                originalUrl={originalUrl}
+                sibTier={sibTier}
+                sibMetrics={sibMetrics}
+                analyzeQueued={analyzeQueued}
+                enhanceQueued={enhanceQueued}
+                logAction={logAction}
+                handleReanalyze={handleReanalyze}
+                handleEnhance={handleEnhance}
+              />
 
-                {/* Player */}
-                {sibUrl && (
-                  <div className="mb-4">
-                    <audio
-                      controls
-                      src={sibUrl}
-                      className="w-full h-10 rounded-lg"
-                      preload="none"
-                      onPlay={() => logAction("play", sib.recording_type || sib.id)}
-                      onPause={() => logAction("pause", sib.recording_type || sib.id)}
-                      onSeeked={() => logAction("seek", sib.recording_type || sib.id)}
-                    />
-                  </div>
-                )}
-
-                {/* Per-track metrics */}
-                {sibMetrics.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                    {sibMetrics.map((m) => (
-                      <MetricCard
-                        key={m.key}
-                        metricKey={m.key}
-                        label={m.label}
-                        value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
-                        unit={m.unit}
-                        tier={sibTier}
-                        tooltip={metricTooltips[m.key]}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Per-track actions */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    disabled={analyzeQueued}
-                    onClick={() => handleReanalyze(sib.id)}
-                    className={cn(
-                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
-                      analyzeQueued
-                        ? "bg-emerald-900/40 text-emerald-400/60 cursor-default"
-                        : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
-                    )}
-                  >
-                    {analyzeQueued ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
-                    ) : (
-                      <><RefreshCw className="h-3.5 w-3.5" /> Reanalisar</>
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={enhanceQueued}
-                    onClick={() => handleEnhance(sib.id)}
-                    className={cn(
-                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
-                      enhanceQueued
-                        ? "bg-blue-900/40 text-blue-400/60 cursor-default"
-                        : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20"
-                    )}
-                  >
-                    {enhanceQueued ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
-                    ) : (
-                      <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
-                    )}
-                  </Button>
-                </div>
-              </div>
             );
           })}
         </div>
