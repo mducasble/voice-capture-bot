@@ -44,6 +44,23 @@ export default function AdminInbox() {
   const [expandedThread, setExpandedThread] = useState<string | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [verifyingWalletThread, setVerifyingWalletThread] = useState<string | null>(null);
+
+  /* ─── Verify wallet (thread context) ─── */
+  const handleVerifyWalletThread = async (userId: string, threadId: string) => {
+    setVerifyingWalletThread(threadId);
+    try {
+      const { error } = await supabase.functions.invoke("admin-update-user", {
+        body: { action: "update_profile", user_id: userId, profile_data: { wallet_verified: true } },
+      });
+      if (error) throw error;
+      toast.success("Carteira marcada como verificada!");
+    } catch (e: any) {
+      toast.error("Erro ao verificar carteira: " + (e.message || "erro desconhecido"));
+    } finally {
+      setVerifyingWalletThread(null);
+    }
+  };
 
   /* ─── Fetch threads ─── */
   const { data: threads = [], isLoading, refetch } = useQuery({
