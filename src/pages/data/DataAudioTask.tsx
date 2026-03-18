@@ -459,61 +459,6 @@ export default function DataAudioTask() {
                 handleEnhance={handleEnhance}
               />
 
-                {/* Per-track metrics */}
-                {sibMetrics.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                    {sibMetrics.map((m) => (
-                      <MetricCard
-                        key={m.key}
-                        metricKey={m.key}
-                        label={m.label}
-                        value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
-                        unit={m.unit}
-                        tier={sibTier}
-                        tooltip={metricTooltips[m.key]}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Per-track actions */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    disabled={analyzeQueued}
-                    onClick={() => handleReanalyze(sib.id)}
-                    className={cn(
-                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
-                      analyzeQueued
-                        ? "bg-emerald-900/40 text-emerald-400/60 cursor-default"
-                        : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
-                    )}
-                  >
-                    {analyzeQueued ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
-                    ) : (
-                      <><RefreshCw className="h-3.5 w-3.5" /> Reanalisar</>
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={enhanceQueued}
-                    onClick={() => handleEnhance(sib.id)}
-                    className={cn(
-                      "h-8 px-3 text-[13px] rounded-lg gap-1.5",
-                      enhanceQueued
-                        ? "bg-blue-900/40 text-blue-400/60 cursor-default"
-                        : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20"
-                    )}
-                  >
-                    {enhanceQueued ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
-                    ) : (
-                      <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
-                    )}
-                  </Button>
-                </div>
-              </div>
             );
           })}
         </div>
