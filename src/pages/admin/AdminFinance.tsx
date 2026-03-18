@@ -144,20 +144,33 @@ export default function AdminFinance() {
         }
       }
 
+      // Small delay to let the wallet settle on the new chain
+      await new Promise((r) => setTimeout(r, 500));
+
       const provider = new BrowserProvider(ethereum);
+      const network = await provider.getNetwork();
+      if (network.chainId !== 137n) {
+        throw new Error(`Rede incorreta (chainId ${network.chainId}). Troque para Polygon manualmente e tente novamente.`);
+      }
+
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWalletAddr(address);
 
-      // Get USDT balance
-      const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, provider);
-      const decimals = await usdt.decimals();
-      const balance = await usdt.balanceOf(address);
-      setWalletBalance(formatUnits(balance, decimals));
+      // Get USDT balance — use hardcoded 6 decimals as fallback
+      try {
+        const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, provider);
+        const balance = await usdt.balanceOf(address);
+        setWalletBalance(formatUnits(balance, 6));
+      } catch (balErr) {
+        console.warn("Erro ao buscar saldo USDT:", balErr);
+        setWalletBalance("—");
+      }
 
       toast.success(`Wallet conectada: ${shortAddr(address)}`);
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao conectar wallet");
+      console.error("connectWallet error:", err);
+      toast.error(err?.shortMessage || err?.message || "Erro ao conectar wallet");
     } finally {
       setConnecting(false);
     }
