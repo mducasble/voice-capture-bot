@@ -108,7 +108,7 @@ export default function DataVideoTask() {
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
     queryFn: async () => {
-      if (!campaignId) return null;
+      if (!campaignId || isStandalone) return null;
       const { data } = await supabase
         .from("campaigns")
         .select("id, name, description")
@@ -116,6 +116,7 @@ export default function DataVideoTask() {
         .single();
       return data;
     },
+    enabled: !isStandalone,
   });
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
