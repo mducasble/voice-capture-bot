@@ -370,6 +370,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
       setSubject(tpl.subject);
       setBody(tpl.body);
       setCategory(tpl.category);
+      setActiveTemplateKey(templateKey);
     }
   };
 
