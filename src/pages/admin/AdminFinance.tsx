@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 /* ─── USDT on Polygon ─── */
 const USDT_CONTRACT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 const POLYGON_CHAIN_ID = "0x89"; // 137
-const POLYGON_RPC = "https://polygon-rpc.com";
+const POLYGON_RPC = "https://rpc.ankr.com/polygon";
 const POLYGONSCAN = "https://polygonscan.com/tx/";
 
 const ERC20_ABI = [
