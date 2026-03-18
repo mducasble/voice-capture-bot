@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN wallet_verified boolean NOT NULL DEFAULT false;
