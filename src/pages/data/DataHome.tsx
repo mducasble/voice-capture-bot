@@ -6,7 +6,7 @@ type MediaType = "audio" | "video" | "photo";
 
 const mediaOptions: { id: MediaType; label: string; description: string; icon: typeof Headphones; ready: boolean }[] = [
   { id: "audio", label: "Áudio", description: "Valide gravações de voz e conversas", icon: Headphones, ready: true },
-  { id: "video", label: "Vídeo", description: "Valide arquivos de vídeo gravados", icon: Video, ready: false },
+  { id: "video", label: "Vídeo", description: "Analise qualidade de vídeos com IA", icon: Video, ready: true },
   { id: "photo", label: "Foto", description: "Valide imagens e capturas", icon: Image, ready: false },
 ];
 

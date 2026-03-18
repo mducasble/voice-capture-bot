@@ -65,6 +65,7 @@ const DataLayout = lazy(() => import("./components/data/DataLayout"));
 const DataHome = lazy(() => import("./pages/data/DataHome"));
 const DataCampaignSelect = lazy(() => import("./pages/data/DataCampaignSelect"));
 const DataAudioTask = lazy(() => import("./pages/data/DataAudioTask"));
+const DataVideoTask = lazy(() => import("./pages/data/DataVideoTask"));
 const DataProfile = lazy(() => import("./pages/data/DataProfile"));
 
 
@@ -161,6 +162,7 @@ const App = () => (
               <Route path="/data/login" element={<DataLogin />} />
               <Route path="/data" element={<DataLayout />}>
                 <Route index element={<DataHome />} />
+                <Route path="video/task/:campaignId" element={<DataVideoTask />} />
                 <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
                 <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
                 <Route path="profile" element={<DataProfile />} />
