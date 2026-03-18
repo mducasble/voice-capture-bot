@@ -282,6 +282,30 @@ export default function DataAudioTask() {
     loadNext();
   };
 
+  const handleReserve = async () => {
+    if (!rec) return;
+    setSaving(true);
+    logAction("reserve");
+    const { error } = await supabase.from("voice_recordings").update({ quality_status: "reserve" }).eq("id", rec.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao reservar"); return; }
+    toast.success("Marcado como Reserva.");
+    await finishTask("completed", "reserve");
+    loadNext();
+  };
+
+  const handleFlag = async () => {
+    if (!rec) return;
+    setSaving(true);
+    logAction("flag");
+    const { error } = await supabase.from("voice_recordings").update({ quality_status: "flagged" }).eq("id", rec.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao flaguear"); return; }
+    toast.success("Flagueado para revisão.");
+    await finishTask("completed", "flagged");
+    loadNext();
+  };
+
   const handleSkip = async () => {
     logAction("skip");
     await finishTask("timeout");
