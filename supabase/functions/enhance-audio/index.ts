@@ -615,9 +615,20 @@ async function phaseContinue(jobId: string, recording_id: string, currentSegment
   const nextSegment = currentSegment + 1;
 
   if (nextSegment >= totalSegments) {
-    // All segments done — finalize!
-    console.log(`[enhance] All ${totalSegments} segments processed. Assembling final file...`);
-    await phaseFinalize(jobId, recording_id, segData, supabase);
+    // All segments processed — DON'T assemble here (same invocation = OOM risk)
+    // Instead, save state and let cron pick up assembly as a separate invocation
+    await supabase
+      .from('analysis_queue')
+      .update({
+        status: 'pending',
+        current_segment: totalSegments, // signals "ready for assembly"
+        segment_data: segData,
+        started_at: null,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId);
+
+    console.log(`[enhance] All ${totalSegments} segments processed. Saved for assembly in next cron cycle.`);
   } else {
     // More segments — save progress and re-queue
     await supabase
