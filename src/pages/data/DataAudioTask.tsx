@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
   Headphones, SkipForward, RefreshCw, Sparkles, Mic2, User, Globe,
+  Archive, Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
