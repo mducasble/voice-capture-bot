@@ -118,6 +118,8 @@ const App = () => (
                 <Route path="campaign/:id/task" element={<PortalCampaignTask />} />
                 <Route path="my-campaigns" element={<PortalMyCampaigns />} />
                 <Route path="earnings" element={<PortalEarnings />} />
+                {/* <Route path="inbox" element={<PortalInbox />} /> */}
+                <Route path="inbox" element={<PortalInbox />} />
                 <Route path="profile" element={<PortalProfile />} />
                 <Route path="room/:roomId" element={<Room />} />
               </Route>
