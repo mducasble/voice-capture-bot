@@ -5,6 +5,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
   Inbox, Send, Loader2, ChevronDown, ChevronRight, Search,
   RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users, FileText,
+  ShieldCheck,
 } from "lucide-react";
 import InboxTemplateManager from "@/components/admin/InboxTemplateManager";
 import { Button } from "@/components/ui/button";
@@ -331,6 +332,24 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("general");
+  const [activeTemplateKey, setActiveTemplateKey] = useState<string | null>(null);
+  const [verifyingWallet, setVerifyingWallet] = useState(false);
+
+  /* ─── Verify wallet ─── */
+  const handleVerifyWallet = async (userId: string) => {
+    setVerifyingWallet(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: { action: "update_profile", user_id: userId, profile_data: { wallet_verified: true } },
+      });
+      if (error) throw error;
+      toast.success("Carteira marcada como verificada!");
+    } catch (e: any) {
+      toast.error("Erro ao verificar carteira: " + (e.message || "erro desconhecido"));
+    } finally {
+      setVerifyingWallet(false);
+    }
+  };
 
   /* ─── Templates ─── */
   const { data: templates = [] } = useQuery({
@@ -351,6 +370,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
       setSubject(tpl.subject);
       setBody(tpl.body);
       setCategory(tpl.category);
+      setActiveTemplateKey(templateKey);
     }
   };
 
@@ -450,7 +470,19 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
       <Input placeholder="Assunto" value={subject} onChange={e => setSubject(e.target.value)} />
       <Textarea placeholder="Mensagem..." value={body} onChange={e => setBody(e.target.value)} rows={4} className="resize-none" />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
+        {activeTemplateKey === "wallet_test_tx" && selectedUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleVerifyWallet(selectedUser.id)}
+            disabled={verifyingWallet}
+            className="mr-auto border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+          >
+            {verifyingWallet ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+            Marcar carteira verificada
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
         <Button
           size="sm"

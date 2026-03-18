@@ -1955,6 +1955,7 @@ export type Database = {
           total_review_seconds: number
           updated_at: string
           wallet_id: string | null
+          wallet_verified: boolean
           whatsapp: string | null
         }
         Insert: {
@@ -1972,6 +1973,7 @@ export type Database = {
           total_review_seconds?: number
           updated_at?: string
           wallet_id?: string | null
+          wallet_verified?: boolean
           whatsapp?: string | null
         }
         Update: {
@@ -1989,6 +1991,7 @@ export type Database = {
           total_review_seconds?: number
           updated_at?: string
           wallet_id?: string | null
+          wallet_verified?: boolean
           whatsapp?: string | null
         }
         Relationships: []
