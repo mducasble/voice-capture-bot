@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import FormattingToolbar from "./FormattingToolbar";
+import { renderFormattedText } from "@/lib/formatInboxMessage";
 
 interface Template {
   id: string;
@@ -29,6 +31,7 @@ export default function InboxTemplateManager() {
   const [expanded, setExpanded] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Template>>({});
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["admin-inbox-templates"],
@@ -132,12 +135,20 @@ export default function InboxTemplateManager() {
                           ))}
                         </div>
                       </div>
-                      <Textarea
-                        value={editForm.body || ""}
-                        onChange={(e) => setEditForm((f) => ({ ...f, body: e.target.value }))}
-                        rows={6}
-                        className="text-sm resize-none"
-                      />
+                      <div className="rounded-md border border-border overflow-hidden">
+                        <FormattingToolbar
+                          textareaRef={bodyRef}
+                          value={editForm.body || ""}
+                          onChange={(v) => setEditForm((f) => ({ ...f, body: v }))}
+                        />
+                        <Textarea
+                          ref={bodyRef}
+                          value={editForm.body || ""}
+                          onChange={(e) => setEditForm((f) => ({ ...f, body: e.target.value }))}
+                          rows={6}
+                          className="text-sm resize-none border-0 rounded-none focus-visible:ring-0"
+                        />
+                      </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={cancelEdit}>
                           <X className="h-3.5 w-3.5 mr-1" /> Cancelar
@@ -172,7 +183,7 @@ export default function InboxTemplateManager() {
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                        {tpl.body}
+                        {renderFormattedText(tpl.body)}
                       </p>
                       <span className="text-xs text-muted-foreground/60">
                         key: {tpl.template_key}
