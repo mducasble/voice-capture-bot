@@ -96,7 +96,14 @@ const App = () => (
         <MaintenanceBanner />
         <MaintenanceBlock>
         <AuditErrorBoundary>
-          <Suspense fallback={<AuditLoadingScreen />}>
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-black">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                <p className="text-sm text-muted-foreground font-medium">Carregando...</p>
+              </div>
+            </div>
+          }>
             <Routes>
               {/* Portal routes (public-facing, root) */}
               <Route path="/auth" element={<PortalAuth />} />
