@@ -163,21 +163,38 @@ function ThreadList({
       if (!threadRows?.length) return [];
 
       const threadIds = (threadRows as any[]).map((t: any) => t.id);
-      const { data: unreadData } = await supabase
-        .from("inbox_messages" as any)
-        .select("thread_id")
-        .in("thread_id", threadIds)
-        .eq("is_read", false)
-        .neq("sender_id", userId);
+
+      const [{ data: unreadData }, { data: previewData }] = await Promise.all([
+        supabase
+          .from("inbox_messages" as any)
+          .select("thread_id")
+          .in("thread_id", threadIds)
+          .eq("is_read", false)
+          .neq("sender_id", userId),
+        supabase
+          .from("inbox_messages" as any)
+          .select("thread_id, body")
+          .in("thread_id", threadIds)
+          .order("created_at", { ascending: true }),
+      ]);
 
       const unreadMap = new Map<string, number>();
       for (const u of (unreadData || []) as any[]) {
         unreadMap.set(u.thread_id, (unreadMap.get(u.thread_id) || 0) + 1);
       }
 
+      // First message per thread as preview
+      const previewMap = new Map<string, string>();
+      for (const m of (previewData || []) as any[]) {
+        if (!previewMap.has(m.thread_id)) {
+          previewMap.set(m.thread_id, m.body);
+        }
+      }
+
       return (threadRows as any[]).map((t: any) => ({
         ...t,
         unread_count: unreadMap.get(t.id) || 0,
+        preview: previewMap.get(t.id) || "",
       })) as Thread[];
     },
   });
