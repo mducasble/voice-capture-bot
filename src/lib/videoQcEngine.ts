@@ -452,8 +452,8 @@ export async function runVideoQc(
     // Lighting
     const { brightness, contrast } = computeLighting(imageData);
 
-    // Motion
-    const motionDelta = computeMotionDelta(imageData, prevImageData);
+    // Motion / Optical Flow
+    const flow = computeOpticalFlow(imageData, prevImageData);
     prevImageData = imageData;
 
     frames.push({
@@ -466,7 +466,9 @@ export async function runVideoQc(
       blurScore,
       brightness,
       contrast,
-      motionDelta,
+      motionDelta: flow.totalMotion,
+      cameraShake: flow.cameraShake,
+      objectMotion: flow.objectMotion,
     });
   }
 
