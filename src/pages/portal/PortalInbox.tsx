@@ -536,8 +536,8 @@ function ConversationView({
                           : "rgba(255, 255, 255, 0.10)",
                         color: "var(--portal-text)",
                         border: isMe
-                          ? "1px solid rgba(140, 255, 5, 0.2)"
-                          : "1px solid var(--portal-border)",
+                          ? "1px solid rgba(140, 255, 5, 0.3)"
+                          : "1px solid rgba(255, 255, 255, 0.15)",
                       }}
                     >
                       {msg.body}
