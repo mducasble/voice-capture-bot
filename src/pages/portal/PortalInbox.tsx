@@ -85,7 +85,7 @@ export default function PortalInbox() {
             )}
             style={{
               borderRight: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.02)",
-              background: "rgba(255, 255, 255, 0.03)",
+              background: "rgba(255, 255, 255, 0.015)",
             }}
           >
             <ThreadList
