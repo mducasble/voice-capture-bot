@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,7 +103,9 @@ export default function DataVideoTask() {
   const [progress, setProgress] = useState<QcProgress | null>(null);
   const [report, setReport] = useState<QcReport | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [handsOffTime, setHandsOffTime] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
@@ -156,6 +158,45 @@ export default function DataVideoTask() {
     ? progress.total > 0 ? (progress.current / progress.total) * 100 : 0
     : 0;
 
+  // Hands-off-screen timer: sync with video playback using analyzed frames
+  useEffect(() => {
+    if (!report || !videoRef.current) return;
+    const video = videoRef.current;
+    let rafId: number;
+
+    const update = () => {
+      const t = video.currentTime;
+      // Count how many seconds of analyzed time have no hands up to current time
+      let offSeconds = 0;
+      const interval = report.duration / report.analyzedFrames;
+      for (const frame of report.frames) {
+        if (frame.time > t) break;
+        if (frame.handsDetected === 0) {
+          offSeconds += interval;
+        }
+      }
+      setHandsOffTime(offSeconds);
+      rafId = requestAnimationFrame(update);
+    };
+
+    const start = () => { rafId = requestAnimationFrame(update); };
+    const stop = () => cancelAnimationFrame(rafId);
+
+    video.addEventListener("play", start);
+    video.addEventListener("pause", stop);
+    video.addEventListener("seeked", () => update());
+
+    // If already playing
+    if (!video.paused) start();
+
+    return () => {
+      stop();
+      video.removeEventListener("play", start);
+      video.removeEventListener("pause", stop);
+      video.removeEventListener("seeked", () => update());
+    };
+  }, [report]);
+
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
@@ -196,8 +237,17 @@ export default function DataVideoTask() {
           ) : (
             <>
               {/* Video player */}
-              <div className="rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06]">
-                <video src={videoUrl} controls className="w-full max-h-[400px] object-contain" />
+              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06]">
+                <video ref={videoRef} src={videoUrl} controls className="w-full max-h-[400px] object-contain" />
+                {report && (
+                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2 pointer-events-none">
+                    <Hand className="h-4 w-4 text-amber-400" />
+                    <div className="text-right">
+                      <p className="text-[10px] text-white/40 leading-none">Mãos fora</p>
+                      <p className="text-[16px] font-mono font-bold text-amber-400 leading-tight">{handsOffTime.toFixed(1)}s</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* File info */}
