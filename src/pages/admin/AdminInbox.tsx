@@ -215,6 +215,9 @@ export default function AdminInbox() {
         />
       </div>
 
+      {/* Template Manager */}
+      <InboxTemplateManager />
+
       {/* Threads */}
       {isLoading ? (
         <div className="flex justify-center py-20">
