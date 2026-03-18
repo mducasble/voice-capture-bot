@@ -9,8 +9,8 @@ import {
   Archive, Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MetricCard } from "@/components/audit/MetricCard";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
+import { TrackCard } from "@/components/data/TrackCard";
 import { cn } from "@/lib/utils";
 
 interface Recording {
