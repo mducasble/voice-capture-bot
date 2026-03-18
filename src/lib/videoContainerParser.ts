@@ -82,7 +82,7 @@ class BinaryReader {
   skip(n: number): void { this.pos += n; }
 
   slice(offset: number, length: number): BinaryReader {
-    return new BinaryReader(this.view.buffer, this.view.byteOffset + offset, length);
+    return new BinaryReader(this.buffer, this.byteOffset + offset, length);
   }
 }
 
