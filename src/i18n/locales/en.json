@@ -150,7 +150,11 @@
     "activityVideo": "Video",
     "activityImage": "Image",
     "activityAnnotation": "Data Labelling",
-    "activityText": "Text"
+    "activityText": "Text",
+    "detailTitle": "Detailed Statement",
+    "detailDirect": "Direct Earnings",
+    "detailReferral": "Referral Bonus",
+    "detailEmpty": "No records found."
   },
   "profile": {
     "title": "My Profile",
