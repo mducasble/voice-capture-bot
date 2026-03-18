@@ -180,7 +180,15 @@ export default function DataAudioTask() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type")
-        .then(({ data }) => setSiblings(data?.length ? (data as any[]) : [rec]));
+        .then(({ data }) => {
+          if (!data?.length) { setSiblings([rec]); return; }
+          const sorted = [...data].sort((a, b) => {
+            const aM = a.recording_type === "mixed" ? 0 : 1;
+            const bM = b.recording_type === "mixed" ? 0 : 1;
+            return aM - bM;
+          });
+          setSiblings(sorted as any[]);
+        });
     } else {
       setSiblings([rec]);
     }
