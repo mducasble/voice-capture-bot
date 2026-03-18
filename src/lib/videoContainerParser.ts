@@ -28,8 +28,12 @@ class BinaryReader {
   private view: DataView;
   private pos: number;
   private length: number;
+  readonly buffer: ArrayBuffer;
+  readonly byteOffset: number;
 
   constructor(buffer: ArrayBuffer, offset = 0, length?: number) {
+    this.buffer = buffer;
+    this.byteOffset = offset;
     this.view = new DataView(buffer, offset, length);
     this.pos = 0;
     this.length = length ?? buffer.byteLength - offset;
