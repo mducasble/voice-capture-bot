@@ -1,12 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Inbox, MessageSquare, ChevronLeft, Send, Loader2, CheckCheck, Circle } from "lucide-react";
+import {
+  Inbox,
+  MessageSquare,
+  Send,
+  Loader2,
+  CheckCheck,
+  Circle,
+  Plus,
+  ChevronLeft,
+  ArrowLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 /* ─── Types ─── */
 interface Thread {
@@ -32,39 +45,111 @@ interface Message {
 export default function PortalInbox() {
   const { user } = useAuth();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showNewThread, setShowNewThread] = useState(false);
+  const isMobile = useIsMobile();
 
   if (!user) return null;
 
+  const showList = isMobile ? !selectedThreadId && !showNewThread : true;
+  const showConversation = isMobile ? !!selectedThreadId || showNewThread : true;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Inbox className="h-6 w-6" style={{ color: "var(--portal-accent)" }} />
-        <h1 className="text-2xl font-black uppercase tracking-wider" style={{ color: "var(--portal-text)" }}>
+        <Inbox className="h-5 w-5" style={{ color: "var(--portal-accent)" }} />
+        <h1
+          className="text-xl font-black uppercase tracking-wider"
+          style={{ color: "var(--portal-text)" }}
+        >
           Mensagens
         </h1>
       </div>
 
-      {selectedThreadId ? (
-        <ThreadView
-          threadId={selectedThreadId}
-          userId={user.id}
-          onBack={() => setSelectedThreadId(null)}
-        />
-      ) : (
-        <ThreadList
-          userId={user.id}
-          onSelectThread={setSelectedThreadId}
-        />
-      )}
+      <div
+        className="flex overflow-hidden"
+        style={{
+          border: "1px solid var(--portal-border)",
+          height: "calc(100vh - 220px)",
+          minHeight: "500px",
+        }}
+      >
+        {/* ── Left column: thread list ── */}
+        {showList && (
+          <div
+            className={cn(
+              "flex flex-col shrink-0",
+              isMobile ? "w-full" : "w-[320px]"
+            )}
+            style={{ borderRight: isMobile ? "none" : "1px solid var(--portal-border)" }}
+          >
+            <ThreadList
+              userId={user.id}
+              selectedThreadId={selectedThreadId}
+              onSelectThread={(id) => {
+                setSelectedThreadId(id);
+                setShowNewThread(false);
+              }}
+              onNewThread={() => {
+                setSelectedThreadId(null);
+                setShowNewThread(true);
+              }}
+            />
+          </div>
+        )}
+
+        {/* ── Right column: conversation ── */}
+        {showConversation && (
+          <div className="flex-1 flex flex-col min-w-0">
+            {showNewThread ? (
+              <NewThreadForm
+                userId={user.id}
+                onCreated={(id) => {
+                  setShowNewThread(false);
+                  setSelectedThreadId(id);
+                }}
+                onBack={() => setShowNewThread(false)}
+              />
+            ) : selectedThreadId ? (
+              <ConversationView
+                threadId={selectedThreadId}
+                userId={user.id}
+                onBack={isMobile ? () => setSelectedThreadId(null) : undefined}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <MessageSquare
+                    className="h-10 w-10 mx-auto"
+                    style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+                  />
+                  <p
+                    className="font-mono text-xs"
+                    style={{ color: "var(--portal-text-muted)" }}
+                  >
+                    Selecione uma conversa
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ─── Thread List ─── */
-function ThreadList({ userId, onSelectThread }: { userId: string; onSelectThread: (id: string) => void }) {
-  const [showNewThread, setShowNewThread] = useState(false);
-  const queryClient = useQueryClient();
-
+function ThreadList({
+  userId,
+  selectedThreadId,
+  onSelectThread,
+  onNewThread,
+}: {
+  userId: string;
+  selectedThreadId: string | null;
+  onSelectThread: (id: string) => void;
+  onNewThread: () => void;
+}) {
   const { data: threads = [], isLoading } = useQuery({
     queryKey: ["portal-inbox-threads", userId],
     queryFn: async () => {
@@ -76,7 +161,6 @@ function ThreadList({ userId, onSelectThread }: { userId: string; onSelectThread
       if (error) throw error;
       if (!threadRows?.length) return [];
 
-      // Count unread messages per thread
       const threadIds = (threadRows as any[]).map((t: any) => t.id);
       const { data: unreadData } = await supabase
         .from("inbox_messages" as any)
@@ -97,9 +181,121 @@ function ThreadList({ userId, onSelectThread }: { userId: string; onSelectThread
     },
   });
 
+  return (
+    <>
+      {/* Header */}
+      <div
+        className="p-3 flex items-center justify-between shrink-0"
+        style={{ borderBottom: "1px solid var(--portal-border)" }}
+      >
+        <span
+          className="font-mono text-xs uppercase tracking-widest font-bold"
+          style={{ color: "var(--portal-text-muted)" }}
+        >
+          Conversas
+        </span>
+        <button
+          onClick={onNewThread}
+          className="h-7 w-7 flex items-center justify-center transition-colors hover:opacity-80"
+          style={{ color: "var(--portal-accent)" }}
+          title="Nova mensagem"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* List */}
+      <ScrollArea className="flex-1">
+        {isLoading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--portal-text-muted)" }} />
+          </div>
+        ) : threads.length === 0 ? (
+          <div className="text-center py-16 px-4">
+            <Inbox
+              className="h-8 w-8 mx-auto mb-3"
+              style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+            />
+            <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              Nenhuma mensagem
+            </p>
+          </div>
+        ) : (
+          <div>
+            {threads.map((thread) => {
+              const isSelected = thread.id === selectedThreadId;
+              return (
+                <button
+                  key={thread.id}
+                  onClick={() => onSelectThread(thread.id)}
+                  className="w-full text-left px-4 py-3 transition-all"
+                  style={{
+                    borderBottom: "1px solid var(--portal-border)",
+                    background: isSelected
+                      ? "rgba(140, 255, 5, 0.08)"
+                      : thread.unread_count > 0
+                        ? "rgba(140, 255, 5, 0.03)"
+                        : "transparent",
+                    borderLeft: isSelected ? "3px solid var(--portal-accent)" : "3px solid transparent",
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    {thread.unread_count > 0 && (
+                      <Circle
+                        className="h-2 w-2 fill-current shrink-0 mt-1.5"
+                        style={{ color: "var(--portal-accent)" }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="font-mono text-xs font-bold truncate"
+                        style={{ color: "var(--portal-text)" }}
+                      >
+                        {thread.subject}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                          {thread.category === "support"
+                            ? "Suporte"
+                            : thread.category === "payment"
+                              ? "Pagamento"
+                              : "Geral"}
+                        </span>
+                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                          {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </ScrollArea>
+    </>
+  );
+}
+
+/* ─── New Thread Form ─── */
+function NewThreadForm({
+  userId,
+  onCreated,
+  onBack,
+}: {
+  userId: string;
+  onCreated: (threadId: string) => void;
+  onBack: () => void;
+}) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const queryClient = useQueryClient();
+
   const createMutation = useMutation({
     mutationFn: async ({ subject, body }: { subject: string; body: string }) => {
-      // Create thread
       const { data: thread, error: tErr } = await supabase
         .from("inbox_threads" as any)
         .insert({
@@ -112,7 +308,6 @@ function ThreadList({ userId, onSelectThread }: { userId: string; onSelectThread
         .single();
       if (tErr) throw tErr;
 
-      // Create first message
       const { error: mErr } = await supabase
         .from("inbox_messages" as any)
         .insert({
@@ -127,99 +322,31 @@ function ThreadList({ userId, onSelectThread }: { userId: string; onSelectThread
     onSuccess: (threadId) => {
       toast.success("Mensagem enviada!");
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
-      setShowNewThread(false);
-      onSelectThread(threadId);
+      onCreated(threadId);
     },
     onError: () => toast.error("Erro ao enviar mensagem"),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--portal-text-muted)" }} />
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div
+        className="p-3 flex items-center gap-3 shrink-0"
+        style={{ borderBottom: "1px solid var(--portal-border)" }}
+      >
+        <button onClick={onBack} style={{ color: "var(--portal-text-muted)" }}>
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <span
+          className="font-mono text-xs uppercase tracking-widest font-bold"
+          style={{ color: "var(--portal-text)" }}
+        >
+          Nova Mensagem
+        </span>
       </div>
-    );
-  }
 
-  if (showNewThread) {
-    return <NewThreadForm onSubmit={(s, b) => createMutation.mutate({ subject: s, body: b })} onCancel={() => setShowNewThread(false)} isPending={createMutation.isPending} />;
-  }
-
-  return (
-    <div className="space-y-4">
-      <Button
-        onClick={() => setShowNewThread(true)}
-        className="font-mono text-xs uppercase tracking-widest"
-        style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-      >
-        <MessageSquare className="h-4 w-4 mr-2" />
-        Nova Mensagem
-      </Button>
-
-      {threads.length === 0 ? (
-        <div className="text-center py-16">
-          <Inbox className="h-12 w-12 mx-auto mb-4" style={{ color: "var(--portal-text-muted)", opacity: 0.3 }} />
-          <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-            Nenhuma mensagem ainda
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {threads.map((thread) => (
-            <button
-              key={thread.id}
-              onClick={() => onSelectThread(thread.id)}
-              className="w-full text-left p-4 transition-all"
-              style={{
-                border: "1px solid var(--portal-border)",
-                background: thread.unread_count > 0 ? "var(--portal-accent-bg, rgba(0,255,136,0.05))" : "transparent",
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {thread.unread_count > 0 && (
-                      <Circle className="h-2.5 w-2.5 fill-current shrink-0" style={{ color: "var(--portal-accent)" }} />
-                    )}
-                    <p className="font-mono text-sm font-bold truncate" style={{ color: "var(--portal-text)" }}>
-                      {thread.subject}
-                    </p>
-                  </div>
-                  <p className="font-mono text-xs mt-1" style={{ color: "var(--portal-text-muted)" }}>
-                    {thread.category === "support" ? "Suporte" : thread.category === "payment" ? "Pagamento" : "Geral"}
-                    {" · "}
-                    {thread.status === "open" ? "Aberto" : "Fechado"}
-                  </p>
-                </div>
-                <span className="font-mono text-xs shrink-0" style={{ color: "var(--portal-text-muted)" }}>
-                  {new Date(thread.last_message_at).toLocaleDateString("pt-BR")}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── New Thread Form ─── */
-function NewThreadForm({ onSubmit, onCancel, isPending }: { onSubmit: (subject: string, body: string) => void; onCancel: () => void; isPending: boolean }) {
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-
-  return (
-    <div className="space-y-4">
-      <button
-        onClick={onCancel}
-        className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest"
-        style={{ color: "var(--portal-text-muted)" }}
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Voltar
-      </button>
-
-      <div className="p-6 space-y-4" style={{ border: "1px solid var(--portal-border)" }}>
+      {/* Form */}
+      <div className="flex-1 p-4 space-y-4">
         <Input
           placeholder="Assunto"
           value={subject}
@@ -231,30 +358,45 @@ function NewThreadForm({ onSubmit, onCancel, isPending }: { onSubmit: (subject: 
           placeholder="Escreva sua mensagem..."
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={5}
+          rows={6}
           className="font-mono text-sm bg-transparent border-0 px-0 rounded-none focus-visible:ring-0 resize-none"
           style={{ color: "var(--portal-text)" }}
         />
-        <div className="flex justify-end">
-          <Button
-            onClick={() => onSubmit(subject, body)}
-            disabled={!subject.trim() || !body.trim() || isPending}
-            className="font-mono text-xs uppercase tracking-widest"
-            style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-          >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Enviar
-          </Button>
-        </div>
+      </div>
+
+      {/* Send */}
+      <div className="p-4 shrink-0" style={{ borderTop: "1px solid var(--portal-border)" }}>
+        <Button
+          onClick={() => createMutation.mutate({ subject, body })}
+          disabled={!subject.trim() || !body.trim() || createMutation.isPending}
+          className="w-full font-mono text-xs uppercase tracking-widest"
+          style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+        >
+          {createMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Send className="h-4 w-4 mr-2" />
+          )}
+          Enviar
+        </Button>
       </div>
     </div>
   );
 }
 
-/* ─── Thread View ─── */
-function ThreadView({ threadId, userId, onBack }: { threadId: string; userId: string; onBack: () => void }) {
+/* ─── Conversation View ─── */
+function ConversationView({
+  threadId,
+  userId,
+  onBack,
+}: {
+  threadId: string;
+  userId: string;
+  onBack?: () => void;
+}) {
   const [reply, setReply] = useState("");
   const queryClient = useQueryClient();
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: thread } = useQuery({
     queryKey: ["portal-inbox-thread", threadId],
@@ -279,7 +421,6 @@ function ThreadView({ threadId, userId, onBack }: { threadId: string; userId: st
         .order("created_at", { ascending: true });
       if (error) throw error;
 
-      // Mark unread messages as read
       const unreadIds = ((data || []) as any[])
         .filter((m: any) => !m.is_read && m.sender_id !== userId)
         .map((m: any) => m.id);
@@ -305,7 +446,6 @@ function ThreadView({ threadId, userId, onBack }: { threadId: string; userId: st
         } as any);
       if (mErr) throw mErr;
 
-      // Update last_message_at
       await supabase
         .from("inbox_threads" as any)
         .update({ last_message_at: new Date().toISOString() } as any)
@@ -319,94 +459,155 @@ function ThreadView({ threadId, userId, onBack }: { threadId: string; userId: st
     onError: () => toast.error("Erro ao enviar resposta"),
   });
 
-  return (
-    <div className="space-y-4">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest"
-        style={{ color: "var(--portal-text-muted)" }}
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Voltar
-      </button>
+  // Auto-scroll to bottom
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-      {thread && (
-        <div className="flex items-center justify-between">
-          <h2 className="font-mono text-lg font-bold" style={{ color: "var(--portal-text)" }}>
-            {(thread as any).subject}
-          </h2>
-          <span
-            className="font-mono text-xs px-2 py-1"
-            style={{
-              border: "1px solid var(--portal-border)",
-              color: "var(--portal-text-muted)",
-            }}
-          >
-            {(thread as any).status === "open" ? "Aberto" : "Fechado"}
-          </span>
+  const handleSend = () => {
+    if (reply.trim()) replyMutation.mutate(reply.trim());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div
+        className="p-3 flex items-center gap-3 shrink-0"
+        style={{ borderBottom: "1px solid var(--portal-border)" }}
+      >
+        {onBack && (
+          <button onClick={onBack} style={{ color: "var(--portal-text-muted)" }}>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-sm font-bold truncate" style={{ color: "var(--portal-text)" }}>
+            {thread ? (thread as any).subject : "…"}
+          </p>
+          {thread && (
+            <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+              {(thread as any).status === "open" ? "Aberto" : "Fechado"}
+            </p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Messages */}
-      <div className="space-y-3">
+      <ScrollArea className="flex-1 px-4 py-3">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--portal-text-muted)" }} />
           </div>
         ) : (
-          messages.map((msg) => {
-            const isMe = msg.sender_id === userId;
-            return (
-              <div
-                key={msg.id}
-                className="p-4"
-                style={{
-                  border: "1px solid var(--portal-border)",
-                  background: isMe ? "transparent" : "var(--portal-accent-bg, rgba(0,255,136,0.03))",
-                  borderLeft: isMe ? "1px solid var(--portal-border)" : "3px solid var(--portal-accent)",
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs font-bold" style={{ color: isMe ? "var(--portal-text-muted)" : "var(--portal-accent)" }}>
-                    {isMe ? "Você" : "Equipe KGeN"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                      {new Date(msg.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    {isMe && msg.is_read && (
-                      <CheckCheck className="h-3.5 w-3.5" style={{ color: "var(--portal-accent)" }} />
-                    )}
+          <div className="space-y-3">
+            {messages.map((msg) => {
+              const isMe = msg.sender_id === userId;
+              return (
+                <div
+                  key={msg.id}
+                  className={cn("flex", isMe ? "justify-end" : "justify-start")}
+                >
+                  <div className="max-w-[80%] space-y-1">
+                    {/* Sender label */}
+                    <p
+                      className={cn(
+                        "font-mono text-[10px] font-bold px-1",
+                        isMe ? "text-right" : "text-left"
+                      )}
+                      style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.6)" }}
+                    >
+                      {isMe ? "Você" : "Equipe KGeN"}
+                    </p>
+
+                    {/* Bubble */}
+                    <div
+                      className="px-3 py-2 text-sm whitespace-pre-wrap"
+                      style={{
+                        borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                        background: isMe
+                          ? "rgba(140, 255, 5, 0.12)"
+                          : "rgba(255, 255, 255, 0.06)",
+                        color: "var(--portal-text)",
+                        border: isMe
+                          ? "1px solid rgba(140, 255, 5, 0.2)"
+                          : "1px solid var(--portal-border)",
+                      }}
+                    >
+                      {msg.body}
+                    </div>
+
+                    {/* Timestamp + read receipt */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 px-1",
+                        isMe ? "justify-end" : "justify-start"
+                      )}
+                    >
+                      <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        {new Date(msg.created_at).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {isMe && msg.is_read && (
+                        <CheckCheck className="h-3 w-3" style={{ color: "rgba(140, 255, 5, 0.6)" }} />
+                      )}
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--portal-text)" }}>
-                  {msg.body}
-                </p>
-              </div>
-            );
-          })
+              );
+            })}
+            <div ref={bottomRef} />
+          </div>
         )}
-      </div>
+      </ScrollArea>
 
-      {/* Reply */}
+      {/* Reply box */}
       {thread && (thread as any).status === "open" && (
-        <div className="flex gap-3">
+        <div
+          className="p-3 flex items-end gap-2 shrink-0"
+          style={{ borderTop: "1px solid var(--portal-border)" }}
+        >
           <Textarea
-            placeholder="Responder..."
+            placeholder="Escreva uma resposta..."
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            rows={2}
-            className="flex-1 font-mono text-sm bg-transparent resize-none"
-            style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text)" }}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            className="flex-1 font-mono text-sm bg-transparent resize-none min-h-[36px] max-h-[120px]"
+            style={{
+              border: "1px solid var(--portal-border)",
+              color: "var(--portal-text)",
+              borderRadius: "18px",
+              paddingLeft: "14px",
+              paddingRight: "14px",
+            }}
           />
-          <Button
-            onClick={() => reply.trim() && replyMutation.mutate(reply.trim())}
+          <button
+            onClick={handleSend}
             disabled={!reply.trim() || replyMutation.isPending}
-            className="self-end"
-            style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+            className="h-9 w-9 flex items-center justify-center shrink-0 transition-opacity disabled:opacity-30"
+            style={{
+              background: "var(--portal-accent)",
+              color: "var(--portal-accent-text)",
+              borderRadius: "50%",
+            }}
           >
-            {replyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+            {replyMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </button>
         </div>
       )}
     </div>
