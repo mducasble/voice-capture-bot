@@ -126,7 +126,7 @@ export type QcProgress = {
 // Blur detection (Laplacian variance)
 // ---------------------------------------------------------------------------
 
-function computeBlurScore(imageData: ImageData): number {
+function computeBlurScore(imageData: ImageData, analysisScale = 1): number {
   const { data, width, height } = imageData;
   // Convert to grayscale
   const gray = new Float32Array(width * height);
@@ -154,6 +154,11 @@ function computeBlurScore(imageData: ImageData): number {
 
   mean /= count;
   variance = variance / count - mean * mean;
+
+  // Compensate for downscaling: smaller images have less high-freq detail.
+  // Laplacian variance scales roughly with the square of the scale factor.
+  const scaleCompensation = analysisScale > 0 ? 1 / (analysisScale * analysisScale) : 1;
+  const compensatedVariance = variance * scaleCompensation;
 
   // Normalize: typical range 0-2000, map to 0-100
   return Math.min(100, variance / 20);
