@@ -150,7 +150,11 @@
     "activityVideo": "Vídeo",
     "activityImage": "Imagem",
     "activityAnnotation": "Data Labelling",
-    "activityText": "Texto"
+    "activityText": "Texto",
+    "detailTitle": "Extrato Detalhado",
+    "detailDirect": "Ganhos Diretos",
+    "detailReferral": "Bônus de Referral",
+    "detailEmpty": "Nenhum registro encontrado."
   },
   "profile": {
     "title": "Meu Perfil",
