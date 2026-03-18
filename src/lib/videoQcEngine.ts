@@ -237,7 +237,7 @@ export async function runVideoQc(
   const height = video.videoHeight;
   const orientation: "landscape" | "portrait" | "square" =
     width > height ? "landscape" : width < height ? "portrait" : "square";
-  const hasAudio = (video as any).mozHasAudio || !!(video as any).webkitAudioDecodedByteCount || !!video.captureStream?.()?.getAudioTracks()?.length;
+  const hasAudio = !!(video as any).mozHasAudio || !!(video as any).webkitAudioDecodedByteCount || !!(video as any).audioTracks?.length;
 
   // 2. Initialize MediaPipe
   report("init", 0, 1, "Carregando modelos MediaPipe...");
