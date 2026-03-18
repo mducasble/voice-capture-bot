@@ -1,8 +1,9 @@
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, User, Loader2 } from "lucide-react";
+import { LogOut, Loader2, ShieldAlert } from "lucide-react";
 import kgenLogo from "@/assets/kgen-logo-green.png";
 
 interface Profile {
@@ -14,6 +15,7 @@ interface Profile {
 
 export default function DataLayout() {
   const { user, loading } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdminAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -30,7 +32,7 @@ export default function DataLayout() {
     navigate("/data/login", { replace: true });
   };
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <div className="data-theme min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(220 4% 8%) 70%, hsl(0 0% 5%) 100%)" }}>
         <Loader2 className="h-8 w-8 animate-spin text-white/60" />
@@ -39,6 +41,27 @@ export default function DataLayout() {
   }
 
   if (!user) return <Navigate to="/data/login" replace />;
+
+  if (!isAdmin) {
+    return (
+      <div className="data-theme min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, hsl(0 0% 5%) 0%, hsl(0 0% 9%) 40%, hsl(220 4% 8%) 70%, hsl(0 0% 5%) 100%)" }}>
+        <div className="flex flex-col items-center gap-6 text-center max-w-md px-6">
+          <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center">
+            <ShieldAlert className="h-8 w-8 text-red-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-white mb-2">Acesso Restrito</h1>
+            <p className="text-sm text-white/50">
+              O painel de dados é restrito a administradores. Sua conta ({user.email}) não possui permissão.
+            </p>
+          </div>
+          <button onClick={handleSignOut} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const initials = (profile?.full_name || user.email || "U").slice(0, 2).toUpperCase();
 
