@@ -78,13 +78,17 @@ export const useMixedRecorder = () => {
   /**
    * Dynamically add a new remote stream that joined mid-recording.
    */
-  const addRemoteStream = useCallback((stream: MediaStream) => {
+  const addRemoteStream = useCallback((stream: MediaStream, peerId?: string) => {
     const ctx = audioContextRef.current;
     const gain = gainNodeRef.current;
     if (!ctx || !gain) return;
 
-    // Skip if already connected
+    // Deduplicate by peerId first (handles Daily.co stream renegotiation),
+    // fall back to stream.id for backward compatibility
+    const dedupeKey = peerId || stream.id;
+    if (connectedPeerIdsRef.current.has(dedupeKey)) return;
     if (connectedStreamIdsRef.current.has(stream.id)) return;
+    connectedPeerIdsRef.current.add(dedupeKey);
     connectedStreamIdsRef.current.add(stream.id);
 
     const src = ctx.createMediaStreamSource(stream);
