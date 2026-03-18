@@ -290,7 +290,7 @@ function ThreadView({ threadId, userId, onBack }: { threadId: string; userId: st
           .in("id", unreadIds);
       }
 
-      return (data || []) as Message[];
+      return (data || []) as unknown as Message[];
     },
   });
 
