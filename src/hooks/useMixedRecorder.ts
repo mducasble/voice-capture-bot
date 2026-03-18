@@ -20,6 +20,7 @@ export const useMixedRecorder = () => {
   const sourceNodesRef = useRef<MediaStreamAudioSourceNode[]>([]);
   const gainNodeRef = useRef<GainNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
+  const connectedPeerIdsRef = useRef<Set<string>>(new Set());
   const connectedStreamIdsRef = useRef<Set<string>>(new Set());
 
   const startRecording = useCallback(
