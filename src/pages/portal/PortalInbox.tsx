@@ -248,20 +248,20 @@ function ThreadList({
                     )}
                     <div className="flex-1 min-w-0">
                       <p
-                        className="font-mono text-xs font-bold truncate"
+                        className="font-mono text-sm font-bold truncate"
                         style={{ color: "var(--portal-text)" }}
                       >
                         {thread.subject}
                       </p>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                           {thread.category === "support"
                             ? "Suporte"
                             : thread.category === "payment"
                               ? "Pagamento"
                               : "Geral"}
                         </span>
-                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                           {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
