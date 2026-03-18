@@ -120,10 +120,10 @@ export default function PortalInbox() {
                 <div className="text-center space-y-3">
                   <MessageSquare
                     className="h-10 w-10 mx-auto"
-                    style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+                    style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
                   />
                   <p
-                    className="font-mono text-xs"
+                    className="font-mono text-sm"
                     style={{ color: "var(--portal-text-muted)" }}
                   >
                     Selecione uma conversa
@@ -214,9 +214,9 @@ function ThreadList({
           <div className="text-center py-16 px-4">
             <Inbox
               className="h-8 w-8 mx-auto mb-3"
-              style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+              style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
             />
-            <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+            <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
               Nenhuma mensagem
             </p>
           </div>
@@ -232,9 +232,9 @@ function ThreadList({
                   style={{
                     borderBottom: "1px solid var(--portal-border)",
                     background: isSelected
-                      ? "rgba(140, 255, 5, 0.08)"
+                      ? "rgba(140, 255, 5, 0.12)"
                       : thread.unread_count > 0
-                        ? "rgba(140, 255, 5, 0.03)"
+                        ? "rgba(140, 255, 5, 0.06)"
                         : "transparent",
                     borderLeft: isSelected ? "3px solid var(--portal-accent)" : "3px solid transparent",
                   }}
@@ -248,20 +248,20 @@ function ThreadList({
                     )}
                     <div className="flex-1 min-w-0">
                       <p
-                        className="font-mono text-xs font-bold truncate"
+                        className="font-mono text-sm font-bold truncate"
                         style={{ color: "var(--portal-text)" }}
                       >
                         {thread.subject}
                       </p>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                           {thread.category === "support"
                             ? "Suporte"
                             : thread.category === "payment"
                               ? "Pagamento"
                               : "Geral"}
                         </span>
-                        <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                           {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
@@ -518,26 +518,26 @@ function ConversationView({
                     {/* Sender label */}
                     <p
                       className={cn(
-                        "font-mono text-[10px] font-bold px-1",
+                        "font-mono text-xs font-bold px-1",
                         isMe ? "text-right" : "text-left"
                       )}
-                      style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.6)" }}
+                      style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.8)" }}
                     >
                       {isMe ? "Você" : "Equipe KGeN"}
                     </p>
 
                     {/* Bubble */}
                     <div
-                      className="px-3 py-2 text-sm whitespace-pre-wrap"
+                      className="px-3 py-2.5 text-sm whitespace-pre-wrap"
                       style={{
                         borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                         background: isMe
-                          ? "rgba(140, 255, 5, 0.12)"
-                          : "rgba(255, 255, 255, 0.06)",
+                          ? "rgba(140, 255, 5, 0.18)"
+                          : "rgba(255, 255, 255, 0.10)",
                         color: "var(--portal-text)",
                         border: isMe
-                          ? "1px solid rgba(140, 255, 5, 0.2)"
-                          : "1px solid var(--portal-border)",
+                          ? "1px solid rgba(140, 255, 5, 0.3)"
+                          : "1px solid rgba(255, 255, 255, 0.15)",
                       }}
                     >
                       {msg.body}
@@ -550,7 +550,7 @@ function ConversationView({
                         isMe ? "justify-end" : "justify-start"
                       )}
                     >
-                      <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                         {new Date(msg.created_at).toLocaleString("pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
@@ -559,7 +559,7 @@ function ConversationView({
                         })}
                       </span>
                       {isMe && msg.is_read && (
-                        <CheckCheck className="h-3 w-3" style={{ color: "rgba(140, 255, 5, 0.6)" }} />
+                        <CheckCheck className="h-3 w-3" style={{ color: "rgba(140, 255, 5, 0.8)" }} />
                       )}
                     </div>
                   </div>
