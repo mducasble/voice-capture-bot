@@ -257,16 +257,20 @@ function ThreadList({
                     background: isSelected
                       ? "rgba(140, 255, 5, 0.15)"
                       : thread.unread_count > 0
-                        ? "rgba(255, 255, 255, 0.06)"
+                        ? "rgba(255, 160, 40, 0.10)"
                         : "rgba(255, 255, 255, 0.03)",
-                    borderLeft: isSelected ? "3px solid var(--portal-accent)" : "3px solid transparent",
+                    borderLeft: isSelected
+                      ? "3px solid var(--portal-accent)"
+                      : thread.unread_count > 0
+                        ? "3px solid rgba(255, 160, 40, 0.8)"
+                        : "3px solid transparent",
                   }}
                 >
                   <div className="flex items-start gap-2">
                     {thread.unread_count > 0 && (
                       <Circle
                         className="h-2 w-2 fill-current shrink-0 mt-1.5"
-                        style={{ color: "var(--portal-accent)" }}
+                        style={{ color: "rgba(255, 160, 40, 0.9)" }}
                       />
                     )}
                     <div className="flex-1 min-w-0">
