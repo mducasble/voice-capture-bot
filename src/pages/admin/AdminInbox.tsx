@@ -44,6 +44,23 @@ export default function AdminInbox() {
   const [expandedThread, setExpandedThread] = useState<string | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [verifyingWalletThread, setVerifyingWalletThread] = useState<string | null>(null);
+
+  /* ─── Verify wallet (thread context) ─── */
+  const handleVerifyWalletThread = async (userId: string, threadId: string) => {
+    setVerifyingWalletThread(threadId);
+    try {
+      const { error } = await supabase.functions.invoke("admin-update-user", {
+        body: { action: "update_profile", user_id: userId, profile_data: { wallet_verified: true } },
+      });
+      if (error) throw error;
+      toast.success("Carteira marcada como verificada!");
+    } catch (e: any) {
+      toast.error("Erro ao verificar carteira: " + (e.message || "erro desconhecido"));
+    } finally {
+      setVerifyingWalletThread(null);
+    }
+  };
 
   /* ─── Fetch threads ─── */
   const { data: threads = [], isLoading, refetch } = useQuery({
@@ -286,6 +303,20 @@ export default function AdminInbox() {
                         </div>
                       );
                     })}
+
+                    {/* Verify wallet button for wallet test threads */}
+                    {thread.subject.toLowerCase().includes("wallet") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVerifyWalletThread(thread.user_id, thread.id)}
+                        disabled={verifyingWalletThread === thread.id}
+                        className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                      >
+                        {verifyingWalletThread === thread.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                        Confirmo o recebimento do teste
+                      </Button>
+                    )}
 
                     {/* Reply */}
                     {thread.status === "open" && (
