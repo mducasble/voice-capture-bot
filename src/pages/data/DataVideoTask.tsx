@@ -316,73 +316,64 @@ export default function DataVideoTask() {
               </button>
 
               {showDetails && (
-                <div className="px-6 pb-5 space-y-6">
-                  {/* File section */}
-                  <div>
-                    <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Arquivo</h4>
-                    <MetricRow icon={Clock} label="Duração" value={`${report.duration.toFixed(1)}s`} />
-                    <MetricRow icon={Maximize2} label="Resolução" value={`${report.width}×${report.height}`} unit={report.orientation} />
-                    <MetricRow icon={Film} label="FPS Real" value={containerMeta?.realFps ? `${containerMeta.realFps}` : "—"} unit="fps" />
-                    <MetricRow icon={Activity} label="FPS Análise" value={`${report.fps}`} unit="fps" />
-                    <MetricRow icon={FileVideo} label="Codec" value={containerMeta?.codec || "—"} />
-                    <MetricRow icon={FileVideo} label="Container" value={containerMeta?.containerFormat || "—"} />
-                    <MetricRow icon={Volume2} label="Áudio" value={report.hasAudio ? "Sim" : "Não"} />
-                    <MetricRow icon={FileVideo} label="Tamanho" value={`${(report.fileSize / 1024 / 1024).toFixed(1)}`} unit="MB" />
-                    {containerMeta?.bitrate && (
-                      <MetricRow icon={Gauge} label="Bitrate" value={`${containerMeta.bitrate}`} unit="kbps" />
-                    )}
-                    {containerMeta?.rotation && (
-                      <MetricRow icon={RotateCw} label="Rotação" value={`${containerMeta.rotation}°`} />
-                    )}
-                  </div>
-
-                  {/* Device section */}
-                  {(containerMeta?.deviceModel || containerMeta?.deviceMake || containerMeta?.software) && (
-                    <div>
-                      <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Dispositivo</h4>
-                      {containerMeta.deviceMake && (
-                        <MetricRow icon={Smartphone} label="Fabricante" value={containerMeta.deviceMake} />
-                      )}
-                      {containerMeta.deviceModel && (
-                        <MetricRow icon={Smartphone} label="Modelo" value={containerMeta.deviceModel} />
-                      )}
-                      {containerMeta.software && (
-                        <MetricRow icon={Film} label="Software" value={containerMeta.software} />
-                      )}
-                      {containerMeta.creationDate && (
-                        <MetricRow icon={Clock} label="Data de criação" value={containerMeta.creationDate} />
+                <div className="px-6 pb-5 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Column 1: File + Device */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Arquivo</h4>
+                        <MetricRow icon={Clock} label="Duração" value={`${report.duration.toFixed(1)}s`} />
+                        <MetricRow icon={Maximize2} label="Resolução" value={`${report.width}×${report.height}`} unit={report.orientation} />
+                        <MetricRow icon={Film} label="FPS Real" value={containerMeta?.realFps ? `${containerMeta.realFps}` : "—"} unit="fps" />
+                        <MetricRow icon={FileVideo} label="Codec" value={containerMeta?.codec || "—"} />
+                        <MetricRow icon={FileVideo} label="Container" value={containerMeta?.containerFormat || "—"} />
+                        <MetricRow icon={Volume2} label="Áudio" value={report.hasAudio ? "Sim" : "Não"} />
+                        <MetricRow icon={FileVideo} label="Tamanho" value={`${(report.fileSize / 1024 / 1024).toFixed(1)}`} unit="MB" />
+                        {containerMeta?.bitrate && (
+                          <MetricRow icon={Gauge} label="Bitrate" value={`${containerMeta.bitrate}`} unit="kbps" />
+                        )}
+                        {containerMeta?.rotation && (
+                          <MetricRow icon={RotateCw} label="Rotação" value={`${containerMeta.rotation}°`} />
+                        )}
+                      </div>
+                      {(containerMeta?.deviceModel || containerMeta?.deviceMake || containerMeta?.software) && (
+                        <div>
+                          <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Dispositivo</h4>
+                          {containerMeta.deviceMake && <MetricRow icon={Smartphone} label="Fabricante" value={containerMeta.deviceMake} />}
+                          {containerMeta.deviceModel && <MetricRow icon={Smartphone} label="Modelo" value={containerMeta.deviceModel} />}
+                          {containerMeta.software && <MetricRow icon={Film} label="Software" value={containerMeta.software} />}
+                          {containerMeta.creationDate && <MetricRow icon={Clock} label="Criação" value={containerMeta.creationDate} />}
+                        </div>
                       )}
                     </div>
-                  )}
 
-                  {/* Hands section */}
-                  <div>
-                    <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Mãos</h4>
-                    <MetricRow icon={Hand} label="Presença de mãos" value={`${(report.handPresenceRate * 100).toFixed(0)}%`} score={report.handPresenceRate * 100} />
-                    <MetricRow icon={Hand} label="Duas mãos" value={`${(report.dualHandRate * 100).toFixed(0)}%`} score={report.dualHandRate * 100} />
-                    <MetricRow icon={Focus} label="Centralização" value={`${report.handCenteringScore.toFixed(0)}`} unit="/100" score={report.handCenteringScore} />
-                    <MetricRow icon={Maximize2} label="Tamanho da mão" value={`${report.handSizeScore.toFixed(0)}`} unit="/100" score={report.handSizeScore} />
-                    <MetricRow icon={Activity} label="Continuidade" value={`${report.trackingContinuityScore.toFixed(0)}`} unit="/100" score={report.trackingContinuityScore} />
+                    {/* Column 2: Hands */}
+                    <div>
+                      <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Mãos</h4>
+                      <MetricRow icon={Hand} label="Presença" value={`${(report.handPresenceRate * 100).toFixed(0)}%`} score={report.handPresenceRate * 100} />
+                      <MetricRow icon={Hand} label="Duas mãos" value={`${(report.dualHandRate * 100).toFixed(0)}%`} score={report.dualHandRate * 100} />
+                      <MetricRow icon={Focus} label="Centralização" value={`${report.handCenteringScore.toFixed(0)}`} unit="/100" score={report.handCenteringScore} />
+                      <MetricRow icon={Maximize2} label="Tamanho" value={`${report.handSizeScore.toFixed(0)}`} unit="/100" score={report.handSizeScore} />
+                      <MetricRow icon={Activity} label="Continuidade" value={`${report.trackingContinuityScore.toFixed(0)}`} unit="/100" score={report.trackingContinuityScore} />
+                    </div>
+
+                    {/* Column 3: Face + Quality */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Rosto (Privacidade)</h4>
+                        <MetricRow icon={Eye} label="Presença" value={`${(report.facePresenceRate * 100).toFixed(0)}%`}
+                          score={(1 - report.facePresenceRate) * 100} />
+                        <MetricRow icon={Clock} label="Máx. duração" value={`${report.maxFaceDuration.toFixed(1)}s`} />
+                      </div>
+                      <div>
+                        <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Qualidade</h4>
+                        <MetricRow icon={Focus} label="Nitidez" value={`${report.blurScore.toFixed(0)}`} unit="/100" score={report.blurScore} />
+                        <MetricRow icon={Sun} label="Iluminação" value={`${report.brightnessScore.toFixed(0)}`} unit="/100" score={report.brightnessScore} />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Face section */}
-                  <div>
-                    <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Rosto (Privacidade)</h4>
-                    <MetricRow icon={Eye} label="Presença de rosto" value={`${(report.facePresenceRate * 100).toFixed(0)}%`}
-                      score={(1 - report.facePresenceRate) * 100} />
-                    <MetricRow icon={Clock} label="Máx. duração rosto" value={`${report.maxFaceDuration.toFixed(1)}s`} />
-                  </div>
-
-                  {/* Quality section */}
-                  <div>
-                    <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Qualidade</h4>
-                    <MetricRow icon={Focus} label="Nitidez (blur)" value={`${report.blurScore.toFixed(0)}`} unit="/100" score={report.blurScore} />
-                    <MetricRow icon={Sun} label="Iluminação" value={`${report.brightnessScore.toFixed(0)}`} unit="/100" score={report.brightnessScore} />
-                    {/* Estabilidade oculta por enquanto — ainda calculada internamente */}
-                  </div>
-
-                  {/* Analyzed frames */}
-                  <p className="text-[12px] text-white/20 text-center">
+                  <p className="text-[12px] text-white/20 text-center pt-2">
                     {report.analyzedFrames} frames analisados de ~{report.totalFrames} estimados
                   </p>
                 </div>
