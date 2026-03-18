@@ -606,7 +606,7 @@ function ConversationView({
       {thread && (thread as any).status === "open" && (
         <div
           className="p-3 flex items-end gap-2 shrink-0"
-          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.03)", background: "rgba(255, 255, 255, 0.008)" }}
+          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.02)", background: "rgba(255, 255, 255, 0.004)" }}
         >
           <Textarea
             placeholder="Escreva uma resposta..."
