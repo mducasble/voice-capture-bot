@@ -1,0 +1,1 @@
+ALTER TABLE public.earnings_ledger ADD COLUMN IF NOT EXISTS tx_hash text DEFAULT NULL;
