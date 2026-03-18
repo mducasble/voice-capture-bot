@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
   Inbox, Send, Loader2, ChevronDown, ChevronRight, Search,
-  RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users,
+  RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
