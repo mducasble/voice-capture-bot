@@ -837,9 +837,19 @@ serve(async (req) => {
 
     // Determine which phase to run
     if (current_segment != null && current_segment > 0 && segment_data) {
-      // PHASE 2 or 3: Continue processing segments
-      console.log(`[enhance] Continuing segment ${current_segment + 1}/${total_segments} for ${recording_id}`);
-      await phaseContinue(job_id, recording_id, current_segment, total_segments, segment_data);
+      if (current_segment >= total_segments) {
+        // PHASE 3: Assembly — all segments done, combine and upload
+        console.log(`[enhance] Assembly phase for ${recording_id} (${total_segments} segments)`);
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        await phaseFinalize(job_id, recording_id, segment_data, supabaseClient);
+      } else {
+        // PHASE 2: Continue processing segments
+        console.log(`[enhance] Continuing segment ${current_segment + 1}/${total_segments} for ${recording_id}`);
+        await phaseContinue(job_id, recording_id, current_segment, total_segments, segment_data);
+      }
     } else {
       // PHASE 1: Init — analyze and start processing
       console.log(`[enhance] Init for ${recording_id}`);
