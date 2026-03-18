@@ -69,11 +69,11 @@ export default function PortalInbox() {
       <div
         className="flex overflow-hidden rounded"
         style={{
-          border: "1px solid rgba(255, 255, 255, 0.04)",
+          border: "1px solid rgba(255, 255, 255, 0.025)",
           height: "calc(100vh - 220px)",
           minHeight: "500px",
-          background: "rgba(255, 255, 255, 0.01)",
-          backdropFilter: "blur(8px)",
+          background: "rgba(255, 255, 255, 0.005)",
+          backdropFilter: "blur(4px)",
         }}
       >
         {/* ── Left column: thread list ── */}
