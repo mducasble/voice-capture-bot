@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
-  Headphones, SkipForward, RefreshCw, Sparkles, Mic2, User, Globe,
+  SkipForward, Mic2, User, Globe, Headphones,
   Archive, Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
