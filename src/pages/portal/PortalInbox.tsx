@@ -518,17 +518,17 @@ function ConversationView({
                     {/* Sender label */}
                     <p
                       className={cn(
-                        "font-mono text-[10px] font-bold px-1",
+                        "font-mono text-xs font-bold px-1",
                         isMe ? "text-right" : "text-left"
                       )}
-                      style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.6)" }}
+                      style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.8)" }}
                     >
                       {isMe ? "Você" : "Equipe KGeN"}
                     </p>
 
                     {/* Bubble */}
                     <div
-                      className="px-3 py-2 text-sm whitespace-pre-wrap"
+                      className="px-3 py-2.5 text-sm whitespace-pre-wrap"
                       style={{
                         borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                         background: isMe
