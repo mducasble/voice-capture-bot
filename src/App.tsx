@@ -65,6 +65,7 @@ const DataLayout = lazy(() => import("./components/data/DataLayout"));
 const DataHome = lazy(() => import("./pages/data/DataHome"));
 const DataCampaignSelect = lazy(() => import("./pages/data/DataCampaignSelect"));
 const DataAudioTask = lazy(() => import("./pages/data/DataAudioTask"));
+const DataVideoTask = lazy(() => import("./pages/data/DataVideoTask"));
 const DataProfile = lazy(() => import("./pages/data/DataProfile"));
 
 
