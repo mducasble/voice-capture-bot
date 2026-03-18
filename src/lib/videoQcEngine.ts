@@ -31,6 +31,7 @@ export interface QcConfig {
     minHandPresenceRate: number;
     maxFacePresenceRate: number;
     minDurationSec: number;
+    faceMinConfidence: number;
   };
 }
 
@@ -56,6 +57,7 @@ export const DEFAULT_QC_CONFIG: QcConfig = {
     minHandPresenceRate: 0.20,
     maxFacePresenceRate: 0.50,
     minDurationSec: 3,
+    faceMinConfidence: 0.70,
   },
 };
 
@@ -363,12 +365,15 @@ export async function runVideoQc(
     numHands: 2,
   });
 
+  const faceMinConf = config.hardBlockRules.faceMinConfidence;
+
   const faceDetector = await FaceDetector.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
       delegate: "GPU",
     },
     runningMode: "IMAGE",
+    minDetectionConfidence: faceMinConf,
   });
 
   // 3. Sample frames
