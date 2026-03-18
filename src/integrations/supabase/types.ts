@@ -1649,6 +1649,36 @@ export type Database = {
           },
         ]
       }
+      inbox_message_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          subject: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          subject: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          subject?: string
+          template_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inbox_messages: {
         Row: {
           body: string
