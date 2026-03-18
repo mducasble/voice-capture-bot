@@ -475,10 +475,12 @@ export default function DataAudioTask() {
       <div className="data-glass-card rounded-2xl p-6 mb-6">
         <div className="flex items-start justify-between mb-5">
           <div>
+            {taskTypeLabel && (
+              <p className="text-[12px] text-white/40 uppercase font-semibold tracking-wider mb-1">{taskTypeLabel}</p>
+            )}
             <h1 className="text-[22px] font-bold text-white mb-1">
-              {rec.discord_username || rec.filename}
+              {campaignName || rec.filename}
             </h1>
-            <p className="text-[14px] text-white/40">{campaignName}</p>
           </div>
           {mainTier && (
             <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
