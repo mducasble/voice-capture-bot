@@ -237,8 +237,17 @@ export default function DataVideoTask() {
           ) : (
             <>
               {/* Video player */}
-              <div className="rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06]">
-                <video src={videoUrl} controls className="w-full max-h-[400px] object-contain" />
+              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06]">
+                <video ref={videoRef} src={videoUrl} controls className="w-full max-h-[400px] object-contain" />
+                {report && (
+                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2 pointer-events-none">
+                    <Hand className="h-4 w-4 text-amber-400" />
+                    <div className="text-right">
+                      <p className="text-[10px] text-white/40 leading-none">Mãos fora</p>
+                      <p className="text-[16px] font-mono font-bold text-amber-400 leading-tight">{handsOffTime.toFixed(1)}s</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* File info */}
