@@ -270,7 +270,7 @@ function ThreadList({
                     {thread.unread_count > 0 && (
                       <Circle
                         className="h-2 w-2 fill-current shrink-0 mt-1.5"
-                        style={{ color: "var(--portal-accent)" }}
+                        style={{ color: "rgba(255, 160, 40, 0.9)" }}
                       />
                     )}
                     <div className="flex-1 min-w-0">
