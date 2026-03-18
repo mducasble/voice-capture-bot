@@ -20,6 +20,7 @@ import {
   DEFAULT_QC_CONFIG,
   type QcConfig,
 } from "@/lib/videoQcEngine";
+import { parseVideoContainer, type VideoContainerMetadata } from "@/lib/videoContainerParser";
 
 // ---------------------------------------------------------------------------
 // Sub-components
