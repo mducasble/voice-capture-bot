@@ -559,7 +559,7 @@ function ConversationView({
                         })}
                       </span>
                       {isMe && msg.is_read && (
-                        <CheckCheck className="h-3 w-3" style={{ color: "rgba(140, 255, 5, 0.6)" }} />
+                        <CheckCheck className="h-3 w-3" style={{ color: "rgba(140, 255, 5, 0.8)" }} />
                       )}
                     </div>
                   </div>
