@@ -20,14 +20,17 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string | null
+          current_segment: number
           id: string
           job_type: string
           last_error: string | null
           max_attempts: number
           priority: number
           recording_id: string
+          segment_data: Json | null
           started_at: string | null
           status: string
+          total_segments: number
           updated_at: string
         }
         Insert: {
@@ -35,14 +38,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          current_segment?: number
           id?: string
           job_type?: string
           last_error?: string | null
           max_attempts?: number
           priority?: number
           recording_id: string
+          segment_data?: Json | null
           started_at?: string | null
           status?: string
+          total_segments?: number
           updated_at?: string
         }
         Update: {
@@ -50,14 +56,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          current_segment?: number
           id?: string
           job_type?: string
           last_error?: string | null
           max_attempts?: number
           priority?: number
           recording_id?: string
+          segment_data?: Json | null
           started_at?: string | null
           status?: string
+          total_segments?: number
           updated_at?: string
         }
         Relationships: []
