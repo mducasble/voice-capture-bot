@@ -135,11 +135,12 @@ serve(async (req) => {
       };
 
       if (job.current_segment > 0 && job.segment_data) {
-        // Continuation: pass segment info
+        // Continuation or assembly: pass segment info
         enhancePayload.current_segment = job.current_segment;
         enhancePayload.total_segments = job.total_segments;
         enhancePayload.segment_data = job.segment_data;
-        console.log(`🔄 Enhance job ${job.id} rec=${rec.id} segment ${job.current_segment + 1}/${job.total_segments}`);
+        const phase = job.current_segment >= job.total_segments ? 'assembly' : `segment ${job.current_segment + 1}/${job.total_segments}`;
+        console.log(`🔄 Enhance job ${job.id} rec=${rec.id} ${phase}`);
       } else {
         // Init: pass file_url
         enhancePayload.file_url = rec.file_url || audioUrl;
