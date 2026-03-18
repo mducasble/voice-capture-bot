@@ -30,6 +30,7 @@ interface Thread {
   last_message_at: string;
   created_at: string;
   unread_count: number;
+  preview: string;
 }
 
 interface Message {
