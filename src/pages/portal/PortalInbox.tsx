@@ -532,8 +532,8 @@ function ConversationView({
                       style={{
                         borderRadius: isMe ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                         background: isMe
-                          ? "rgba(140, 255, 5, 0.12)"
-                          : "rgba(255, 255, 255, 0.06)",
+                          ? "rgba(140, 255, 5, 0.18)"
+                          : "rgba(255, 255, 255, 0.10)",
                         color: "var(--portal-text)",
                         border: isMe
                           ? "1px solid rgba(140, 255, 5, 0.2)"
