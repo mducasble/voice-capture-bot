@@ -216,6 +216,25 @@ export default function AdminFinance() {
       const receipt = await tx.wait(1);
       if (receipt.status !== 1) throw new Error("Transação falhou on-chain");
 
+      // Generate payment code and create payment record
+      const { data: codeResult } = await supabase.rpc("generate_payment_code");
+      const paymentCode = codeResult || `pg-${Math.random().toString(36).slice(2, 10)}`;
+
+      const { data: payment, error: paymentErr } = await supabase
+        .from("payments")
+        .insert({
+          payment_code: paymentCode,
+          tx_hash: tx.hash,
+          user_id: user.user_id,
+          total_amount: user.total_pending,
+          currency: user.currency,
+          paid_at: new Date().toISOString(),
+        } as any)
+        .select("id")
+        .single();
+
+      if (paymentErr) throw paymentErr;
+
       // Mark earnings as paid in DB
       const { error } = await supabase
         .from("earnings_ledger")
@@ -223,12 +242,13 @@ export default function AdminFinance() {
           status: "paid",
           paid_at: new Date().toISOString(),
           tx_hash: tx.hash,
+          payment_id: payment.id,
         } as any)
         .in("id", user.earning_ids);
 
       if (error) throw error;
 
-      return { txHash: tx.hash, userName: user.full_name };
+      return { txHash: tx.hash, userName: user.full_name, paymentCode };
     },
     onSuccess: ({ txHash, userName }) => {
       toast.success(`Pagamento enviado para ${userName || "usuário"}!`, {
