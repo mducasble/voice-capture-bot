@@ -69,11 +69,11 @@ export default function PortalInbox() {
       <div
         className="flex overflow-hidden rounded"
         style={{
-          border: "1px solid rgba(255, 255, 255, 0.04)",
+          border: "1px solid rgba(255, 255, 255, 0.025)",
           height: "calc(100vh - 220px)",
           minHeight: "500px",
-          background: "rgba(255, 255, 255, 0.01)",
-          backdropFilter: "blur(8px)",
+          background: "rgba(255, 255, 255, 0.005)",
+          backdropFilter: "blur(4px)",
         }}
       >
         {/* ── Left column: thread list ── */}
@@ -84,8 +84,8 @@ export default function PortalInbox() {
               isMobile ? "w-full" : "w-[320px]"
             )}
             style={{
-              borderRight: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.03)",
-              background: "rgba(255, 255, 255, 0.008)",
+              borderRight: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.02)",
+              background: "rgba(255, 255, 255, 0.004)",
             }}
           >
             <ThreadList
@@ -606,7 +606,7 @@ function ConversationView({
       {thread && (thread as any).status === "open" && (
         <div
           className="p-3 flex items-end gap-2 shrink-0"
-          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.03)", background: "rgba(255, 255, 255, 0.008)" }}
+          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.02)", background: "rgba(255, 255, 255, 0.004)" }}
         >
           <Textarea
             placeholder="Escreva uma resposta..."
@@ -616,8 +616,8 @@ function ConversationView({
             rows={1}
             className="flex-1 font-mono text-sm resize-none min-h-[36px] max-h-[120px]"
             style={{
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              background: "rgba(255, 255, 255, 0.015)",
+              border: "1px solid rgba(255, 255, 255, 0.03)",
+              background: "rgba(255, 255, 255, 0.008)",
               color: "var(--portal-text)",
               borderRadius: "18px",
               paddingLeft: "14px",
