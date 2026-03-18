@@ -120,10 +120,10 @@ export default function PortalInbox() {
                 <div className="text-center space-y-3">
                   <MessageSquare
                     className="h-10 w-10 mx-auto"
-                    style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+                    style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
                   />
                   <p
-                    className="font-mono text-xs"
+                    className="font-mono text-sm"
                     style={{ color: "var(--portal-text-muted)" }}
                   >
                     Selecione uma conversa
