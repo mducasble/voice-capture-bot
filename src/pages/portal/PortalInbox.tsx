@@ -82,7 +82,10 @@ export default function PortalInbox() {
               "flex flex-col shrink-0",
               isMobile ? "w-full" : "w-[320px]"
             )}
-            style={{ borderRight: isMobile ? "none" : "1px solid var(--portal-border)" }}
+            style={{
+              borderRight: isMobile ? "none" : "1px solid var(--portal-border)",
+              background: "rgba(0, 0, 0, 0.25)",
+            }}
           >
             <ThreadList
               userId={user.id}
