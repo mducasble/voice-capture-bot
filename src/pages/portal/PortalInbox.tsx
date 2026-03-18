@@ -72,8 +72,8 @@ export default function PortalInbox() {
           border: "1px solid rgba(255, 255, 255, 0.025)",
           height: "calc(100vh - 220px)",
           minHeight: "500px",
-          background: "rgba(255, 255, 255, 0.005)",
-          backdropFilter: "blur(4px)",
+          background: "rgba(255, 255, 255, 0.015)",
+          backdropFilter: "blur(6px)",
         }}
       >
         {/* ── Left column: thread list ── */}
