@@ -470,7 +470,19 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
       <Input placeholder="Assunto" value={subject} onChange={e => setSubject(e.target.value)} />
       <Textarea placeholder="Mensagem..." value={body} onChange={e => setBody(e.target.value)} rows={4} className="resize-none" />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
+        {activeTemplateKey === "wallet_test_tx" && selectedUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleVerifyWallet(selectedUser.id)}
+            disabled={verifyingWallet}
+            className="mr-auto border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+          >
+            {verifyingWallet ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+            Marcar carteira verificada
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
         <Button
           size="sm"
