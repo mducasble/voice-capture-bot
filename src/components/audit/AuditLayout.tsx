@@ -1,12 +1,14 @@
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuditSidebar } from "./AuditSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { LogOut, ChevronRight, Menu } from "lucide-react";
+import { LogOut, ChevronRight, Menu, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useCallback } from "react";
 
 export default function AuditLayout() {
   const { user, loading } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -17,7 +19,7 @@ export default function AuditLayout() {
     navigate("/audit/login", { replace: true });
   }, [navigate]);
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <div className="audit-theme min-h-screen flex items-center justify-center bg-[hsl(var(--background))]">
         <div className="flex flex-col items-center gap-4">
@@ -30,6 +32,27 @@ export default function AuditLayout() {
 
   if (!user) {
     return <Navigate to="/audit/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="audit-theme min-h-screen flex items-center justify-center bg-[hsl(var(--background))]">
+        <div className="flex flex-col items-center gap-6 text-center max-w-md px-6">
+          <div className="h-16 w-16 rounded-2xl bg-red-100 flex items-center justify-center">
+            <ShieldAlert className="h-8 w-8 text-red-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-[hsl(var(--foreground))] mb-2">Acesso Restrito</h1>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              O painel de auditoria é restrito a administradores. Sua conta ({user.email}) não possui permissão.
+            </p>
+          </div>
+          <button onClick={handleSignOut} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
+            Sair
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Build breadcrumbs
