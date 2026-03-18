@@ -183,7 +183,7 @@ export default function InboxTemplateManager() {
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                        {tpl.body}
+                        {renderFormattedText(tpl.body)}
                       </p>
                       <span className="text-xs text-muted-foreground/60">
                         key: {tpl.template_key}

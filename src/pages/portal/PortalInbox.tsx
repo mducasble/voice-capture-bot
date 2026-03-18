@@ -577,7 +577,7 @@ function ConversationView({
                           : "1px solid rgba(255, 255, 255, 0.15)",
                       }}
                     >
-                      {msg.body}
+                      {renderFormattedText(msg.body, { color: "rgba(140, 255, 5, 0.9)" })}
                     </div>
 
                     {/* Timestamp + read receipt */}
