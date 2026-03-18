@@ -128,6 +128,7 @@ export default function DataAudioTask() {
   const [siblings, setSiblings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [campaignName, setCampaignName] = useState("");
+  const [taskTypeLabel, setTaskTypeLabel] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [timeLimit, setTimeLimit] = useState(300);
@@ -145,10 +146,18 @@ export default function DataAudioTask() {
     supabase.from("campaigns").select("name").eq("id", campaignId).maybeSingle()
       .then(({ data }) => setCampaignName(data?.name || ""));
 
-    supabase.from("campaign_task_sets").select("id").eq("campaign_id", campaignId).limit(1)
+    supabase.from("campaign_task_sets").select("id, task_type").eq("campaign_id", campaignId).limit(1)
       .then(async ({ data: sets }) => {
         if (!sets?.length) return;
         setTaskSetId(sets[0].id);
+        // Fetch ui_label from task_type_catalog
+        if ((sets[0] as any).task_type) {
+          const { data: catalog } = await supabase.from("task_type_catalog" as any)
+            .select("ui_label")
+            .eq("task_type", (sets[0] as any).task_type)
+            .maybeSingle();
+          if (catalog) setTaskTypeLabel((catalog as any).ui_label || "");
+        }
         const { data: config } = await supabase.from("validation_task_config")
           .select("time_limit_seconds, tracked_actions")
           .eq("task_set_id", sets[0].id)
@@ -171,7 +180,15 @@ export default function DataAudioTask() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type")
-        .then(({ data }) => setSiblings(data?.length ? (data as any[]) : [rec]));
+        .then(({ data }) => {
+          if (!data?.length) { setSiblings([rec]); return; }
+          const sorted = [...data].sort((a, b) => {
+            const aM = a.recording_type === "mixed" ? 0 : 1;
+            const bM = b.recording_type === "mixed" ? 0 : 1;
+            return aM - bM;
+          });
+          setSiblings(sorted as any[]);
+        });
     } else {
       setSiblings([rec]);
     }
@@ -342,7 +359,10 @@ export default function DataAudioTask() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type");
-      if (data?.length) setSiblings(data as any[]);
+      if (data?.length) {
+        const sorted = [...data].sort((a, b) => (a.recording_type === "mixed" ? 0 : 1) - (b.recording_type === "mixed" ? 0 : 1));
+        setSiblings(sorted as any[]);
+      }
     }
     setQueuedJobs(prev => {
       const copy = { ...prev };
@@ -382,7 +402,10 @@ export default function DataAudioTask() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type");
-      if (data?.length) setSiblings(data as any[]);
+      if (data?.length) {
+        const sorted = [...data].sort((a, b) => (a.recording_type === "mixed" ? 0 : 1) - (b.recording_type === "mixed" ? 0 : 1));
+        setSiblings(sorted as any[]);
+      }
     }
     setQueuedJobs(prev => {
       const copy = { ...prev };
@@ -441,9 +464,10 @@ export default function DataAudioTask() {
               {String(timerMinutes).padStart(2, "0")}:{String(timerSeconds).padStart(2, "0")}
             </span>
           </div>
-          <button onClick={handleSkip} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
+          <Button variant="outline" size="sm" onClick={handleSkip}
+            className="bg-white/[0.08] border-white/[0.12] text-white/70 hover:bg-white/[0.15] hover:text-white font-semibold gap-1.5">
             <SkipForward className="h-4 w-4" /> Pular
-          </button>
+          </Button>
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
           <div
@@ -457,10 +481,12 @@ export default function DataAudioTask() {
       <div className="data-glass-card rounded-2xl p-6 mb-6">
         <div className="flex items-start justify-between mb-5">
           <div>
+            {taskTypeLabel && (
+              <p className="text-[12px] text-white/40 uppercase font-semibold tracking-wider mb-1">{taskTypeLabel}</p>
+            )}
             <h1 className="text-[22px] font-bold text-white mb-1">
-              {rec.discord_username || rec.filename}
+              {campaignName || rec.filename}
             </h1>
-            <p className="text-[14px] text-white/40">{campaignName}</p>
           </div>
           {mainTier && (
             <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
