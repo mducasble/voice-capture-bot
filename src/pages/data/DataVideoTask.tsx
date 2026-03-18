@@ -158,6 +158,45 @@ export default function DataVideoTask() {
     ? progress.total > 0 ? (progress.current / progress.total) * 100 : 0
     : 0;
 
+  // Hands-off-screen timer: sync with video playback using analyzed frames
+  useEffect(() => {
+    if (!report || !videoRef.current) return;
+    const video = videoRef.current;
+    let rafId: number;
+
+    const update = () => {
+      const t = video.currentTime;
+      // Count how many seconds of analyzed time have no hands up to current time
+      let offSeconds = 0;
+      const interval = report.duration / report.analyzedFrames;
+      for (const frame of report.frames) {
+        if (frame.time > t) break;
+        if (frame.handsDetected === 0) {
+          offSeconds += interval;
+        }
+      }
+      setHandsOffTime(offSeconds);
+      rafId = requestAnimationFrame(update);
+    };
+
+    const start = () => { rafId = requestAnimationFrame(update); };
+    const stop = () => cancelAnimationFrame(rafId);
+
+    video.addEventListener("play", start);
+    video.addEventListener("pause", stop);
+    video.addEventListener("seeked", () => update());
+
+    // If already playing
+    if (!video.paused) start();
+
+    return () => {
+      stop();
+      video.removeEventListener("play", start);
+      video.removeEventListener("pause", stop);
+      video.removeEventListener("seeked", () => update());
+    };
+  }, [report]);
+
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
