@@ -400,7 +400,7 @@ export default function DataVideoTask() {
                 <MetricRow icon={Eye} label="Sem rosto" value={`${((1 - report.facePresenceRate) * 100).toFixed(0)}%`} score={(1 - report.facePresenceRate) * 100} />
                 <MetricRow icon={Focus} label="Nitidez" value={`${report.blurScore.toFixed(0)}`} score={report.blurScore} />
                 <MetricRow icon={Sun} label="Luz" value={`${report.brightnessScore.toFixed(0)}`} score={report.brightnessScore} />
-                <MetricRow icon={Activity} label="Estabilidade" value={`${report.stabilityScore.toFixed(0)}`} score={report.stabilityScore} />
+                {/* Estabilidade oculta */}
               </div>
 
               {/* Actions */}
