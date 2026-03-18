@@ -613,9 +613,10 @@ function ConversationView({
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="flex-1 font-mono text-sm bg-transparent resize-none min-h-[36px] max-h-[120px]"
+            className="flex-1 font-mono text-sm resize-none min-h-[36px] max-h-[120px]"
             style={{
-              border: "1px solid var(--portal-border)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(0, 0, 0, 0.3)",
               color: "var(--portal-text)",
               borderRadius: "18px",
               paddingLeft: "14px",
