@@ -532,8 +532,11 @@ export async function runVideoQc(
   // Quality metrics
   const avgBlur = frames.reduce((s, f) => s + f.blurScore, 0) / n;
   const avgBrightness = frames.reduce((s, f) => s + f.brightness, 0) / n;
-  const avgMotion = frames.length > 1
-    ? frames.slice(1).reduce((s, f) => s + f.motionDelta, 0) / (n - 1)
+
+  // Optical flow: stability based on camera shake only (ignores intentional object motion)
+  const motionFrames = frames.slice(1);
+  const avgCameraShake = motionFrames.length > 0
+    ? motionFrames.reduce((s, f) => s + f.cameraShake, 0) / motionFrames.length
     : 0;
 
   // Normalize to 0-100 scores
@@ -541,7 +544,8 @@ export async function runVideoQc(
   const brightnessScore = avgBrightness < 40 ? (avgBrightness / 40) * 100
     : avgBrightness > 220 ? ((255 - avgBrightness) / 35) * 100
     : 100;
-  const stabilityScore = Math.max(0, 100 - avgMotion * 2);
+  // Camera shake of ~4px+ per frame = very unstable
+  const stabilityScore = Math.max(0, 100 - avgCameraShake * 25);
 
   // 5. Compute final score
   const w = config.weights;
