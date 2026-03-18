@@ -29,6 +29,7 @@ export const useMixedRecorder = () => {
       remoteStreams: Map<string, MediaStream>
     ) => {
       chunksRef.current = [];
+      connectedPeerIdsRef.current = new Set();
       connectedStreamIdsRef.current = new Set();
       const sampleRate = 48000;
       const audioContext = new AudioContext({ sampleRate });
