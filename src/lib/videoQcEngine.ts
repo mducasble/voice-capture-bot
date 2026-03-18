@@ -267,9 +267,9 @@ function blockMatchingFlow(
 }
 
 /**
- * Compute optical flow between two frames and separate camera shake from object motion.
- * Camera motion = median displacement vector (robust to outliers from moving objects).
- * Object motion = residual after subtracting camera motion.
+ * Compute optical flow using only border/edge blocks to estimate camera shake,
+ * filtering out central object motion (hands, face, etc.).
+ * Border blocks = outer ~25% ring of the frame grid.
  */
 function computeOpticalFlow(
   current: ImageData, previous: ImageData | null,
@@ -285,22 +285,37 @@ function computeOpticalFlow(
 
   if (vectors.length === 0) return { totalMotion: 0, cameraShake: 0, objectMotion: 0 };
 
-  // Compute magnitudes
-  const magnitudes = vectors.map(v => Math.sqrt(v.dx * v.dx + v.dy * v.dy));
+  // Separate border blocks (background) from interior blocks (likely objects)
+  const borderVectors = vectors.filter(v => {
+    const marginX = Math.max(1, Math.floor(v.blocksX * 0.25));
+    const marginY = Math.max(1, Math.floor(v.blocksY * 0.25));
+    return v.bx < marginX || v.bx >= v.blocksX - marginX ||
+           v.by < marginY || v.by >= v.blocksY - marginY;
+  });
 
-  // Total motion: mean magnitude
-  const totalMotion = magnitudes.reduce((s, m) => s + m, 0) / magnitudes.length;
+  const interiorVectors = vectors.filter(v => {
+    const marginX = Math.max(1, Math.floor(v.blocksX * 0.25));
+    const marginY = Math.max(1, Math.floor(v.blocksY * 0.25));
+    return v.bx >= marginX && v.bx < v.blocksX - marginX &&
+           v.by >= marginY && v.by < v.blocksY - marginY;
+  });
 
-  // Camera motion: median of dx and dy independently (robust to outliers)
-  const dxSorted = vectors.map(v => v.dx).sort((a, b) => a - b);
-  const dySorted = vectors.map(v => v.dy).sort((a, b) => a - b);
-  const mid = Math.floor(vectors.length / 2);
+  // Total motion: mean magnitude of all blocks
+  const allMags = vectors.map(v => Math.sqrt(v.dx * v.dx + v.dy * v.dy));
+  const totalMotion = allMags.reduce((s, m) => s + m, 0) / allMags.length;
+
+  // Camera shake: median of border blocks only (background = true camera motion)
+  const source = borderVectors.length >= 4 ? borderVectors : vectors;
+  const dxSorted = source.map(v => v.dx).sort((a, b) => a - b);
+  const dySorted = source.map(v => v.dy).sort((a, b) => a - b);
+  const mid = Math.floor(source.length / 2);
   const medianDx = dxSorted[mid];
   const medianDy = dySorted[mid];
   const cameraShake = Math.sqrt(medianDx * medianDx + medianDy * medianDy);
 
-  // Object motion: mean of residual magnitudes after removing camera motion
-  const residuals = vectors.map(v => {
+  // Object motion: mean residual of interior blocks after removing camera motion
+  const objSource = interiorVectors.length > 0 ? interiorVectors : vectors;
+  const residuals = objSource.map(v => {
     const rx = v.dx - medianDx;
     const ry = v.dy - medianDy;
     return Math.sqrt(rx * rx + ry * ry);
