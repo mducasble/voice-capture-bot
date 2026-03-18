@@ -361,6 +361,245 @@ function buildAdaptiveOptions(metrics: OriginalMetrics, fileSr: number): { opts:
   };
 }
 
+async function processEnhancement(recording_id: string, file_url: string) {
+  const METRICS_API_URL = Deno.env.get('METRICS_API_URL');
+  const METRICS_API_SECRET = Deno.env.get('METRICS_API_SECRET');
+
+  if (!METRICS_API_URL) {
+    throw new Error('METRICS_API_URL not configured');
+  }
+
+  const supabaseForRead = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  const { data: recData } = await supabaseForRead
+    .from('voice_recordings')
+    .select('metadata, snr_db, sample_rate')
+    .eq('id', recording_id)
+    .single();
+
+  const meta = (recData?.metadata as Record<string, unknown>) || {};
+  const fileSampleRate = (recData?.sample_rate as number) || 48000;
+
+  const originalMetrics: OriginalMetrics = {
+    snr_db: (recData?.snr_db as number) ?? (meta.snr_db as number | null) ?? null,
+    rms_dbfs: (meta.rms_dbfs as number | null) ?? null,
+    srmr: (meta.srmr as number | null) ?? null,
+    sigmos_ovrl: (meta.sigmos_ovrl as number | null) ?? null,
+    sigmos_sig: (meta.sigmos_sig as number | null) ?? null,
+    sigmos_bak: (meta.sigmos_bak as number | null) ?? null,
+    mic_sr: (meta.mic_sr as number | null) ?? null,
+    file_sr: (meta.file_sr as number | null) ?? fileSampleRate,
+  };
+
+  const { opts: enhanceOpts, reasons } = buildAdaptiveOptions(originalMetrics, originalMetrics.file_sr || fileSampleRate);
+  const anyStepEnabled = enhanceOpts.normalize || enhanceOpts.highpass || enhanceOpts.lowpass || enhanceOpts.speech_eq || enhanceOpts.noise_gate;
+
+  console.log(`[enhance] Adaptive analysis for ${recording_id}:`);
+  reasons.forEach((r) => console.log(`  → ${r}`));
+  console.log(`[enhance] Steps enabled: ${anyStepEnabled ? 'yes' : 'NONE — audio already good'}`);
+
+  if (!anyStepEnabled) {
+    return {
+      success: true,
+      recording_id,
+      skipped: true,
+      message: 'All metrics already within good range — no enhancement needed',
+      reasons,
+    };
+  }
+
+  const isMP3 = file_url.toLowerCase().includes('.mp3');
+  let stepsApplied = '';
+  let originalRms = '';
+  let enhancedRms = '';
+  let finalBytes: Uint8Array;
+
+  if (isMP3) {
+    console.log(`[enhance] MP3 file — downloading full`);
+    const resp = await fetch(file_url);
+    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+    const audioBytes = new Uint8Array(await resp.arrayBuffer());
+    console.log(`[enhance] MP3: ${(audioBytes.length / 1024 / 1024).toFixed(1)}MB`);
+
+    const result = await callEnhanceApi(
+      new Blob([audioBytes], { type: 'audio/mpeg' }),
+      'audio.mp3',
+      METRICS_API_URL,
+      METRICS_API_SECRET,
+      enhanceOpts,
+    );
+    finalBytes = result.enhancedBytes;
+    stepsApplied = result.steps;
+    originalRms = result.originalRms;
+    enhancedRms = result.enhancedRms;
+  } else {
+    console.log(`[enhance] WAV file — fetching header`);
+    const headerBytes = await fetchRange(file_url, 0, 4096);
+    const header = parseWavHeader(headerBytes);
+
+    if (!header) {
+      console.warn('[enhance] Could not parse WAV header, downloading full');
+      const resp = await fetch(file_url);
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+      const audioBytes = new Uint8Array(await resp.arrayBuffer());
+
+      const result = await callEnhanceApi(
+        new Blob([audioBytes], { type: 'audio/wav' }),
+        'audio.wav',
+        METRICS_API_URL,
+        METRICS_API_SECRET,
+        enhanceOpts,
+      );
+      finalBytes = result.enhancedBytes;
+      stepsApplied = result.steps;
+      originalRms = result.originalRms;
+      enhancedRms = result.enhancedRms;
+    } else {
+      const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
+      const bytesPerFrame = channels * (bitsPerSample / 8);
+      const totalFrames = Math.floor(dataSize / bytesPerFrame);
+      const totalDuration = totalFrames / sampleRate;
+      const segmentFrames = sampleRate * SEGMENT_SECONDS;
+      const numSegments = Math.ceil(totalFrames / segmentFrames);
+
+      console.log(`[enhance] ${totalDuration.toFixed(1)}s audio → ${numSegments} segments of ${SEGMENT_SECONDS}s`);
+
+      if (numSegments <= 1) {
+        const pcmData = await fetchRange(file_url, dataOffset, dataOffset + dataSize);
+        const wavBlob = buildWav(pcmData, sampleRate, channels, bitsPerSample);
+
+        const result = await callEnhanceApi(
+          wavBlob,
+          'audio.wav',
+          METRICS_API_URL,
+          METRICS_API_SECRET,
+          enhanceOpts,
+        );
+        finalBytes = result.enhancedBytes;
+        stepsApplied = result.steps;
+        originalRms = result.originalRms;
+        enhancedRms = result.enhancedRms;
+      } else {
+        const enhancedPcmChunks: Uint8Array[] = [];
+        const rmsValues: { original: number[]; enhanced: number[] } = { original: [], enhanced: [] };
+
+        for (let seg = 0; seg < numSegments; seg++) {
+          const startFrame = seg * segmentFrames;
+          const endFrame = Math.min(startFrame + segmentFrames, totalFrames);
+          const byteStart = dataOffset + startFrame * bytesPerFrame;
+          const byteEnd = Math.min(dataOffset + endFrame * bytesPerFrame, dataOffset + dataSize);
+
+          console.log(`[enhance] Segment ${seg + 1}/${numSegments}: downloading ${((byteEnd - byteStart) / 1024 / 1024).toFixed(1)}MB`);
+          const pcmChunk = await fetchRange(file_url, byteStart, byteEnd);
+          const segWav = buildWav(pcmChunk, sampleRate, channels, bitsPerSample);
+
+          const segOpts = { ...enhanceOpts, normalize: false };
+          const result = await callEnhanceApi(
+            segWav,
+            `segment_${seg}.wav`,
+            METRICS_API_URL,
+            METRICS_API_SECRET,
+            segOpts,
+          );
+
+          if (seg === 0) stepsApplied = result.steps;
+          if (result.originalRms) rmsValues.original.push(parseFloat(result.originalRms));
+          if (result.enhancedRms) rmsValues.enhanced.push(parseFloat(result.enhancedRms));
+
+          const enhancedHeader = parseWavHeader(result.enhancedBytes);
+          const pcmOffset = enhancedHeader?.dataOffset ?? 44;
+          const pcmSize = enhancedHeader?.dataSize ?? (result.enhancedBytes.length - 44);
+          enhancedPcmChunks.push(result.enhancedBytes.subarray(pcmOffset, pcmOffset + pcmSize));
+
+          console.log(`[enhance] Segment ${seg + 1}/${numSegments} done`);
+        }
+
+        finalBytes = buildFinalWav(enhancedPcmChunks, sampleRate, channels, bitsPerSample);
+
+        if (enhanceOpts.normalize) {
+          console.log('[enhance] Applying final normalization pass...');
+          const normOpts: EnhanceOptions = {
+            ...enhanceOpts,
+            highpass: false,
+            lowpass: false,
+            speech_eq: false,
+            noise_gate: false,
+            normalize: true,
+          };
+          const normResult = await callEnhanceApi(
+            new Blob([finalBytes], { type: 'audio/wav' }),
+            'final.wav',
+            METRICS_API_URL,
+            METRICS_API_SECRET,
+            normOpts,
+          );
+          finalBytes = normResult.enhancedBytes;
+          stepsApplied += ',final_normalize';
+        }
+
+        originalRms = rmsValues.original.length > 0
+          ? (rmsValues.original.reduce((a, b) => a + b) / rmsValues.original.length).toFixed(2)
+          : '';
+        enhancedRms = rmsValues.enhanced.length > 0
+          ? (rmsValues.enhanced.reduce((a, b) => a + b) / rmsValues.enhanced.length).toFixed(2)
+          : '';
+
+        console.log(`[enhance] All ${numSegments} segments processed. Final: ${(finalBytes.length / 1024 / 1024).toFixed(1)}MB`);
+      }
+    }
+  }
+
+  const originalPath = new URL(file_url).pathname;
+  const pathParts = originalPath.split('/');
+  const originalFilename = pathParts[pathParts.length - 1];
+  const enhancedFilename = originalFilename.replace(/\.(wav|mp3)$/i, '_enhanced.wav');
+  const s3Key = pathParts.slice(1, -1).join('/') + '/' + enhancedFilename;
+
+  console.log(`[enhance] Uploading ${(finalBytes.length / 1024 / 1024).toFixed(1)}MB to S3: ${s3Key}`);
+  const enhancedFileUrl = await uploadToS3(finalBytes, s3Key);
+  console.log(`[enhance] Uploaded to: ${enhancedFileUrl}`);
+
+  const { data: existing } = await supabaseForRead
+    .from('voice_recordings')
+    .select('metadata')
+    .eq('id', recording_id)
+    .single();
+
+  const existingMeta = (existing?.metadata as Record<string, unknown>) || {};
+  const mergedMetadata = {
+    ...existingMeta,
+    enhanced_file_url: enhancedFileUrl,
+    enhancement_steps: stepsApplied,
+    enhancement_original_rms: originalRms,
+    enhancement_enhanced_rms: enhancedRms,
+    enhancement_date: new Date().toISOString(),
+    enhancement_adaptive_reasons: reasons,
+    enhancement_original_metrics: originalMetrics,
+  };
+
+  const { error: updateError } = await supabaseForRead
+    .from('voice_recordings')
+    .update({ metadata: mergedMetadata })
+    .eq('id', recording_id);
+
+  if (updateError) {
+    console.error('[enhance] DB update error:', updateError);
+  }
+
+  return {
+    success: true,
+    recording_id,
+    enhanced_file_url: enhancedFileUrl,
+    steps: stepsApplied,
+    original_rms: originalRms,
+    enhanced_rms: enhancedRms,
+    adaptive_reasons: reasons,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -376,247 +615,37 @@ serve(async (req) => {
       );
     }
 
-    const METRICS_API_URL = Deno.env.get('METRICS_API_URL');
-    const METRICS_API_SECRET = Deno.env.get('METRICS_API_SECRET');
-
-    if (!METRICS_API_URL) {
+    if (!Deno.env.get('METRICS_API_URL')) {
       return new Response(
         JSON.stringify({ error: 'METRICS_API_URL not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // --- Read original metrics from DB to drive adaptive decisions ---
-    const supabaseForRead = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const enhancementPromise = processEnhancement(recording_id, file_url).catch((error) => {
+      console.error('[enhance] Background error:', error);
+      throw error;
+    });
 
-    const { data: recData } = await supabaseForRead
-      .from('voice_recordings')
-      .select('metadata, snr_db, sample_rate')
-      .eq('id', recording_id)
-      .single();
-
-    const meta = (recData?.metadata as Record<string, unknown>) || {};
-    const fileSampleRate = (recData?.sample_rate as number) || 48000;
-
-    const originalMetrics: OriginalMetrics = {
-      snr_db: (recData?.snr_db as number) ?? (meta.snr_db as number | null) ?? null,
-      rms_dbfs: (meta.rms_dbfs as number | null) ?? null,
-      srmr: (meta.srmr as number | null) ?? null,
-      sigmos_ovrl: (meta.sigmos_ovrl as number | null) ?? null,
-      sigmos_sig: (meta.sigmos_sig as number | null) ?? null,
-      sigmos_bak: (meta.sigmos_bak as number | null) ?? null,
-      mic_sr: (meta.mic_sr as number | null) ?? null,
-      file_sr: (meta.file_sr as number | null) ?? fileSampleRate,
-    };
-
-    const { opts: enhanceOpts, reasons } = buildAdaptiveOptions(originalMetrics, originalMetrics.file_sr || fileSampleRate);
-
-    const anyStepEnabled = enhanceOpts.normalize || enhanceOpts.highpass || enhanceOpts.lowpass || enhanceOpts.speech_eq || enhanceOpts.noise_gate;
-
-    console.log(`[enhance] Adaptive analysis for ${recording_id}:`);
-    reasons.forEach(r => console.log(`  → ${r}`));
-    console.log(`[enhance] Steps enabled: ${anyStepEnabled ? 'yes' : 'NONE — audio already good'}`);
-
-    if (!anyStepEnabled) {
+    const edgeRuntime = (globalThis as any).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(enhancementPromise);
       return new Response(
         JSON.stringify({
           success: true,
+          queued: true,
           recording_id,
-          skipped: true,
-          message: 'All metrics already within good range — no enhancement needed',
-          reasons,
+          message: 'Enhancement started in background',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const isMP3 = file_url.toLowerCase().includes('.mp3');
-    let stepsApplied = '';
-    let originalRms = '';
-    let enhancedRms = '';
-    let finalBytes: Uint8Array;
-
-    if (isMP3) {
-      // MP3: must download full (can't Range-parse without decoder)
-      console.log(`[enhance] MP3 file — downloading full`);
-      const resp = await fetch(file_url);
-      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-      const audioBytes = new Uint8Array(await resp.arrayBuffer());
-      console.log(`[enhance] MP3: ${(audioBytes.length / 1024 / 1024).toFixed(1)}MB`);
-
-      const result = await callEnhanceApi(
-        new Blob([audioBytes], { type: 'audio/mpeg' }), 'audio.mp3',
-        METRICS_API_URL, METRICS_API_SECRET, enhanceOpts,
-      );
-      finalBytes = result.enhancedBytes;
-      stepsApplied = result.steps;
-      originalRms = result.originalRms;
-      enhancedRms = result.enhancedRms;
-    } else {
-      // WAV: use Range Requests for chunked processing
-      console.log(`[enhance] WAV file — fetching header`);
-      const headerBytes = await fetchRange(file_url, 0, 4096);
-      const header = parseWavHeader(headerBytes);
-
-      if (!header) {
-        // Fallback: download full file
-        console.warn('[enhance] Could not parse WAV header, downloading full');
-        const resp = await fetch(file_url);
-        if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-        const audioBytes = new Uint8Array(await resp.arrayBuffer());
-
-        const result = await callEnhanceApi(
-          new Blob([audioBytes], { type: 'audio/wav' }), 'audio.wav',
-          METRICS_API_URL, METRICS_API_SECRET, enhanceOpts,
-        );
-        finalBytes = result.enhancedBytes;
-        stepsApplied = result.steps;
-        originalRms = result.originalRms;
-        enhancedRms = result.enhancedRms;
-      } else {
-        const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
-        const bytesPerFrame = channels * (bitsPerSample / 8);
-        const totalFrames = Math.floor(dataSize / bytesPerFrame);
-        const totalDuration = totalFrames / sampleRate;
-        const segmentFrames = sampleRate * SEGMENT_SECONDS;
-        const numSegments = Math.ceil(totalFrames / segmentFrames);
-
-        console.log(`[enhance] ${totalDuration.toFixed(1)}s audio → ${numSegments} segments of ${SEGMENT_SECONDS}s`);
-
-        if (numSegments <= 1) {
-          // Short file: download full data and enhance in one go
-          const pcmData = await fetchRange(file_url, dataOffset, dataOffset + dataSize);
-          const wavBlob = buildWav(pcmData, sampleRate, channels, bitsPerSample);
-
-          const result = await callEnhanceApi(
-            wavBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET, enhanceOpts,
-          );
-          finalBytes = result.enhancedBytes;
-          stepsApplied = result.steps;
-          originalRms = result.originalRms;
-          enhancedRms = result.enhancedRms;
-        } else {
-          // Large file: process segment by segment
-          const enhancedPcmChunks: Uint8Array[] = [];
-          const rmsValues: { original: number[]; enhanced: number[] } = { original: [], enhanced: [] };
-
-          for (let seg = 0; seg < numSegments; seg++) {
-            const startFrame = seg * segmentFrames;
-            const endFrame = Math.min(startFrame + segmentFrames, totalFrames);
-            const framesInSegment = endFrame - startFrame;
-
-            const byteStart = dataOffset + startFrame * bytesPerFrame;
-            const byteEnd = Math.min(dataOffset + endFrame * bytesPerFrame, dataOffset + dataSize);
-
-            console.log(`[enhance] Segment ${seg + 1}/${numSegments}: downloading ${((byteEnd - byteStart) / 1024 / 1024).toFixed(1)}MB`);
-            const pcmChunk = await fetchRange(file_url, byteStart, byteEnd);
-            const segWav = buildWav(pcmChunk, sampleRate, channels, bitsPerSample);
-
-            // For segments after the first, skip normalization — we'll normalize the final file
-            const segOpts = { ...enhanceOpts, normalize: false };
-            const result = await callEnhanceApi(
-              segWav, `segment_${seg}.wav`, METRICS_API_URL, METRICS_API_SECRET, segOpts,
-            );
-
-            if (seg === 0) stepsApplied = result.steps;
-            if (result.originalRms) rmsValues.original.push(parseFloat(result.originalRms));
-            if (result.enhancedRms) rmsValues.enhanced.push(parseFloat(result.enhancedRms));
-
-            // Extract PCM from the enhanced WAV (skip 44-byte header)
-            const enhancedHeader = parseWavHeader(result.enhancedBytes);
-            const pcmOffset = enhancedHeader?.dataOffset ?? 44;
-            const pcmSize = enhancedHeader?.dataSize ?? (result.enhancedBytes.length - 44);
-            enhancedPcmChunks.push(result.enhancedBytes.subarray(pcmOffset, pcmOffset + pcmSize));
-
-            console.log(`[enhance] Segment ${seg + 1}/${numSegments} done`);
-          }
-
-          // Concatenate all enhanced PCM into final WAV
-          finalBytes = buildFinalWav(enhancedPcmChunks, sampleRate, channels, bitsPerSample);
-
-          // If normalization was requested, send the concatenated file for normalization only
-          if (enhanceOpts.normalize) {
-            console.log(`[enhance] Applying final normalization pass...`);
-            const normOpts: EnhanceOptions = {
-              ...enhanceOpts,
-              highpass: false, lowpass: false, speech_eq: false, noise_gate: false,
-              normalize: true,
-            };
-            const normResult = await callEnhanceApi(
-              new Blob([finalBytes], { type: 'audio/wav' }), 'final.wav',
-              METRICS_API_URL, METRICS_API_SECRET, normOpts,
-            );
-            finalBytes = normResult.enhancedBytes;
-            stepsApplied += ',final_normalize';
-          }
-
-          originalRms = rmsValues.original.length > 0
-            ? (rmsValues.original.reduce((a, b) => a + b) / rmsValues.original.length).toFixed(2)
-            : '';
-          enhancedRms = rmsValues.enhanced.length > 0
-            ? (rmsValues.enhanced.reduce((a, b) => a + b) / rmsValues.enhanced.length).toFixed(2)
-            : '';
-
-          console.log(`[enhance] All ${numSegments} segments processed. Final: ${(finalBytes.length / 1024 / 1024).toFixed(1)}MB`);
-        }
-      }
-    }
-
-    // --- Upload to S3 ---
-    const originalPath = new URL(file_url).pathname;
-    const pathParts = originalPath.split('/');
-    const originalFilename = pathParts[pathParts.length - 1];
-    const enhancedFilename = originalFilename.replace(/\.(wav|mp3)$/i, '_enhanced.wav');
-    const s3Key = pathParts.slice(1, -1).join('/') + '/' + enhancedFilename;
-
-    console.log(`[enhance] Uploading ${(finalBytes.length / 1024 / 1024).toFixed(1)}MB to S3: ${s3Key}`);
-    const enhancedFileUrl = await uploadToS3(finalBytes, s3Key);
-    console.log(`[enhance] Uploaded to: ${enhancedFileUrl}`);
-
-    // --- Update DB metadata (merge) ---
-    const { data: existing } = await supabaseForRead
-      .from('voice_recordings')
-      .select('metadata')
-      .eq('id', recording_id)
-      .single();
-
-    const existingMeta = (existing?.metadata as Record<string, unknown>) || {};
-    const mergedMetadata = {
-      ...existingMeta,
-      enhanced_file_url: enhancedFileUrl,
-      enhancement_steps: stepsApplied,
-      enhancement_original_rms: originalRms,
-      enhancement_enhanced_rms: enhancedRms,
-      enhancement_date: new Date().toISOString(),
-      enhancement_adaptive_reasons: reasons,
-      enhancement_original_metrics: originalMetrics,
-    };
-
-    const { error: updateError } = await supabaseForRead
-      .from('voice_recordings')
-      .update({ metadata: mergedMetadata })
-      .eq('id', recording_id);
-
-    if (updateError) {
-      console.error(`[enhance] DB update error:`, updateError);
-    }
-
+    const result = await enhancementPromise;
     return new Response(
-      JSON.stringify({
-        success: true,
-        recording_id,
-        enhanced_file_url: enhancedFileUrl,
-        steps: stepsApplied,
-        original_rms: originalRms,
-        enhanced_rms: enhancedRms,
-        adaptive_reasons: reasons,
-      }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
     console.error('[enhance] Error:', error);
     return new Response(

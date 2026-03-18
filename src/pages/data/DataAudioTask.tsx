@@ -375,43 +375,28 @@ export default function DataAudioTask() {
   const handleEnhance = async (sibId: string) => {
     logAction("enhance", sibId);
     setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "analyze" ? "both" : "enhance" }));
-    
-    const sib = siblings.find(s => s.id === sibId);
-    const fileUrl = sib?.file_url;
-    
-    const { error } = await supabase.functions.invoke("enhance-audio", {
-      body: { recording_id: sibId, file_url: fileUrl },
-    });
-    
-    if (error) { 
-      toast.error("Erro ao processar enhance", { description: error.message }); 
+
+    const { error } = await supabase
+      .from("analysis_queue")
+      .insert({
+        recording_id: sibId,
+        job_type: "enhance",
+        priority: 10,
+      } as any);
+
+    if (error) {
+      toast.error("Erro ao enfileirar enhance", { description: error.message });
       setQueuedJobs(prev => {
         const copy = { ...prev };
         if (copy[sibId] === "both") copy[sibId] = "analyze";
         else delete copy[sibId];
         return copy;
       });
-      return; 
+      return;
     }
-    toast.success("Enhance concluído!");
-    // Reload siblings to get updated enhanced_file_url
-    if (rec?.session_id && rec?.campaign_id) {
-      const { data } = await supabase
-        .from("voice_recordings")
-        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
-        .eq("session_id", rec.session_id)
-        .eq("campaign_id", rec.campaign_id)
-        .order("recording_type");
-      if (data?.length) {
-        const sorted = [...data].sort((a, b) => (a.recording_type === "mixed" ? 0 : 1) - (b.recording_type === "mixed" ? 0 : 1));
-        setSiblings(sorted as any[]);
-      }
-    }
-    setQueuedJobs(prev => {
-      const copy = { ...prev };
-      if (copy[sibId] === "both") copy[sibId] = "analyze";
-      else delete copy[sibId];
-      return copy;
+
+    toast.success("Enhance enfileirado!", {
+      description: "O áudio será processado em background.",
     });
   };
 
