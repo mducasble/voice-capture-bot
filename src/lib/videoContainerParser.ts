@@ -426,11 +426,6 @@ export async function parseVideoContainer(file: File): Promise<VideoContainerMet
 
         // Apple metadata in 'meta' box under 'udta'
         if (box.type === "meta" && contentSize > 0 && depth > 0) {
-          const appleEntries = parseAppleMetadata(
-            parentReader.slice(contentStart, contentSize).view.buffer,
-            contentStart,
-            contentSize,
-          );
 
           // Actually parse from original buffer
           const entries = parseAppleMetadata(buffer, contentStart, contentSize);
