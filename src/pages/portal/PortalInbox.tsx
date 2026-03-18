@@ -550,7 +550,7 @@ function ConversationView({
                         isMe ? "justify-end" : "justify-start"
                       )}
                     >
-                      <span className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
                         {new Date(msg.created_at).toLocaleString("pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
