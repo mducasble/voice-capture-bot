@@ -160,8 +160,8 @@ function computeBlurScore(imageData: ImageData, analysisScale = 1): number {
   const scaleCompensation = analysisScale > 0 ? 1 / (analysisScale * analysisScale) : 1;
   const compensatedVariance = variance * scaleCompensation;
 
-  // Normalize: typical range 0-2000, map to 0-100
-  return Math.min(100, variance / 20);
+  // Normalize: compensated variance typically 0-2000 for sharp video, map to 0-100
+  return Math.min(100, compensatedVariance / 20);
 }
 
 // ---------------------------------------------------------------------------
