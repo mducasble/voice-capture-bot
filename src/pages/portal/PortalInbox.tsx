@@ -250,10 +250,10 @@ function ThreadList({
                   style={{
                     borderBottom: "1px solid var(--portal-border)",
                     background: isSelected
-                      ? "rgba(140, 255, 5, 0.12)"
+                      ? "rgba(140, 255, 5, 0.15)"
                       : thread.unread_count > 0
-                        ? "rgba(140, 255, 5, 0.06)"
-                        : "transparent",
+                        ? "rgba(255, 255, 255, 0.06)"
+                        : "rgba(255, 255, 255, 0.03)",
                     borderLeft: isSelected ? "3px solid var(--portal-accent)" : "3px solid transparent",
                   }}
                 >
@@ -265,27 +265,35 @@ function ThreadList({
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p
-                        className="font-mono text-sm font-bold truncate"
-                        style={{ color: "var(--portal-text)" }}
-                      >
-                        {thread.subject}
-                      </p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                          {thread.category === "support"
-                            ? "Suporte"
-                            : thread.category === "payment"
-                              ? "Pagamento"
-                              : "Geral"}
-                        </span>
-                        <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                      <div className="flex items-center justify-between">
+                        <p
+                          className="font-mono text-sm font-bold truncate"
+                          style={{ color: "var(--portal-text)" }}
+                        >
+                          {thread.subject}
+                        </p>
+                        <span className="font-mono text-xs shrink-0 ml-2" style={{ color: "var(--portal-text-muted)" }}>
                           {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                           })}
                         </span>
                       </div>
+                      <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+                        {thread.category === "support"
+                          ? "Suporte"
+                          : thread.category === "payment"
+                            ? "Pagamento"
+                            : "Geral"}
+                      </span>
+                      {thread.preview && (
+                        <p
+                          className="font-mono text-xs mt-2 line-clamp-2"
+                          style={{ color: "var(--portal-text-muted)", opacity: 0.7 }}
+                        >
+                          {thread.preview}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </button>
