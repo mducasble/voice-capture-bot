@@ -1481,37 +1481,65 @@ const Room = () => {
 
           {/* RIGHT COLUMN - Content */}
           <div className="space-y-4 w-full lg:w-[67%] order-first lg:order-2">
-            {/* Countdown Timer */}
-            {room.duration_minutes && (() => {
+            {/* Countdown Timer — shows elapsed time as fallback when no duration set */}
+            {(() => {
               if (room.is_recording && room.recording_started_at) {
-                const totalSeconds = room.duration_minutes * 60;
-                const remaining = Math.max(0, totalSeconds - recordingDuration);
-                const mins = Math.floor(remaining / 60);
-                const secs = remaining % 60;
-                const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
-                const isLow = remaining <= 60;
+                if (room.duration_minutes) {
+                  const totalSeconds = room.duration_minutes * 60;
+                  const remaining = Math.max(0, totalSeconds - recordingDuration);
+                  const mins = Math.floor(remaining / 60);
+                  const secs = remaining % 60;
+                  const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
+                  const isLow = remaining <= 60;
+                  return (
+                    <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                        {t("room.timeRemaining")}
+                      </span>
+                      <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
+                        {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
+                      </p>
+                      <div className="w-full h-1.5" style={{ background: "var(--portal-border)" }}>
+                        <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, background: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
+                      </div>
+                    </div>
+                  );
+                }
+                // No duration set — show elapsed time
+                const elapsedMins = Math.floor(recordingDuration / 60);
+                const elapsedSecs = recordingDuration % 60;
                 return (
                   <div className="p-6 text-center space-y-3" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("room.timeRemaining")}
+                      {t("room.recordingTime", { defaultValue: "Tempo de Gravação" })}
                     </span>
-                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }}>
-                      {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
+                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: "hsl(0 84% 60%)" }}>
+                      {elapsedMins.toString().padStart(2, "0")}:{elapsedSecs.toString().padStart(2, "0")}
                     </p>
-                    <div className="w-full h-1.5" style={{ background: "var(--portal-border)" }}>
-                      <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, background: isLow ? "hsl(0 84% 60%)" : "var(--portal-accent)" }} />
-                    </div>
                   </div>
                 );
               }
               if (!room.is_recording && room.status !== "completed") {
+                if (room.duration_minutes) {
+                  return (
+                    <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                        {t("room.conversationTime")}
+                      </span>
+                      <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
+                        {room.duration_minutes.toString().padStart(2, "0")}:00
+                      </p>
+                    </div>
+                  );
+                }
+                // No duration set — show "ready to record" status
                 return (
                   <div className="p-6 text-center space-y-2" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                     <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
-                      {t("room.conversationTime")}
+                      {t("room.status", { defaultValue: "Status" })}
                     </span>
-                    <p className="font-mono text-4xl sm:text-7xl font-black tabular-nums leading-none" style={{ color: "var(--portal-accent)" }}>
-                      {room.duration_minutes.toString().padStart(2, "0")}:00
+                    <p className="font-mono text-2xl sm:text-4xl font-black uppercase leading-none" style={{ color: "var(--portal-accent)" }}>
+                      {t("room.readyToRecord", { defaultValue: "Pronta para Gravar" })}
                     </p>
                   </div>
                 );
