@@ -359,7 +359,10 @@ export default function DataAudioTask() {
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
         .order("recording_type");
-      if (data?.length) setSiblings(data as any[]);
+      if (data?.length) {
+        const sorted = [...data].sort((a, b) => (a.recording_type === "mixed" ? 0 : 1) - (b.recording_type === "mixed" ? 0 : 1));
+        setSiblings(sorted as any[]);
+      }
     }
     setQueuedJobs(prev => {
       const copy = { ...prev };
