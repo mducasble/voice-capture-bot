@@ -567,8 +567,8 @@ async function processOneSegment(
   const pcmChunk = await fetchRange(segData.file_url, byteStart, byteEnd);
   const segWav = buildWav(pcmChunk, sampleRate, channels, bitsPerSample);
 
-  // Don't normalize individual segments — normalize at the end
-  const segOpts = { ...segData.enhance_opts, normalize: false };
+  // Normalize each segment individually to avoid OOM during assembly
+  const segOpts = { ...segData.enhance_opts };
   const result = await callEnhanceApi(
     segWav,
     `segment_${segIndex}.wav`,
