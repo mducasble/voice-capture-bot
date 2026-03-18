@@ -169,6 +169,8 @@ export default function PortalEarnings() {
           ))}
         </div>
       </div>
+
+      <EarningsDetailPanel />
     </div>
   );
 }
