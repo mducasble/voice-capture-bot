@@ -214,9 +214,9 @@ function ThreadList({
           <div className="text-center py-16 px-4">
             <Inbox
               className="h-8 w-8 mx-auto mb-3"
-              style={{ color: "var(--portal-text-muted)", opacity: 0.25 }}
+              style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
             />
-            <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+            <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
               Nenhuma mensagem
             </p>
           </div>
