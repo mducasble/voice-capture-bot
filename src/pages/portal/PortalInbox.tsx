@@ -293,7 +293,7 @@ function ThreadList({
                       </p>
                       {thread.preview && (
                         <p
-                          className="font-mono text-base mt-2 line-clamp-2"
+                          className="font-mono text-xs mt-2 line-clamp-2"
                           style={{ color: "var(--portal-text-muted)", opacity: 0.7 }}
                         >
                           {thread.preview}
