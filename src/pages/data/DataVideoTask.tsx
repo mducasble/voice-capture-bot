@@ -8,6 +8,7 @@ import {
   Focus, Activity, Shield, CheckCircle2, AlertTriangle,
   XCircle, Loader2, FileVideo, Clock, Maximize2,
   Volume2, BarChart3, ChevronDown, ChevronUp,
+  Smartphone, Film, RotateCw, Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +20,7 @@ import {
   DEFAULT_QC_CONFIG,
   type QcConfig,
 } from "@/lib/videoQcEngine";
+import { parseVideoContainer, type VideoContainerMetadata } from "@/lib/videoContainerParser";
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -102,6 +104,7 @@ export default function DataVideoTask() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<QcProgress | null>(null);
   const [report, setReport] = useState<QcReport | null>(null);
+  const [containerMeta, setContainerMeta] = useState<VideoContainerMetadata | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [handsOffTime, setHandsOffTime] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,6 +134,9 @@ export default function DataVideoTask() {
     setFile(f);
     setVideoUrl(URL.createObjectURL(f));
     setReport(null);
+    setContainerMeta(null);
+    // Parse container metadata immediately
+    parseVideoContainer(f).then(setContainerMeta).catch(console.warn);
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -316,10 +322,38 @@ export default function DataVideoTask() {
                     <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Arquivo</h4>
                     <MetricRow icon={Clock} label="Duração" value={`${report.duration.toFixed(1)}s`} />
                     <MetricRow icon={Maximize2} label="Resolução" value={`${report.width}×${report.height}`} unit={report.orientation} />
+                    <MetricRow icon={Film} label="FPS Real" value={containerMeta?.realFps ? `${containerMeta.realFps}` : "—"} unit="fps" />
                     <MetricRow icon={Activity} label="FPS Análise" value={`${report.fps}`} unit="fps" />
+                    <MetricRow icon={FileVideo} label="Codec" value={containerMeta?.codec || "—"} />
+                    <MetricRow icon={FileVideo} label="Container" value={containerMeta?.containerFormat || "—"} />
                     <MetricRow icon={Volume2} label="Áudio" value={report.hasAudio ? "Sim" : "Não"} />
                     <MetricRow icon={FileVideo} label="Tamanho" value={`${(report.fileSize / 1024 / 1024).toFixed(1)}`} unit="MB" />
+                    {containerMeta?.bitrate && (
+                      <MetricRow icon={Gauge} label="Bitrate" value={`${containerMeta.bitrate}`} unit="kbps" />
+                    )}
+                    {containerMeta?.rotation && (
+                      <MetricRow icon={RotateCw} label="Rotação" value={`${containerMeta.rotation}°`} />
+                    )}
                   </div>
+
+                  {/* Device section */}
+                  {(containerMeta?.deviceModel || containerMeta?.deviceMake || containerMeta?.software) && (
+                    <div>
+                      <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Dispositivo</h4>
+                      {containerMeta.deviceMake && (
+                        <MetricRow icon={Smartphone} label="Fabricante" value={containerMeta.deviceMake} />
+                      )}
+                      {containerMeta.deviceModel && (
+                        <MetricRow icon={Smartphone} label="Modelo" value={containerMeta.deviceModel} />
+                      )}
+                      {containerMeta.software && (
+                        <MetricRow icon={Film} label="Software" value={containerMeta.software} />
+                      )}
+                      {containerMeta.creationDate && (
+                        <MetricRow icon={Clock} label="Data de criação" value={containerMeta.creationDate} />
+                      )}
+                    </div>
+                  )}
 
                   {/* Hands section */}
                   <div>
