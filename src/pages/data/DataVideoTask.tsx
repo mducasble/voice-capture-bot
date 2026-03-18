@@ -321,10 +321,38 @@ export default function DataVideoTask() {
                     <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Arquivo</h4>
                     <MetricRow icon={Clock} label="Duração" value={`${report.duration.toFixed(1)}s`} />
                     <MetricRow icon={Maximize2} label="Resolução" value={`${report.width}×${report.height}`} unit={report.orientation} />
+                    <MetricRow icon={Film} label="FPS Real" value={containerMeta?.realFps ? `${containerMeta.realFps}` : "—"} unit="fps" />
                     <MetricRow icon={Activity} label="FPS Análise" value={`${report.fps}`} unit="fps" />
+                    <MetricRow icon={FileVideo} label="Codec" value={containerMeta?.codec || "—"} />
+                    <MetricRow icon={FileVideo} label="Container" value={containerMeta?.containerFormat || "—"} />
                     <MetricRow icon={Volume2} label="Áudio" value={report.hasAudio ? "Sim" : "Não"} />
                     <MetricRow icon={FileVideo} label="Tamanho" value={`${(report.fileSize / 1024 / 1024).toFixed(1)}`} unit="MB" />
+                    {containerMeta?.bitrate && (
+                      <MetricRow icon={Gauge} label="Bitrate" value={`${containerMeta.bitrate}`} unit="kbps" />
+                    )}
+                    {containerMeta?.rotation && (
+                      <MetricRow icon={RotateCw} label="Rotação" value={`${containerMeta.rotation}°`} />
+                    )}
                   </div>
+
+                  {/* Device section */}
+                  {(containerMeta?.deviceModel || containerMeta?.deviceMake || containerMeta?.software) && (
+                    <div>
+                      <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Dispositivo</h4>
+                      {containerMeta.deviceMake && (
+                        <MetricRow icon={Smartphone} label="Fabricante" value={containerMeta.deviceMake} />
+                      )}
+                      {containerMeta.deviceModel && (
+                        <MetricRow icon={Smartphone} label="Modelo" value={containerMeta.deviceModel} />
+                      )}
+                      {containerMeta.software && (
+                        <MetricRow icon={Film} label="Software" value={containerMeta.software} />
+                      )}
+                      {containerMeta.creationDate && (
+                        <MetricRow icon={Clock} label="Data de criação" value={containerMeta.creationDate} />
+                      )}
+                    </div>
+                  )}
 
                   {/* Hands section */}
                   <div>
