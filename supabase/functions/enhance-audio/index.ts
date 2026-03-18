@@ -657,41 +657,61 @@ async function phaseFinalize(jobId: string, recording_id: string, segData: any, 
   const AWS_S3_REGION = Deno.env.get('AWS_S3_REGION') || 'us-east-1';
   const AWS_S3_BUCKET_NAME = Deno.env.get('AWS_S3_BUCKET_NAME')!;
 
-  // Download all temp PCM segments from S3
-  const pcmChunks: Uint8Array[] = [];
+  // Calculate total PCM size by downloading segments ONE AT A TIME
+  // to avoid holding all in memory simultaneously
+  const bytesPerFrame = channels * (bitsPerSample / 8);
+  let totalPcmSize = 0;
+  const segmentSizes: number[] = [];
+
+  // First pass: get sizes via HEAD requests
   for (const key of segData.temp_s3_keys) {
     const url = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_S3_REGION}.amazonaws.com/${key}`;
-    console.log(`[enhance] Downloading temp segment: ${key}`);
+    const headResp = await fetch(url, { method: 'HEAD' });
+    if (!headResp.ok) throw new Error(`Failed to HEAD temp segment ${key}: ${headResp.status}`);
+    const size = parseInt(headResp.headers.get('content-length') || '0');
+    segmentSizes.push(size);
+    totalPcmSize += size;
+  }
+
+  // Align to frame boundary
+  totalPcmSize = Math.floor(totalPcmSize / bytesPerFrame) * bytesPerFrame;
+
+  // Allocate final buffer (header + PCM data only — no API call needed since we normalized per-segment)
+  console.log(`[enhance] Assembling ${segData.temp_s3_keys.length} segments, total ${(totalPcmSize / 1024 / 1024).toFixed(1)}MB PCM`);
+  const finalBytes = new Uint8Array(44 + totalPcmSize);
+  const hv = new DataView(finalBytes.buffer);
+
+  // Write WAV header
+  writeStr(hv, 0, 'RIFF');
+  hv.setUint32(4, 36 + totalPcmSize, true);
+  writeStr(hv, 8, 'WAVE');
+  writeStr(hv, 12, 'fmt ');
+  hv.setUint32(16, 16, true);
+  hv.setUint16(20, 1, true);
+  hv.setUint16(22, channels, true);
+  hv.setUint32(24, sampleRate, true);
+  hv.setUint32(28, sampleRate * bytesPerFrame, true);
+  hv.setUint16(32, bytesPerFrame, true);
+  hv.setUint16(34, bitsPerSample, true);
+  writeStr(hv, 36, 'data');
+  hv.setUint32(40, totalPcmSize, true);
+
+  // Second pass: download segments ONE AT A TIME and copy into final buffer
+  let offset = 44;
+  for (let i = 0; i < segData.temp_s3_keys.length; i++) {
+    const key = segData.temp_s3_keys[i];
+    const url = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_S3_REGION}.amazonaws.com/${key}`;
+    console.log(`[enhance] Downloading segment ${i + 1}/${segData.temp_s3_keys.length}: ${key}`);
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Failed to download temp segment ${key}: ${resp.status}`);
-    pcmChunks.push(new Uint8Array(await resp.arrayBuffer()));
+    const pcm = new Uint8Array(await resp.arrayBuffer());
+    const usable = Math.min(pcm.length, totalPcmSize - (offset - 44));
+    finalBytes.set(pcm.subarray(0, usable), offset);
+    offset += usable;
+    // pcm goes out of scope here — can be GC'd before next iteration
   }
 
-  // Build combined WAV
-  let finalBytes = buildFinalWav(pcmChunks, sampleRate, channels, bitsPerSample);
-  let stepsApplied = segData.steps_applied || '';
-
-  // Apply final normalization if needed
-  if (segData.enhance_opts.normalize) {
-    console.log('[enhance] Applying final normalization pass...');
-    const normOpts: EnhanceOptions = {
-      ...segData.enhance_opts,
-      highpass: false,
-      lowpass: false,
-      speech_eq: false,
-      noise_gate: false,
-      normalize: true,
-    };
-    const normResult = await callEnhanceApi(
-      new Blob([finalBytes], { type: 'audio/wav' }),
-      'final.wav',
-      METRICS_API_URL,
-      METRICS_API_SECRET,
-      normOpts,
-    );
-    finalBytes = normResult.enhancedBytes;
-    stepsApplied += ',final_normalize';
-  }
+  const stepsApplied = (segData.steps_applied || '') + (segData.enhance_opts.normalize ? ',per_segment_normalize' : '');
 
   const rmsValues = segData.rms_values || { original: [], enhanced: [] };
   const originalRms = rmsValues.original.length > 0
