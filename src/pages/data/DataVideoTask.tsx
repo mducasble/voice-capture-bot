@@ -8,6 +8,7 @@ import {
   Focus, Activity, Shield, CheckCircle2, AlertTriangle,
   XCircle, Loader2, FileVideo, Clock, Maximize2,
   Volume2, BarChart3, ChevronDown, ChevronUp,
+  Smartphone, Film, RotateCw, Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
