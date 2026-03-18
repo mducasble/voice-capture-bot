@@ -135,12 +135,20 @@ export default function InboxTemplateManager() {
                           ))}
                         </div>
                       </div>
-                      <Textarea
-                        value={editForm.body || ""}
-                        onChange={(e) => setEditForm((f) => ({ ...f, body: e.target.value }))}
-                        rows={6}
-                        className="text-sm resize-none"
-                      />
+                      <div className="rounded-md border border-border overflow-hidden">
+                        <FormattingToolbar
+                          textareaRef={bodyRef}
+                          value={editForm.body || ""}
+                          onChange={(v) => setEditForm((f) => ({ ...f, body: v }))}
+                        />
+                        <Textarea
+                          ref={bodyRef}
+                          value={editForm.body || ""}
+                          onChange={(e) => setEditForm((f) => ({ ...f, body: e.target.value }))}
+                          rows={6}
+                          className="text-sm resize-none border-0 rounded-none focus-visible:ring-0"
+                        />
+                      </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={cancelEdit}>
                           <X className="h-3.5 w-3.5 mr-1" /> Cancelar
