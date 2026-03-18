@@ -271,12 +271,13 @@ function ThreadList({
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p
-                          className="font-mono text-sm font-bold truncate"
-                          style={{ color: "var(--portal-text)" }}
-                        >
-                          {thread.subject}
-                        </p>
+                        <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                          {thread.category === "support"
+                            ? "Suporte"
+                            : thread.category === "payment"
+                              ? "Pagamento"
+                              : "Geral"}
+                        </span>
                         <span className="font-mono text-xs shrink-0 ml-2" style={{ color: "var(--portal-text-muted)" }}>
                           {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
                             day: "2-digit",
@@ -284,16 +285,15 @@ function ThreadList({
                           })}
                         </span>
                       </div>
-                      <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                        {thread.category === "support"
-                          ? "Suporte"
-                          : thread.category === "payment"
-                            ? "Pagamento"
-                            : "Geral"}
-                      </span>
+                      <p
+                        className="font-mono text-sm font-bold truncate mt-0.5"
+                        style={{ color: "var(--portal-text)" }}
+                      >
+                        {thread.subject}
+                      </p>
                       {thread.preview && (
                         <p
-                          className="font-mono text-xs mt-2 line-clamp-2"
+                          className="font-mono text-base mt-2 line-clamp-2"
                           style={{ color: "var(--portal-text-muted)", opacity: 0.7 }}
                         >
                           {thread.preview}
