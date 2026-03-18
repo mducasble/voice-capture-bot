@@ -1,4 +1,4 @@
-import { Bold, Underline, Link, RefObject } from "lucide-react";
+import { Bold, Underline, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FormattingToolbarProps {
