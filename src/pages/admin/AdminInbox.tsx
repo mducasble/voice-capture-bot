@@ -332,6 +332,24 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("general");
+  const [activeTemplateKey, setActiveTemplateKey] = useState<string | null>(null);
+  const [verifyingWallet, setVerifyingWallet] = useState(false);
+
+  /* ─── Verify wallet ─── */
+  const handleVerifyWallet = async (userId: string) => {
+    setVerifyingWallet(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: { action: "update_profile", user_id: userId, profile_data: { wallet_verified: true } },
+      });
+      if (error) throw error;
+      toast.success("Carteira marcada como verificada!");
+    } catch (e: any) {
+      toast.error("Erro ao verificar carteira: " + (e.message || "erro desconhecido"));
+    } finally {
+      setVerifyingWallet(false);
+    }
+  };
 
   /* ─── Templates ─── */
   const { data: templates = [] } = useQuery({
