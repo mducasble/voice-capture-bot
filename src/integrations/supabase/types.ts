@@ -1337,6 +1337,7 @@ export type Database = {
           status: string
           submission_id: string
           submission_type: string
+          tx_hash: string | null
           updated_at: string
           user_id: string
         }
@@ -1355,6 +1356,7 @@ export type Database = {
           status?: string
           submission_id: string
           submission_type: string
+          tx_hash?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1373,6 +1375,7 @@ export type Database = {
           status?: string
           submission_id?: string
           submission_type?: string
+          tx_hash?: string | null
           updated_at?: string
           user_id?: string
         }
