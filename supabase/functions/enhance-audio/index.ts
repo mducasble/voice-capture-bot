@@ -508,6 +508,7 @@ async function phaseInit(recording_id: string, file_url: string, jobId: string) 
 
   const segmentData = {
     file_url,
+    recording_id,
     enhance_opts: enhanceOpts,
     reasons,
     original_metrics: originalMetrics,
