@@ -81,7 +81,7 @@ export default function PortalInbox() {
           <div
             className={cn(
               "flex flex-col shrink-0",
-              isMobile ? "w-full" : "w-[320px]"
+              isMobile ? "w-full" : "w-[380px]"
             )}
             style={{
               borderRight: isMobile ? "none" : "1px solid rgba(255, 255, 255, 0.02)",
@@ -293,7 +293,7 @@ function ThreadList({
                       </p>
                       {thread.preview && (
                         <p
-                          className="font-mono text-base mt-2 line-clamp-2"
+                          className="font-mono text-xs mt-2 line-clamp-2"
                           style={{ color: "var(--portal-text-muted)", opacity: 0.7 }}
                         >
                           {thread.preview}
