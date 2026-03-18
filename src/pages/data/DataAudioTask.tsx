@@ -458,9 +458,10 @@ export default function DataAudioTask() {
               {String(timerMinutes).padStart(2, "0")}:{String(timerSeconds).padStart(2, "0")}
             </span>
           </div>
-          <button onClick={handleSkip} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
+          <Button variant="outline" size="sm" onClick={handleSkip}
+            className="bg-white/[0.08] border-white/[0.12] text-white/70 hover:bg-white/[0.15] hover:text-white font-semibold gap-1.5">
             <SkipForward className="h-4 w-4" /> Pular
-          </button>
+          </Button>
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
           <div
