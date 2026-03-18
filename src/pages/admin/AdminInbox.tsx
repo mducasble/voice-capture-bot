@@ -480,7 +480,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
             className="mr-auto border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
           >
             {verifyingWallet ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-            Marcar carteira verificada
+            Confirmo o recebimento do teste
           </Button>
         )}
         <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
