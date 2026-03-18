@@ -259,7 +259,7 @@ const Room = () => {
   useEffect(() => {
     if (!mixedRecorder.isRecording) return;
     remoteStreams.forEach((stream, peerId) => {
-      mixedRecorder.addRemoteStream(stream);
+      mixedRecorder.addRemoteStream(stream, peerId);
       // Find participant name for this peer
       const participant = participants.find(p => p.id === peerId);
       remoteRecorders.addRemoteStream(peerId, stream, participant?.name || peerId);
