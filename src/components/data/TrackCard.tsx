@@ -166,7 +166,7 @@ export function TrackCard({
           )}
         >
           {analyzeQueued ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando...</>
           ) : (
             <><RefreshCw className="h-3.5 w-3.5" /> Reanalisar</>
           )}
@@ -183,7 +183,7 @@ export function TrackCard({
           )}
         >
           {enhanceQueued ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Na fila</>
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processando...</>
           ) : (
             <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
           )}

@@ -314,18 +314,82 @@ export default function DataAudioTask() {
 
   const handleReanalyze = async (sibId: string) => {
     logAction("reanalyze", sibId);
-    const { error } = await supabase.from("analysis_queue").insert({ recording_id: sibId, job_type: "analyze", priority: 5 });
-    if (error) { toast.error("Erro ao enfileirar reanálise"); return; }
-    toast.success("Reanálise enfileirada!");
     setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "enhance" ? "both" : "analyze" }));
+    
+    const sib = siblings.find(s => s.id === sibId);
+    const fileUrl = sib?.file_url;
+    
+    const { error } = await supabase.functions.invoke("estimate-audio-metrics", {
+      body: { recording_id: sibId, file_url: fileUrl, mode: "sampled" },
+    });
+    
+    if (error) { 
+      toast.error("Erro ao reanalisar", { description: error.message }); 
+      setQueuedJobs(prev => {
+        const copy = { ...prev };
+        if (copy[sibId] === "both") copy[sibId] = "enhance";
+        else delete copy[sibId];
+        return copy;
+      });
+      return; 
+    }
+    toast.success("Reanálise concluída!");
+    // Reload siblings to get updated metrics
+    if (rec?.session_id && rec?.campaign_id) {
+      const { data } = await supabase
+        .from("voice_recordings")
+        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+        .eq("session_id", rec.session_id)
+        .eq("campaign_id", rec.campaign_id)
+        .order("recording_type");
+      if (data?.length) setSiblings(data as any[]);
+    }
+    setQueuedJobs(prev => {
+      const copy = { ...prev };
+      if (copy[sibId] === "both") copy[sibId] = "enhance";
+      else delete copy[sibId];
+      return copy;
+    });
   };
 
   const handleEnhance = async (sibId: string) => {
     logAction("enhance", sibId);
-    const { error } = await supabase.from("analysis_queue").insert({ recording_id: sibId, job_type: "enhance", priority: 10 });
-    if (error) { toast.error("Erro ao enfileirar enhance"); return; }
-    toast.success("Enhance enfileirado!");
     setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "analyze" ? "both" : "enhance" }));
+    
+    const sib = siblings.find(s => s.id === sibId);
+    const fileUrl = sib?.file_url;
+    
+    const { error } = await supabase.functions.invoke("enhance-audio", {
+      body: { recording_id: sibId, file_url: fileUrl },
+    });
+    
+    if (error) { 
+      toast.error("Erro ao processar enhance", { description: error.message }); 
+      setQueuedJobs(prev => {
+        const copy = { ...prev };
+        if (copy[sibId] === "both") copy[sibId] = "analyze";
+        else delete copy[sibId];
+        return copy;
+      });
+      return; 
+    }
+    toast.success("Enhance concluído!");
+    // Reload siblings to get updated enhanced_file_url
+    if (rec?.session_id && rec?.campaign_id) {
+      const { data } = await supabase
+        .from("voice_recordings")
+        .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
+        .eq("session_id", rec.session_id)
+        .eq("campaign_id", rec.campaign_id)
+        .order("recording_type");
+      if (data?.length) setSiblings(data as any[]);
+    }
+    setQueuedJobs(prev => {
+      const copy = { ...prev };
+      if (copy[sibId] === "both") copy[sibId] = "analyze";
+      else delete copy[sibId];
+      return copy;
+    });
   };
 
   const remaining = Math.max(0, timeLimit - elapsed);
