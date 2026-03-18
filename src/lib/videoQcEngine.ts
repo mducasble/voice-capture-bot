@@ -180,23 +180,127 @@ function computeLighting(imageData: ImageData): { brightness: number; contrast: 
 }
 
 // ---------------------------------------------------------------------------
-// Motion / stability (frame difference)
+// Optical Flow – Block-matching with camera/object motion separation
 // ---------------------------------------------------------------------------
 
-function computeMotionDelta(current: ImageData, previous: ImageData | null): number {
-  if (!previous) return 0;
-  const { data: a } = current;
-  const { data: b } = previous;
-  const len = Math.min(a.length, b.length);
-  let diff = 0;
+interface FlowResult {
+  totalMotion: number;   // average motion magnitude across all blocks
+  cameraShake: number;   // magnitude of global (median) displacement
+  objectMotion: number;  // residual local motion after subtracting camera motion
+}
 
-  // Sample every 16th pixel for speed
-  for (let i = 0; i < len; i += 64) {
-    diff += Math.abs(a[i] - b[i]);
+/**
+ * Convert ImageData to grayscale Float32Array
+ */
+function toGrayscale(img: ImageData): Float32Array {
+  const { data, width, height } = img;
+  const gray = new Float32Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const idx = i * 4;
+    gray[i] = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+  }
+  return gray;
+}
+
+/**
+ * Block-matching optical flow.
+ * Divides frame into a grid of blocks and finds best match in a search window.
+ * Returns per-block displacement vectors.
+ */
+function blockMatchingFlow(
+  prev: Float32Array, curr: Float32Array,
+  width: number, height: number,
+  blockSize = 16, searchRadius = 8,
+): { dx: number; dy: number }[] {
+  const vectors: { dx: number; dy: number }[] = [];
+  const blocksX = Math.floor(width / blockSize);
+  const blocksY = Math.floor(height / blockSize);
+
+  for (let by = 0; by < blocksY; by++) {
+    for (let bx = 0; bx < blocksX; bx++) {
+      const refX = bx * blockSize;
+      const refY = by * blockSize;
+
+      let bestDx = 0, bestDy = 0;
+      let bestSAD = Infinity;
+
+      // Search window around the reference block
+      for (let sy = -searchRadius; sy <= searchRadius; sy++) {
+        for (let sx = -searchRadius; sx <= searchRadius; sx++) {
+          const candX = refX + sx;
+          const candY = refY + sy;
+
+          // Bounds check
+          if (candX < 0 || candY < 0 ||
+              candX + blockSize > width || candY + blockSize > height) continue;
+
+          // Sum of Absolute Differences
+          let sad = 0;
+          for (let py = 0; py < blockSize; py++) {
+            const rowRef = (refY + py) * width + refX;
+            const rowCand = (candY + py) * width + candX;
+            for (let px = 0; px < blockSize; px++) {
+              sad += Math.abs(prev[rowRef + px] - curr[rowCand + px]);
+            }
+          }
+
+          if (sad < bestSAD) {
+            bestSAD = sad;
+            bestDx = sx;
+            bestDy = sy;
+          }
+        }
+      }
+
+      vectors.push({ dx: bestDx, dy: bestDy });
+    }
   }
 
-  const samples = Math.floor(len / 64);
-  return samples > 0 ? diff / samples : 0;
+  return vectors;
+}
+
+/**
+ * Compute optical flow between two frames and separate camera shake from object motion.
+ * Camera motion = median displacement vector (robust to outliers from moving objects).
+ * Object motion = residual after subtracting camera motion.
+ */
+function computeOpticalFlow(
+  current: ImageData, previous: ImageData | null,
+): FlowResult {
+  if (!previous) return { totalMotion: 0, cameraShake: 0, objectMotion: 0 };
+
+  const w = current.width;
+  const h = current.height;
+  const prevGray = toGrayscale(previous);
+  const currGray = toGrayscale(current);
+
+  const vectors = blockMatchingFlow(prevGray, currGray, w, h);
+
+  if (vectors.length === 0) return { totalMotion: 0, cameraShake: 0, objectMotion: 0 };
+
+  // Compute magnitudes
+  const magnitudes = vectors.map(v => Math.sqrt(v.dx * v.dx + v.dy * v.dy));
+
+  // Total motion: mean magnitude
+  const totalMotion = magnitudes.reduce((s, m) => s + m, 0) / magnitudes.length;
+
+  // Camera motion: median of dx and dy independently (robust to outliers)
+  const dxSorted = vectors.map(v => v.dx).sort((a, b) => a - b);
+  const dySorted = vectors.map(v => v.dy).sort((a, b) => a - b);
+  const mid = Math.floor(vectors.length / 2);
+  const medianDx = dxSorted[mid];
+  const medianDy = dySorted[mid];
+  const cameraShake = Math.sqrt(medianDx * medianDx + medianDy * medianDy);
+
+  // Object motion: mean of residual magnitudes after removing camera motion
+  const residuals = vectors.map(v => {
+    const rx = v.dx - medianDx;
+    const ry = v.dy - medianDy;
+    return Math.sqrt(rx * rx + ry * ry);
+  });
+  const objectMotion = residuals.reduce((s, r) => s + r, 0) / residuals.length;
+
+  return { totalMotion, cameraShake, objectMotion };
 }
 
 // ---------------------------------------------------------------------------
