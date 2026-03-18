@@ -212,14 +212,14 @@ function toGrayscale(img: ImageData): Float32Array {
 /**
  * Block-matching optical flow.
  * Divides frame into a grid of blocks and finds best match in a search window.
- * Returns per-block displacement vectors.
+ * Returns per-block displacement vectors with grid position metadata.
  */
 function blockMatchingFlow(
   prev: Float32Array, curr: Float32Array,
   width: number, height: number,
   blockSize = 16, searchRadius = 8,
-): { dx: number; dy: number }[] {
-  const vectors: { dx: number; dy: number }[] = [];
+): { dx: number; dy: number; bx: number; by: number; blocksX: number; blocksY: number }[] {
+  const vectors: { dx: number; dy: number; bx: number; by: number; blocksX: number; blocksY: number }[] = [];
   const blocksX = Math.floor(width / blockSize);
   const blocksY = Math.floor(height / blockSize);
 
@@ -259,7 +259,7 @@ function blockMatchingFlow(
         }
       }
 
-      vectors.push({ dx: bestDx, dy: bestDy });
+      vectors.push({ dx: bestDx, dy: bestDy, bx, by, blocksX, blocksY });
     }
   }
 
