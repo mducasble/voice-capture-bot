@@ -156,6 +156,8 @@ export const useMixedRecorder = () => {
     audioContextRef.current = null;
     workletNodeRef.current = null;
     chunksRef.current = [];
+    connectedPeerIdsRef.current = new Set();
+    connectedStreamIdsRef.current = new Set();
 
     setState({ isRecording: false });
     return { blob: wavBlob, sampleRate: actualSampleRate };
