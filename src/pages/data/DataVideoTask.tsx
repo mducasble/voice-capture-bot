@@ -103,6 +103,7 @@ export default function DataVideoTask() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<QcProgress | null>(null);
   const [report, setReport] = useState<QcReport | null>(null);
+  const [containerMeta, setContainerMeta] = useState<VideoContainerMetadata | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [handsOffTime, setHandsOffTime] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
