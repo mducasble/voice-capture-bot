@@ -6,6 +6,7 @@ import {
   Inbox, Send, Loader2, ChevronDown, ChevronRight, Search,
   RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users, FileText,
 } from "lucide-react";
+import InboxTemplateManager from "@/components/admin/InboxTemplateManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
