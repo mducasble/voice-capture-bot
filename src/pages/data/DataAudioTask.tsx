@@ -146,10 +146,18 @@ export default function DataAudioTask() {
     supabase.from("campaigns").select("name").eq("id", campaignId).maybeSingle()
       .then(({ data }) => setCampaignName(data?.name || ""));
 
-    supabase.from("campaign_task_sets").select("id").eq("campaign_id", campaignId).limit(1)
+    supabase.from("campaign_task_sets").select("id, task_type").eq("campaign_id", campaignId).limit(1)
       .then(async ({ data: sets }) => {
         if (!sets?.length) return;
         setTaskSetId(sets[0].id);
+        // Fetch ui_label from task_type_catalog
+        if ((sets[0] as any).task_type) {
+          const { data: catalog } = await supabase.from("task_type_catalog" as any)
+            .select("ui_label")
+            .eq("task_type", (sets[0] as any).task_type)
+            .maybeSingle();
+          if (catalog) setTaskTypeLabel((catalog as any).ui_label || "");
+        }
         const { data: config } = await supabase.from("validation_task_config")
           .select("time_limit_seconds, tracked_actions")
           .eq("task_set_id", sets[0].id)
