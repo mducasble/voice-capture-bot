@@ -173,6 +173,7 @@ export default function DataVideoTask() {
             Video QC Analysis
           </h1>
           {campaign && <p className="text-[14px] text-white/40">{campaign.name}</p>}
+          {isStandalone && <p className="text-[14px] text-white/40">Análise individual</p>}
         </div>
       </div>
 
