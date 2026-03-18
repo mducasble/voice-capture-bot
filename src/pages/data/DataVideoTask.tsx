@@ -344,7 +344,7 @@ export default function DataVideoTask() {
                     <h4 className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Qualidade</h4>
                     <MetricRow icon={Focus} label="Nitidez (blur)" value={`${report.blurScore.toFixed(0)}`} unit="/100" score={report.blurScore} />
                     <MetricRow icon={Sun} label="Iluminação" value={`${report.brightnessScore.toFixed(0)}`} unit="/100" score={report.brightnessScore} />
-                    <MetricRow icon={Activity} label="Estabilidade" value={`${report.stabilityScore.toFixed(0)}`} unit="/100" score={report.stabilityScore} />
+                    {/* Estabilidade oculta por enquanto — ainda calculada internamente */}
                   </div>
 
                   {/* Analyzed frames */}
@@ -400,7 +400,7 @@ export default function DataVideoTask() {
                 <MetricRow icon={Eye} label="Sem rosto" value={`${((1 - report.facePresenceRate) * 100).toFixed(0)}%`} score={(1 - report.facePresenceRate) * 100} />
                 <MetricRow icon={Focus} label="Nitidez" value={`${report.blurScore.toFixed(0)}`} score={report.blurScore} />
                 <MetricRow icon={Sun} label="Luz" value={`${report.brightnessScore.toFixed(0)}`} score={report.brightnessScore} />
-                <MetricRow icon={Activity} label="Estabilidade" value={`${report.stabilityScore.toFixed(0)}`} score={report.stabilityScore} />
+                {/* Estabilidade oculta */}
               </div>
 
               {/* Actions */}
