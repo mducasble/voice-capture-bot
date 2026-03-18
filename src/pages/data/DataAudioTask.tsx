@@ -550,14 +550,22 @@ export default function DataAudioTask() {
 
       {/* Decision bar - fixed bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-2xl bg-black/70 border-t border-white/[0.06] p-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
+        <div className="max-w-4xl mx-auto flex items-center gap-2">
           <Button onClick={handleApprove} disabled={saving}
-            className="flex-1 h-14 text-[16px] font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20">
-            <CheckCircle2 className="h-5 w-5 mr-2" /> Aprovar
+            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20">
+            <CheckCircle2 className="h-4 w-4 mr-1.5" /> Aprovar
+          </Button>
+          <Button onClick={handleReserve} disabled={saving}
+            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
+            <Archive className="h-4 w-4 mr-1.5" /> Reserva
+          </Button>
+          <Button onClick={handleFlag} disabled={saving}
+            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
+            <Flag className="h-4 w-4 mr-1.5" /> Flag
           </Button>
           <Button onClick={() => setShowRejectModal(true)} disabled={saving}
-            className="flex-1 h-14 text-[16px] font-semibold rounded-xl bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20">
-            <XCircle className="h-5 w-5 mr-2" /> Reprovar
+            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20">
+            <XCircle className="h-4 w-4 mr-1.5" /> Reprovar
           </Button>
         </div>
       </div>
