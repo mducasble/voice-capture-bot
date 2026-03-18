@@ -584,8 +584,9 @@ async function processOneSegment(
   const pcmSize = enhancedHeader?.dataSize ?? (result.enhancedBytes.length - 44);
   const enhancedPcm = result.enhancedBytes.subarray(pcmOffset, pcmOffset + pcmSize);
 
-  // Upload temp PCM segment to S3
-  const tempKey = `${segData.base_path}/_enhance_tmp/seg_${segIndex}.pcm`;
+  // Include recording_id in path to prevent collisions between jobs in same session
+  const recId = segData.recording_id || 'unknown';
+  const tempKey = `${segData.base_path}/_enhance_tmp/${recId}/seg_${segIndex}.pcm`;
   await uploadToS3(enhancedPcm, tempKey);
   console.log(`[enhance] Segment ${segIndex + 1}/${totalSegments} done → ${tempKey}`);
 
