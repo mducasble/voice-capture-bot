@@ -250,15 +250,15 @@ export default function AdminFinance() {
 
       return { txHash: tx.hash, userName: user.full_name, paymentCode };
     },
-    onSuccess: ({ txHash, userName }) => {
-      toast.success(`Pagamento enviado para ${userName || "usuário"}!`, {
+    onSuccess: ({ txHash, userName, paymentCode }) => {
+      toast.success(`${paymentCode} — Pagamento enviado para ${userName || "usuário"}!`, {
         action: {
           label: "Ver tx",
           onClick: () => window.open(POLYGONSCAN + txHash, "_blank"),
         },
       });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
-      // Refresh wallet balance
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
       connectWallet();
     },
     onError: (err: any) => {
