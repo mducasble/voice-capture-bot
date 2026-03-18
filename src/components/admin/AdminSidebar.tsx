@@ -75,6 +75,12 @@ const navSections = [
       { title: "Rede de Indicações", url: "/admin/referral-network", icon: Network },
     ],
   },
+  {
+    label: "Financeiro",
+    items: [
+      { title: "Pagamentos Crypto", url: "/admin/finance", icon: Banknote },
+    ],
+  },
 ];
 
 export function AdminSidebar() {

@@ -137,6 +137,7 @@ const App = () => (
                 <Route path="quality-hours" element={<AdminQualityHours />} />
                 <Route path="task-validation" element={<AdminTaskValidation />} />
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
+                <Route path="finance" element={<AdminFinance />} />
               </Route>
 
               {/* Audit login (standalone) */}
