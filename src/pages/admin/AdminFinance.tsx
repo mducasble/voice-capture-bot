@@ -116,8 +116,12 @@ export default function AdminFinance() {
 
     setConnecting(true);
     try {
-      // Request accounts
-      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      // Request accounts — use wallet_requestPermissions to force the chooser prompt
+      await ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      const accounts = await ethereum.request({ method: "eth_accounts" });
       if (!accounts?.[0]) throw new Error("Nenhuma conta encontrada");
 
       // Switch to Polygon if needed
