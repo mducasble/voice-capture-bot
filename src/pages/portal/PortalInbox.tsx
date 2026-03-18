@@ -67,11 +67,12 @@ export default function PortalInbox() {
       </div>
 
       <div
-        className="flex overflow-hidden"
+        className="flex overflow-hidden rounded"
         style={{
           border: "1px solid var(--portal-border)",
           height: "calc(100vh - 220px)",
           minHeight: "500px",
+          background: "rgba(0, 0, 0, 0.45)",
         }}
       >
         {/* ── Left column: thread list ── */}
@@ -81,7 +82,10 @@ export default function PortalInbox() {
               "flex flex-col shrink-0",
               isMobile ? "w-full" : "w-[320px]"
             )}
-            style={{ borderRight: isMobile ? "none" : "1px solid var(--portal-border)" }}
+            style={{
+              borderRight: isMobile ? "none" : "1px solid var(--portal-border)",
+              background: "rgba(0, 0, 0, 0.25)",
+            }}
           >
             <ThreadList
               userId={user.id}
@@ -601,7 +605,7 @@ function ConversationView({
       {thread && (thread as any).status === "open" && (
         <div
           className="p-3 flex items-end gap-2 shrink-0"
-          style={{ borderTop: "1px solid var(--portal-border)" }}
+          style={{ borderTop: "1px solid var(--portal-border)", background: "rgba(0, 0, 0, 0.2)" }}
         >
           <Textarea
             placeholder="Escreva uma resposta..."
@@ -609,9 +613,10 @@ function ConversationView({
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="flex-1 font-mono text-sm bg-transparent resize-none min-h-[36px] max-h-[120px]"
+            className="flex-1 font-mono text-sm resize-none min-h-[36px] max-h-[120px]"
             style={{
-              border: "1px solid var(--portal-border)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(0, 0, 0, 0.3)",
               color: "var(--portal-text)",
               borderRadius: "18px",
               paddingLeft: "14px",
