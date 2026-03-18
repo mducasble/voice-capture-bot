@@ -133,6 +133,9 @@ export default function DataVideoTask() {
     setFile(f);
     setVideoUrl(URL.createObjectURL(f));
     setReport(null);
+    setContainerMeta(null);
+    // Parse container metadata immediately
+    parseVideoContainer(f).then(setContainerMeta).catch(console.warn);
   }, []);
 
   const handleAnalyze = useCallback(async () => {
