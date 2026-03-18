@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText, AlertCircle } from "lucide-react";
+import EarningsDetailPanel from "@/components/portal/EarningsDetailPanel";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
