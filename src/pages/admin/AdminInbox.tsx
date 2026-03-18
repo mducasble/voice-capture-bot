@@ -328,6 +328,28 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("general");
 
+  /* ─── Templates ─── */
+  const { data: templates = [] } = useQuery({
+    queryKey: ["admin-inbox-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inbox_message_templates" as any)
+        .select("id, template_key, subject, category, body")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const applyTemplate = (templateKey: string) => {
+    const tpl = templates.find((t: any) => t.template_key === templateKey);
+    if (tpl) {
+      setSubject(tpl.subject);
+      setBody(tpl.body);
+      setCategory(tpl.category);
+    }
+  };
+
   const { data: users = [] } = useQuery({
     queryKey: ["admin-inbox-user-search", userSearch],
     enabled: userSearch.length >= 2,
@@ -341,9 +363,35 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
     },
   });
 
+  const templateLabels: Record<string, string> = {
+    welcome: "🎉 Boas-vindas",
+    wallet_test_tx: "💰 Transação de teste",
+  };
+
   return (
     <div className="rounded-xl border p-5 space-y-4 bg-muted/5">
       <h3 className="text-sm font-bold text-foreground">Nova Mensagem</h3>
+
+      {/* Templates */}
+      {templates.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5" />
+            Templates
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((tpl: any) => (
+              <button
+                key={tpl.id}
+                onClick={() => applyTemplate(tpl.template_key)}
+                className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+              >
+                {templateLabels[tpl.template_key] || tpl.subject}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* User search */}
       {!selectedUser ? (
