@@ -21,13 +21,25 @@ export default function DataCampaignSelect() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    supabase
+    const typeMap: Record<string, string[]> = {
+      audio: ["audio_capture_group"],
+      video: ["video_submission"],
+      photo: ["image_submission"],
+    };
+    const allowedTypes = typeMap[mediaType || ""] || [];
+
+    let query = supabase
       .from("campaigns")
       .select("id, name, description, campaign_status, language_primary, target_hours, accumulated_value")
       .eq("is_active", true)
-      .order("name")
-      .then(({ data }) => { setCampaigns(data || []); setLoading(false); });
-  }, []);
+      .order("name");
+
+    if (allowedTypes.length > 0) {
+      query = query.in("campaign_type", allowedTypes);
+    }
+
+    query.then(({ data }) => { setCampaigns(data || []); setLoading(false); });
+  }, [mediaType]);
 
   const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
