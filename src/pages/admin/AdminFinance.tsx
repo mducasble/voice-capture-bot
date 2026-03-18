@@ -312,15 +312,27 @@ export default function AdminFinance() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={connectWallet}
-          variant={walletAddr ? "outline" : "default"}
-          size="sm"
-          disabled={connecting}
-        >
-          {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-          {walletAddr ? "Reconectar" : "Conectar Wallet"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {walletAddr && (
+            <Button
+              onClick={() => { setWalletAddr(null); setWalletBalance(null); toast.info("Wallet desconectada"); }}
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            >
+              Desconectar
+            </Button>
+          )}
+          <Button
+            onClick={connectWallet}
+            variant={walletAddr ? "outline" : "default"}
+            size="sm"
+            disabled={connecting}
+          >
+            {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+            {walletAddr ? "Reconectar" : "Conectar Wallet"}
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
