@@ -304,6 +304,20 @@ export default function AdminInbox() {
                       );
                     })}
 
+                    {/* Verify wallet button for wallet test threads */}
+                    {thread.subject.toLowerCase().includes("wallet") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVerifyWalletThread(thread.user_id, thread.id)}
+                        disabled={verifyingWalletThread === thread.id}
+                        className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                      >
+                        {verifyingWalletThread === thread.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                        Confirmo o recebimento do teste
+                      </Button>
+                    )}
+
                     {/* Reply */}
                     {thread.status === "open" && (
                       <div className="flex gap-2 pt-2">
