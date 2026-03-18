@@ -95,6 +95,7 @@ function MetricRow({ icon: Icon, label, value, unit, score }: {
 export default function DataVideoTask() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const isStandalone = campaignId === "standalone";
 
   const [file, setFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
