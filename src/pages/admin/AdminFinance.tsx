@@ -315,7 +315,20 @@ export default function AdminFinance() {
         <div className="flex items-center gap-2">
           {walletAddr && (
             <Button
-              onClick={() => { setWalletAddr(null); setWalletBalance(null); toast.info("Wallet desconectada"); }}
+              onClick={async () => {
+                setWalletAddr(null);
+                setWalletBalance(null);
+                try {
+                  const ethereum = (window as any).ethereum;
+                  if (ethereum?.request) {
+                    await ethereum.request({
+                      method: "wallet_revokePermissions",
+                      params: [{ eth_accounts: {} }],
+                    });
+                  }
+                } catch (_) {}
+                toast.info("Wallet desconectada");
+              }}
               variant="ghost"
               size="sm"
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
