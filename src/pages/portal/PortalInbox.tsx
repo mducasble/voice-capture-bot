@@ -616,8 +616,8 @@ function ConversationView({
             rows={1}
             className="flex-1 font-mono text-sm resize-none min-h-[36px] max-h-[120px]"
             style={{
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.05)",
+              background: "rgba(255, 255, 255, 0.015)",
               color: "var(--portal-text)",
               borderRadius: "18px",
               paddingLeft: "14px",
