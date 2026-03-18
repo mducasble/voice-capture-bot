@@ -457,7 +457,7 @@ export async function runVideoQc(
     }
 
     // Blur
-    const blurScore = computeBlurScore(imageData);
+    const blurScore = computeBlurScore(imageData, analysisScale);
 
     // Lighting
     const { brightness, contrast } = computeLighting(imageData);
