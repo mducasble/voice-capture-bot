@@ -32,6 +32,7 @@ const AdminQualityHours = lazy(() => import("./pages/admin/AdminQualityHours"));
 const AdminTaskValidation = lazy(() => import("./pages/admin/AdminTaskValidation"));
 const AdminInfrastructure = lazy(() => import("./pages/admin/AdminInfrastructure"));
 const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
+const AdminInbox = lazy(() => import("./pages/admin/AdminInbox"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -42,6 +43,7 @@ const PortalCampaignTask = lazy(() => import("./pages/portal/PortalCampaignTask"
 const PortalMyCampaigns = lazy(() => import("./pages/portal/PortalMyCampaigns"));
 const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
 const PortalEarnings = lazy(() => import("./pages/portal/PortalEarnings"));
+const PortalInbox = lazy(() => import("./pages/portal/PortalInbox"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
 
@@ -116,6 +118,8 @@ const App = () => (
                 <Route path="campaign/:id/task" element={<PortalCampaignTask />} />
                 <Route path="my-campaigns" element={<PortalMyCampaigns />} />
                 <Route path="earnings" element={<PortalEarnings />} />
+                {/* <Route path="inbox" element={<PortalInbox />} /> */}
+                <Route path="inbox" element={<PortalInbox />} />
                 <Route path="profile" element={<PortalProfile />} />
                 <Route path="room/:roomId" element={<Room />} />
               </Route>
@@ -145,6 +149,7 @@ const App = () => (
                 <Route path="task-validation" element={<AdminTaskValidation />} />
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
                 <Route path="finance" element={<AdminFinance />} />
+                <Route path="inbox" element={<AdminInbox />} />
               </Route>
 
               {/* Audit login (standalone) */}

@@ -20,6 +20,7 @@ import {
   Activity,
   BarChart3,
   Banknote,
+  Inbox,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -79,6 +80,7 @@ const navSections = [
     label: "Financeiro",
     items: [
       { title: "Pagamentos Crypto", url: "/admin/finance", icon: Banknote },
+      // { title: "Inbox", url: "/admin/inbox", icon: Inbox },
     ],
   },
 ];
