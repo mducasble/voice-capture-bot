@@ -31,6 +31,7 @@ export default function InboxTemplateManager() {
   const [expanded, setExpanded] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Template>>({});
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["admin-inbox-templates"],
