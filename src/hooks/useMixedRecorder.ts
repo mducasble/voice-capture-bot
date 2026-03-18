@@ -20,6 +20,7 @@ export const useMixedRecorder = () => {
   const sourceNodesRef = useRef<MediaStreamAudioSourceNode[]>([]);
   const gainNodeRef = useRef<GainNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
+  const connectedPeerIdsRef = useRef<Set<string>>(new Set());
   const connectedStreamIdsRef = useRef<Set<string>>(new Set());
 
   const startRecording = useCallback(
@@ -28,6 +29,7 @@ export const useMixedRecorder = () => {
       remoteStreams: Map<string, MediaStream>
     ) => {
       chunksRef.current = [];
+      connectedPeerIdsRef.current = new Set();
       connectedStreamIdsRef.current = new Set();
       const sampleRate = 48000;
       const audioContext = new AudioContext({ sampleRate });
@@ -76,13 +78,17 @@ export const useMixedRecorder = () => {
   /**
    * Dynamically add a new remote stream that joined mid-recording.
    */
-  const addRemoteStream = useCallback((stream: MediaStream) => {
+  const addRemoteStream = useCallback((stream: MediaStream, peerId?: string) => {
     const ctx = audioContextRef.current;
     const gain = gainNodeRef.current;
     if (!ctx || !gain) return;
 
-    // Skip if already connected
+    // Deduplicate by peerId first (handles Daily.co stream renegotiation),
+    // fall back to stream.id for backward compatibility
+    const dedupeKey = peerId || stream.id;
+    if (connectedPeerIdsRef.current.has(dedupeKey)) return;
     if (connectedStreamIdsRef.current.has(stream.id)) return;
+    connectedPeerIdsRef.current.add(dedupeKey);
     connectedStreamIdsRef.current.add(stream.id);
 
     const src = ctx.createMediaStreamSource(stream);
@@ -150,6 +156,8 @@ export const useMixedRecorder = () => {
     audioContextRef.current = null;
     workletNodeRef.current = null;
     chunksRef.current = [];
+    connectedPeerIdsRef.current = new Set();
+    connectedStreamIdsRef.current = new Set();
 
     setState({ isRecording: false });
     return { blob: wavBlob, sampleRate: actualSampleRate };
