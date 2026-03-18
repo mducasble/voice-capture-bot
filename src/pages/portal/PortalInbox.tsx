@@ -232,9 +232,9 @@ function ThreadList({
                   style={{
                     borderBottom: "1px solid var(--portal-border)",
                     background: isSelected
-                      ? "rgba(140, 255, 5, 0.08)"
+                      ? "rgba(140, 255, 5, 0.12)"
                       : thread.unread_count > 0
-                        ? "rgba(140, 255, 5, 0.03)"
+                        ? "rgba(140, 255, 5, 0.06)"
                         : "transparent",
                     borderLeft: isSelected ? "3px solid var(--portal-accent)" : "3px solid transparent",
                   }}
