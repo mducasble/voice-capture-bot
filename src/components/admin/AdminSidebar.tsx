@@ -80,6 +80,7 @@ const navSections = [
     label: "Financeiro",
     items: [
       { title: "Pagamentos Crypto", url: "/admin/finance", icon: Banknote },
+      // { title: "Inbox", url: "/admin/inbox", icon: Inbox },
     ],
   },
 ];
