@@ -95,6 +95,7 @@ function MetricRow({ icon: Icon, label, value, unit, score }: {
 export default function DataVideoTask() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const isStandalone = campaignId === "standalone";
 
   const [file, setFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -107,7 +108,7 @@ export default function DataVideoTask() {
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
     queryFn: async () => {
-      if (!campaignId) return null;
+      if (!campaignId || isStandalone) return null;
       const { data } = await supabase
         .from("campaigns")
         .select("id, name, description")
@@ -115,6 +116,7 @@ export default function DataVideoTask() {
         .single();
       return data;
     },
+    enabled: !isStandalone,
   });
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,6 +173,7 @@ export default function DataVideoTask() {
             Video QC Analysis
           </h1>
           {campaign && <p className="text-[14px] text-white/40">{campaign.name}</p>}
+          {isStandalone && <p className="text-[14px] text-white/40">Análise individual</p>}
         </div>
       </div>
 
