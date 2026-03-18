@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Copy,
   Link2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,6 +216,25 @@ export default function AdminFinance() {
       const receipt = await tx.wait(1);
       if (receipt.status !== 1) throw new Error("Transação falhou on-chain");
 
+      // Generate payment code and create payment record
+      const { data: codeResult } = await supabase.rpc("generate_payment_code");
+      const paymentCode = codeResult || `pg-${Math.random().toString(36).slice(2, 10)}`;
+
+      const { data: payment, error: paymentErr } = await supabase
+        .from("payments")
+        .insert({
+          payment_code: paymentCode,
+          tx_hash: tx.hash,
+          user_id: user.user_id,
+          total_amount: user.total_pending,
+          currency: user.currency,
+          paid_at: new Date().toISOString(),
+        } as any)
+        .select("id")
+        .single();
+
+      if (paymentErr) throw paymentErr;
+
       // Mark earnings as paid in DB
       const { error } = await supabase
         .from("earnings_ledger")
@@ -221,22 +242,23 @@ export default function AdminFinance() {
           status: "paid",
           paid_at: new Date().toISOString(),
           tx_hash: tx.hash,
+          payment_id: payment.id,
         } as any)
         .in("id", user.earning_ids);
 
       if (error) throw error;
 
-      return { txHash: tx.hash, userName: user.full_name };
+      return { txHash: tx.hash, userName: user.full_name, paymentCode };
     },
-    onSuccess: ({ txHash, userName }) => {
-      toast.success(`Pagamento enviado para ${userName || "usuário"}!`, {
+    onSuccess: ({ txHash, userName, paymentCode }) => {
+      toast.success(`${paymentCode} — Pagamento enviado para ${userName || "usuário"}!`, {
         action: {
           label: "Ver tx",
           onClick: () => window.open(POLYGONSCAN + txHash, "_blank"),
         },
       });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
-      // Refresh wallet balance
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
       connectWallet();
     },
     onError: (err: any) => {
@@ -455,31 +477,45 @@ export default function AdminFinance() {
 
 /* ─── Recent Payments ─── */
 function RecentPayments() {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const { data: recent = [], isLoading } = useQuery({
     queryKey: ["admin-finance-recent"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("earnings_ledger")
-        .select("id, user_id, amount, currency, paid_at, tx_hash, entry_type")
-        .eq("status", "paid")
-        .not("tx_hash", "is", null)
+        .from("payments" as any)
+        .select("id, payment_code, tx_hash, user_id, total_amount, currency, paid_at")
         .order("paid_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-
       if (!data?.length) return [];
 
-      const userIds = [...new Set(data.map(d => d.user_id))];
+      const userIds = [...new Set((data as any[]).map((d: any) => d.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, full_name")
         .in("id", userIds);
       const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
 
-      return data.map(d => ({
+      return (data as any[]).map((d: any) => ({
         ...d,
         full_name: profileMap.get(d.user_id) || null,
       }));
+    },
+  });
+
+  // Fetch earnings for expanded payment
+  const { data: expandedEarnings = [] } = useQuery({
+    queryKey: ["admin-finance-payment-details", expandedId],
+    enabled: !!expandedId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("earnings_ledger")
+        .select("id, amount, currency, entry_type, description")
+        .eq("payment_id", expandedId!)
+        .order("amount", { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -492,6 +528,7 @@ function RecentPayments() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/30">
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Código</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
               <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tx Hash</th>
@@ -499,26 +536,63 @@ function RecentPayments() {
             </tr>
           </thead>
           <tbody>
-            {recent.map(r => (
-              <tr key={r.id} className="border-b last:border-0">
-                <td className="px-4 py-3 text-foreground">{r.full_name || "—"}</td>
-                <td className="px-4 py-3 text-right font-medium text-foreground">${Number(r.amount).toFixed(2)}</td>
-                <td className="px-4 py-3">
-                  <a
-                    href={POLYGONSCAN + (r as any).tx_hash}
-                    target="_blank"
-                    rel="noopener"
-                    className="flex items-center gap-1 text-primary hover:underline text-xs font-mono"
+            {recent.map((r: any) => {
+              const isExpanded = expandedId === r.id;
+              return (
+                <>
+                  <tr
+                    key={r.id}
+                    className="border-b last:border-0 hover:bg-muted/10 cursor-pointer transition-colors"
+                    onClick={() => setExpandedId(isExpanded ? null : r.id)}
                   >
-                    {shortAddr((r as any).tx_hash || "")}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </td>
-                <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                  {r.paid_at ? new Date(r.paid_at).toLocaleDateString("pt-BR") : "—"}
-                </td>
-              </tr>
-            ))}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <code className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded">{r.payment_code}</code>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-foreground font-medium">{r.full_name || "—"}</td>
+                    <td className="px-4 py-3 text-right font-bold text-foreground">${Number(r.total_amount).toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={POLYGONSCAN + r.tx_hash}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex items-center gap-1 text-primary hover:underline text-xs font-mono"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {shortAddr(r.tx_hash || "")}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                      {r.paid_at ? new Date(r.paid_at).toLocaleDateString("pt-BR") : "—"}
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr key={`${r.id}-details`} className="border-b last:border-0">
+                      <td colSpan={5} className="px-8 py-3 bg-muted/5">
+                        {expandedEarnings.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Carregando detalhes...</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {expandedEarnings.map((e: any) => (
+                              <div key={e.id} className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {e.entry_type === "task_payment" ? "📋 Tarefa" : "🔗 Referral"}{" "}
+                                  <span className="text-foreground/60">{e.description}</span>
+                                </span>
+                                <span className="font-medium text-foreground">${Number(e.amount).toFixed(4)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
           </tbody>
         </table>
       </div>

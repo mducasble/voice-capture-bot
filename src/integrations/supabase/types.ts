@@ -1333,6 +1333,7 @@ export type Database = {
           id: string
           metadata: Json | null
           paid_at: string | null
+          payment_id: string | null
           reference_id: string | null
           status: string
           submission_id: string
@@ -1352,6 +1353,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           paid_at?: string | null
+          payment_id?: string | null
           reference_id?: string | null
           status?: string
           submission_id: string
@@ -1371,6 +1373,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           paid_at?: string | null
+          payment_id?: string | null
           reference_id?: string | null
           status?: string
           submission_id?: string
@@ -1385,6 +1388,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "earnings_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1792,6 +1802,39 @@ export type Database = {
           message?: string | null
           scheduled_at?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string
+          payment_code: string
+          total_amount: number
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string
+          payment_code: string
+          total_amount?: number
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string
+          payment_code?: string
+          total_amount?: number
+          tx_hash?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2792,6 +2835,7 @@ export type Database = {
         Returns: number
       }
       expire_old_rooms: { Args: never; Returns: undefined }
+      generate_payment_code: { Args: never; Returns: string }
       get_my_campaign_recordings: {
         Args: { p_campaign_ids: string[]; p_user_id: string }
         Returns: {
