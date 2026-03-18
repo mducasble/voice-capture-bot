@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { renderFormattedText } from "@/lib/formatInboxMessage";
-import { cn } from "@/lib/utils";
 
 /* ─── Types ─── */
 interface Thread {
