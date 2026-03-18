@@ -191,11 +191,16 @@ export default function AdminFinance() {
       setPayingUserId(user.user_id);
 
       const provider = new BrowserProvider(ethereum);
+      const network = await provider.getNetwork();
+      if (network.chainId !== 137n) {
+        throw new Error("Rede incorreta. Troque para Polygon e reconecte a wallet.");
+      }
+
       const signer = await provider.getSigner();
       const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, signer);
 
-      const decimals = await usdt.decimals();
-      const amount = parseUnits(user.total_pending.toString(), decimals);
+      // USDT on Polygon = 6 decimals
+      const amount = parseUnits(user.total_pending.toFixed(6), 6);
 
       // Send transaction
       const tx = await usdt.transfer(user.wallet_id, amount);
