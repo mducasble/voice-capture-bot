@@ -69,7 +69,9 @@ export interface FrameAnalysis {
   blurScore: number;       // higher = sharper
   brightness: number;      // 0-255
   contrast: number;        // 0-255
-  motionDelta: number;     // vs previous frame
+  motionDelta: number;     // vs previous frame (total motion)
+  cameraShake: number;     // global camera motion magnitude
+  objectMotion: number;    // local object motion (hands, etc.)
 }
 
 export interface QcReport {
