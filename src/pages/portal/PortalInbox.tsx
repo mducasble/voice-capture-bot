@@ -47,6 +47,7 @@ interface Message {
 /* ─── Main Component ─── */
 export default function PortalInbox() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showNewThread, setShowNewThread] = useState(false);
   const isMobile = useIsMobile();
@@ -64,7 +65,7 @@ export default function PortalInbox() {
           className="text-xl font-black uppercase tracking-wider"
           style={{ color: "var(--portal-text)" }}
         >
-          Mensagens
+          {t("inbox.title")}
         </h1>
       </div>
 
