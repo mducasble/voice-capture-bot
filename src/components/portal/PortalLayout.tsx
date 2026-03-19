@@ -83,6 +83,26 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isComplete: profileComplete } = useProfileCompletion();
 
+  const { data: hasUnread } = useQuery({
+    queryKey: ["inbox-unread", user.id],
+    queryFn: async () => {
+      const { data: threads } = await supabase
+        .from("inbox_threads")
+        .select("id")
+        .eq("user_id", user.id);
+      if (!threads || threads.length === 0) return false;
+      const threadIds = threads.map((t: any) => t.id);
+      const { count } = await supabase
+        .from("inbox_messages")
+        .select("id", { count: "exact", head: true })
+        .in("thread_id", threadIds)
+        .eq("is_read", false)
+        .neq("sender_id", user.id);
+      return (count ?? 0) > 0;
+    },
+    refetchInterval: 30000,
+  });
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md" style={{ borderBottom: "1px solid var(--portal-border)", background: "var(--portal-bg)" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
