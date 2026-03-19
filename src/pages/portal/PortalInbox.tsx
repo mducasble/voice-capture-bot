@@ -388,7 +388,7 @@ function NewThreadForm({
       {/* Form */}
       <div className="flex-1 p-4 space-y-4">
         <Input
-          placeholder="Assunto"
+          placeholder={t("inbox.subject")}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           className="font-mono text-sm bg-transparent border-0 border-b px-0 rounded-none focus-visible:ring-0"
