@@ -6,37 +6,47 @@ import { supabase } from "@/integrations/supabase/client";
 import { XCircle, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const ADMIN_REJECTION_REASONS = [
+  "Número insuficiente de participantes",
+  "Áudio abaixo do padrão mínimo de qualidade",
+  "Desvio do tema superior a 20%",
+  "Participante infringiu as regras de produção ou envio de material",
+  "Duração menor que o tempo previsto",
+  "Material inconsistente (Upload de arquivos de duração diferentes)",
+  "Um dos participantes já ultrapassou a cota máxima dessa campanha",
+  "Participantes não enviaram áudio isolado",
+];
+
 interface Props {
   open: boolean;
   onClose: () => void;
   onConfirm: (reasons: string[], note: string) => void;
   campaignId: string;
   type?: "quality" | "validation";
+  useAdminReasons?: boolean;
 }
 
-export function RejectionReasonModal({ open, onClose, onConfirm, campaignId, type = "quality" }: Props) {
+export function RejectionReasonModal({ open, onClose, onConfirm, campaignId, type = "quality", useAdminReasons = false }: Props) {
   const [reasons, setReasons] = useState<string[]>([]);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (!open || !campaignId) return;
+    if (!open) return;
+    if (useAdminReasons) {
+      setReasons(ADMIN_REJECTION_REASONS);
+      return;
+    }
+    if (!campaignId) return;
     supabase
       .from("campaign_quality_flow")
       .select("rejection_reasons")
       .eq("campaign_id", campaignId)
       .maybeSingle()
       .then(({ data }) => {
-        setReasons(data?.rejection_reasons || [
-          "Ruído excessivo",
-          "Fala inaudível",
-          "Duração insuficiente",
-          "Conteúdo inadequado",
-          "Problemas técnicos",
-          "Silêncio prolongado",
-        ]);
+        setReasons(data?.rejection_reasons || ADMIN_REJECTION_REASONS);
       });
-  }, [open, campaignId]);
+  }, [open, campaignId, useAdminReasons]);
 
   const toggle = (r: string) => {
     setSelectedReasons((prev) =>
