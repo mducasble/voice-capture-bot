@@ -339,15 +339,17 @@ function ThreadList({
 /* ─── New Thread Form ─── */
 function NewThreadForm({
   userId,
+  prefillSubject,
   onCreated,
   onBack,
 }: {
   userId: string;
+  prefillSubject?: string;
   onCreated: (threadId: string) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(prefillSubject || "");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
 
