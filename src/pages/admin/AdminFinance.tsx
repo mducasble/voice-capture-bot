@@ -39,6 +39,7 @@ interface PendingUser {
   user_id: string;
   full_name: string | null;
   wallet_id: string | null;
+  wallet_verified: boolean;
   country: string | null;
   total_pending: number;
   currency: string;
