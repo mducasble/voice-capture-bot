@@ -556,18 +556,39 @@ export default function AdminFinance() {
                       <span className="text-xs text-muted-foreground ml-1">{user.currency}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => payMutation.mutate(user)}
-                        disabled={!walletAddr || !hasWallet || isPaying || payMutation.isPending}
-                      >
-                        {isPaying ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        ) : (
-                          <Send className="h-4 w-4 mr-1" />
+                      <div className="flex items-center justify-end gap-2">
+                        {hasWallet && !paidUserIds.has(user.user_id) && user.total_pending >= 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const confirmed = window.confirm(`Enviar $1 de teste para ${user.full_name || "usuário"}?`);
+                              if (confirmed) testTxMutation.mutate(user);
+                            }}
+                            disabled={!walletAddr || testingUserId === user.user_id || testTxMutation.isPending}
+                            className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                          >
+                            {testingUserId === user.user_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <TestTube2 className="h-4 w-4 mr-1" />
+                            )}
+                            Teste TX
+                          </Button>
                         )}
-                        {isPaying ? "Enviando..." : "Pagar"}
-                      </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => payMutation.mutate(user)}
+                          disabled={!walletAddr || !hasWallet || isPaying || payMutation.isPending}
+                        >
+                          {isPaying ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-1" />
+                          )}
+                          {isPaying ? "Enviando..." : "Pagar"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
