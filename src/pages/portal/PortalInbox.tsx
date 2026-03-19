@@ -49,9 +49,23 @@ interface Message {
 export default function PortalInbox() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const location = useLocation();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showNewThread, setShowNewThread] = useState(false);
+  const [prefillSubject, setPrefillSubject] = useState("");
   const isMobile = useIsMobile();
+
+  // Handle bug report prefill from navigation state
+  useEffect(() => {
+    const state = location.state as { bugReport?: boolean; subject?: string } | null;
+    if (state?.bugReport && state?.subject) {
+      setShowNewThread(true);
+      setSelectedThreadId(null);
+      setPrefillSubject(state.subject);
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   if (!user) return null;
 
