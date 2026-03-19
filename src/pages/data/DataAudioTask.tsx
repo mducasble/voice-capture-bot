@@ -579,6 +579,7 @@ export default function DataAudioTask() {
           onClose={() => setShowRejectModal(false)}
           onConfirm={handleReject}
           campaignId={campaignId}
+          useAdminReasons
         />
       )}
     </div>
