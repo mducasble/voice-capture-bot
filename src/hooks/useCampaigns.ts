@@ -383,19 +383,23 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   }
 
   // Campaign instructions (global)
-  await (supabase as any).from("campaign_instructions").delete().eq("campaign_id", campaignId);
+  await supabase.from("campaign_instructions").delete().eq("campaign_id", campaignId);
   if (payload.instructions) {
-    await (supabase as any).from("campaign_instructions").insert({
+    const { error: instrError } = await supabase.from("campaign_instructions").insert({
       campaign_id: campaignId,
-      instructions_title: payload.instructions.instructions_title,
-      instructions_summary: payload.instructions.instructions_summary,
+      instructions_title: payload.instructions.instructions_title ?? null,
+      instructions_summary: payload.instructions.instructions_summary ?? null,
       instructions_steps: payload.instructions.instructions_steps || [],
       prompt_do: payload.instructions.prompt_do || [],
       prompt_dont: payload.instructions.prompt_dont || [],
       required_hardware: payload.instructions.required_hardware || [],
-      video_url: payload.instructions.video_url || null,
-      pdf_file_url: payload.instructions.pdf_file_url || null,
+      video_url: payload.instructions.video_url ?? null,
+      pdf_file_url: payload.instructions.pdf_file_url ?? null,
     });
+    if (instrError) {
+      console.error("Error saving campaign instructions:", instrError);
+      throw instrError;
+    }
   }
 }
 
