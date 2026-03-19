@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
 import { PortalMultiSpeakerUpload } from "@/components/portal/PortalMultiSpeakerUpload";
+import { VideoPromptPairUpload } from "@/components/portal/VideoPromptPairUpload";
 
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 
