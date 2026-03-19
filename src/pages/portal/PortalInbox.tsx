@@ -592,7 +592,7 @@ function ConversationView({
                       )}
                     >
                       <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                        {new Date(msg.created_at).toLocaleString("pt-BR", {
+                        {new Date(msg.created_at).toLocaleString(i18n.language === "en" ? "en-US" : i18n.language === "es" ? "es-ES" : "pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
