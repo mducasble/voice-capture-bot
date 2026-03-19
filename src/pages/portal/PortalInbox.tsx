@@ -244,7 +244,7 @@ function ThreadList({
               style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
             />
             <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-              Nenhuma mensagem
+              {t("inbox.noMessages")}
             </p>
           </div>
         ) : (
