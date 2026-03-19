@@ -225,7 +225,7 @@ function ThreadList({
           onClick={onNewThread}
           className="h-7 w-7 flex items-center justify-center transition-colors hover:opacity-80"
           style={{ color: "var(--portal-accent)" }}
-          title="Nova mensagem"
+          title={t("inbox.newMessage")}
         >
           <Plus className="h-4 w-4" />
         </button>
