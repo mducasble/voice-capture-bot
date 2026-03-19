@@ -23,6 +23,8 @@ export function FaqSidebar() {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { i18n, t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: items = [] } = useQuery({
     queryKey: ["portal-faq"],
