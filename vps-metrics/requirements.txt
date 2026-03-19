@@ -30,10 +30,7 @@ einops>=0.7.0
 # WVMOS (wav2vec 2.0 MOS predictor)
 wvmos @ git+https://github.com/AndreevP/wvmos.git
 
-# PyTorch with CUDA 12.4 support
---extra-index-url https://download.pytorch.org/whl/cu124
-torch==2.6.0+cu124
-torchaudio==2.6.0+cu124
+# PyTorch CUDA wheels are installed in Dockerfile with extended timeout/retry settings
 
 # For model downloads
 requests>=2.31.0
