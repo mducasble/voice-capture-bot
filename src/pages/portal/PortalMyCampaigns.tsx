@@ -3,16 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FolderOpen, FileAudio, Clock, ChevronDown, Play, Pause, ArrowRight, CheckCircle, XCircle, AlertCircle, Loader2, Signal } from "lucide-react";
+import { FolderOpen, FileAudio, Clock, ChevronDown, Play, Pause, ArrowRight, CheckCircle, XCircle, Loader2, Signal, Video, Image, FileText, Tag } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-interface RecordingRow {
+// Unified submission row that works for all submission types
+interface SubmissionRow {
   id: string;
   filename: string;
   duration_seconds: number | null;
-  recording_type: string | null;
+  recording_type: string | null; // 'individual' | 'mixed' for audio; null for others
   session_id: string | null;
   created_at: string;
   discord_username: string | null;
@@ -23,6 +24,8 @@ interface RecordingRow {
   snr_db: number | null;
   quality_rejection_reason: string | null;
   validation_rejection_reason: string | null;
+  campaign_id: string;
+  submission_type: "audio" | "video" | "image" | "text" | "annotation";
 }
 
 function formatDuration(seconds: number) {
@@ -33,11 +36,10 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg: string; icon: React.ReactNode; reason?: string | null } {
+function getUnifiedStatus(rec: SubmissionRow): { label: string; color: string; bg: string; icon: React.ReactNode; reason?: string | null } {
   const qa = rec.quality_status;
   const val = rec.validation_status;
 
-  // If either is rejected → REPROVADO
   if (qa === "rejected" || val === "rejected") {
     const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
     return {
@@ -49,7 +51,6 @@ function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg
     };
   }
 
-  // If both approved → APROVADO
   if ((qa === "approved" || qa === "validated") && (val === "approved" || val === "validated")) {
     return {
       label: "Aprovado",
@@ -59,7 +60,6 @@ function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg
     };
   }
 
-  // Otherwise → EM ANÁLISE
   return {
     label: "Em análise",
     color: "var(--portal-text-muted)",
@@ -68,7 +68,23 @@ function getUnifiedStatus(rec: RecordingRow): { label: string; color: string; bg
   };
 }
 
-function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
+const SUBMISSION_TYPE_ICON: Record<string, React.ReactNode> = {
+  audio: <FileAudio className="h-3.5 w-3.5" />,
+  video: <Video className="h-3.5 w-3.5" />,
+  image: <Image className="h-3.5 w-3.5" />,
+  text: <FileText className="h-3.5 w-3.5" />,
+  annotation: <Tag className="h-3.5 w-3.5" />,
+};
+
+const SUBMISSION_TYPE_LABEL: Record<string, string> = {
+  audio: "Áudio",
+  video: "Vídeo",
+  image: "Imagem",
+  text: "Texto",
+  annotation: "Anotação",
+};
+
+function SubmissionRowItem({ rec }: { rec: SubmissionRow }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -87,17 +103,30 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
     }
   }, [playing, rec.file_url]);
 
+  const isAudio = rec.submission_type === "audio";
+  const isMixed = rec.recording_type === "mixed";
+
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 flex-wrap" style={{ borderBottom: "1px solid var(--portal-border)" }}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {rec.file_url && (
+        {isAudio && rec.file_url && (
           <button onClick={toggle} className="shrink-0" style={{ color: "var(--portal-accent)" }}>
             {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           </button>
         )}
-        <span className="font-mono text-base truncate block" style={{ color: rec.recording_type === "mixed" ? "var(--portal-accent)" : "var(--portal-text)" }}>
-          {rec.recording_type === "mixed" ? "🎧 Áudio Combinado" : (rec.discord_username || rec.filename)}
+        {!isAudio && (
+          <span className="shrink-0" style={{ color: "var(--portal-accent)" }}>
+            {SUBMISSION_TYPE_ICON[rec.submission_type]}
+          </span>
+        )}
+        <span className="font-mono text-base truncate block" style={{ color: isMixed ? "var(--portal-accent)" : "var(--portal-text)" }}>
+          {isMixed ? "🎧 Áudio Combinado" : (rec.discord_username || rec.filename)}
         </span>
+        {!isAudio && (
+          <span className="font-mono text-xs uppercase tracking-widest px-1.5 py-0.5 shrink-0" style={{ background: "rgba(255,255,255,0.05)", color: "var(--portal-text-muted)", border: "1px solid var(--portal-border)" }}>
+            {SUBMISSION_TYPE_LABEL[rec.submission_type]}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
         {rec.snr_db != null && (
@@ -136,19 +165,14 @@ function SessionRow({ rec }: { rec: RecordingRow & { campaign_id?: string } }) {
   );
 }
 
-function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
-  const individuals = recordings.filter(r => r.recording_type === "individual");
-  if (individuals.length === 0) return null;
+function CampaignStatusSummary({ submissions }: { submissions: SubmissionRow[] }) {
+  // Count non-mixed items for status summary
+  const countable = submissions.filter(r => r.recording_type !== "mixed");
+  if (countable.length === 0) return null;
 
-  const approved = individuals.filter(r => {
-    const s = getUnifiedStatus(r);
-    return s.label === "Aprovado";
-  }).length;
-  const rejected = individuals.filter(r => {
-    const s = getUnifiedStatus(r);
-    return s.label.startsWith("Reprovado");
-  }).length;
-  const pending = individuals.length - approved - rejected;
+  const approved = countable.filter(r => getUnifiedStatus(r).label === "Aprovado").length;
+  const rejected = countable.filter(r => getUnifiedStatus(r).label.startsWith("Reprovado")).length;
+  const pending = countable.length - approved - rejected;
 
   return (
     <div className="px-4 py-3.5 flex items-center justify-end gap-3 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
@@ -176,29 +200,42 @@ function CampaignStatusSummary({ recordings }: { recordings: RecordingRow[] }) {
   );
 }
 
-function CampaignCard({ participation, recordings }: { participation: any; recordings: RecordingRow[] }) {
+function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const campaign = participation.campaigns;
   if (!campaign) return null;
 
-  const sessions = recordings.filter(r => r.recording_type === "mixed");
-  const individuals = recordings.filter(r => r.recording_type === "individual");
-  const totalDuration = sessions.reduce((s, r) => s + (r.duration_seconds || 0), 0)
-    || individuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
+  // Audio-specific grouping
+  const audioSubmissions = submissions.filter(s => s.submission_type === "audio");
+  const nonAudioSubmissions = submissions.filter(s => s.submission_type !== "audio");
 
-  const sessionGroups = new Map<string, RecordingRow[]>();
-  for (const r of recordings) {
+  const sessions = audioSubmissions.filter(r => r.recording_type === "mixed");
+  const audioIndividuals = audioSubmissions.filter(r => r.recording_type === "individual");
+
+  const totalAudioDuration = sessions.reduce((s, r) => s + (r.duration_seconds || 0), 0)
+    || audioIndividuals.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
+
+  // Group audio by session
+  const sessionGroups = new Map<string, SubmissionRow[]>();
+  for (const r of audioSubmissions) {
     const key = r.session_id || r.id;
     if (!sessionGroups.has(key)) sessionGroups.set(key, []);
     sessionGroups.get(key)!.push(r);
   }
 
-  // Overall validation summary for header
-  const allIndividuals = individuals;
-  const allValidated = allIndividuals.length > 0 && allIndividuals.every(r => getUnifiedStatus(r).label === "Aprovado");
-  const hasRejected = allIndividuals.some(r => getUnifiedStatus(r).label.startsWith("Reprovado"));
+  // Count totals per type for header
+  const typeCounts = new Map<string, number>();
+  for (const s of submissions) {
+    if (s.recording_type === "mixed") continue;
+    typeCounts.set(s.submission_type, (typeCounts.get(s.submission_type) || 0) + 1);
+  }
+
+  // Overall validation
+  const countable = submissions.filter(r => r.recording_type !== "mixed");
+  const allValidated = countable.length > 0 && countable.every(r => getUnifiedStatus(r).label === "Aprovado");
+  const hasRejected = countable.some(r => getUnifiedStatus(r).label.startsWith("Reprovado"));
 
   return (
     <div style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
@@ -208,7 +245,7 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             <h2 className="font-mono text-base font-bold uppercase tracking-tight truncate" style={{ color: "var(--portal-text)" }}>
               {campaign.name}
             </h2>
-            {allValidated && allIndividuals.length > 0 && (
+            {allValidated && countable.length > 0 && (
               <CheckCircle className="h-4 w-4 shrink-0" style={{ color: "#22c55e" }} />
             )}
             {hasRejected && !allValidated && (
@@ -222,16 +259,16 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
             <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
               {t("myCampaigns.since")} {new Date(participation.joined_at).toLocaleDateString("pt-BR")}
             </span>
-            {sessions.length > 0 && (
-              <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
-                <FileAudio className="h-3.5 w-3.5" />
-                {sessions.length} {sessions.length === 1 ? t("myCampaigns.session") : t("myCampaigns.sessions")}
+            {Array.from(typeCounts.entries()).map(([type, count]) => (
+              <span key={type} className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
+                {SUBMISSION_TYPE_ICON[type]}
+                {count} {SUBMISSION_TYPE_LABEL[type]}
               </span>
-            )}
-            {totalDuration > 0 && (
+            ))}
+            {totalAudioDuration > 0 && (
               <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-widest" style={{ color: "var(--portal-accent)" }}>
                 <Clock className="h-3.5 w-3.5" />
-                {formatDuration(totalDuration)}
+                {formatDuration(totalAudioDuration)}
               </span>
             )}
           </div>
@@ -241,13 +278,15 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
 
       {expanded && (
         <div style={{ borderTop: "1px solid var(--portal-border)" }}>
-          {recordings.length === 0 ? (
+          {submissions.length === 0 ? (
             <div className="p-6 text-center">
               <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{t("myCampaigns.noMaterial")}</p>
             </div>
           ) : (
             <div>
-              <CampaignStatusSummary recordings={recordings} />
+              <CampaignStatusSummary submissions={submissions} />
+
+              {/* Audio sessions grouped */}
               {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
                 const sessionDuration = recs.find(r => r.recording_type === "mixed")?.duration_seconds
                   ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
@@ -265,10 +304,24 @@ function CampaignCard({ participation, recordings }: { participation: any; recor
                         <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
                       )}
                     </div>
-                    {recs.map(r => <SessionRow key={r.id} rec={r} />)}
+                    {recs.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
                   </div>
                 );
               })}
+
+              {/* Non-audio submissions (videos, images, etc.) */}
+              {nonAudioSubmissions.length > 0 && (
+                <div>
+                  {audioSubmissions.length > 0 && (
+                    <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
+                      <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
+                        Outros envios
+                      </span>
+                    </div>
+                  )}
+                  {nonAudioSubmissions.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
+                </div>
+              )}
             </div>
           )}
 
@@ -303,20 +356,162 @@ export default function PortalMyCampaigns() {
 
   const campaignIds = participations?.map((p: any) => p.campaign_id) || [];
 
-  const { data: allRecordings } = useQuery({
-    queryKey: ["my_campaign_recordings", campaignIds],
-    queryFn: async () => {
-      if (!campaignIds.length) return [];
-      const { data, error } = await supabase
-        .rpc("get_my_campaign_recordings", {
-          p_user_id: user!.id,
+  // Fetch all submission types in parallel
+  const { data: allSubmissions } = useQuery({
+    queryKey: ["my_campaign_all_submissions", campaignIds],
+    queryFn: async (): Promise<SubmissionRow[]> => {
+      if (!campaignIds.length || !user?.id) return [];
+
+      const [audioRes, videoRes, imageRes, textRes, annotationRes] = await Promise.all([
+        // Audio via RPC
+        supabase.rpc("get_my_campaign_recordings", {
+          p_user_id: user.id,
           p_campaign_ids: campaignIds,
+        }),
+        // Videos
+        supabase
+          .from("video_submissions")
+          .select("id, campaign_id, filename, file_url, duration_seconds, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at")
+          .eq("user_id", user.id)
+          .in("campaign_id", campaignIds)
+          .order("created_at", { ascending: false }),
+        // Images
+        supabase
+          .from("image_submissions")
+          .select("id, campaign_id, filename, file_url, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at")
+          .eq("user_id", user.id)
+          .in("campaign_id", campaignIds)
+          .order("created_at", { ascending: false }),
+        // Text
+        supabase
+          .from("text_submissions")
+          .select("id, campaign_id, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at")
+          .eq("user_id", user.id)
+          .in("campaign_id", campaignIds)
+          .order("created_at", { ascending: false }),
+        // Annotations
+        supabase
+          .from("annotation_submissions")
+          .select("id, campaign_id, quality_status, validation_status, quality_rejection_reason, validation_rejection_reason, created_at")
+          .eq("user_id", user.id)
+          .in("campaign_id", campaignIds)
+          .order("created_at", { ascending: false }),
+      ]);
+
+      const results: SubmissionRow[] = [];
+
+      // Audio recordings
+      for (const r of (audioRes.data || [])) {
+        if (r.recording_type === "remote_backup") continue;
+        results.push({
+          id: r.id,
+          filename: r.filename,
+          duration_seconds: r.duration_seconds,
+          recording_type: r.recording_type,
+          session_id: r.session_id,
+          created_at: r.created_at,
+          discord_username: r.discord_username,
+          file_url: r.file_url,
+          status: r.status,
+          quality_status: r.quality_status,
+          validation_status: r.validation_status,
+          snr_db: r.snr_db,
+          quality_rejection_reason: r.quality_rejection_reason,
+          validation_rejection_reason: r.validation_rejection_reason,
+          campaign_id: r.campaign_id,
+          submission_type: "audio",
         });
-      if (error) throw error;
-      // Filter out remote_backup recordings (creator-side redundancy, admin-only)
-      return ((data || []) as (RecordingRow & { campaign_id: string })[]).filter(
-        r => r.recording_type !== 'remote_backup'
-      );
+      }
+
+      // Videos
+      for (const v of (videoRes.data || [])) {
+        results.push({
+          id: v.id,
+          filename: v.filename,
+          duration_seconds: v.duration_seconds,
+          recording_type: null,
+          session_id: null,
+          created_at: v.created_at,
+          discord_username: null,
+          file_url: v.file_url,
+          status: null,
+          quality_status: v.quality_status,
+          validation_status: v.validation_status,
+          snr_db: null,
+          quality_rejection_reason: v.quality_rejection_reason,
+          validation_rejection_reason: v.validation_rejection_reason,
+          campaign_id: v.campaign_id,
+          submission_type: "video",
+        });
+      }
+
+      // Images
+      for (const img of (imageRes.data || [])) {
+        results.push({
+          id: img.id,
+          filename: img.filename,
+          duration_seconds: null,
+          recording_type: null,
+          session_id: null,
+          created_at: img.created_at,
+          discord_username: null,
+          file_url: img.file_url,
+          status: null,
+          quality_status: img.quality_status,
+          validation_status: img.validation_status,
+          snr_db: null,
+          quality_rejection_reason: img.quality_rejection_reason,
+          validation_rejection_reason: img.validation_rejection_reason,
+          campaign_id: img.campaign_id,
+          submission_type: "image",
+        });
+      }
+
+      // Text
+      for (const txt of (textRes.data || [])) {
+        results.push({
+          id: txt.id,
+          filename: `Texto #${txt.id.slice(0, 6)}`,
+          duration_seconds: null,
+          recording_type: null,
+          session_id: null,
+          created_at: txt.created_at,
+          discord_username: null,
+          file_url: null,
+          status: null,
+          quality_status: txt.quality_status,
+          validation_status: txt.validation_status,
+          snr_db: null,
+          quality_rejection_reason: txt.quality_rejection_reason,
+          validation_rejection_reason: txt.validation_rejection_reason,
+          campaign_id: txt.campaign_id,
+          submission_type: "text",
+        });
+      }
+
+      // Annotations
+      for (const ann of (annotationRes.data || [])) {
+        results.push({
+          id: ann.id,
+          filename: `Anotação #${ann.id.slice(0, 6)}`,
+          duration_seconds: null,
+          recording_type: null,
+          session_id: null,
+          created_at: ann.created_at,
+          discord_username: null,
+          file_url: null,
+          status: null,
+          quality_status: ann.quality_status,
+          validation_status: ann.validation_status,
+          snr_db: null,
+          quality_rejection_reason: ann.quality_rejection_reason,
+          validation_rejection_reason: ann.validation_rejection_reason,
+          campaign_id: ann.campaign_id,
+          submission_type: "annotation",
+        });
+      }
+
+      return results;
     },
     enabled: campaignIds.length > 0,
   });
@@ -341,7 +536,7 @@ export default function PortalMyCampaigns() {
     );
   }
 
-  const recordingsByCampaign = (cid: string) => (allRecordings || []).filter(r => r.campaign_id === cid);
+  const submissionsByCampaign = (cid: string) => (allSubmissions || []).filter(r => r.campaign_id === cid);
 
   return (
     <div className="space-y-6">
@@ -352,7 +547,7 @@ export default function PortalMyCampaigns() {
 
       <div className="space-y-3">
         {participations.map((p: any) => (
-          <CampaignCard key={p.campaign_id} participation={p} recordings={recordingsByCampaign(p.campaign_id)} />
+          <CampaignCard key={p.campaign_id} participation={p} submissions={submissionsByCampaign(p.campaign_id)} />
         ))}
       </div>
     </div>
