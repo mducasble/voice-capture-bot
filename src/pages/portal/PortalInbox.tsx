@@ -329,6 +329,7 @@ function NewThreadForm({
   onCreated: (threadId: string) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
