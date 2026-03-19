@@ -564,7 +564,7 @@ function ConversationView({
                       )}
                       style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.8)" }}
                     >
-                      {isMe ? "Você" : "Equipe KGeN"}
+                      {isMe ? t("inbox.you") : t("inbox.team")}
                     </p>
 
                     {/* Bubble */}
