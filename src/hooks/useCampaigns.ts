@@ -127,7 +127,7 @@ async function fetchCampaignRelations(campaignId: string) {
   };
 }
 
-// --- Campaigns ---
+// --- Campaigns (list view - lightweight, batch queries) ---
 export function useCampaigns() {
   return useQuery({
     queryKey: ["campaigns"],
@@ -137,13 +137,49 @@ export function useCampaigns() {
         .select(`*, client:clients(*)`)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const enriched = await Promise.all(
-        (campaigns || []).map(async (c: any) => ({
-          ...c,
-          ...(await fetchCampaignRelations(c.id)),
-        } as Campaign))
-      );
-      return enriched;
+      if (!campaigns || campaigns.length === 0) return [] as Campaign[];
+
+      const ids = campaigns.map(c => c.id);
+
+      // Batch fetch only the relations needed for the list cards
+      const [geoRes, langRes, taskSetsRes, rewardRes] = await Promise.all([
+        supabase.from("campaign_geographic_scope").select("*").in("campaign_id", ids),
+        supabase.from("campaign_language_variants").select("*").in("campaign_id", ids),
+        supabase.from("campaign_task_sets").select("id, campaign_id, task_set_id, task_type, enabled, weight").in("campaign_id", ids).order("weight"),
+        supabase.from("campaign_reward_config").select("*").in("campaign_id", ids),
+      ]);
+
+      // Index by campaign_id for O(1) lookup
+      const geoMap = new Map<string, any>();
+      (geoRes.data || []).forEach(r => geoMap.set(r.campaign_id, r));
+      const rewardMap = new Map<string, any>();
+      (rewardRes.data || []).forEach(r => rewardMap.set(r.campaign_id, r));
+
+      const langMap = new Map<string, any[]>();
+      (langRes.data || []).forEach(r => {
+        if (!langMap.has(r.campaign_id)) langMap.set(r.campaign_id, []);
+        langMap.get(r.campaign_id)!.push(r);
+      });
+
+      const taskSetMap = new Map<string, any[]>();
+      (taskSetsRes.data || []).forEach(r => {
+        if (!taskSetMap.has(r.campaign_id)) taskSetMap.set(r.campaign_id, []);
+        taskSetMap.get(r.campaign_id)!.push(r);
+      });
+
+      return campaigns.map(c => ({
+        ...c,
+        geographic_scope: geoMap.get(c.id) || null,
+        language_variants: langMap.get(c.id) || [],
+        task_sets: taskSetMap.get(c.id) || [],
+        reward_config: rewardMap.get(c.id) || null,
+        // Not needed for list view - fetched on demand by useCampaign
+        quality_flow: null,
+        administrative_rules: null,
+        referral_config: null,
+        sections: [],
+        instructions: null,
+      } as Campaign));
     },
   });
 }
