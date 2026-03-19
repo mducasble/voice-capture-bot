@@ -384,7 +384,7 @@ export default function AdminFinance() {
       });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-paid-users"] });
+      
       connectWallet();
     },
     onError: (err: any) => {
