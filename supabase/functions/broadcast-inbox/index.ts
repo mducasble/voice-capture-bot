@@ -67,8 +67,8 @@ serve(async (req) => {
       throw new Error("Invalid mode or missing parameters");
     }
 
-    // Deduplicate and exclude the admin sender
-    userIds = [...new Set(userIds)].filter(id => id !== user.id);
+    // Deduplicate
+    userIds = [...new Set(userIds)];
 
     if (userIds.length === 0) {
       return new Response(
