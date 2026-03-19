@@ -51,17 +51,7 @@ print(f'VQScore checkpoint: {len(r.content)} bytes'); \
 "
 
 # Validate GPU detection
-RUN python -c "\
-import torch; \
-print(f'PyTorch {torch.__version__}'); \
-print(f'CUDA available: {torch.cuda.is_available()}'); \
-print(f'CUDA version: {torch.version.cuda}'); \
-if torch.cuda.is_available(): \
-    print(f'GPU: {torch.cuda.get_device_name(0)}'); \
-    print(f'VRAM: {torch.cuda.get_device_properties(0).total_mem / 1024**3:.1f} GB'); \
-else: \
-    print('WARNING: GPU not available during build (normal for Docker build)'); \
-"
+RUN python -c "import torch; print(f'PyTorch {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA version: {torch.version.cuda}')"
 
 EXPOSE 8000
 
