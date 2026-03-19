@@ -336,6 +336,7 @@ export default function DataAudioTask() {
 
   const handleSkip = async () => {
     logAction("skip");
+    if (rec) skippedIdsRef.current.add(rec.id);
     await finishTask("timeout");
     loadNext();
   };
