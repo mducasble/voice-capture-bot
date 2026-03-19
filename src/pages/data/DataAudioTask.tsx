@@ -304,6 +304,7 @@ export default function DataAudioTask() {
     actionsLog.current = [];
     setTaskLogId(null);
     setQueuedJobs({});
+    setSelectedVersions({});
     if (timerRef.current) clearInterval(timerRef.current);
 
     let query = supabase
