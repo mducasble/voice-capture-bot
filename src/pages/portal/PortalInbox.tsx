@@ -534,7 +534,7 @@ function ConversationView({
           </p>
           {thread && (
             <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-              {(thread as any).status === "open" ? "Aberto" : "Fechado"}
+              {(thread as any).status === "open" ? t("inbox.open") : t("inbox.closed")}
             </p>
           )}
         </div>
