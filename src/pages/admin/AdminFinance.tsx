@@ -357,6 +357,35 @@ export default function AdminFinance() {
           .in("id", idsToMark);
       }
 
+      // Auto-send inbox message with wallet_test_tx template
+      const { data: tpl } = await supabase
+        .from("inbox_message_templates" as any)
+        .select("subject, category, body")
+        .eq("template_key", "wallet_test_tx")
+        .maybeSingle();
+
+      if (tpl) {
+        const { data: thread, error: tErr } = await supabase
+          .from("inbox_threads" as any)
+          .insert({
+            user_id: user.user_id,
+            subject: (tpl as any).subject,
+            category: (tpl as any).category || "payment",
+            created_by: (await supabase.auth.getUser()).data.user?.id,
+          } as any)
+          .select("id")
+          .single();
+        if (!tErr && thread) {
+          await supabase
+            .from("inbox_messages" as any)
+            .insert({
+              thread_id: (thread as any).id,
+              sender_id: (await supabase.auth.getUser()).data.user?.id,
+              body: (tpl as any).body,
+            } as any);
+        }
+      }
+
       return { txHash: tx.hash, userName: user.full_name };
     },
     onSuccess: ({ txHash, userName }) => {
