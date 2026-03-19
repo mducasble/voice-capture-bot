@@ -137,7 +137,15 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
             }}
             title={t("nav.inbox") || "Inbox"}
           >
-            <Mail className="h-3.5 w-3.5" />
+            <span className="relative">
+              <Mail className="h-3.5 w-3.5" />
+              {hasUnread && (
+                <span
+                  className="absolute -top-1 -right-1 h-2 w-2 rounded-full"
+                  style={{ background: "var(--portal-accent)" }}
+                />
+              )}
+            </span>
           </Link>
         </nav>
 
