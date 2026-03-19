@@ -135,7 +135,7 @@ export default function PortalInbox() {
                     className="font-mono text-sm"
                     style={{ color: "var(--portal-text-muted)" }}
                   >
-                    Selecione uma conversa
+                    {t("inbox.selectConversation")}
                   </p>
                 </div>
               </div>
