@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
-  Film, FileText, Upload, X, Loader2, CheckCircle2, AlertCircle,
+  Film, FileText, Upload, X, Loader2, CheckCircle2,
 } from "lucide-react";
 import KGenButton from "@/components/portal/KGenButton";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "react-i18next";
 
 interface VideoPromptPairUploadProps {
   campaignId: string;
@@ -79,6 +80,7 @@ function formatSize(bytes: number) {
 
 export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPairUploadProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [originalVideo, setOriginalVideo] = useState<File | null>(null);
   const [modifiedVideo, setModifiedVideo] = useState<File | null>(null);
   const [promptText, setPromptText] = useState("");
@@ -99,7 +101,7 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
     progressSlice: number,
   ) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Sessão expirada");
+    if (!session?.access_token) throw new Error(t("videoUpload.sessionExpired"));
 
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const ext = file.name.split(".").pop() || "mp4";
@@ -123,12 +125,12 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error("Resposta inválida")); }
+          try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error(t("videoUpload.invalidResponse"))); }
         } else {
-          reject(new Error(`Upload falhou: ${xhr.statusText}`));
+          reject(new Error(`${t("videoUpload.uploadFailed")}: ${xhr.statusText}`));
         }
       };
-      xhr.onerror = () => reject(new Error("Erro de rede"));
+      xhr.onerror = () => reject(new Error(t("videoUpload.networkError")));
       xhr.timeout = 10 * 60 * 1000;
       xhr.send(file);
     });
@@ -145,17 +147,17 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
       const groupId = crypto.randomUUID();
 
       // 1. Upload original video (0-40%)
-      setCurrentStep("Enviando vídeo original...");
+      setCurrentStep(t("videoUpload.uploadingOriginal"));
       const orig = await uploadVideoToS3(originalVideo!, "original", 0, 40);
       const origMeta = await getVideoMetadata(originalVideo!);
 
       // 2. Upload modified video (40-80%)
-      setCurrentStep("Enviando vídeo modificado...");
+      setCurrentStep(t("videoUpload.uploadingModified"));
       const mod = await uploadVideoToS3(modifiedVideo!, "modified", 40, 40);
       const modMeta = await getVideoMetadata(modifiedVideo!);
 
       // 3. Insert records (80-100%)
-      setCurrentStep("Registrando submissões...");
+      setCurrentStep(t("videoUpload.registering"));
       setUploadProgress(85);
 
       const baseVideoPayload = (
@@ -184,12 +186,12 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
       const { error: e1 } = await (supabase as any)
         .from("video_submissions")
         .insert(baseVideoPayload(originalVideo!, orig.fn, orig.ext, orig.s3Result, origMeta, "original"));
-      if (e1) throw new Error(`Registro vídeo original falhou: ${e1.message}`);
+      if (e1) throw new Error(`${t("videoUpload.origRegFailed")}: ${e1.message}`);
 
       const { error: e2 } = await (supabase as any)
         .from("video_submissions")
         .insert(baseVideoPayload(modifiedVideo!, mod.fn, mod.ext, mod.s3Result, modMeta, "modified"));
-      if (e2) throw new Error(`Registro vídeo modificado falhou: ${e2.message}`);
+      if (e2) throw new Error(`${t("videoUpload.modRegFailed")}: ${e2.message}`);
 
       setUploadProgress(92);
 
@@ -207,13 +209,13 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
             group_id: groupId,
           },
         });
-      if (e3) throw new Error(`Registro do texto falhou: ${e3.message}`);
+      if (e3) throw new Error(`${t("videoUpload.textRegFailed")}: ${e3.message}`);
 
       setUploadProgress(100);
       setUploadDone(true);
-      toast.success("Submissão enviada com sucesso!");
+      toast.success(t("videoUpload.successToast"));
     } catch (err: any) {
-      toast.error("Erro: " + (err.message || "Tente novamente"));
+      toast.error(t("videoUpload.errorPrefix") + (err.message || ""));
     } finally {
       setIsUploading(false);
       setCurrentStep("");
@@ -233,16 +235,16 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
       <div className="p-8 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 mx-auto" style={{ color: "var(--portal-accent)" }} />
         <h2 className="font-mono text-lg font-black uppercase" style={{ color: "var(--portal-text)" }}>
-          Envio Concluído
+          {t("videoUpload.uploadDoneTitle")}
         </h2>
         <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-          2 vídeos + prompt recebidos com sucesso!
+          {t("videoUpload.uploadDoneDesc")}
         </p>
         <KGenButton
           onClick={resetForm}
           className="mx-auto"
           size="default"
-          scrambleText="ENVIAR MAIS"
+          scrambleText={t("videoUpload.sendMore")}
           icon={<Upload className="h-4 w-4" />}
         />
       </div>
@@ -253,30 +255,34 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
     <div className="space-y-5">
       {/* Video Original */}
       <VideoSlot
-        label="Vídeo Original"
-        hint="O vídeo antes das modificações"
+        label={t("videoUpload.originalVideo")}
+        hint={t("videoUpload.originalHint")}
         file={originalVideo}
         onSelect={(f) => setOriginalVideo(f)}
         onClear={() => setOriginalVideo(null)}
         inputRef={originalRef}
         disabled={isUploading}
+        dropOrClick={t("videoUpload.dropOrClick")}
+        acceptedFormats={t("videoUpload.acceptedFormats")}
       />
 
       {/* Video Modified */}
       <VideoSlot
-        label="Vídeo Modificado"
-        hint="O vídeo após as modificações"
+        label={t("videoUpload.modifiedVideo")}
+        hint={t("videoUpload.modifiedHint")}
         file={modifiedVideo}
         onSelect={(f) => setModifiedVideo(f)}
         onClear={() => setModifiedVideo(null)}
         inputRef={modifiedRef}
         disabled={isUploading}
+        dropOrClick={t("videoUpload.dropOrClick")}
+        acceptedFormats={t("videoUpload.acceptedFormats")}
       />
 
       {/* Prompt Text */}
       <div className="space-y-2">
         <label className="font-mono text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: "var(--portal-text-muted)" }}>
-          <FileText className="h-3.5 w-3.5" /> Prompt / Texto
+          <FileText className="h-3.5 w-3.5" /> {t("videoUpload.promptLabel")}
         </label>
         <Textarea
           className="font-mono text-sm min-h-[120px]"
@@ -285,13 +291,13 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
             border: "1px solid var(--portal-border)",
             color: "var(--portal-text)",
           }}
-          placeholder="Digite o prompt ou texto descritivo associado aos vídeos..."
+          placeholder={t("videoUpload.promptPlaceholder")}
           value={promptText}
           onChange={(e) => setPromptText(e.target.value)}
           disabled={isUploading}
         />
         <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-          {promptText.trim().split(/\s+/).filter(Boolean).length} palavras
+          {promptText.trim().split(/\s+/).filter(Boolean).length} {t("videoUpload.words")}
         </p>
       </div>
 
@@ -316,7 +322,7 @@ export function VideoPromptPairUpload({ campaignId, taskSetId }: VideoPromptPair
         disabled={!canSubmit || isUploading}
         className="w-full"
         size="default"
-        scrambleText={isUploading ? "ENVIANDO..." : "ENVIAR SUBMISSÃO"}
+        scrambleText={isUploading ? t("videoUpload.submitting") : t("videoUpload.submitButton")}
         icon={isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
       />
     </div>
@@ -332,6 +338,8 @@ function VideoSlot({
   onClear,
   inputRef,
   disabled,
+  dropOrClick,
+  acceptedFormats,
 }: {
   label: string;
   hint: string;
@@ -340,6 +348,8 @@ function VideoSlot({
   onClear: () => void;
   inputRef: React.RefObject<HTMLInputElement>;
   disabled: boolean;
+  dropOrClick: string;
+  acceptedFormats: string;
 }) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -396,10 +406,10 @@ function VideoSlot({
         >
           <Upload className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--portal-text-muted)" }} />
           <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-            Clique ou arraste o arquivo
+            {dropOrClick}
           </p>
           <p className="font-mono text-[10px] mt-1" style={{ color: "var(--portal-text-muted)" }}>
-            MP4, MOV, AVI, MKV, WebM
+            {acceptedFormats}
           </p>
         </button>
       )}

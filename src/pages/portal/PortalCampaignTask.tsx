@@ -127,7 +127,7 @@ export default function PortalCampaignTask() {
             <div className="flex items-center gap-3 mb-3">
               <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
               <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
-                Envio ou Gravação de Vídeos (Múltiplos)
+                {t("task.videoSubmissionLabel")}
               </span>
             </div>
             <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
