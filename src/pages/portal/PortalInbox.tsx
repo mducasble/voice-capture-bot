@@ -395,7 +395,7 @@ function NewThreadForm({
           style={{ borderColor: "var(--portal-border)", color: "var(--portal-text)" }}
         />
         <Textarea
-          placeholder="Escreva sua mensagem..."
+          placeholder={t("inbox.writePlaceholder")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
