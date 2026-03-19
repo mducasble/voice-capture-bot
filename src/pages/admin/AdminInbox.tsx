@@ -211,6 +211,10 @@ export default function AdminInbox() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowBroadcast(true)}>
+            <Megaphone className="h-4 w-4 mr-2" />
+            Broadcast
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowNewMessage(true)}>
             <MessageSquarePlus className="h-4 w-4 mr-2" />
             Nova Mensagem
@@ -221,6 +225,17 @@ export default function AdminInbox() {
           </Button>
         </div>
       </div>
+
+      {/* Broadcast form */}
+      {showBroadcast && (
+        <BroadcastForm
+          onClose={() => setShowBroadcast(false)}
+          onSuccess={() => {
+            setShowBroadcast(false);
+            refetch();
+          }}
+        />
+      )}
 
       {/* New message form */}
       {showNewMessage && (
