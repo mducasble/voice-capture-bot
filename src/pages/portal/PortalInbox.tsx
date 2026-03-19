@@ -660,6 +660,35 @@ function ConversationView({
                 </div>
               );
             })}
+            {/* Wallet test confirmation button */}
+            {isWalletTestThread && !alreadyConfirmed && (
+              <div className="flex justify-center py-3">
+                <Button
+                  onClick={() => confirmWalletMutation.mutate()}
+                  disabled={confirmWalletMutation.isPending}
+                  className="font-mono text-xs uppercase tracking-widest gap-2"
+                  style={{
+                    background: "rgba(140, 255, 5, 0.2)",
+                    color: "rgba(140, 255, 5, 0.95)",
+                    border: "1px solid rgba(140, 255, 5, 0.4)",
+                  }}
+                >
+                  {confirmWalletMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4" />
+                  )}
+                  Confirmar recebimento
+                </Button>
+              </div>
+            )}
+            {isWalletTestThread && alreadyConfirmed && (
+              <div className="flex justify-center py-3">
+                <span className="font-mono text-xs" style={{ color: "rgba(140, 255, 5, 0.6)" }}>
+                  ✅ Recebimento confirmado
+                </span>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         )}
