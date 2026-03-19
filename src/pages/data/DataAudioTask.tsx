@@ -216,29 +216,84 @@ export default function DataAudioTask() {
       });
   }, [campaignId]);
 
-  // Load siblings when rec changes
-  useEffect(() => {
-    if (!rec) { setSiblings([]); return; }
+  // Refetch siblings data
+  const refetchSiblings = useCallback(async () => {
+    if (!rec) return;
     if (rec.session_id && rec.campaign_id) {
-      supabase
+      const { data } = await supabase
         .from("voice_recordings")
         .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
-        .order("recording_type")
-        .then(({ data }) => {
-          if (!data?.length) { setSiblings([rec]); return; }
-          const sorted = [...data].sort((a, b) => {
-            const aM = a.recording_type === "mixed" ? 0 : 1;
-            const bM = b.recording_type === "mixed" ? 0 : 1;
-            return aM - bM;
-          });
-          setSiblings(sorted as any[]);
-        });
-    } else {
-      setSiblings([rec]);
+        .order("recording_type");
+      if (!data?.length) { setSiblings([rec]); return; }
+      const sorted = [...data].sort((a, b) => {
+        const aM = a.recording_type === "mixed" ? 0 : 1;
+        const bM = b.recording_type === "mixed" ? 0 : 1;
+        return aM - bM;
+      });
+      setSiblings(sorted as any[]);
     }
   }, [rec]);
+
+  // Load siblings when rec changes
+  useEffect(() => {
+    if (!rec) { setSiblings([]); return; }
+    refetchSiblings();
+  }, [rec, refetchSiblings]);
+
+  // Auto-refresh: poll analysis_queue for queued jobs and refetch when done
+  useEffect(() => {
+    const queuedIds = Object.keys(queuedJobs);
+    if (queuedIds.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const { data: jobs } = await supabase
+        .from("analysis_queue")
+        .select("recording_id, job_type, status")
+        .in("recording_id", queuedIds)
+        .order("created_at", { ascending: false });
+
+      if (!jobs) return;
+
+      // Group latest status per recording+job_type
+      const latestStatus: Record<string, Record<string, string>> = {};
+      for (const j of jobs) {
+        if (!latestStatus[j.recording_id]) latestStatus[j.recording_id] = {};
+        if (!latestStatus[j.recording_id][j.job_type]) {
+          latestStatus[j.recording_id][j.job_type] = j.status;
+        }
+      }
+
+      let anyDone = false;
+      const newQueued = { ...queuedJobs };
+
+      for (const recId of queuedIds) {
+        const statuses = latestStatus[recId] || {};
+        const currentJob = newQueued[recId];
+        const analyzeDone = statuses["analyze"] === "done";
+        const enhanceDone = statuses["enhance"] === "done";
+
+        if (currentJob === "both") {
+          if (analyzeDone && enhanceDone) { delete newQueued[recId]; anyDone = true; }
+          else if (analyzeDone) { newQueued[recId] = "enhance"; anyDone = true; }
+          else if (enhanceDone) { newQueued[recId] = "analyze"; anyDone = true; }
+        } else if (currentJob === "analyze" && analyzeDone) {
+          delete newQueued[recId]; anyDone = true;
+        } else if (currentJob === "enhance" && enhanceDone) {
+          delete newQueued[recId]; anyDone = true;
+        }
+      }
+
+      if (anyDone) {
+        setQueuedJobs(newQueued);
+        await refetchSiblings();
+        toast.success("Métricas atualizadas!", { description: "Os dados foram recarregados automaticamente." });
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [queuedJobs, refetchSiblings]);
 
   const skippedIdsRef = useRef<Set<string>>(new Set());
 
