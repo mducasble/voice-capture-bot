@@ -219,7 +219,7 @@ function ThreadList({
           className="font-mono text-xs uppercase tracking-widest font-bold"
           style={{ color: "var(--portal-text-muted)" }}
         >
-          Conversas
+          {t("inbox.conversations")}
         </span>
         <button
           onClick={onNewThread}
