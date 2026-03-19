@@ -364,7 +364,7 @@ function NewThreadForm({
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
       onCreated(threadId);
     },
-    onError: () => toast.error("Erro ao enviar mensagem"),
+    onError: () => toast.error(t("inbox.sendError")),
   });
 
   return (
