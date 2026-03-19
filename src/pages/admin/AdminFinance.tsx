@@ -588,7 +588,7 @@ export default function AdminFinance() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {hasWallet && !paidUserIds.has(user.user_id) && user.total_pending >= 1 && (
+                        {hasWallet && !user.wallet_verified && user.total_pending >= 1 && (
                           <Button
                             size="sm"
                             variant="outline"
