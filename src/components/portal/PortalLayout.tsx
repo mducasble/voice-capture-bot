@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Inbox } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Mail } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -49,7 +49,6 @@ export default function PortalLayout() { // layout-root
     { to: "/", icon: FolderOpen, label: t("nav.opportunities"), exact: true },
     { to: "/my-campaigns", icon: Layers, label: t("nav.myCampaigns") },
     { to: "/earnings", icon: DollarSign, label: t("nav.myEarnings") },
-    // { to: "/inbox", icon: Inbox, label: "Mensagens" },
   ];
 
   return (
@@ -120,6 +119,16 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
 
         <div className="hidden md:flex items-center gap-3">
           <LanguageSelector variant="compact" />
+          <Link
+            to="/inbox"
+            className="p-2 transition-colors"
+            style={{ color: location.pathname === "/inbox" ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
+            title={t("nav.inbox") || "Inbox"}
+            onMouseEnter={(e) => { if (location.pathname !== "/inbox") e.currentTarget.style.color = "var(--portal-accent)"; }}
+            onMouseLeave={(e) => { if (location.pathname !== "/inbox") e.currentTarget.style.color = "var(--portal-text-muted)"; }}
+          >
+            <Mail className="h-4 w-4" />
+          </Link>
           <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} showGlow={!profileComplete} />
           <button onClick={signOut} className="p-2 transition-colors" style={{ color: "var(--portal-text-muted)" }} title={t("nav.logout")}>
             <LogOut className="h-4 w-4" />
