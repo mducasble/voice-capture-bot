@@ -112,19 +112,6 @@ export default function AdminFinance() {
     },
   });
 
-  /* ─── Fetch users who have ever been paid ─── */
-  const { data: paidUserIds = new Set<string>() } = useQuery({
-    queryKey: ["admin-finance-paid-users"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("earnings_ledger")
-        .select("user_id")
-        .eq("status", "paid");
-      if (error) throw error;
-      return new Set((data || []).map(e => e.user_id));
-    },
-  });
-
   /* ─── Connect Wallet ─── */
   const connectWallet = useCallback(async () => {
     const ethereum = (window as any).ethereum;
