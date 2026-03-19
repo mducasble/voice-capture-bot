@@ -57,6 +57,7 @@ export default function AdminFinance() {
   const [walletBalance, setWalletBalance] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [payingUserId, setPayingUserId] = useState<string | null>(null);
+  const [testingUserId, setTestingUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   /* ─── Fetch pending earnings grouped by user ─── */
