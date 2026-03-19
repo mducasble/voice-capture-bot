@@ -363,12 +363,15 @@ export default function AdminFinance() {
           .select("id")
           .single();
         if (!tErr && thread) {
+          const formattedBody = ((tpl as any).body as string)
+            .replace(/\[NOME\]/g, user.full_name || "")
+            .replace(/\[WALLET_ADDRESS\]/g, user.wallet_id || "");
           await supabase
             .from("inbox_messages" as any)
             .insert({
               thread_id: (thread as any).id,
               sender_id: (await supabase.auth.getUser()).data.user?.id,
-              body: (tpl as any).body,
+              body: formattedBody,
             } as any);
         }
       }
