@@ -541,7 +541,7 @@ export default function PortalCampaign() {
         {campaign.referral_config && campaign.reward_config?.base_rate != null && (() => {
           const rc = campaign.referral_config;
           const baseRate = campaign.reward_config!.base_rate!;
-          const pool = rc.pool_fixed_amount != null ? rc.pool_fixed_amount : baseRate * (rc.pool_percent / 100);
+          const pool = (rc.pool_fixed_amount != null && rc.pool_fixed_amount > 0) ? rc.pool_fixed_amount : baseRate * (rc.pool_percent / 100);
           const levels: number[] = [];
           let remaining = pool;
           for (let i = 0; i < rc.max_levels; i++) {
