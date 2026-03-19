@@ -290,7 +290,7 @@ export default function DataAudioTask() {
         await refetchSiblings();
         toast.success("Métricas atualizadas!", { description: "Os dados foram recarregados automaticamente." });
       }
-    }, 5000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [queuedJobs, refetchSiblings]);
