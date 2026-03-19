@@ -127,11 +127,13 @@ export default function PortalInbox() {
             {showNewThread ? (
               <NewThreadForm
                 userId={user.id}
+                prefillSubject={prefillSubject}
                 onCreated={(id) => {
                   setShowNewThread(false);
                   setSelectedThreadId(id);
+                  setPrefillSubject("");
                 }}
-                onBack={() => setShowNewThread(false)}
+                onBack={() => { setShowNewThread(false); setPrefillSubject(""); }}
               />
             ) : selectedThreadId ? (
               <ConversationView
