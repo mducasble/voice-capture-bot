@@ -123,7 +123,6 @@ export function FaqSidebar() {
           Bug Report
         </button>
       </div>
-      </button>
 
       {/* Backdrop */}
       {open && (
