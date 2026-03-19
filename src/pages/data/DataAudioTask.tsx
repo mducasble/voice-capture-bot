@@ -485,11 +485,27 @@ export default function DataAudioTask() {
               {campaignName || rec.filename}
             </h1>
           </div>
-          {mainTier && (
-            <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
-              {mainTier} — {tierLabels[mainTier] || mainTier}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {(() => {
+              const source = meta?.source;
+              const isStudio = source === "webapp";
+              return (
+                <span className={cn(
+                  "text-[12px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider",
+                  isStudio
+                    ? "bg-violet-500/20 text-violet-400 border-violet-500/30"
+                    : "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                )}>
+                  {isStudio ? "Estúdio" : "Upload"}
+                </span>
+              );
+            })()}
+            {mainTier && (
+              <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
+                {mainTier} — {tierLabels[mainTier] || mainTier}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
