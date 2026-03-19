@@ -529,8 +529,7 @@ function ConversationView({
     },
     onError: () => toast.error(t("inbox.replyError")),
   });
-
-
+  const replyMutation = useMutation({
     mutationFn: async (body: string) => {
       const { error: mErr } = await supabase
         .from("inbox_messages" as any)
