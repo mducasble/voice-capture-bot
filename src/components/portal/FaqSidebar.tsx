@@ -60,26 +60,69 @@ export function FaqSidebar() {
     return acc;
   }, {});
 
+  const { data: profileName } = useQuery({
+    queryKey: ["profile-name-bug", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user!.id)
+        .single();
+      return (data as any)?.full_name as string || "";
+    },
+    enabled: !!user?.id,
+  });
+
+  const handleBugReport = () => {
+    const name = profileName || user?.email || "Usuário";
+    navigate("/inbox", {
+      state: { bugReport: true, subject: `Bug Report - ${name}` },
+    });
+  };
+
   if (items.length === 0) return null;
 
   return (
     <>
-      {/* Toggle button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 py-6 px-3 font-mono text-[16px] font-black uppercase tracking-widest transition-all"
-        style={{
-          background: "var(--portal-accent)",
-          color: "var(--portal-accent-text)",
-          writingMode: "vertical-rl",
-          textOrientation: "mixed",
-          borderRadius: "8px 0 0 8px",
-          display: open ? "none" : "flex",
-          boxShadow: "0 0 15px var(--portal-accent)",
-        }}
+      {/* Side tabs container */}
+      <div
+        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2"
+        style={{ display: open ? "none" : "flex" }}
       >
-        <HelpCircle className="h-5 w-5 rotate-90" />
-        {t("faq.toggleButton")}
+        {/* FAQ button */}
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 py-6 px-3 font-mono text-[16px] font-black uppercase tracking-widest transition-all"
+          style={{
+            background: "var(--portal-accent)",
+            color: "var(--portal-accent-text)",
+            writingMode: "vertical-rl",
+            textOrientation: "mixed",
+            borderRadius: "8px 0 0 8px",
+            boxShadow: "0 0 15px var(--portal-accent)",
+          }}
+        >
+          <HelpCircle className="h-5 w-5 rotate-90" />
+          {t("faq.toggleButton")}
+        </button>
+
+        {/* Bug Report button */}
+        <button
+          onClick={handleBugReport}
+          className="flex items-center gap-2 py-6 px-3 font-mono text-[14px] font-black uppercase tracking-widest transition-all"
+          style={{
+            background: "rgba(255, 80, 80, 0.85)",
+            color: "#fff",
+            writingMode: "vertical-rl",
+            textOrientation: "mixed",
+            borderRadius: "8px 0 0 8px",
+            boxShadow: "0 0 10px rgba(255, 80, 80, 0.4)",
+          }}
+        >
+          <Bug className="h-5 w-5 rotate-90" />
+          Bug Report
+        </button>
+      </div>
       </button>
 
       {/* Backdrop */}
