@@ -98,7 +98,7 @@ async function fetchCampaignRelations(campaignId: string) {
     (supabase as any).from("referral_config").select("*").eq("campaign_id", campaignId).maybeSingle(),
     (supabase as any).from("referral_config").select("*").is("campaign_id", null).maybeSingle(),
     supabase.from("campaign_sections").select("*").eq("campaign_id", campaignId).order("sort_order"),
-    (supabase as any).from("campaign_instructions").select("*").eq("campaign_id", campaignId).maybeSingle(),
+    supabase.from("campaign_instructions").select("*").eq("campaign_id", campaignId).maybeSingle(),
   ]);
 
   // Enrich task sets with validation rules
@@ -123,7 +123,7 @@ async function fetchCampaignRelations(campaignId: string) {
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
     sections: (sectionsRes.data || []) as CampaignSection[],
-    instructions: instructionsRes.data || null,
+    instructions: instructionsRes.data ? { ...instructionsRes.data, instructions_steps: (instructionsRes.data.instructions_steps || []) as unknown as CampaignInstructions["instructions_steps"] } as CampaignInstructions : null,
   };
 }
 
@@ -383,19 +383,23 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   }
 
   // Campaign instructions (global)
-  await (supabase as any).from("campaign_instructions").delete().eq("campaign_id", campaignId);
+  await supabase.from("campaign_instructions").delete().eq("campaign_id", campaignId);
   if (payload.instructions) {
-    await (supabase as any).from("campaign_instructions").insert({
+    const { error: instrError } = await supabase.from("campaign_instructions").insert([{
       campaign_id: campaignId,
-      instructions_title: payload.instructions.instructions_title,
-      instructions_summary: payload.instructions.instructions_summary,
-      instructions_steps: payload.instructions.instructions_steps || [],
+      instructions_title: payload.instructions.instructions_title ?? null,
+      instructions_summary: payload.instructions.instructions_summary ?? null,
+      instructions_steps: JSON.parse(JSON.stringify(payload.instructions.instructions_steps || [])),
       prompt_do: payload.instructions.prompt_do || [],
       prompt_dont: payload.instructions.prompt_dont || [],
       required_hardware: payload.instructions.required_hardware || [],
-      video_url: payload.instructions.video_url || null,
-      pdf_file_url: payload.instructions.pdf_file_url || null,
-    });
+      video_url: payload.instructions.video_url ?? null,
+      pdf_file_url: payload.instructions.pdf_file_url ?? null,
+    }]);
+    if (instrError) {
+      console.error("Error saving campaign instructions:", instrError);
+      throw instrError;
+    }
   }
 }
 
