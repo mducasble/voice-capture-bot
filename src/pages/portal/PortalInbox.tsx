@@ -159,7 +159,7 @@ function ThreadList({
   onSelectThread: (id: string) => void;
   onNewThread: () => void;
 }) {
-  const { data: threads = [], isLoading } = useQuery({
+  const { t, i18n } = useTranslation();
     queryKey: ["portal-inbox-threads", userId],
     queryFn: async () => {
       const { data: threadRows, error } = await supabase
