@@ -284,6 +284,99 @@ export default function AdminFinance() {
     },
   });
 
+  /* ─── Test TX ($1) ─── */
+  const testTxMutation = useMutation({
+    mutationFn: async (user: PendingUser) => {
+      const ethereum = (window as any).ethereum;
+      if (!ethereum || !walletAddr) throw new Error("Wallet não conectada");
+      if (!user.wallet_id) throw new Error("Usuário sem wallet cadastrada");
+      if (!/^0x[a-fA-F0-9]{40}$/.test(user.wallet_id)) throw new Error("Endereço de wallet inválido");
+      if (user.total_pending < 1) throw new Error("Saldo insuficiente para teste ($1)");
+
+      setTestingUserId(user.user_id);
+
+      const provider = new BrowserProvider(ethereum);
+      const network = await provider.getNetwork();
+      if (network.chainId !== 137n) throw new Error("Rede incorreta. Troque para Polygon.");
+
+      const signer = await provider.getSigner();
+      const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, signer);
+      const amount = parseUnits("1", 6); // $1 USDT
+
+      const tx = await usdt.transfer(user.wallet_id, amount);
+      toast.info(`Teste TX enviada: ${shortAddr(tx.hash)}. Aguardando...`);
+
+      const receipt = await tx.wait(1);
+      if (receipt.status !== 1) throw new Error("Transação falhou on-chain");
+
+      // Create payment record
+      const { data: codeResult } = await supabase.rpc("generate_payment_code");
+      const paymentCode = codeResult || `pg-${Math.random().toString(36).slice(2, 10)}`;
+
+      const { data: payment, error: paymentErr } = await supabase
+        .from("payments")
+        .insert({
+          payment_code: paymentCode,
+          tx_hash: tx.hash,
+          user_id: user.user_id,
+          total_amount: 1,
+          currency: user.currency,
+          paid_at: new Date().toISOString(),
+        } as any)
+        .select("id")
+        .single();
+      if (paymentErr) throw paymentErr;
+
+      // Pick $1 worth of earning IDs to mark as paid (oldest first)
+      const { data: userEarnings } = await supabase
+        .from("earnings_ledger")
+        .select("id, amount")
+        .eq("user_id", user.user_id)
+        .eq("status", "credited")
+        .order("created_at", { ascending: true });
+
+      let remaining = 1;
+      const idsToMark: string[] = [];
+      for (const e of userEarnings || []) {
+        if (remaining <= 0) break;
+        idsToMark.push(e.id);
+        remaining -= Number(e.amount);
+      }
+
+      if (idsToMark.length > 0) {
+        await supabase
+          .from("earnings_ledger")
+          .update({
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            tx_hash: tx.hash,
+            payment_id: payment.id,
+          } as any)
+          .in("id", idsToMark);
+      }
+
+      return { txHash: tx.hash, userName: user.full_name };
+    },
+    onSuccess: ({ txHash, userName }) => {
+      toast.success(`Teste TX ($1) enviado para ${userName || "usuário"}!`, {
+        action: {
+          label: "Ver tx",
+          onClick: () => window.open(POLYGONSCAN + txHash, "_blank"),
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-paid-users"] });
+      connectWallet();
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro no teste TX");
+    },
+    onSettled: () => {
+      setTestingUserId(null);
+    },
+  });
+
   /* ─── Filter ─── */
   const filtered = pendingUsers.filter(u => {
     if (!searchTerm) return true;
