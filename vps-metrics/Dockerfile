@@ -1,7 +1,12 @@
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
-# Avoid interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
+# Avoid interactive prompts and make large wheel downloads more resilient
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=600 \
+    PIP_RETRIES=10 \
+    PIP_PROGRESS_BAR=off
 
 WORKDIR /app
 
@@ -20,7 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && pip install \
+        --index-url https://download.pytorch.org/whl/cu124 \
+        torch==2.6.0+cu124 \
+        torchaudio==2.6.0+cu124 \
+    && pip install -r requirements.txt
 
 # Copy model code and config
 COPY app/ ./app/
