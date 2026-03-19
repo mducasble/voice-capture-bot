@@ -190,7 +190,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     } catch (error) {
       console.error("[Daily] Join error:", error);
     }
-  }, [roomId, participantId, localStream, participants, rebuildRemoteStreams, updatePeerStatus]);
+  }, [roomId, participantId, localStream, rebuildRemoteStreams, updatePeerStatus]);
 
   // Leave Daily (without destroying the hook)
   const leaveDaily = useCallback(async () => {
