@@ -108,6 +108,41 @@ export default function PortalCampaignTask() {
     );
   }
 
+  // --- Video Prompt Pair dedicated flow ---
+  if (primaryTaskType === "video_prompt_pair") {
+    const taskSetId = enabledTaskSets[0]?.id;
+    return (
+      <div className="space-y-6 max-w-3xl mx-auto">
+        <button
+          onClick={() => navigate(`/campaign/${id}`)}
+          className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest transition-colors"
+          style={{ color: "var(--portal-text-muted)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {t("task.backToCampaign")}
+        </button>
+
+        <div style={{ border: "1px solid var(--portal-border)" }}>
+          <div className="p-6" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
+              <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "var(--portal-accent)" }}>
+                Vídeo Original + Modificado + Prompt
+              </span>
+            </div>
+            <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+              {campaign.name}
+            </h1>
+          </div>
+
+          <div className="p-6">
+            <VideoPromptPairUpload campaignId={campaign.id} taskSetId={taskSetId} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (primaryCategory === "audio" || primaryCategory === "video") {
     if (mode === "choose") {
       return (
