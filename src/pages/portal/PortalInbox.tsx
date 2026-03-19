@@ -240,11 +240,12 @@ function ThreadList({
         </span>
         <button
           onClick={onNewThread}
-          className="h-7 w-7 flex items-center justify-center transition-colors hover:opacity-80"
-          style={{ color: "var(--portal-accent)" }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors hover:opacity-80"
+          style={{ color: "var(--portal-accent)", border: "1px solid var(--portal-accent)" }}
           title={t("inbox.newMessage")}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
+          {t("inbox.newConversation", "Nova Conversa")}
         </button>
       </div>
 
