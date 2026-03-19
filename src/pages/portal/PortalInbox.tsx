@@ -434,6 +434,7 @@ function ConversationView({
   userId: string;
   onBack?: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const [reply, setReply] = useState("");
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
