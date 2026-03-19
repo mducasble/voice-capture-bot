@@ -281,10 +281,10 @@ function ThreadList({
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                           {thread.category === "support"
-                            ? "Suporte"
+                            ? t("inbox.support")
                             : thread.category === "payment"
-                              ? "Pagamento"
-                              : "Geral"}
+                              ? t("inbox.payment")
+                              : t("inbox.general")}
                         </span>
                         <span className="font-mono text-xs shrink-0 ml-2" style={{ color: "var(--portal-text-muted)" }}>
                           {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
