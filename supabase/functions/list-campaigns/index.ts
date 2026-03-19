@@ -12,6 +12,7 @@ const CATEGORY_MAP: Record<string, string> = {
   audio_capture_group: "audio",
   image_submission: "image",
   video_submission: "video",
+  video_prompt_pair: "video",
   data_labeling: "annotation",
   transcription: "text",
   prompt_review: "review",
