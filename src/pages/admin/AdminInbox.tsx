@@ -5,7 +5,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
   Inbox, Send, Loader2, ChevronDown, ChevronRight, Search,
   RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users, FileText,
-  ShieldCheck,
+  ShieldCheck, Megaphone, Globe, FolderOpen,
 } from "lucide-react";
 import InboxTemplateManager from "@/components/admin/InboxTemplateManager";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CampaignSelector } from "@/components/CampaignSelector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /* ─── Types ─── */
 interface AdminThread {
@@ -45,6 +53,7 @@ export default function AdminInbox() {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [verifyingWalletThread, setVerifyingWalletThread] = useState<string | null>(null);
+  const [showBroadcast, setShowBroadcast] = useState(false);
 
   /* ─── Verify wallet (thread context) ─── */
   const handleVerifyWalletThread = async (userId: string, threadId: string) => {
@@ -202,6 +211,10 @@ export default function AdminInbox() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowBroadcast(true)}>
+            <Megaphone className="h-4 w-4 mr-2" />
+            Broadcast
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowNewMessage(true)}>
             <MessageSquarePlus className="h-4 w-4 mr-2" />
             Nova Mensagem
@@ -212,6 +225,17 @@ export default function AdminInbox() {
           </Button>
         </div>
       </div>
+
+      {/* Broadcast form */}
+      {showBroadcast && (
+        <BroadcastForm
+          onClose={() => setShowBroadcast(false)}
+          onSuccess={() => {
+            setShowBroadcast(false);
+            refetch();
+          }}
+        />
+      )}
 
       {/* New message form */}
       {showNewMessage && (
@@ -522,6 +546,150 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
           Enviar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Broadcast Form ─── */
+function BroadcastForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [mode, setMode] = useState<"all" | "country" | "campaign">("all");
+  const [country, setCountry] = useState("");
+  const [campaignId, setCampaignId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [category, setCategory] = useState("general");
+  const [sending, setSending] = useState(false);
+
+  // Fetch distinct countries
+  const { data: countries = [] } = useQuery({
+    queryKey: ["broadcast-countries"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("country")
+        .not("country", "is", null)
+        .not("country", "eq", "");
+      const unique = [...new Set((data || []).map((p: any) => p.country).filter(Boolean))].sort();
+      return unique as string[];
+    },
+  });
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim()) {
+      toast.error("Preencha assunto e mensagem");
+      return;
+    }
+    if (mode === "country" && !country) {
+      toast.error("Selecione um país");
+      return;
+    }
+    if (mode === "campaign" && !campaignId) {
+      toast.error("Selecione uma campanha");
+      return;
+    }
+
+    const modeLabels = { all: "TODOS os usuários", country: `usuários de ${country}`, campaign: "participantes da campanha" };
+    const confirmed = window.confirm(`Enviar mensagem para ${modeLabels[mode]}?`);
+    if (!confirmed) return;
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("broadcast-inbox", {
+        body: { mode, subject, body, category, country, campaign_id: campaignId },
+      });
+      if (error) throw error;
+      toast.success(`Mensagem enviada para ${data.sent_count} usuários!`);
+      onSuccess();
+    } catch (e: any) {
+      toast.error("Erro: " + (e.message || "falha no envio"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const canSend = subject.trim() && body.trim() && (mode === "all" || (mode === "country" && country) || (mode === "campaign" && campaignId));
+
+  return (
+    <div className="rounded-xl border border-primary/20 p-5 space-y-4 bg-primary/5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <Megaphone className="h-4 w-4 text-primary" />
+          Broadcast — Envio em Massa
+        </h3>
+        <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+      </div>
+
+      {/* Mode selector */}
+      <div className="flex gap-2">
+        {[
+          { value: "all" as const, label: "Todos", icon: Users },
+          { value: "country" as const, label: "Por País", icon: Globe },
+          { value: "campaign" as const, label: "Por Campanha", icon: FolderOpen },
+        ].map(m => (
+          <button
+            key={m.value}
+            onClick={() => setMode(m.value)}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors",
+              mode === m.value
+                ? "border-primary text-primary bg-primary/10 font-semibold"
+                : "border-border text-muted-foreground hover:border-primary/50"
+            )}
+          >
+            <m.icon className="h-3.5 w-3.5" />
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Mode-specific selector */}
+      {mode === "country" && (
+        <Select value={country} onValueChange={setCountry}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecionar país..." />
+          </SelectTrigger>
+          <SelectContent>
+            {countries.map(c => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {mode === "campaign" && (
+        <CampaignSelector value={campaignId} onChange={setCampaignId} />
+      )}
+
+      {/* Category */}
+      <div className="flex gap-2">
+        {[
+          { value: "general", label: "Geral" },
+          { value: "payment", label: "Pagamento" },
+          { value: "support", label: "Suporte" },
+        ].map(c => (
+          <button
+            key={c.value}
+            onClick={() => setCategory(c.value)}
+            className={cn(
+              "text-xs px-3 py-1.5 rounded-full border transition-colors",
+              category === c.value ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"
+            )}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <Input placeholder="Assunto" value={subject} onChange={e => setSubject(e.target.value)} />
+      <Textarea placeholder="Mensagem..." value={body} onChange={e => setBody(e.target.value)} rows={4} className="resize-none" />
+
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
+        <Button size="sm" onClick={handleSend} disabled={!canSend || sending}>
+          {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+          Enviar Broadcast
         </Button>
       </div>
     </div>
