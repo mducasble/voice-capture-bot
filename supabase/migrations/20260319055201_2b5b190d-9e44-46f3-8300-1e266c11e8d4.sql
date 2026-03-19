@@ -1,0 +1,1 @@
+UPDATE analysis_queue SET status = 'pending', attempts = 0, last_error = NULL, completed_at = NULL WHERE id IN ('cdb7ef2c-773c-4a24-b3df-b255c6fbc394', '9d1e074a-a602-4504-a7be-43d2bc6a5163');
