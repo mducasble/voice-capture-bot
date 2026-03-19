@@ -497,7 +497,7 @@ function ConversationView({
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-messages", threadId] });
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
     },
-    onError: () => toast.error("Erro ao enviar resposta"),
+    onError: () => toast.error(t("inbox.replyError")),
   });
 
   // Auto-scroll to bottom
