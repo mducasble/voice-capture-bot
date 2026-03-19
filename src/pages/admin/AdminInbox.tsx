@@ -5,7 +5,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
   Inbox, Send, Loader2, ChevronDown, ChevronRight, Search,
   RefreshCw, Circle, CheckCheck, MessageSquarePlus, Users, FileText,
-  ShieldCheck,
+  ShieldCheck, Megaphone, Globe, FolderOpen,
 } from "lucide-react";
 import InboxTemplateManager from "@/components/admin/InboxTemplateManager";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CampaignSelector } from "@/components/CampaignSelector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /* ─── Types ─── */
 interface AdminThread {
