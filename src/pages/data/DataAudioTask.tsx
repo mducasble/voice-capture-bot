@@ -447,16 +447,12 @@ export default function DataAudioTask() {
     logAction("reanalyze", sibId);
     setQueuedJobs(prev => ({ ...prev, [sibId]: prev[sibId] === "enhance" ? "both" : "analyze" }));
 
-    const { error } = await supabase
-      .from("analysis_queue")
-      .insert({
-        recording_id: sibId,
-        job_type: "analyze",
-        priority: 10,
-      } as any);
+    // Find the recording's audio URL
+    const sib = siblings?.find((s: any) => s.id === sibId);
+    const audioUrl = sib?.mp3_file_url || sib?.file_url;
 
-    if (error) {
-      toast.error("Erro ao enfileirar reanálise", { description: error.message });
+    if (!audioUrl) {
+      toast.error("URL do áudio não encontrada");
       setQueuedJobs(prev => {
         const copy = { ...prev };
         if (copy[sibId] === "both") copy[sibId] = "enhance";
@@ -466,8 +462,33 @@ export default function DataAudioTask() {
       return;
     }
 
-    toast.success("Reanálise enfileirada!", {
-      description: "O áudio será processado em background.",
+    const { error } = await supabase.functions.invoke("estimate-audio-metrics", {
+      body: {
+        recording_id: sibId,
+        file_url: audioUrl,
+        mode: "sampled",
+      },
+    });
+
+    if (error) {
+      toast.error("Erro ao solicitar reanálise", { description: error.message });
+      setQueuedJobs(prev => {
+        const copy = { ...prev };
+        if (copy[sibId] === "both") copy[sibId] = "enhance";
+        else delete copy[sibId];
+        return copy;
+      });
+      return;
+    }
+
+    toast.success("Reanálise concluída!", {
+      description: "As métricas foram atualizadas.",
+    });
+    setQueuedJobs(prev => {
+      const copy = { ...prev };
+      if (copy[sibId] === "both") copy[sibId] = "enhance";
+      else delete copy[sibId];
+      return copy;
     });
   };
 
