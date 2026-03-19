@@ -388,5 +388,26 @@
     "blockTitle": "Under Maintenance",
     "blockMessage": "We are applying improvements. Come back soon!",
     "forecast": "Estimated time"
+  },
+  "inbox": {
+    "title": "Messages",
+    "conversations": "Conversations",
+    "newMessage": "New Message",
+    "selectConversation": "Select a conversation",
+    "noMessages": "No messages",
+    "subject": "Subject",
+    "writePlaceholder": "Write your message...",
+    "replyPlaceholder": "Write a reply...",
+    "send": "Send",
+    "sent": "Message sent!",
+    "sendError": "Error sending message",
+    "replyError": "Error sending reply",
+    "you": "You",
+    "team": "KGeN Team",
+    "open": "Open",
+    "closed": "Closed",
+    "general": "General",
+    "support": "Support",
+    "payment": "Payment"
   }
 }
