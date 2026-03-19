@@ -109,7 +109,7 @@ export function FaqSidebar() {
         {/* Bug Report button */}
         <button
           onClick={handleBugReport}
-          className="flex items-center gap-2 py-6 px-3 font-mono text-[14px] font-black uppercase tracking-widest transition-all"
+          className="flex items-center gap-2 py-4 px-3 font-mono text-[14px] font-black uppercase tracking-widest transition-all"
           style={{
             background: "rgba(255, 80, 80, 0.85)",
             color: "#fff",
@@ -120,7 +120,7 @@ export function FaqSidebar() {
           }}
         >
           <Bug className="h-5 w-5 rotate-90" />
-          Bug Report
+          Bug
         </button>
       </div>
 
