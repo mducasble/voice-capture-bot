@@ -43,10 +43,18 @@ export function useQueueMonitor(enabled = true) {
       .order("priority", { ascending: false })
       .order("created_at", { ascending: true });
 
-    if (error || !data) {
+    if (error) {
+      console.warn("[QueueMonitor] Query error:", error.message);
       setLoading(false);
       return;
     }
+
+    if (!data) {
+      setLoading(false);
+      return;
+    }
+
+    console.log("[QueueMonitor] Found", data.length, "active jobs");
 
     const jobs: QueueJob[] = data.map((row, index) => ({
       ...row,

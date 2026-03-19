@@ -82,8 +82,8 @@ export default function AdminLayout() {
             </main>
           </div>
         </div>
-        <QueueProgressWidget />
       </SidebarProvider>
+      <QueueProgressWidget />
     </div>
   );
 }
