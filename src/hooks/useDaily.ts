@@ -249,11 +249,13 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
   }, [localStream]);
 
   // Rebuild streams when our participants list changes
+  // participantsRef is updated above; trigger rebuild on participants array identity change
   useEffect(() => {
     if (callRef.current && joinedRef.current) {
       rebuildRemoteStreams(callRef.current);
     }
-  }, [participants, rebuildRemoteStreams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants]);
 
   // Cleanup on unmount
   useEffect(() => {
