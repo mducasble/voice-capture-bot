@@ -22,8 +22,8 @@ export default function DataCampaignSelect() {
 
   useEffect(() => {
     const typeMap: Record<string, string[]> = {
-      audio: ["audio_capture_group"],
-      video: ["video_submission"],
+      audio: ["audio_capture_group", "audio_capture_solo"],
+      video: ["video_submission", "video_prompt_pair"],
       photo: ["image_submission"],
     };
     const allowedTypes = typeMap[mediaType || ""] || [];
