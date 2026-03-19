@@ -49,7 +49,6 @@ export default function PortalLayout() { // layout-root
     { to: "/", icon: FolderOpen, label: t("nav.opportunities"), exact: true },
     { to: "/my-campaigns", icon: Layers, label: t("nav.myCampaigns") },
     { to: "/earnings", icon: DollarSign, label: t("nav.myEarnings") },
-    // { to: "/inbox", icon: Inbox, label: "Mensagens" },
   ];
 
   return (
