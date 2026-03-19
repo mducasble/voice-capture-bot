@@ -115,20 +115,35 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
             );
           })}
           <CopyReferralButton userId={user.id} />
+          <Link
+            to="/inbox"
+            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-widest transition-colors"
+            style={{
+              border: "1px solid var(--portal-accent)",
+              color: location.pathname === "/inbox" ? "var(--portal-accent-text)" : "var(--portal-accent)",
+              background: location.pathname === "/inbox" ? "var(--portal-accent)" : "transparent",
+            }}
+            onMouseEnter={(e) => {
+              if (location.pathname !== "/inbox") {
+                e.currentTarget.style.background = "var(--portal-accent)";
+                e.currentTarget.style.color = "var(--portal-accent-text)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (location.pathname !== "/inbox") {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--portal-accent)";
+              }
+            }}
+            title={t("nav.inbox") || "Inbox"}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("nav.inbox") || "Inbox"}</span>
+          </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
           <LanguageSelector variant="compact" />
-          <Link
-            to="/inbox"
-            className="p-2 transition-colors"
-            style={{ color: location.pathname === "/inbox" ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
-            title={t("nav.inbox") || "Inbox"}
-            onMouseEnter={(e) => { if (location.pathname !== "/inbox") e.currentTarget.style.color = "var(--portal-accent)"; }}
-            onMouseLeave={(e) => { if (location.pathname !== "/inbox") e.currentTarget.style.color = "var(--portal-text-muted)"; }}
-          >
-            <Mail className="h-4 w-4" />
-          </Link>
           <UserProfileLink userId={user.id} userName={user.user_metadata?.full_name || user.email || ""} showGlow={!profileComplete} />
           <button onClick={signOut} className="p-2 transition-colors" style={{ color: "var(--portal-text-muted)" }} title={t("nav.logout")}>
             <LogOut className="h-4 w-4" />
