@@ -619,7 +619,7 @@ function ConversationView({
           style={{ borderTop: "1px solid rgba(255, 255, 255, 0.02)", background: "rgba(255, 255, 255, 0.004)" }}
         >
           <Textarea
-            placeholder="Escreva uma resposta..."
+            placeholder={t("inbox.replyPlaceholder")}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={handleKeyDown}
