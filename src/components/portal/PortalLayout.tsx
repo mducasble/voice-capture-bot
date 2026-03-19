@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Mail } from "lucide-react";
 import { useState } from "react";
