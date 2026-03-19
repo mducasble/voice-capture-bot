@@ -39,6 +39,7 @@ interface PendingUser {
   user_id: string;
   full_name: string | null;
   wallet_id: string | null;
+  wallet_verified: boolean;
   country: string | null;
   total_pending: number;
   currency: string;
@@ -87,7 +88,7 @@ export default function AdminFinance() {
       const userIds = Array.from(byUser.keys());
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, wallet_id, country")
+        .select("id, full_name, wallet_id, wallet_verified, country")
         .in("id", userIds);
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -99,6 +100,7 @@ export default function AdminFinance() {
           user_id: userId,
           full_name: profile?.full_name || null,
           wallet_id: profile?.wallet_id || null,
+          wallet_verified: profile?.wallet_verified ?? false,
           country: profile?.country || null,
           total_pending: Math.round(data.total * 10000) / 10000,
           currency: data.currency,
@@ -107,19 +109,6 @@ export default function AdminFinance() {
       }
 
       return result.sort((a, b) => b.total_pending - a.total_pending);
-    },
-  });
-
-  /* ─── Fetch users who have ever been paid ─── */
-  const { data: paidUserIds = new Set<string>() } = useQuery({
-    queryKey: ["admin-finance-paid-users"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("earnings_ledger")
-        .select("user_id")
-        .eq("status", "paid");
-      if (error) throw error;
-      return new Set((data || []).map(e => e.user_id));
     },
   });
 
@@ -355,6 +344,35 @@ export default function AdminFinance() {
           .in("id", idsToMark);
       }
 
+      // Auto-send inbox message with wallet_test_tx template
+      const { data: tpl } = await supabase
+        .from("inbox_message_templates" as any)
+        .select("subject, category, body")
+        .eq("template_key", "wallet_test_tx")
+        .maybeSingle();
+
+      if (tpl) {
+        const { data: thread, error: tErr } = await supabase
+          .from("inbox_threads" as any)
+          .insert({
+            user_id: user.user_id,
+            subject: (tpl as any).subject,
+            category: (tpl as any).category || "payment",
+            created_by: (await supabase.auth.getUser()).data.user?.id,
+          } as any)
+          .select("id")
+          .single();
+        if (!tErr && thread) {
+          await supabase
+            .from("inbox_messages" as any)
+            .insert({
+              thread_id: (thread as any).id,
+              sender_id: (await supabase.auth.getUser()).data.user?.id,
+              body: (tpl as any).body,
+            } as any);
+        }
+      }
+
       return { txHash: tx.hash, userName: user.full_name };
     },
     onSuccess: ({ txHash, userName }) => {
@@ -366,7 +384,7 @@ export default function AdminFinance() {
       });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
       queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-paid-users"] });
+      
       connectWallet();
     },
     onError: (err: any) => {
@@ -557,7 +575,7 @@ export default function AdminFinance() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {hasWallet && !paidUserIds.has(user.user_id) && user.total_pending >= 1 && (
+                        {hasWallet && !user.wallet_verified && user.total_pending >= 1 && (
                           <Button
                             size="sm"
                             variant="outline"
