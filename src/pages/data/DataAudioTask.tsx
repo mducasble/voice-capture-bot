@@ -114,6 +114,51 @@ function getTrackMetrics(sib: any) {
   ].filter((m) => m.val != null);
 }
 
+function getEnhancedMetrics(sib: any) {
+  const meta = sib.metadata || {};
+  const em = meta.enhanced_metrics;
+  if (!em) return [];
+  return [
+    { key: "snr_db", label: "SNR", unit: "dB", val: em.snr_db },
+    { key: "sigmos_ovrl", label: "SigMOS Overall", val: em.sigmos_ovrl },
+    { key: "srmr", label: "SRMR", val: em.srmr },
+    { key: "rms_dbfs", label: "RMS Level", unit: "dBFS", val: em.rms_dbfs },
+    { key: "wvmos", label: "WVMOS", val: em.wvmos },
+    { key: "vqscore", label: "VQScore", val: em.vqscore },
+    { key: "sigmos_reverb", label: "SigMOS Reverb", val: em.sigmos_reverb },
+    { key: "sigmos_disc", label: "SigMOS Disc", val: em.sigmos_disc },
+  ].filter((m) => m.val != null);
+}
+
+function deriveEnhancedTier(sib: any): string | undefined {
+  const meta = sib.metadata || {};
+  const stored = typeof meta.enhanced_quality_tier === "string" ? meta.enhanced_quality_tier.toUpperCase() : undefined;
+  if (stored) return stored;
+  const em = meta.enhanced_metrics;
+  if (!em) return undefined;
+  const metrics: [string, number | null | undefined][] = [
+    ["snr_db", em.snr_db],
+    ["sigmos_ovrl", em.sigmos_ovrl],
+    ["srmr", em.srmr],
+    ["rms_dbfs", em.rms_dbfs],
+    ["wvmos", em.wvmos],
+    ["vqscore", em.vqscore],
+    ["sigmos_reverb", em.sigmos_reverb],
+    ["sigmos_disc", em.sigmos_disc],
+  ];
+  let minOrder = 3;
+  let hasAny = false;
+  for (const [key, val] of metrics) {
+    if (val == null) continue;
+    hasAny = true;
+    const tier = deriveTierForMetric(key, Number(val));
+    const order = TIER_ORDER[tier] ?? 1;
+    if (order < minOrder) minOrder = order;
+  }
+  if (!hasAny) return undefined;
+  return TIER_FROM_ORDER[minOrder];
+}
+
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
@@ -137,6 +182,7 @@ export default function DataAudioTask() {
   const [taskLogId, setTaskLogId] = useState<string | null>(null);
   const [taskSetId, setTaskSetId] = useState<string | null>(null);
   const [queuedJobs, setQueuedJobs] = useState<Record<string, "analyze" | "enhance" | "both">>({});
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, "original" | "enhanced">>({});
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -170,29 +216,84 @@ export default function DataAudioTask() {
       });
   }, [campaignId]);
 
-  // Load siblings when rec changes
-  useEffect(() => {
-    if (!rec) { setSiblings([]); return; }
+  // Refetch siblings data
+  const refetchSiblings = useCallback(async () => {
+    if (!rec) return;
     if (rec.session_id && rec.campaign_id) {
-      supabase
+      const { data } = await supabase
         .from("voice_recordings")
         .select("id, filename, file_url, duration_seconds, recording_type, metadata, discord_username, snr_db, quality_status")
         .eq("session_id", rec.session_id)
         .eq("campaign_id", rec.campaign_id)
-        .order("recording_type")
-        .then(({ data }) => {
-          if (!data?.length) { setSiblings([rec]); return; }
-          const sorted = [...data].sort((a, b) => {
-            const aM = a.recording_type === "mixed" ? 0 : 1;
-            const bM = b.recording_type === "mixed" ? 0 : 1;
-            return aM - bM;
-          });
-          setSiblings(sorted as any[]);
-        });
-    } else {
-      setSiblings([rec]);
+        .order("recording_type");
+      if (!data?.length) { setSiblings([rec]); return; }
+      const sorted = [...data].sort((a, b) => {
+        const aM = a.recording_type === "mixed" ? 0 : 1;
+        const bM = b.recording_type === "mixed" ? 0 : 1;
+        return aM - bM;
+      });
+      setSiblings(sorted as any[]);
     }
   }, [rec]);
+
+  // Load siblings when rec changes
+  useEffect(() => {
+    if (!rec) { setSiblings([]); return; }
+    refetchSiblings();
+  }, [rec, refetchSiblings]);
+
+  // Auto-refresh: poll analysis_queue for queued jobs and refetch when done
+  useEffect(() => {
+    const queuedIds = Object.keys(queuedJobs);
+    if (queuedIds.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const { data: jobs } = await supabase
+        .from("analysis_queue")
+        .select("recording_id, job_type, status")
+        .in("recording_id", queuedIds)
+        .order("created_at", { ascending: false });
+
+      if (!jobs) return;
+
+      // Group latest status per recording+job_type
+      const latestStatus: Record<string, Record<string, string>> = {};
+      for (const j of jobs) {
+        if (!latestStatus[j.recording_id]) latestStatus[j.recording_id] = {};
+        if (!latestStatus[j.recording_id][j.job_type]) {
+          latestStatus[j.recording_id][j.job_type] = j.status;
+        }
+      }
+
+      let anyDone = false;
+      const newQueued = { ...queuedJobs };
+
+      for (const recId of queuedIds) {
+        const statuses = latestStatus[recId] || {};
+        const currentJob = newQueued[recId];
+        const analyzeDone = statuses["analyze"] === "done";
+        const enhanceDone = statuses["enhance"] === "done";
+
+        if (currentJob === "both") {
+          if (analyzeDone && enhanceDone) { delete newQueued[recId]; anyDone = true; }
+          else if (analyzeDone) { newQueued[recId] = "enhance"; anyDone = true; }
+          else if (enhanceDone) { newQueued[recId] = "analyze"; anyDone = true; }
+        } else if (currentJob === "analyze" && analyzeDone) {
+          delete newQueued[recId]; anyDone = true;
+        } else if (currentJob === "enhance" && enhanceDone) {
+          delete newQueued[recId]; anyDone = true;
+        }
+      }
+
+      if (anyDone) {
+        setQueuedJobs(newQueued);
+        await refetchSiblings();
+        toast.success("Métricas atualizadas!", { description: "Os dados foram recarregados automaticamente." });
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [queuedJobs, refetchSiblings]);
 
   const skippedIdsRef = useRef<Set<string>>(new Set());
 
@@ -203,6 +304,7 @@ export default function DataAudioTask() {
     actionsLog.current = [];
     setTaskLogId(null);
     setQueuedJobs({});
+    setSelectedVersions({});
     if (timerRef.current) clearInterval(timerRef.current);
 
     let query = supabase
@@ -525,7 +627,9 @@ export default function DataAudioTask() {
             const originalUrl = sib.file_url;
             const hasEnhanced = !!enhancedUrl;
             const sibTier = deriveTier(sib);
+            const sibEnhancedTier = deriveEnhancedTier(sib);
             const sibMetrics = getTrackMetrics(sib);
+            const sibEnhancedMetrics = getEnhancedMetrics(sib);
             const jobState = queuedJobs[sib.id];
             const analyzeQueued = jobState === "analyze" || jobState === "both";
             const enhanceQueued = jobState === "enhance" || jobState === "both";
@@ -539,14 +643,17 @@ export default function DataAudioTask() {
                 enhancedUrl={enhancedUrl}
                 originalUrl={originalUrl}
                 sibTier={sibTier}
+                enhancedTier={sibEnhancedTier}
                 sibMetrics={sibMetrics}
+                enhancedMetrics={sibEnhancedMetrics}
                 analyzeQueued={analyzeQueued}
                 enhanceQueued={enhanceQueued}
                 logAction={logAction}
                 handleReanalyze={handleReanalyze}
                 handleEnhance={handleEnhance}
+                selectedVersion={selectedVersions[sib.id] || "original"}
+                onSelectVersion={(id, v) => setSelectedVersions(prev => ({ ...prev, [id]: v }))}
               />
-
             );
           })}
         </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Loader2, Headphones, RefreshCw, Sparkles, Zap,
+  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -37,22 +37,31 @@ interface TrackCardProps {
   enhancedUrl: string | null;
   originalUrl: string | null;
   sibTier: string | undefined;
+  enhancedTier: string | undefined;
   sibMetrics: { key: string; label: string; unit?: string; val: any }[];
+  enhancedMetrics: { key: string; label: string; unit?: string; val: any }[];
   analyzeQueued: boolean;
   enhanceQueued: boolean;
   logAction: (action: string, detail?: string) => void;
   handleReanalyze: (id: string) => void;
   handleEnhance: (id: string) => void;
+  selectedVersion: "original" | "enhanced";
+  onSelectVersion: (id: string, version: "original" | "enhanced") => void;
 }
 
 export function TrackCard({
   sib, isMain, hasEnhanced, enhancedUrl, originalUrl,
-  sibTier, sibMetrics, analyzeQueued, enhanceQueued,
+  sibTier, enhancedTier, sibMetrics, enhancedMetrics,
+  analyzeQueued, enhanceQueued,
   logAction, handleReanalyze, handleEnhance,
+  selectedVersion, onSelectVersion,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
 
   const activeUrl = playingEnhanced && enhancedUrl ? enhancedUrl : originalUrl;
+  const showingEnhancedMetrics = playingEnhanced && enhancedMetrics.length > 0;
+  const displayMetrics = showingEnhancedMetrics ? enhancedMetrics : sibMetrics;
+  const displayTier = showingEnhancedMetrics ? enhancedTier : sibTier;
 
   return (
     <div
@@ -74,9 +83,9 @@ export function TrackCard({
                sib.recording_type || sib.filename}
               {isMain && <span className="text-white/30 ml-2 text-[13px]">(principal)</span>}
             </p>
-            {sibTier && (
-              <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md border", tierColors[sibTier] || "bg-white/10 text-white/50 border-white/10")}>
-                {sibTier}
+            {displayTier && (
+              <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md border", tierColors[displayTier] || "bg-white/10 text-white/50 border-white/10")}>
+                {displayTier}
               </span>
             )}
             {hasEnhanced && (
@@ -93,29 +102,60 @@ export function TrackCard({
 
       {/* Toggle Original / Enhanced */}
       {hasEnhanced && (
-        <div className="flex items-center gap-1 mb-3 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] w-fit">
-          <button
-            onClick={() => { setPlayingEnhanced(false); logAction("toggle_original", sib.id); }}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all",
-              !playingEnhanced
-                ? "bg-white/10 text-white shadow-sm"
-                : "text-white/40 hover:text-white/60"
-            )}
-          >
-            Original
-          </button>
-          <button
-            onClick={() => { setPlayingEnhanced(true); logAction("toggle_enhanced", sib.id); }}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all flex items-center gap-1",
-              playingEnhanced
-                ? "bg-violet-500/20 text-violet-300 shadow-sm"
-                : "text-white/40 hover:text-white/60"
-            )}
-          >
-            <Zap className="h-3 w-3" /> Enhanced
-          </button>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] w-fit">
+            <button
+              onClick={() => { setPlayingEnhanced(false); logAction("toggle_original", sib.id); }}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all",
+                !playingEnhanced
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "text-white/40 hover:text-white/60"
+              )}
+            >
+              Original
+            </button>
+            <button
+              onClick={() => { setPlayingEnhanced(true); logAction("toggle_enhanced", sib.id); }}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all flex items-center gap-1",
+                playingEnhanced
+                  ? "bg-violet-500/20 text-violet-300 shadow-sm"
+                  : "text-white/40 hover:text-white/60"
+              )}
+            >
+              <Zap className="h-3 w-3" /> Enhanced
+            </button>
+          </div>
+
+          {/* Version selector for submission */}
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] w-fit ml-auto">
+            <span className="text-[11px] text-white/30 px-2 uppercase tracking-wider font-semibold">Enviar:</span>
+            <button
+              onClick={() => { onSelectVersion(sib.id, "original"); logAction("select_original", sib.id); }}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1",
+                selectedVersion === "original"
+                  ? "bg-emerald-500/20 text-emerald-400 shadow-sm"
+                  : "text-white/40 hover:text-white/60"
+              )}
+            >
+              {selectedVersion === "original" && <Check className="h-3 w-3" />}
+              Original
+            </button>
+            <button
+              onClick={() => { onSelectVersion(sib.id, "enhanced"); logAction("select_enhanced", sib.id); }}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1",
+                selectedVersion === "enhanced"
+                  ? "bg-violet-500/20 text-violet-400 shadow-sm"
+                  : "text-white/40 hover:text-white/60"
+              )}
+            >
+              {selectedVersion === "enhanced" && <Check className="h-3 w-3" />}
+              Enhanced
+            </button>
+          </div>
         </div>
       )}
 
@@ -136,16 +176,16 @@ export function TrackCard({
       )}
 
       {/* Per-track metrics */}
-      {sibMetrics.length > 0 && (
+      {displayMetrics.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-          {sibMetrics.map((m) => (
+          {displayMetrics.map((m) => (
             <MetricCard
               key={m.key}
               metricKey={m.key}
               label={m.label}
               value={typeof m.val === "number" ? Number(m.val).toFixed(2) : String(m.val)}
               unit={m.unit}
-              tier={sibTier}
+              tier={displayTier}
               tooltip={metricTooltips[m.key]}
             />
           ))}
