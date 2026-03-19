@@ -1,5 +1,6 @@
 import { Outlet, Navigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
+import { QueueProgressWidget } from "./QueueProgressWidget";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -81,6 +82,7 @@ export default function AdminLayout() {
             </main>
           </div>
         </div>
+        <QueueProgressWidget />
       </SidebarProvider>
     </div>
   );
