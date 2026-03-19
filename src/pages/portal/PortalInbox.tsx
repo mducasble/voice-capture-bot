@@ -360,7 +360,7 @@ function NewThreadForm({
       return (thread as any).id;
     },
     onSuccess: (threadId) => {
-      toast.success("Mensagem enviada!");
+      toast.success(t("inbox.sent"));
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
       onCreated(threadId);
     },
