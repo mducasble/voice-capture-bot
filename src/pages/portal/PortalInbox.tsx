@@ -381,7 +381,7 @@ function NewThreadForm({
           className="font-mono text-xs uppercase tracking-widest font-bold"
           style={{ color: "var(--portal-text)" }}
         >
-          Nova Mensagem
+          {t("inbox.newMessage")}
         </span>
       </div>
 
