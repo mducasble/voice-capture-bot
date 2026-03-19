@@ -123,7 +123,7 @@ async function fetchCampaignRelations(campaignId: string) {
     quality_flow: qualityRes.data || null,
     administrative_rules: adminRulesRes.data || null,
     sections: (sectionsRes.data || []) as CampaignSection[],
-    instructions: instructionsRes.data || null,
+    instructions: instructionsRes.data ? { ...instructionsRes.data, instructions_steps: (instructionsRes.data.instructions_steps || []) as unknown as CampaignInstructions["instructions_steps"] } as CampaignInstructions : null,
   };
 }
 
