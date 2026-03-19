@@ -194,6 +194,8 @@ export default function DataAudioTask() {
     }
   }, [rec]);
 
+  const skippedIdsRef = useRef<Set<string>>(new Set());
+
   const loadNext = useCallback(async () => {
     if (!campaignId) return;
     setLoading(true);
@@ -203,13 +205,21 @@ export default function DataAudioTask() {
     setQueuedJobs({});
     if (timerRef.current) clearInterval(timerRef.current);
 
-    const { data } = await supabase
+    let query = supabase
       .from("voice_recordings")
       .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id")
       .eq("campaign_id", campaignId)
       .eq("quality_status", "pending")
-      .order("created_at", { ascending: true })
-      .limit(1);
+      .order("created_at", { ascending: true });
+
+    // Exclude already skipped/timed-out IDs in this session
+    const skippedArr = Array.from(skippedIdsRef.current);
+    if (skippedArr.length > 0) {
+      // Use .not('id', 'in', ...) to exclude skipped recordings
+      query = query.not("id", "in", `(${skippedArr.join(",")})`);
+    }
+
+    const { data } = await query.limit(1);
 
     if (!data?.length) { setRec(null); setLoading(false); return; }
     setRec(data[0] as Recording);
