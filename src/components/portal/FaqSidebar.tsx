@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { HelpCircle, X, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, Bug, X, ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface FaqItem {
   id: string;
