@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import {
   Inbox,
   MessageSquare,
@@ -48,9 +49,23 @@ interface Message {
 export default function PortalInbox() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const location = useLocation();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showNewThread, setShowNewThread] = useState(false);
+  const [prefillSubject, setPrefillSubject] = useState("");
   const isMobile = useIsMobile();
+
+  // Handle bug report prefill from navigation state
+  useEffect(() => {
+    const state = location.state as { bugReport?: boolean; subject?: string } | null;
+    if (state?.bugReport && state?.subject) {
+      setShowNewThread(true);
+      setSelectedThreadId(null);
+      setPrefillSubject(state.subject);
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   if (!user) return null;
 
@@ -112,11 +127,13 @@ export default function PortalInbox() {
             {showNewThread ? (
               <NewThreadForm
                 userId={user.id}
+                prefillSubject={prefillSubject}
                 onCreated={(id) => {
                   setShowNewThread(false);
                   setSelectedThreadId(id);
+                  setPrefillSubject("");
                 }}
-                onBack={() => setShowNewThread(false)}
+                onBack={() => { setShowNewThread(false); setPrefillSubject(""); }}
               />
             ) : selectedThreadId ? (
               <ConversationView
@@ -322,15 +339,17 @@ function ThreadList({
 /* ─── New Thread Form ─── */
 function NewThreadForm({
   userId,
+  prefillSubject,
   onCreated,
   onBack,
 }: {
   userId: string;
+  prefillSubject?: string;
   onCreated: (threadId: string) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(prefillSubject || "");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
 
