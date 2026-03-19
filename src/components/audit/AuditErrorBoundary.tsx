@@ -29,9 +29,9 @@ export class AuditErrorBoundary extends Component<Props, State> {
       return (
         <div className="audit-theme min-h-screen flex items-center justify-center bg-[hsl(var(--background))] p-6">
           <div className="max-w-md rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-8 text-center shadow-sm">
-            <h1 className="text-[24px] font-bold text-[hsl(var(--foreground))]">O Audit falhou ao carregar</h1>
+            <h1 className="text-[24px] font-bold text-[hsl(var(--foreground))]">Algo deu errado</h1>
             <p className="mt-3 text-[15px] text-[hsl(var(--muted-foreground))]">
-              Recarregue a tela para continuar. Se isso persistir, eu investigo a rota específica.
+              Recarregue a tela para continuar. Se o problema persistir, entre em contato com o suporte.
             </p>
             <Button onClick={this.handleReload} className="mt-6">
               Recarregar
