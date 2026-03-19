@@ -417,7 +417,7 @@ function NewThreadForm({
           ) : (
             <Send className="h-4 w-4 mr-2" />
           )}
-          Enviar
+          {t("inbox.send")}
         </Button>
       </div>
     </div>
