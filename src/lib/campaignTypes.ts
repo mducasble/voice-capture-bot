@@ -300,7 +300,7 @@ export const TASK_TYPE_LABELS: Record<string, string> = {
   audio_capture_group: "Captura de Áudio (Grupo)",
   image_submission: "Envio de Imagens e Fotos",
   video_submission: "Envio ou Gravação de Vídeos",
-  video_prompt_pair: "Vídeo Original + Modificado + Prompt",
+  video_prompt_pair: "Envio ou Gravação de Vídeos (Múltiplos)",
   data_labeling: "Data Labelling",
   transcription: "Transcrição",
   prompt_review: "Revisão de Prompt",
