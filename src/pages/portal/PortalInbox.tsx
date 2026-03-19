@@ -287,7 +287,7 @@ function ThreadList({
                               : t("inbox.general")}
                         </span>
                         <span className="font-mono text-xs shrink-0 ml-2" style={{ color: "var(--portal-text-muted)" }}>
-                          {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
+                          {new Date(thread.last_message_at).toLocaleDateString(i18n.language === "en" ? "en-US" : i18n.language === "es" ? "es-ES" : "pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                           })}
