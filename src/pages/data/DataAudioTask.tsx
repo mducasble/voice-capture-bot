@@ -277,6 +277,7 @@ export default function DataAudioTask() {
 
   const handleTimeout = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (rec) skippedIdsRef.current.add(rec.id);
     toast.warning("Tempo esgotado! Carregando próximo conteúdo...");
     await finishTask("timeout");
     loadNext();
