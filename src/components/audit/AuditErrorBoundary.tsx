@@ -7,6 +7,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  errorMessage: string;
 }
 
 export class AuditErrorBoundary extends Component<Props, State> {
