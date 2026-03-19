@@ -114,6 +114,51 @@ function getTrackMetrics(sib: any) {
   ].filter((m) => m.val != null);
 }
 
+function getEnhancedMetrics(sib: any) {
+  const meta = sib.metadata || {};
+  const em = meta.enhanced_metrics;
+  if (!em) return [];
+  return [
+    { key: "snr_db", label: "SNR", unit: "dB", val: em.snr_db },
+    { key: "sigmos_ovrl", label: "SigMOS Overall", val: em.sigmos_ovrl },
+    { key: "srmr", label: "SRMR", val: em.srmr },
+    { key: "rms_dbfs", label: "RMS Level", unit: "dBFS", val: em.rms_dbfs },
+    { key: "wvmos", label: "WVMOS", val: em.wvmos },
+    { key: "vqscore", label: "VQScore", val: em.vqscore },
+    { key: "sigmos_reverb", label: "SigMOS Reverb", val: em.sigmos_reverb },
+    { key: "sigmos_disc", label: "SigMOS Disc", val: em.sigmos_disc },
+  ].filter((m) => m.val != null);
+}
+
+function deriveEnhancedTier(sib: any): string | undefined {
+  const meta = sib.metadata || {};
+  const stored = typeof meta.enhanced_quality_tier === "string" ? meta.enhanced_quality_tier.toUpperCase() : undefined;
+  if (stored) return stored;
+  const em = meta.enhanced_metrics;
+  if (!em) return undefined;
+  const metrics: [string, number | null | undefined][] = [
+    ["snr_db", em.snr_db],
+    ["sigmos_ovrl", em.sigmos_ovrl],
+    ["srmr", em.srmr],
+    ["rms_dbfs", em.rms_dbfs],
+    ["wvmos", em.wvmos],
+    ["vqscore", em.vqscore],
+    ["sigmos_reverb", em.sigmos_reverb],
+    ["sigmos_disc", em.sigmos_disc],
+  ];
+  let minOrder = 3;
+  let hasAny = false;
+  for (const [key, val] of metrics) {
+    if (val == null) continue;
+    hasAny = true;
+    const tier = deriveTierForMetric(key, Number(val));
+    const order = TIER_ORDER[tier] ?? 1;
+    if (order < minOrder) minOrder = order;
+  }
+  if (!hasAny) return undefined;
+  return TIER_FROM_ORDER[minOrder];
+}
+
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
