@@ -936,6 +936,23 @@ const Room = () => {
     navigate(isPortal ? "/" : "/admin/rooms");
   };
 
+  // Diagnostic: log render state for debugging disappearing top section
+  useEffect(() => {
+    if (currentParticipant && room) {
+      console.log("[Room:Render] state snapshot:", {
+        roomStatus: room.status,
+        isRecording: room.is_recording,
+        durationMinutes: room.duration_minutes,
+        topic: room.topic,
+        participantCount: participants.length,
+        currentParticipantId: currentParticipant.id,
+        audioTestStatus: currentParticipant.audio_test_status,
+        showTimer: !!room.duration_minutes,
+        showAudioTest: !room.is_recording && room.status !== "completed",
+      });
+    }
+  }, [room?.status, room?.is_recording, room?.duration_minutes, currentParticipant?.id, participants.length]);
+
   if (!room) {
     return (
       <div className={isPortal ? "" : "min-h-screen bg-background flex items-center justify-center"}>
@@ -1187,22 +1204,7 @@ const Room = () => {
       );
     }
 
-  // Diagnostic: log render state for debugging disappearing top section
-  useEffect(() => {
-    if (currentParticipant && room) {
-      console.log("[Room:Render] state snapshot:", {
-        roomStatus: room.status,
-        isRecording: room.is_recording,
-        durationMinutes: room.duration_minutes,
-        topic: room.topic,
-        participantCount: participants.length,
-        currentParticipantId: currentParticipant.id,
-        audioTestStatus: currentParticipant.audio_test_status,
-        showTimer: !!room.duration_minutes,
-        showAudioTest: !room.is_recording && room.status !== "completed",
-      });
-    }
-  }, [room?.status, room?.is_recording, room?.duration_minutes, currentParticipant?.id, participants.length]);
+  // Diagnostic log moved above early returns (see below)
 
   // Room view
   if (isPortal) {
