@@ -24,6 +24,9 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
   const participantIdRef = useRef<string | undefined>();
   // Map Daily session_id → our participant ID
   const dailyToLocalId = useRef<Map<string, string>>(new Map());
+  // Keep participants in a ref to avoid recreating callbacks on every poll
+  const participantsRef = useRef(participants);
+  useEffect(() => { participantsRef.current = participants; }, [participants]);
 
   useEffect(() => { participantIdRef.current = participantId; }, [participantId]);
 
@@ -49,7 +52,8 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
       
       const dailyPart = dp as any;
       const dailyName = dailyPart.user_name || "";
-      const matchedParticipant = participants.find(p => p.name === dailyName && p.id !== participantIdRef.current);
+      const currentParticipants = participantsRef.current;
+      const matchedParticipant = currentParticipants.find(p => p.name === dailyName && p.id !== participantIdRef.current);
       const localId = matchedParticipant?.id || sessionId;
       
       dailyToLocalId.current.set(sessionId, localId);
@@ -65,7 +69,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     }
 
     setRemoteStreams(newStreams);
-  }, [participants, updatePeerStatus]);
+  }, [updatePeerStatus]);
 
   // Core join logic extracted for reuse
   const joinDaily = useCallback(async () => {
@@ -186,7 +190,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     } catch (error) {
       console.error("[Daily] Join error:", error);
     }
-  }, [roomId, participantId, localStream, participants, rebuildRemoteStreams, updatePeerStatus]);
+  }, [roomId, participantId, localStream, rebuildRemoteStreams, updatePeerStatus]);
 
   // Leave Daily (without destroying the hook)
   const leaveDaily = useCallback(async () => {
@@ -245,11 +249,13 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
   }, [localStream]);
 
   // Rebuild streams when our participants list changes
+  // participantsRef is updated above; trigger rebuild on participants array identity change
   useEffect(() => {
     if (callRef.current && joinedRef.current) {
       rebuildRemoteStreams(callRef.current);
     }
-  }, [participants, rebuildRemoteStreams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants]);
 
   // Cleanup on unmount
   useEffect(() => {
