@@ -33,11 +33,15 @@ export default function PortalCampaignTask() {
     ? activeSections.map(s => s.name)
     : enabledTaskSets.filter(ts => ts.prompt_topic).map(ts => ts.prompt_topic!);
 
-  const primaryCategory = useMemo(() => {
+  const primaryTaskType = useMemo(() => {
     if (!enabledTaskSets.length) return null;
-    const first = enabledTaskSets[0];
-    return TASK_TYPE_CATEGORIES[first.task_type] || null;
+    return enabledTaskSets[0].task_type;
   }, [enabledTaskSets]);
+
+  const primaryCategory = useMemo(() => {
+    if (!primaryTaskType) return null;
+    return TASK_TYPE_CATEGORIES[primaryTaskType] || null;
+  }, [primaryTaskType]);
 
   const handleCreateRoom = async () => {
     if (!user || !campaign) return;
