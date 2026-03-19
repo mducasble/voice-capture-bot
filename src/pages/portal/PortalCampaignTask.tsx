@@ -109,7 +109,7 @@ export default function PortalCampaignTask() {
   }
 
   // --- Video Prompt Pair dedicated flow ---
-  if (primaryTaskType === "video_prompt_pair") {
+  if (primaryTaskType === "video_prompt_pair" || primaryTaskType === "video_submission") {
     const taskSetId = enabledTaskSets[0]?.id;
     return (
       <div className="space-y-6 max-w-3xl mx-auto">
