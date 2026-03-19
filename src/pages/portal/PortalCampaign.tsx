@@ -551,7 +551,7 @@ export default function PortalCampaign() {
           }
           const currency = campaign.reward_config!.currency || "USD";
           const payoutModel = campaign.reward_config!.payout_model || "per_hour";
-          const unitLabel = payoutModel === "per_unit" ? "/un" : "/h";
+          const unitLabel = (payoutModel === "per_unit" || payoutModel === "per_accepted_unit") ? "/un" : "/h";
           return (
             <Section title={t("campaign.referralDistribution") || "Distribuição Indicação"} icon={Share2}>
               <div className="space-y-3">
