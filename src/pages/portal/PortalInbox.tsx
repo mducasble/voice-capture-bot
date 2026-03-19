@@ -14,6 +14,7 @@ import {
   Plus,
   ChevronLeft,
   ArrowLeft,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -456,6 +457,7 @@ function ConversationView({
 }) {
   const { t, i18n } = useTranslation();
   const [reply, setReply] = useState("");
+  const [walletConfirmed, setWalletConfirmed] = useState(false);
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -496,6 +498,37 @@ function ConversationView({
     },
   });
 
+  // Wallet test thread detection
+  const isWalletTestThread = !!(thread && (thread as any).category === "payment" && /teste/i.test((thread as any).subject || ""));
+  const alreadyConfirmed = walletConfirmed || messages.some(
+    (m) => m.sender_id === userId && m.body.includes("✅ Confirmo que recebi")
+  );
+
+  const confirmWalletMutation = useMutation({
+    mutationFn: async () => {
+      const confirmBody = "✅ Confirmo que recebi a transação de teste na minha wallet.";
+      const { error: mErr } = await supabase
+        .from("inbox_messages" as any)
+        .insert({
+          thread_id: threadId,
+          sender_id: userId,
+          body: confirmBody,
+        } as any);
+      if (mErr) throw mErr;
+
+      await supabase
+        .from("inbox_threads" as any)
+        .update({ last_message_at: new Date().toISOString() } as any)
+        .eq("id", threadId);
+    },
+    onSuccess: () => {
+      setWalletConfirmed(true);
+      toast.success(t("inbox.confirmationSent", "Confirmação enviada!"));
+      queryClient.invalidateQueries({ queryKey: ["portal-inbox-messages", threadId] });
+      queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
+    },
+    onError: () => toast.error(t("inbox.replyError")),
+  });
   const replyMutation = useMutation({
     mutationFn: async (body: string) => {
       const { error: mErr } = await supabase
@@ -627,6 +660,35 @@ function ConversationView({
                 </div>
               );
             })}
+            {/* Wallet test confirmation button */}
+            {isWalletTestThread && !alreadyConfirmed && (
+              <div className="flex justify-center py-3">
+                <Button
+                  onClick={() => confirmWalletMutation.mutate()}
+                  disabled={confirmWalletMutation.isPending}
+                  className="font-mono text-xs uppercase tracking-widest gap-2"
+                  style={{
+                    background: "rgba(140, 255, 5, 0.2)",
+                    color: "rgba(140, 255, 5, 0.95)",
+                    border: "1px solid rgba(140, 255, 5, 0.4)",
+                  }}
+                >
+                  {confirmWalletMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4" />
+                  )}
+                  Confirmar recebimento
+                </Button>
+              </div>
+            )}
+            {isWalletTestThread && alreadyConfirmed && (
+              <div className="flex justify-center py-3">
+                <span className="font-mono text-xs" style={{ color: "rgba(140, 255, 5, 0.6)" }}>
+                  ✅ Recebimento confirmado
+                </span>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         )}
