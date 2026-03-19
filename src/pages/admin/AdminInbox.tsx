@@ -53,6 +53,7 @@ export default function AdminInbox() {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [verifyingWalletThread, setVerifyingWalletThread] = useState<string | null>(null);
+  const [showBroadcast, setShowBroadcast] = useState(false);
 
   /* ─── Verify wallet (thread context) ─── */
   const handleVerifyWalletThread = async (userId: string, threadId: string) => {
