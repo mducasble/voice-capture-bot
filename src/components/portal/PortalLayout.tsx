@@ -138,7 +138,6 @@ function PortalHeader({ navItems, user, signOut }: { navItems: NavItem[]; user: 
             title={t("nav.inbox") || "Inbox"}
           >
             <Mail className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("nav.inbox") || "Inbox"}</span>
           </Link>
         </nav>
 
