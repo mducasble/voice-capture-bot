@@ -88,7 +88,7 @@ export default function AdminFinance() {
       const userIds = Array.from(byUser.keys());
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, wallet_id, country")
+        .select("id, full_name, wallet_id, wallet_verified, country")
         .in("id", userIds);
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -100,6 +100,7 @@ export default function AdminFinance() {
           user_id: userId,
           full_name: profile?.full_name || null,
           wallet_id: profile?.wallet_id || null,
+          wallet_verified: profile?.wallet_verified ?? false,
           country: profile?.country || null,
           total_pending: Math.round(data.total * 10000) / 10000,
           currency: data.currency,
