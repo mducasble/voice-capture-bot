@@ -461,41 +461,6 @@ function ConversationView({
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Check if this is a wallet test thread
-  const isWalletTestThread = !!(thread && (thread as any).category === "payment" && /teste/i.test((thread as any).subject || ""));
-
-  // Check if user already confirmed (look for confirmation message in thread)
-  const alreadyConfirmed = walletConfirmed || messages.some(
-    (m) => m.sender_id === userId && m.body.includes("✅ Confirmo que recebi")
-  );
-
-  const confirmWalletMutation = useMutation({
-    mutationFn: async () => {
-      // Send confirmation reply
-      const confirmBody = "✅ Confirmo que recebi a transação de teste na minha wallet.";
-      const { error: mErr } = await supabase
-        .from("inbox_messages" as any)
-        .insert({
-          thread_id: threadId,
-          sender_id: userId,
-          body: confirmBody,
-        } as any);
-      if (mErr) throw mErr;
-
-      await supabase
-        .from("inbox_threads" as any)
-        .update({ last_message_at: new Date().toISOString() } as any)
-        .eq("id", threadId);
-    },
-    onSuccess: () => {
-      setWalletConfirmed(true);
-      toast.success(t("inbox.confirmationSent", "Confirmação enviada!"));
-      queryClient.invalidateQueries({ queryKey: ["portal-inbox-messages", threadId] });
-      queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
-    },
-    onError: () => toast.error(t("inbox.replyError")),
-  });
-
   const { data: thread } = useQuery({
     queryKey: ["portal-inbox-thread", threadId],
     queryFn: async () => {
