@@ -182,6 +182,7 @@ export default function DataAudioTask() {
   const [taskLogId, setTaskLogId] = useState<string | null>(null);
   const [taskSetId, setTaskSetId] = useState<string | null>(null);
   const [queuedJobs, setQueuedJobs] = useState<Record<string, "analyze" | "enhance" | "both">>({});
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, "original" | "enhanced">>({});
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
