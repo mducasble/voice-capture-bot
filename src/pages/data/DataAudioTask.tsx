@@ -626,7 +626,9 @@ export default function DataAudioTask() {
             const originalUrl = sib.file_url;
             const hasEnhanced = !!enhancedUrl;
             const sibTier = deriveTier(sib);
+            const sibEnhancedTier = deriveEnhancedTier(sib);
             const sibMetrics = getTrackMetrics(sib);
+            const sibEnhancedMetrics = getEnhancedMetrics(sib);
             const jobState = queuedJobs[sib.id];
             const analyzeQueued = jobState === "analyze" || jobState === "both";
             const enhanceQueued = jobState === "enhance" || jobState === "both";
@@ -640,14 +642,17 @@ export default function DataAudioTask() {
                 enhancedUrl={enhancedUrl}
                 originalUrl={originalUrl}
                 sibTier={sibTier}
+                enhancedTier={sibEnhancedTier}
                 sibMetrics={sibMetrics}
+                enhancedMetrics={sibEnhancedMetrics}
                 analyzeQueued={analyzeQueued}
                 enhanceQueued={enhanceQueued}
                 logAction={logAction}
                 handleReanalyze={handleReanalyze}
                 handleEnhance={handleEnhance}
+                selectedVersion={selectedVersions[sib.id] || "original"}
+                onSelectVersion={(id, v) => setSelectedVersions(prev => ({ ...prev, [id]: v }))}
               />
-
             );
           })}
         </div>
