@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Inbox } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Mail } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
