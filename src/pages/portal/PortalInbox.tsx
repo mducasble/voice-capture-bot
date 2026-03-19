@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import {
   Inbox,
   MessageSquare,
@@ -46,6 +47,7 @@ interface Message {
 /* ─── Main Component ─── */
 export default function PortalInbox() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showNewThread, setShowNewThread] = useState(false);
   const isMobile = useIsMobile();
@@ -63,7 +65,7 @@ export default function PortalInbox() {
           className="text-xl font-black uppercase tracking-wider"
           style={{ color: "var(--portal-text)" }}
         >
-          Mensagens
+          {t("inbox.title")}
         </h1>
       </div>
 
@@ -133,7 +135,7 @@ export default function PortalInbox() {
                     className="font-mono text-sm"
                     style={{ color: "var(--portal-text-muted)" }}
                   >
-                    Selecione uma conversa
+                    {t("inbox.selectConversation")}
                   </p>
                 </div>
               </div>
@@ -157,6 +159,7 @@ function ThreadList({
   onSelectThread: (id: string) => void;
   onNewThread: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const { data: threads = [], isLoading } = useQuery({
     queryKey: ["portal-inbox-threads", userId],
     queryFn: async () => {
@@ -216,13 +219,13 @@ function ThreadList({
           className="font-mono text-xs uppercase tracking-widest font-bold"
           style={{ color: "var(--portal-text-muted)" }}
         >
-          Conversas
+          {t("inbox.conversations")}
         </span>
         <button
           onClick={onNewThread}
           className="h-7 w-7 flex items-center justify-center transition-colors hover:opacity-80"
           style={{ color: "var(--portal-accent)" }}
-          title="Nova mensagem"
+          title={t("inbox.newMessage")}
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -241,7 +244,7 @@ function ThreadList({
               style={{ color: "var(--portal-text-muted)", opacity: 0.5 }}
             />
             <p className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>
-              Nenhuma mensagem
+              {t("inbox.noMessages")}
             </p>
           </div>
         ) : (
@@ -278,13 +281,13 @@ function ThreadList({
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
                           {thread.category === "support"
-                            ? "Suporte"
+                            ? t("inbox.support")
                             : thread.category === "payment"
-                              ? "Pagamento"
-                              : "Geral"}
+                              ? t("inbox.payment")
+                              : t("inbox.general")}
                         </span>
                         <span className="font-mono text-xs shrink-0 ml-2" style={{ color: "var(--portal-text-muted)" }}>
-                          {new Date(thread.last_message_at).toLocaleDateString("pt-BR", {
+                          {new Date(thread.last_message_at).toLocaleDateString(i18n.language === "en" ? "en-US" : i18n.language === "es" ? "es-ES" : "pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                           })}
@@ -326,6 +329,7 @@ function NewThreadForm({
   onCreated: (threadId: string) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
@@ -356,11 +360,11 @@ function NewThreadForm({
       return (thread as any).id;
     },
     onSuccess: (threadId) => {
-      toast.success("Mensagem enviada!");
+      toast.success(t("inbox.sent"));
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
       onCreated(threadId);
     },
-    onError: () => toast.error("Erro ao enviar mensagem"),
+    onError: () => toast.error(t("inbox.sendError")),
   });
 
   return (
@@ -377,21 +381,21 @@ function NewThreadForm({
           className="font-mono text-xs uppercase tracking-widest font-bold"
           style={{ color: "var(--portal-text)" }}
         >
-          Nova Mensagem
+          {t("inbox.newMessage")}
         </span>
       </div>
 
       {/* Form */}
       <div className="flex-1 p-4 space-y-4">
         <Input
-          placeholder="Assunto"
+          placeholder={t("inbox.subject")}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           className="font-mono text-sm bg-transparent border-0 border-b px-0 rounded-none focus-visible:ring-0"
           style={{ borderColor: "var(--portal-border)", color: "var(--portal-text)" }}
         />
         <Textarea
-          placeholder="Escreva sua mensagem..."
+          placeholder={t("inbox.writePlaceholder")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
@@ -413,7 +417,7 @@ function NewThreadForm({
           ) : (
             <Send className="h-4 w-4 mr-2" />
           )}
-          Enviar
+          {t("inbox.send")}
         </Button>
       </div>
     </div>
@@ -430,6 +434,7 @@ function ConversationView({
   userId: string;
   onBack?: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const [reply, setReply] = useState("");
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -492,7 +497,7 @@ function ConversationView({
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-messages", threadId] });
       queryClient.invalidateQueries({ queryKey: ["portal-inbox-threads"] });
     },
-    onError: () => toast.error("Erro ao enviar resposta"),
+    onError: () => toast.error(t("inbox.replyError")),
   });
 
   // Auto-scroll to bottom
@@ -529,7 +534,7 @@ function ConversationView({
           </p>
           {thread && (
             <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-              {(thread as any).status === "open" ? "Aberto" : "Fechado"}
+              {(thread as any).status === "open" ? t("inbox.open") : t("inbox.closed")}
             </p>
           )}
         </div>
@@ -559,7 +564,7 @@ function ConversationView({
                       )}
                       style={{ color: isMe ? "var(--portal-text-muted)" : "rgba(140, 255, 5, 0.8)" }}
                     >
-                      {isMe ? "Você" : "Equipe KGeN"}
+                      {isMe ? t("inbox.you") : t("inbox.team")}
                     </p>
 
                     {/* Bubble */}
@@ -587,7 +592,7 @@ function ConversationView({
                       )}
                     >
                       <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
-                        {new Date(msg.created_at).toLocaleString("pt-BR", {
+                        {new Date(msg.created_at).toLocaleString(i18n.language === "en" ? "en-US" : i18n.language === "es" ? "es-ES" : "pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
@@ -614,7 +619,7 @@ function ConversationView({
           style={{ borderTop: "1px solid rgba(255, 255, 255, 0.02)", background: "rgba(255, 255, 255, 0.004)" }}
         >
           <Textarea
-            placeholder="Escreva uma resposta..."
+            placeholder={t("inbox.replyPlaceholder")}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={handleKeyDown}

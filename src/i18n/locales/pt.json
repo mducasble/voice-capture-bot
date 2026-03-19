@@ -388,5 +388,26 @@
     "blockTitle": "Em Manutenção",
     "blockMessage": "Estamos aplicando melhorias. Volte em breve!",
     "forecast": "Previsão"
+  },
+  "inbox": {
+    "title": "Mensagens",
+    "conversations": "Conversas",
+    "newMessage": "Nova Mensagem",
+    "selectConversation": "Selecione uma conversa",
+    "noMessages": "Nenhuma mensagem",
+    "subject": "Assunto",
+    "writePlaceholder": "Escreva sua mensagem...",
+    "replyPlaceholder": "Escreva uma resposta...",
+    "send": "Enviar",
+    "sent": "Mensagem enviada!",
+    "sendError": "Erro ao enviar mensagem",
+    "replyError": "Erro ao enviar resposta",
+    "you": "Você",
+    "team": "Equipe KGeN",
+    "open": "Aberto",
+    "closed": "Fechado",
+    "general": "Geral",
+    "support": "Suporte",
+    "payment": "Pagamento"
   }
 }
