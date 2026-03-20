@@ -518,12 +518,16 @@ export default function DataAudioTask() {
     loadNext();
   };
 
-  const handleFlag = async () => {
+  const handleFlag = async (reason: string) => {
     if (!rec) return;
     setSaving(true);
-    logAction("flag");
-    const { error } = await supabase.from("voice_recordings").update({ quality_status: "flagged" }).eq("id", rec.id);
+    logAction("flag", reason);
+    const { error } = await supabase.from("voice_recordings").update({
+      quality_status: "flagged",
+      quality_rejection_reason: reason,
+    }).eq("id", rec.id);
     setSaving(false);
+    setShowFlagModal(false);
     if (error) { toast.error("Erro ao flaguear"); return; }
     toast.success("Flagueado para revisão.");
     await finishTask("completed", "flagged");
