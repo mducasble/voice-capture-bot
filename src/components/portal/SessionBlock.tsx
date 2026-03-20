@@ -168,7 +168,30 @@ function MissingTrackRow({ label, icon, trackType, onUpload, uploading, progress
   );
 }
 
-interface SessionBlockProps {
+function UploadedRow({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+      {icon && <span style={{ color: "var(--portal-text-muted)" }}>{icon}</span>}
+      <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>{label}</span>
+      <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+        <CheckCircle className="h-3 w-3" /> Enviado
+      </span>
+    </div>
+  );
+}
+
+function ResubmittedRow({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+      {icon && <span style={{ color: "var(--portal-text-muted)" }}>{icon}</span>}
+      <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>{label}</span>
+      <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+        <RefreshCw className="h-3 w-3" /> Reenviado
+      </span>
+    </div>
+  );
+}
+
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
