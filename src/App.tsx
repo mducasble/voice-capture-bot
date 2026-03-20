@@ -187,6 +187,8 @@ const App = () => (
                 <Route path="extras/qc/:campaignId" element={<DataVideoTask />} />
                 <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
                 <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
+                <Route path="audio/flagged/:campaignId" element={<DataFlaggedQueue />} />
+                <Route path="audio/revisions/:campaignId" element={<DataRevisionQueue />} />
                 <Route path="profile" element={<DataProfile />} />
               </Route>
 
