@@ -108,114 +108,127 @@ function PairCard({
   onRejectAll: (ids: string[], reason: string, textId?: string) => void;
   isMutating: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
   const original = videos.find(v => v.metadata?.video_role === "original");
   const modified = videos.find(v => v.metadata?.video_role === "modified");
   const allPending = videos.every(v => getStatus(v) === "pending") && (!text || getStatus(text) === "pending");
+  const overallStatus = allPending ? "pending" : videos.some(v => getStatus(v) === "rejected") ? "rejected" : "approved";
   const senderName = videos[0]?.metadata?.sender_name || profileName;
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full text-left px-5 py-4 flex items-center gap-3 hover:bg-white/[0.03] transition-colors">
-        <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-          <Film className="h-5 w-5 text-purple-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold text-white">Par de Vídeos + Prompt</span>
-            <StatusPill status={allPending ? "pending" : videos.some(v => getStatus(v) === "rejected") ? "rejected" : "approved"} />
-          </div>
-          <div className="flex items-center gap-3 mt-0.5">
-            <span className="flex items-center gap-1 text-[11px] text-white/40">
-              <User className="h-3 w-3" /> {senderName}
-            </span>
-            <span className="text-[11px] text-white/30">
-              {new Date(videos[0]?.created_at).toLocaleDateString("pt-BR")}
-            </span>
-          </div>
-        </div>
-        {expanded
-          ? <ChevronUp className="h-4 w-4 text-white/30 shrink-0" />
-          : <ChevronDown className="h-4 w-4 text-white/30 shrink-0" />}
-      </button>
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <StatusPill status={overallStatus} />
+        <span className="flex items-center gap-1 text-sm text-white/60">
+          <User className="h-3.5 w-3.5" /> {senderName}
+        </span>
+        <span className="text-xs text-white/30 ml-auto">
+          {new Date(videos[0]?.created_at).toLocaleDateString("pt-BR")}{" "}
+          {new Date(videos[0]?.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </div>
 
-      {expanded && (
-        <div className="border-t border-white/[0.06] p-5 space-y-5">
-          {/* Original video */}
-          {original?.file_url && (
-            <div>
-              <p className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Vídeo Original</p>
-              <video src={original.file_url} controls className="w-full max-h-72 rounded-xl bg-black/40 object-contain" />
-              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/30 font-mono">
+      {/* Videos side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Original */}
+        <div>
+          <p className="text-[11px] font-bold text-white/30 uppercase tracking-wider mb-2">
+            <Film className="h-3 w-3 inline mr-1" /> Vídeo Original
+          </p>
+          {original?.file_url ? (
+            <>
+              <video src={original.file_url} controls className="w-full rounded-xl bg-black/40 max-h-56 object-contain" />
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-white/30 font-mono">
                 {original.duration_seconds && <span>{formatDuration(original.duration_seconds)}</span>}
                 {original.width && original.height && <span>{original.width}×{original.height}</span>}
                 {original.file_size_bytes && <span>{formatBytes(original.file_size_bytes)}</span>}
+                <a href={original.file_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 hover:text-white/60">
+                  <ExternalLink className="h-3 w-3" /> Abrir
+                </a>
               </div>
-            </div>
+            </>
+          ) : (
+            <div className="h-32 rounded-xl bg-white/[0.04] flex items-center justify-center text-white/20 text-xs">Sem vídeo</div>
           )}
+        </div>
 
-          {/* Modified video */}
-          {modified?.file_url && (
-            <div>
-              <p className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">Vídeo Modificado</p>
-              <video src={modified.file_url} controls className="w-full max-h-72 rounded-xl bg-black/40 object-contain" />
-              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/30 font-mono">
+        {/* Modified */}
+        <div>
+          <p className="text-[11px] font-bold text-white/30 uppercase tracking-wider mb-2">
+            <Film className="h-3 w-3 inline mr-1" /> Vídeo Editado
+          </p>
+          {modified?.file_url ? (
+            <>
+              <video src={modified.file_url} controls className="w-full rounded-xl bg-black/40 max-h-56 object-contain" />
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-white/30 font-mono">
                 {modified.duration_seconds && <span>{formatDuration(modified.duration_seconds)}</span>}
                 {modified.width && modified.height && <span>{modified.width}×{modified.height}</span>}
                 {modified.file_size_bytes && <span>{formatBytes(modified.file_size_bytes)}</span>}
+                <a href={modified.file_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 hover:text-white/60">
+                  <ExternalLink className="h-3 w-3" /> Abrir
+                </a>
               </div>
-            </div>
+            </>
+          ) : (
+            <div className="h-32 rounded-xl bg-white/[0.04] flex items-center justify-center text-white/20 text-xs">Sem vídeo</div>
           )}
+        </div>
+      </div>
 
-          {/* Prompt text */}
-          {text?.content && (
-            <div>
-              <p className="text-[12px] font-bold text-white/30 uppercase tracking-wider mb-2">
-                <FileText className="h-3 w-3 inline mr-1" /> Prompt
-              </p>
-              <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-[14px] text-white/70 leading-relaxed whitespace-pre-wrap">
-                {text.content}
-              </div>
-            </div>
-          )}
+      {/* Text */}
+      <div className="mb-4">
+        <p className="text-[11px] font-bold text-white/30 uppercase tracking-wider mb-2">
+          <FileText className="h-3 w-3 inline mr-1" /> Texto Enviado
+        </p>
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
+          {text?.content || <span className="text-white/20 italic">Sem texto</span>}
+        </div>
+      </div>
 
-          {/* Actions */}
-          {allPending && (
-            <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-              <Button
-                size="sm"
-                onClick={() => onApproveAll(videos.map(v => v.id), text?.id)}
-                disabled={isMutating}
-                className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" /> Aprovar Tudo
-              </Button>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select value={rejectionReason} onValueChange={setRejectionReason}>
-                  <SelectTrigger className="w-full max-w-md text-xs h-8 bg-white/[0.04] border-white/[0.08] text-white">
-                    <SelectValue placeholder="Motivo da rejeição..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REJECTION_REASONS.map(r => (
-                      <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
-                  disabled={isMutating || !rejectionReason}
-                  onClick={() => { onRejectAll(videos.map(v => v.id), rejectionReason, text?.id); setRejectionReason(""); }}
-                >
-                  <XCircle className="h-3.5 w-3.5" /> Rejeitar Tudo
-                </Button>
-              </div>
-            </div>
-          )}
+      {/* Actions */}
+      {allPending && (
+        <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+          <Button
+            size="sm"
+            onClick={() => onApproveAll(videos.map(v => v.id), text?.id)}
+            disabled={isMutating}
+            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" /> Aprovar Tudo
+          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={rejectionReason} onValueChange={setRejectionReason}>
+              <SelectTrigger className="w-full max-w-md text-xs h-8 bg-white/[0.04] border-white/[0.08] text-white">
+                <SelectValue placeholder="Motivo da rejeição..." />
+              </SelectTrigger>
+              <SelectContent>
+                {REJECTION_REASONS.map(r => (
+                  <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
+              disabled={isMutating || !rejectionReason}
+              onClick={() => { onRejectAll(videos.map(v => v.id), rejectionReason, text?.id); setRejectionReason(""); }}
+            >
+              <XCircle className="h-3.5 w-3.5" /> Rejeitar Tudo
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {overallStatus === "rejected" && (
+        <div className="pt-3 border-t border-white/[0.06]">
+          <span className="text-[12px] text-red-400 font-mono">
+            Rejeitado: {videos[0]?.quality_rejection_reason || videos[0]?.validation_rejection_reason || "—"}
+          </span>
         </div>
       )}
     </div>
