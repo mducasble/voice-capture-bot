@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import LanguageSelector from "./LanguageSelector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { FaqSidebar } from "./FaqSidebar";
+import { FaqSidebar, CommunityFloater } from "./FaqSidebar";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useAutoFillCountry } from "@/hooks/useAutoFillCountry";
 import { AnnouncementBanners } from "@/components/AnnouncementBanner";
@@ -70,6 +70,7 @@ export default function PortalLayout() { // layout-root
 
         {/* FAQ sidebar — hide on room pages */}
         {!location.pathname.startsWith("/room/") && <FaqSidebar />}
+        {!location.pathname.startsWith("/room/") && <CommunityFloater />}
       </div>
     </div>
   );

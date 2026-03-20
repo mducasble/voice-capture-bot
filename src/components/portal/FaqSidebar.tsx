@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { HelpCircle, Bug, X, ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
@@ -215,9 +216,96 @@ export function FaqSidebar() {
                 </div>
               </div>
             ))}
+
+            {/* Community links */}
+            <CommunityLinks />
           </div>
         </ScrollArea>
       </div>
     </>
+  );
+}
+
+const communityLinks = [
+  { label: "WhatsApp Brasil", href: "https://chat.whatsapp.com/LD2A20Q9BqmIbGycsbAHWI", flag: "🇧🇷" },
+  { label: "WhatsApp Español", href: "https://chat.whatsapp.com/CXSGzFWSiJFFGiXt70AqxB", flag: "🇪🇸" },
+  { label: "Discord", href: "https://discord.gg/invite/kgenquest", flag: "💬" },
+];
+
+function CommunityLinks() {
+  return (
+    <div className="pt-[30px] space-y-2">
+      <p
+        className="font-mono text-sm font-bold uppercase tracking-[0.3em]"
+        style={{ color: "var(--portal-accent)" }}
+      >
+        Comunidade
+      </p>
+      <div className="flex items-center gap-3">
+        {communityLinks.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors"
+            style={{
+              border: "1px solid var(--portal-border)",
+              background: "var(--portal-card-bg)",
+              color: "var(--portal-text-muted)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--portal-accent)";
+              e.currentTarget.style.color = "var(--portal-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--portal-border)";
+              e.currentTarget.style.color = "var(--portal-text-muted)";
+            }}
+          >
+            <span className="text-base">{link.flag}</span>
+            <span>{link.label}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CommunityFloater() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-6 left-6 z-40">
+      {open && (
+        <div
+          className="mb-3 p-3 space-y-2 rounded-lg shadow-lg"
+          style={{ background: "var(--portal-bg)", border: "1px solid var(--portal-border)" }}
+        >
+          {communityLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors"
+              style={{ color: "var(--portal-text-muted)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--portal-text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--portal-text-muted)"; }}
+            >
+              <span className="text-base">{link.flag}</span>
+              <span>{link.label}</span>
+            </a>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110"
+        style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
+      >
+        <MessageCircle className="h-5 w-5" />
+      </button>
+    </div>
   );
 }
