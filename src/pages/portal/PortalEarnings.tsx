@@ -33,6 +33,7 @@ function MoneyValue({ value, size = "sm", color }: { value: string; size?: "sm" 
 export default function PortalEarnings() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
