@@ -340,7 +340,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   const hostLabel = host?.name || "Host";
   const guestLabel = guest?.name || "Participante";
 
-  const hasParts = !loadingParts && participants.length >= 2;
+  const hasParts = !loadingParts && participants.length >= 1;
 
   return (
     <div>
