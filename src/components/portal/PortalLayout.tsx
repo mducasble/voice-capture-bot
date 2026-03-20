@@ -70,6 +70,7 @@ export default function PortalLayout() { // layout-root
 
         {/* FAQ sidebar — hide on room pages */}
         {!location.pathname.startsWith("/room/") && <FaqSidebar />}
+        {!location.pathname.startsWith("/room/") && <CommunityFloater />}
       </div>
     </div>
   );
