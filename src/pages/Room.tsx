@@ -1423,6 +1423,50 @@ const Room = () => {
     // user_id check is handled in useEffect, but we can also use localStorage as primary UI hint
     const isLikelyCreator = !!(storedParticipantId && creatorParticipant && storedParticipantId === creatorParticipant.id);
 
+    // Awaiting host approval screen (public rooms)
+    if (awaitingApproval) {
+      return (
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-2 animate-pulse" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+            <h2 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+              Aguardando Aprovação
+            </h2>
+            <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              Sua solicitação foi enviada ao host. Você será conectado automaticamente quando aprovado.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Rejected join request screen
+    if (joinRequestRejected) {
+      return (
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-2" style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}>
+              <XCircle className="h-8 w-8" />
+            </div>
+            <h2 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
+              Solicitação Recusada
+            </h2>
+            <p className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
+              O host recusou sua entrada nesta sala.
+            </p>
+            <KGenButton
+              variant="outline"
+              className="mx-auto"
+              onClick={() => navigate("/rooms")}
+              scrambleText="VOLTAR ÀS SALAS"
+            />
+          </div>
+        </div>
+      );
+    }
+
     // Join screen
     if (!currentParticipant) {
       if (isPortal) {
