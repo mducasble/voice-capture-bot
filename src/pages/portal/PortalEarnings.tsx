@@ -172,7 +172,16 @@ export default function PortalEarnings() {
         </div>
       </div>
 
-      {/* <EarningsDetailPanel /> */}
+      <div style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
+        <button
+          onClick={() => navigate("/portal/payment-history")}
+          className="w-full flex items-center justify-center gap-3 p-4 font-mono text-sm uppercase tracking-widest font-bold transition-colors"
+          style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
+        >
+          <Receipt className="h-4 w-4" />
+          Extrato de Pagamentos
+        </button>
+      </div>
     </div>
   );
 }
