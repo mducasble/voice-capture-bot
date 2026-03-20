@@ -396,6 +396,25 @@ export default function PortalMyCampaigns() {
 
   const campaignIds = participations?.map((p: any) => p.campaign_id) || [];
 
+  // Fetch reward configs for all campaigns
+  const { data: rewardConfigs } = useQuery({
+    queryKey: ["campaign_reward_configs", campaignIds],
+    queryFn: async () => {
+      if (!campaignIds.length) return [];
+      const { data } = await supabase
+        .from("campaign_reward_config")
+        .select("campaign_id, base_rate, currency")
+        .in("campaign_id", campaignIds);
+      return data || [];
+    },
+    enabled: campaignIds.length > 0,
+  });
+
+  const rewardConfigMap = new Map<string, { base_rate: number; currency: string }>();
+  for (const rc of (rewardConfigs || [])) {
+    if (rc.base_rate != null) rewardConfigMap.set(rc.campaign_id, { base_rate: rc.base_rate, currency: rc.currency || "USD" });
+  }
+
   // Fetch all submission types in parallel
   const { data: allSubmissions } = useQuery({
     queryKey: ["my_campaign_all_submissions", campaignIds],
