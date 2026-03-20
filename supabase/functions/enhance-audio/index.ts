@@ -864,8 +864,10 @@ serve(async (req) => {
       await phaseInit(recording_id, file_url, job_id || 'direct');
     }
 
+    const metricsUrl = Deno.env.get('METRICS_API_URL') || '';
+    const serviceName = metricsUrl.includes('hf.space') || metricsUrl.includes('huggingface') ? 'HuggingFace' : 'VPS Metrics';
     return new Response(
-      JSON.stringify({ success: true, recording_id }),
+      JSON.stringify({ success: true, recording_id, service: serviceName }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

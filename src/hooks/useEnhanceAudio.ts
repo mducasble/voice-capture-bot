@@ -47,9 +47,10 @@ export function useEnhanceAudio() {
 
       return data;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      const service = data?.service || "desconhecido";
       toast.success("Enhancement iniciado!", {
-        description: "O áudio está sendo processado. Acompanhe o status na fila.",
+        description: `Serviço: ${service} — O áudio está sendo processado.`,
       });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
       queryClient.invalidateQueries({ queryKey: ["enhance-job", variables.recordingId] });

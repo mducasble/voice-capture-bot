@@ -52,12 +52,15 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled", target: Analys
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       const targetLabel = target === "enhanced" ? " (Enhanced)" : "";
       const modeLabel = mode === "full_segments" 
         ? "Análise completa (segmentos de 1min)" 
         : "Análise amostrada (10s/min)";
-      toast.success(`${modeLabel}${targetLabel} reenviada com sucesso!`);
+      const service = data?.service ? ` via ${data.service}` : "";
+      toast.success(`${modeLabel}${targetLabel} reenviada com sucesso!`, {
+        description: service ? `Serviço: ${data.service}` : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error) => {
