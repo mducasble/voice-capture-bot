@@ -383,7 +383,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
   isPending: boolean;
 }) {
   const [userSearch, setUserSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; wallet_id?: string; country?: string; email_contact?: string } | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("general");
