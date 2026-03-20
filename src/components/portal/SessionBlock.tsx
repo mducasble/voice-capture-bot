@@ -341,19 +341,9 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       return;
     }
 
-    // Check if the filename contains a session ID that doesn't match this session
-    const filenameSessionMatch = file.name.match(/room_([a-f0-9-]{36})/i);
-    if (filenameSessionMatch) {
-      const fileSessionId = filenameSessionMatch[1];
-      if (fileSessionId !== sessionId) {
-        const shortFile = fileSessionId.slice(0, 8);
-        const shortCurrent = sessionId.slice(0, 8);
-        const proceed = window.confirm(
-          `⚠️ Atenção: este arquivo parece ser da sessão ${shortFile}…, mas você está enviando para a sessão ${shortCurrent}…\n\nTem certeza que deseja continuar?`
-        );
-        if (!proceed) return;
-      }
-    }
+    // Check if the file belongs to a different session
+    const canProceed = await checkSessionMismatch(file.name);
+    if (!canProceed) return;
 
     setUploading(trackType);
     setProgress(0);
