@@ -122,7 +122,7 @@ serve(async (req) => {
         discord_channel_id: session_id,
         discord_user_id: participant_id,
         discord_username: participant_name,
-        user_id: authUserId,
+        user_id: effectiveUserId,
         campaign_id,
         filename,
         file_url,
