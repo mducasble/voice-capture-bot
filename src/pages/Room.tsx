@@ -283,6 +283,93 @@ const Room = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteStreams.size]);
 
+  // ALL participants: start remote recorders when recording begins (not just creator)
+  useEffect(() => {
+    if (
+      room?.is_recording &&
+      currentParticipant &&
+      !currentParticipant.is_creator &&
+      remoteStreams.size > 0 &&
+      !remoteRecorders.isRecording
+    ) {
+      console.log("[Room] Non-creator starting remote recorders for cross-backup");
+      remoteRecorders.startRecording(remoteStreams, participants);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.is_recording, currentParticipant?.is_creator, remoteStreams.size]);
+
+  // Non-creator: stop remote recorders and upload when recording ends
+  useEffect(() => {
+    if (
+      room?.status === "completed" &&
+      !room.is_recording &&
+      currentParticipant &&
+      !currentParticipant.is_creator &&
+      remoteRecorders.isRecording &&
+      nonCreatorUploadedRef.current !== room.session_id
+    ) {
+      nonCreatorUploadedRef.current = room.session_id;
+      (async () => {
+        setUploadOverlayHold(true);
+        const remoteBlobs = await remoteRecorders.stopRecording();
+        if (remoteBlobs.size > 0) {
+          const newBlobs = new Map<string, { blob: Blob; label: string }>();
+          remoteBlobs.forEach(({ blob, participantName }, peerId) => {
+            newBlobs.set(`remote_${peerId}`, { blob, label: `Backup - ${participantName}` });
+          });
+          setSavedBlobs(newBlobs);
+
+          // Save to IndexedDB
+          for (const [peerId, { blob }] of remoteBlobs) {
+            try {
+              const { saveBlob } = await import("@/lib/audioIndexedDB");
+              await saveBlob(`${room.session_id}_remote_${peerId}`, blob);
+            } catch (e) { console.warn("[IndexedDB] Save failed:", e); }
+          }
+
+          setRemoteUploadsInProgress(remoteBlobs.size);
+          setRemoteUploadsDone(0);
+          const uploadPromises: Promise<void>[] = [];
+          for (const [peerId, { blob, participantName }] of remoteBlobs) {
+            const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+              setRemoteUploadsDone(prev => {
+                const next = prev + 1;
+                if (next >= remoteBlobs.size) {
+                  setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+                }
+                return next;
+              });
+            });
+            uploadPromises.push(p);
+          }
+          await Promise.allSettled(uploadPromises);
+        }
+        // Don't auto-dismiss — user will dismiss manually
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.status, room?.is_recording, currentParticipant?.is_creator, remoteRecorders.isRecording]);
+
+  // Overlay elapsed timer
+  useEffect(() => {
+    const isActive = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    if (isActive && !overlayStartedAt) {
+      setOverlayStartedAt(Date.now());
+    }
+    if (!isActive && overlayStartedAt) {
+      setOverlayStartedAt(null);
+      setOverlayElapsed(0);
+    }
+  }, [isMixedUploading, remoteUploadsInProgress, uploadOverlayHold, overlayStartedAt]);
+
+  useEffect(() => {
+    if (!overlayStartedAt) return;
+    const interval = setInterval(() => {
+      setOverlayElapsed(Math.floor((Date.now() - overlayStartedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [overlayStartedAt]);
+
   // Enumerate audio input devices
   useEffect(() => {
     const loadDevices = async () => {
