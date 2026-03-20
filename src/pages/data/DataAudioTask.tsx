@@ -192,6 +192,23 @@ export default function DataAudioTask() {
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Fetch pending count for this campaign
+  const fetchPendingCount = useCallback(async () => {
+    if (!campaignId) return;
+    const { count: totalCount } = await supabase
+      .from("voice_recordings")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId);
+    const { count: pendingTotal } = await supabase
+      .from("voice_recordings")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId)
+      .in("quality_status", ["pending", "failed"]);
+    if (totalCount != null && pendingTotal != null) {
+      setPendingCount({ done: totalCount - pendingTotal, total: totalCount });
+    }
+  }, [campaignId]);
+
   // Load task config
   useEffect(() => {
     if (!campaignId) return;
