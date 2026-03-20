@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users,
+  ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users, Globe,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import KGenButton from "@/components/portal/KGenButton";
