@@ -1,740 +1,103 @@
 import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { BrowserProvider, Contract, parseUnits, formatUnits } from "ethers";
-import {
-  Wallet,
-  Send,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-  ExternalLink,
-  Search,
-  RefreshCw,
-  Copy,
-  Link2,
-  ChevronDown,
-  ChevronRight,
-  TestTube2,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { connectPolygonWallet, type WalletState } from "@/lib/financeHelpers";
+import { WalletBar } from "@/components/admin/finance/WalletBar";
+import { FinancePending } from "@/components/admin/finance/FinancePending";
+import { FinanceCompleted } from "@/components/admin/finance/FinanceCompleted";
+import { FinanceDirectPay } from "@/components/admin/finance/FinanceDirectPay";
+import { toast } from "sonner";
 
-/* ─── USDT on Polygon ─── */
-const USDT_CONTRACT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
-const POLYGON_CHAIN_ID = "0x89"; // 137
-const POLYGON_RPC = "https://rpc.ankr.com/polygon";
-const POLYGONSCAN = "https://polygonscan.com/tx/";
-
-const ERC20_ABI = [
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)",
-];
-
-/* ─── Types ─── */
-interface PendingUser {
-  user_id: string;
-  full_name: string | null;
-  wallet_id: string | null;
-  wallet_verified: boolean;
-  country: string | null;
-  total_pending: number;
-  currency: string;
-  earning_ids: string[];
-}
-
-/* ─── Helpers ─── */
-function shortAddr(addr: string) {
-  return addr.slice(0, 6) + "..." + addr.slice(-4);
-}
-
-/* ─── Component ─── */
 export default function AdminFinance() {
-  const queryClient = useQueryClient();
-  const [walletAddr, setWalletAddr] = useState<string | null>(null);
-  const [walletBalance, setWalletBalance] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [payingUserId, setPayingUserId] = useState<string | null>(null);
-  const [testingUserId, setTestingUserId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [wallet, setWallet] = useState<WalletState>({ address: null, balance: null, connecting: false });
 
-  /* ─── Fetch pending earnings grouped by user ─── */
-  const { data: pendingUsers = [], isLoading, refetch } = useQuery({
-    queryKey: ["admin-finance-pending"],
+  const handleConnect = (address: string, balance: string) => {
+    setWallet({ address, balance, connecting: false });
+  };
+
+  const handleDisconnect = () => {
+    setWallet({ address: null, balance: null, connecting: false });
+  };
+
+  const refreshWallet = useCallback(async () => {
+    if (!wallet.address) return;
+    try {
+      const { address, balance } = await connectPolygonWallet();
+      setWallet(prev => ({ ...prev, address, balance }));
+    } catch {}
+  }, [wallet.address]);
+
+  /* ─── Summary stats ─── */
+  const { data: stats, refetch } = useQuery({
+    queryKey: ["admin-finance-summary"],
     queryFn: async () => {
-      // Get all credited (unpaid) earnings
       const { data: earnings, error } = await supabase
         .from("earnings_ledger")
-        .select("id, user_id, amount, currency, entry_type")
-        .eq("status", "credited")
-        .order("user_id");
-
-      if (error) throw error;
-      if (!earnings?.length) return [];
-
-      // Group by user
-      const byUser = new Map<string, { total: number; currency: string; ids: string[] }>();
-      for (const e of earnings) {
-        const existing = byUser.get(e.user_id) || { total: 0, currency: e.currency, ids: [] };
-        existing.total += Number(e.amount);
-        existing.ids.push(e.id);
-        byUser.set(e.user_id, existing);
-      }
-
-      // Fetch profiles
-      const userIds = Array.from(byUser.keys());
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, wallet_id, wallet_verified, country")
-        .in("id", userIds);
-
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-
-      const result: PendingUser[] = [];
-      for (const [userId, data] of byUser) {
-        const profile = profileMap.get(userId);
-        result.push({
-          user_id: userId,
-          full_name: profile?.full_name || null,
-          wallet_id: profile?.wallet_id || null,
-          wallet_verified: profile?.wallet_verified ?? false,
-          country: profile?.country || null,
-          total_pending: Math.round(data.total * 10000) / 10000,
-          currency: data.currency,
-          earning_ids: data.ids,
-        });
-      }
-
-      return result.sort((a, b) => b.total_pending - a.total_pending);
-    },
-  });
-
-  /* ─── Connect Wallet ─── */
-  const connectWallet = useCallback(async () => {
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) {
-      toast.error("Nenhuma wallet detectada. Instale MetaMask ou Rabby.");
-      return;
-    }
-
-    setConnecting(true);
-    try {
-      // Request accounts — use wallet_requestPermissions to force the chooser prompt
-      await ethereum.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
-      const accounts = await ethereum.request({ method: "eth_accounts" });
-      if (!accounts?.[0]) throw new Error("Nenhuma conta encontrada");
-
-      // Switch to Polygon if needed
-      try {
-        await ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: POLYGON_CHAIN_ID }],
-        });
-      } catch (switchErr: any) {
-        // Chain not added — add it
-        if (switchErr.code === 4902) {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: POLYGON_CHAIN_ID,
-              chainName: "Polygon Mainnet",
-              nativeCurrency: { name: "MATIC", symbol: "POL", decimals: 18 },
-              rpcUrls: [POLYGON_RPC],
-              blockExplorerUrls: ["https://polygonscan.com"],
-            }],
-          });
-        } else {
-          throw switchErr;
-        }
-      }
-
-      // Small delay to let the wallet settle on the new chain
-      await new Promise((r) => setTimeout(r, 500));
-
-      const provider = new BrowserProvider(ethereum);
-      const network = await provider.getNetwork();
-      if (network.chainId !== 137n) {
-        throw new Error(`Rede incorreta (chainId ${network.chainId}). Troque para Polygon manualmente e tente novamente.`);
-      }
-
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletAddr(address);
-
-      // Get USDT balance — use hardcoded 6 decimals as fallback
-      try {
-        const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, provider);
-        const balance = await usdt.balanceOf(address);
-        setWalletBalance(formatUnits(balance, 6));
-      } catch (balErr) {
-        console.warn("Erro ao buscar saldo USDT:", balErr);
-        setWalletBalance("—");
-      }
-
-      toast.success(`Wallet conectada: ${shortAddr(address)}`);
-    } catch (err: any) {
-      console.error("connectWallet error:", err);
-      toast.error(err?.shortMessage || err?.message || "Erro ao conectar wallet");
-    } finally {
-      setConnecting(false);
-    }
-  }, []);
-
-  /* ─── Pay User ─── */
-  const payMutation = useMutation({
-    mutationFn: async (user: PendingUser) => {
-      const ethereum = (window as any).ethereum;
-      if (!ethereum || !walletAddr) throw new Error("Wallet não conectada");
-      if (!user.wallet_id) throw new Error("Usuário sem wallet cadastrada");
-
-      // Validate address
-      if (!/^0x[a-fA-F0-9]{40}$/.test(user.wallet_id)) {
-        throw new Error("Endereço de wallet inválido");
-      }
-
-      setPayingUserId(user.user_id);
-
-      const provider = new BrowserProvider(ethereum);
-      const network = await provider.getNetwork();
-      if (network.chainId !== 137n) {
-        throw new Error("Rede incorreta. Troque para Polygon e reconecte a wallet.");
-      }
-
-      const signer = await provider.getSigner();
-      const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, signer);
-
-      // USDT on Polygon = 6 decimals
-      const amount = parseUnits(user.total_pending.toFixed(6), 6);
-
-      // Send transaction
-      const tx = await usdt.transfer(user.wallet_id, amount);
-      toast.info(`Tx enviada: ${shortAddr(tx.hash)}. Aguardando confirmação...`);
-
-      // Wait for confirmation
-      const receipt = await tx.wait(1);
-      if (receipt.status !== 1) throw new Error("Transação falhou on-chain");
-
-      // Generate payment code and create payment record
-      const { data: codeResult } = await supabase.rpc("generate_payment_code");
-      const paymentCode = codeResult || `pg-${Math.random().toString(36).slice(2, 10)}`;
-
-      const { data: payment, error: paymentErr } = await supabase
-        .from("payments")
-        .insert({
-          payment_code: paymentCode,
-          tx_hash: tx.hash,
-          user_id: user.user_id,
-          total_amount: user.total_pending,
-          currency: user.currency,
-          paid_at: new Date().toISOString(),
-        } as any)
-        .select("id")
-        .single();
-
-      if (paymentErr) throw paymentErr;
-
-      // Mark earnings as paid in DB
-      const { error } = await supabase
-        .from("earnings_ledger")
-        .update({
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          tx_hash: tx.hash,
-          payment_id: payment.id,
-        } as any)
-        .in("id", user.earning_ids);
-
+        .select("user_id, amount")
+        .eq("status", "credited");
       if (error) throw error;
 
-      return { txHash: tx.hash, userName: user.full_name, paymentCode };
-    },
-    onSuccess: ({ txHash, userName, paymentCode }) => {
-      toast.success(`${paymentCode} — Pagamento enviado para ${userName || "usuário"}!`, {
-        action: {
-          label: "Ver tx",
-          onClick: () => window.open(POLYGONSCAN + txHash, "_blank"),
-        },
-      });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
-      connectWallet();
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || "Erro ao processar pagamento");
-    },
-    onSettled: () => {
-      setPayingUserId(null);
-    },
-  });
-
-  /* ─── Test TX ($1) ─── */
-  const testTxMutation = useMutation({
-    mutationFn: async (user: PendingUser) => {
-      const ethereum = (window as any).ethereum;
-      if (!ethereum || !walletAddr) throw new Error("Wallet não conectada");
-      if (!user.wallet_id) throw new Error("Usuário sem wallet cadastrada");
-      if (!/^0x[a-fA-F0-9]{40}$/.test(user.wallet_id)) throw new Error("Endereço de wallet inválido");
-      if (user.total_pending < 1) throw new Error("Saldo insuficiente para teste ($1)");
-
-      setTestingUserId(user.user_id);
-
-      const provider = new BrowserProvider(ethereum);
-      const network = await provider.getNetwork();
-      if (network.chainId !== 137n) throw new Error("Rede incorreta. Troque para Polygon.");
-
-      const signer = await provider.getSigner();
-      const usdt = new Contract(USDT_CONTRACT, ERC20_ABI, signer);
-      const amount = parseUnits("1", 6); // $1 USDT
-
-      const tx = await usdt.transfer(user.wallet_id, amount);
-      toast.info(`Teste TX enviada: ${shortAddr(tx.hash)}. Aguardando...`);
-
-      const receipt = await tx.wait(1);
-      if (receipt.status !== 1) throw new Error("Transação falhou on-chain");
-
-      // Create payment record
-      const { data: codeResult } = await supabase.rpc("generate_payment_code");
-      const paymentCode = codeResult || `pg-${Math.random().toString(36).slice(2, 10)}`;
-
-      const { data: payment, error: paymentErr } = await supabase
-        .from("payments")
-        .insert({
-          payment_code: paymentCode,
-          tx_hash: tx.hash,
-          user_id: user.user_id,
-          total_amount: 1,
-          currency: user.currency,
-          paid_at: new Date().toISOString(),
-        } as any)
-        .select("id")
-        .single();
-      if (paymentErr) throw paymentErr;
-
-      // Test TX does NOT mark any earnings as paid — it's purely a wallet verification.
-      // The $1 is tracked only in the payments table for audit purposes.
-
-      // Auto-send inbox message with wallet_test_tx template
-      const { data: tpl } = await supabase
-        .from("inbox_message_templates" as any)
-        .select("subject, category, body")
-        .eq("template_key", "wallet_test_tx")
-        .maybeSingle();
-
-      if (tpl) {
-        const { data: thread, error: tErr } = await supabase
-          .from("inbox_threads" as any)
-          .insert({
-            user_id: user.user_id,
-            subject: (tpl as any).subject,
-            category: (tpl as any).category || "payment",
-            created_by: (await supabase.auth.getUser()).data.user?.id,
-          } as any)
-          .select("id")
-          .single();
-        if (!tErr && thread) {
-          const formattedBody = ((tpl as any).body as string)
-            .replace(/\[NOME\]/g, user.full_name || "")
-            .replace(/\[WALLET_ADDRESS\]/g, user.wallet_id || "");
-          await supabase
-            .from("inbox_messages" as any)
-            .insert({
-              thread_id: (thread as any).id,
-              sender_id: (await supabase.auth.getUser()).data.user?.id,
-              body: formattedBody,
-            } as any);
-        }
+      const userSet = new Set<string>();
+      let total = 0;
+      for (const e of earnings || []) {
+        total += Number(e.amount);
+        userSet.add(e.user_id);
       }
-
-      return { txHash: tx.hash, userName: user.full_name };
-    },
-    onSuccess: ({ txHash, userName }) => {
-      toast.success(`Teste TX ($1) enviado para ${userName || "usuário"}!`, {
-        action: {
-          label: "Ver tx",
-          onClick: () => window.open(POLYGONSCAN + txHash, "_blank"),
-        },
-      });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-pending"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-finance-recent"] });
-      
-      connectWallet();
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || "Erro no teste TX");
-    },
-    onSettled: () => {
-      setTestingUserId(null);
+      return { totalPending: total, usersWithBalance: userSet.size };
     },
   });
-
-  /* ─── Filter ─── */
-  const filtered = pendingUsers.filter(u => {
-    if (!searchTerm) return true;
-    const q = searchTerm.toLowerCase();
-    return (
-      u.full_name?.toLowerCase().includes(q) ||
-      u.wallet_id?.toLowerCase().includes(q) ||
-      u.user_id.toLowerCase().includes(q)
-    );
-  });
-
-  const totalPendingUSD = pendingUsers.reduce((s, u) => s + u.total_pending, 0);
-  const withWallet = pendingUsers.filter(u => u.wallet_id).length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground">Financeiro</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Pagamentos via USDT na rede Polygon
-          </p>
+          <h1 className="text-2xl font-extrabold text-foreground">Pagamentos</h1>
+          <p className="text-sm text-muted-foreground mt-1">USDT via rede Polygon</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar
+          <RefreshCw className="h-4 w-4 mr-2" /> Atualizar
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Pendente"
-          value={`$${totalPendingUSD.toFixed(2)}`}
-          accent
-        />
-        <StatCard
-          label="Usuários com saldo"
-          value={String(pendingUsers.length)}
-        />
-        <StatCard
-          label="Com wallet"
-          value={`${withWallet}/${pendingUsers.length}`}
-        />
-        <StatCard
-          label="Saldo USDT (sua wallet)"
-          value={walletBalance ? `$${Number(walletBalance).toFixed(2)}` : "—"}
-        />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Total a Pagar" value={`$${(stats?.totalPending || 0).toFixed(2)}`} accent />
+        <StatCard label="Usuários com Saldo" value={String(stats?.usersWithBalance || 0)} />
+        <StatCard label="Saldo na Wallet" value={wallet.balance ? `$${Number(wallet.balance).toFixed(2)}` : "—"} />
       </div>
 
-      {/* Wallet Connection */}
-      <div className={cn(
-        "rounded-xl border p-4 flex items-center justify-between",
-        walletAddr
-          ? "border-emerald-500/30 bg-emerald-500/5"
-          : "border-amber-500/30 bg-amber-500/5"
-      )}>
-        <div className="flex items-center gap-3">
-          <Wallet className={cn("h-5 w-5", walletAddr ? "text-emerald-400" : "text-amber-400")} />
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {walletAddr ? `Conectada: ${shortAddr(walletAddr)}` : "Wallet não conectada"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {walletAddr ? "Polygon • USDT" : "Conecte MetaMask ou Rabby para pagar"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {walletAddr && (
-            <Button
-              onClick={async () => {
-                setWalletAddr(null);
-                setWalletBalance(null);
-                try {
-                  const ethereum = (window as any).ethereum;
-                  if (ethereum?.request) {
-                    await ethereum.request({
-                      method: "wallet_revokePermissions",
-                      params: [{ eth_accounts: {} }],
-                    });
-                  }
-                } catch (_) {}
-                toast.info("Wallet desconectada");
-              }}
-              variant="ghost"
-              size="sm"
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            >
-              Desconectar
-            </Button>
-          )}
-          <Button
-            onClick={connectWallet}
-            variant={walletAddr ? "outline" : "default"}
-            size="sm"
-            disabled={connecting}
-          >
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-            {walletAddr ? "Reconectar" : "Conectar Wallet"}
-          </Button>
-        </div>
-      </div>
+      {/* Wallet */}
+      <WalletBar wallet={wallet} onConnect={handleConnect} onDisconnect={handleDisconnect} />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome, wallet ou ID..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="pending" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="pending">Pendentes</TabsTrigger>
+          <TabsTrigger value="completed">Realizadas</TabsTrigger>
+          <TabsTrigger value="direct">Pagamento Direto</TabsTrigger>
+        </TabsList>
 
-      {/* Users Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-emerald-500/50" />
-          <p className="font-medium">Nenhum pagamento pendente</p>
-        </div>
-      ) : (
-        <div className="rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Wallet</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(user => {
-                const isPaying = payingUserId === user.user_id;
-                const hasWallet = !!user.wallet_id;
-                return (
-                  <tr key={user.user_id} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-foreground">{user.full_name || "Sem nome"}</p>
-                        <p className="text-xs text-muted-foreground">{user.country || "—"}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {hasWallet ? (
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs bg-muted/50 px-2 py-1 rounded font-mono">
-                            {shortAddr(user.wallet_id!)}
-                          </code>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(user.wallet_id!);
-                              toast.success("Endereço copiado!");
-                            }}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-amber-400 text-xs">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          Sem wallet
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-foreground">
-                        ${user.total_pending.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-1">{user.currency}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {hasWallet && !user.wallet_verified && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const confirmed = window.confirm(`Enviar $1 de teste para ${user.full_name || "usuário"}?`);
-                              if (confirmed) testTxMutation.mutate(user);
-                            }}
-                            disabled={!walletAddr || testingUserId === user.user_id || testTxMutation.isPending}
-                            className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                          >
-                            {testingUserId === user.user_id ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <TestTube2 className="h-4 w-4 mr-1" />
-                            )}
-                            Teste TX
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          onClick={() => payMutation.mutate(user)}
-                          disabled={!walletAddr || !hasWallet || isPaying || payMutation.isPending}
-                        >
-                          {isPaying ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-1" />
-                          )}
-                          {isPaying ? "Enviando..." : "Pagar"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+        <TabsContent value="pending">
+          <FinancePending walletAddr={wallet.address} onWalletRefresh={refreshWallet} />
+        </TabsContent>
 
-      {/* Recent Payments — last 20 */}
-      <RecentPayments />
+        <TabsContent value="completed">
+          <FinanceCompleted />
+        </TabsContent>
+
+        <TabsContent value="direct">
+          <FinanceDirectPay walletAddr={wallet.address} onWalletRefresh={refreshWallet} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-/* ─── Recent Payments ─── */
-function RecentPayments() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const { data: recent = [], isLoading } = useQuery({
-    queryKey: ["admin-finance-recent"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("payments" as any)
-        .select("id, payment_code, tx_hash, user_id, total_amount, currency, paid_at")
-        .order("paid_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      if (!data?.length) return [];
-
-      const userIds = [...new Set((data as any[]).map((d: any) => d.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", userIds);
-      const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
-
-      return (data as any[]).map((d: any) => ({
-        ...d,
-        full_name: profileMap.get(d.user_id) || null,
-      }));
-    },
-  });
-
-  // Fetch earnings for expanded payment
-  const { data: expandedEarnings = [] } = useQuery({
-    queryKey: ["admin-finance-payment-details", expandedId],
-    enabled: !!expandedId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("earnings_ledger")
-        .select("id, amount, currency, entry_type, description")
-        .eq("payment_id", expandedId!)
-        .order("amount", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  if (isLoading || recent.length === 0) return null;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold text-foreground">Pagamentos Recentes</h2>
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/30">
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Código</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
-              <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tx Hash</th>
-              <th className="text-right px-4 py-3 font-medium text-muted-foreground">Data</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recent.map((r: any) => {
-              const isExpanded = expandedId === r.id;
-              return (
-                <>
-                  <tr
-                    key={r.id}
-                    className="border-b last:border-0 hover:bg-muted/10 cursor-pointer transition-colors"
-                    onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                        <code className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded">{r.payment_code}</code>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-foreground font-medium">{r.full_name || "—"}</td>
-                    <td className="px-4 py-3 text-right font-bold text-foreground">${Number(r.total_amount).toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <a
-                        href={POLYGONSCAN + r.tx_hash}
-                        target="_blank"
-                        rel="noopener"
-                        className="flex items-center gap-1 text-primary hover:underline text-xs font-mono"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        {shortAddr(r.tx_hash || "")}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {r.paid_at ? new Date(r.paid_at).toLocaleDateString("pt-BR") : "—"}
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={`${r.id}-details`} className="border-b last:border-0">
-                      <td colSpan={5} className="px-8 py-3 bg-muted/5">
-                        {expandedEarnings.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Carregando detalhes...</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {expandedEarnings.map((e: any) => {
-                              const typeLabel = e.entry_type === "task_payment" ? "📋 Tarefa" : "🔗 Referral";
-                              const submissionType = e.description?.match(/audio|image|video|text|annotation/i)?.[0] || "";
-                              const levelMatch = e.description?.match(/L(\d)/);
-                              const levelLabel = levelMatch ? ` (Nível ${levelMatch[1]})` : "";
-                              const cleanDesc = submissionType
-                                ? submissionType.charAt(0).toUpperCase() + submissionType.slice(1) + levelLabel
-                                : "";
-                              return (
-                                <div key={e.id} className="flex items-center justify-between text-xs gap-4">
-                                  <span className="text-muted-foreground truncate">
-                                    {typeLabel}
-                                    {cleanDesc && <span className="text-foreground/60 ml-1">— {cleanDesc}</span>}
-                                  </span>
-                                  <span className="font-medium text-foreground whitespace-nowrap">${Number(e.amount).toFixed(4)}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Stat Card ─── */
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-xl border p-4">
