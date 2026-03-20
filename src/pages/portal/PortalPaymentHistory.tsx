@@ -143,7 +143,7 @@ export default function PortalPaymentHistory() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-bold">
+                      <span className="font-mono text-sm font-bold transition-colors group-hover:underline" style={{ color: "var(--portal-accent)" }}>
                         US$ {p.total_amount.toFixed(2)}
                       </span>
                       {isTest && (
