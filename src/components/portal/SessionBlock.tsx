@@ -350,7 +350,85 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
     }
   }, [sessionId, campaignId, host, guest]);
 
-  // While loading participants, show what we have
+  const handleResubmit = useCallback((recordingId: string) => {
+    pendingResubId.current = recordingId;
+    resubFileInputRef.current?.click();
+  }, []);
+
+  const onResubFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const recordingId = pendingResubId.current;
+    if (!file || !recordingId) return;
+    e.target.value = "";
+
+    if (!file.name.toLowerCase().endsWith(".wav")) {
+      toast.error("Apenas arquivos .WAV são aceitos");
+      return;
+    }
+
+    setResubmitting(recordingId);
+    setResubProgress(0);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const filename = `room_${sessionId}_resub_${recordingId.slice(0, 8)}_${Date.now()}.wav`;
+      setResubProgress(10);
+
+      // Upload to S3
+      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(filename)}&session_id=${encodeURIComponent(sessionId)}&content_type=${encodeURIComponent("audio/wav")}`;
+
+      const xhr = new XMLHttpRequest();
+      const uploadPromise = new Promise<string>((resolve, reject) => {
+        xhr.upload.addEventListener("progress", (ev) => {
+          if (ev.lengthComputable) setResubProgress(10 + Math.round((ev.loaded / ev.total) * 60));
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText).public_url); }
+            catch { reject(new Error("Invalid response")); }
+          } else { reject(new Error(`Upload failed: ${xhr.status}`)); }
+        });
+        xhr.addEventListener("error", () => reject(new Error("Network error")));
+        xhr.open("POST", streamUrl);
+        xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
+        xhr.setRequestHeader("Content-Type", "audio/wav");
+        xhr.send(file);
+      });
+
+      const finalUrl = await uploadPromise;
+      setResubProgress(80);
+
+      // Call resubmit-track to update the record
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resubmit-track`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recording_id: recordingId,
+            new_file_url: finalUrl,
+            new_filename: filename,
+            file_size_bytes: file.size,
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error(`Reenvio falhou: ${await res.text()}`);
+
+      setResubProgress(100);
+      setResubmittedIds(prev => new Set(prev).add(recordingId));
+      toast.success("Trilha reenviada com sucesso! Será reanalisada.");
+    } catch (err) {
+      console.error("[SessionBlock] Resubmit error:", err);
+      toast.error("Erro ao reenviar: " + (err as Error).message);
+    } finally {
+      setResubmitting(null);
+      setResubProgress(0);
+    }
+  }, [sessionId]);
+
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
   // Track definitions — always use real names from room_participants
