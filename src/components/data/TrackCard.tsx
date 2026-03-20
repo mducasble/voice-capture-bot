@@ -221,7 +221,12 @@ export function TrackCard({
           )}
         >
           {enhanceQueued ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processando...</>
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {enhanceProgress && enhanceProgress.total > 1
+                ? `Chunk ${enhanceProgress.current}/${enhanceProgress.total}`
+                : "Processando..."}
+            </>
           ) : (
             <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
           )}

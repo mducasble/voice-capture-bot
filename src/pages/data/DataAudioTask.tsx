@@ -742,6 +742,7 @@ export default function DataAudioTask() {
                 enhancedMetrics={sibEnhancedMetrics}
                 analyzeQueued={analyzeQueued}
                 enhanceQueued={enhanceQueued}
+                enhanceProgress={enhanceProgress[sib.id]}
                 logAction={logAction}
                 handleReanalyze={handleReanalyze}
                 handleEnhance={handleEnhance}
