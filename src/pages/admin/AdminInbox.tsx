@@ -419,13 +419,34 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
     },
   });
 
+  const replacePlaceholders = (text: string, user: { name: string; wallet_id?: string; country?: string; email_contact?: string } | null) => {
+    if (!user) return text;
+    return text
+      .replace(/\[NOME\]/g, user.name || "")
+      .replace(/\[WALLET_ADDRESS\]/g, user.wallet_id || "")
+      .replace(/\[COUNTRY\]/g, user.country || "")
+      .replace(/\[EMAIL\]/g, user.email_contact || "");
+  };
+
   const applyTemplate = (templateKey: string) => {
     const tpl = templates.find((t: any) => t.template_key === templateKey);
     if (tpl) {
-      setSubject(tpl.subject);
-      setBody(tpl.body);
+      setSubject(replacePlaceholders(tpl.subject, selectedUser));
+      setBody(replacePlaceholders(tpl.body, selectedUser));
       setCategory(tpl.category);
       setActiveTemplateKey(templateKey);
+    }
+  };
+
+  const handleSelectUser = (u: { id: string; name: string; wallet_id?: string; country?: string; email_contact?: string }) => {
+    setSelectedUser(u);
+    // Re-apply placeholders if a template is active
+    if (activeTemplateKey) {
+      const tpl = templates.find((t: any) => t.template_key === activeTemplateKey);
+      if (tpl) {
+        setSubject(replacePlaceholders(tpl.subject, u));
+        setBody(replacePlaceholders(tpl.body, u));
+      }
     }
   };
 
