@@ -473,48 +473,42 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
 
       {/* Mixed track — always show */}
       {mixedRec && !uploadedTracks.has("mixed") ? (
-        <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
+        resubmittedIds.has(mixedRec.id) ? (
+          <ResubmittedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
+        ) : (
+          <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+        )
       ) : uploadedTracks.has("mixed") ? (
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-          <AudioLines className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-          <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>🎧 Áudio Combinado</span>
-          <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-            <CheckCircle className="h-3 w-3" /> Enviado
-          </span>
-        </div>
+        <UploadedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
       ) : showParticipantTracks ? (
         <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
       ) : null}
 
-      {/* Host track — always show when we have participant data */}
+      {/* Host track */}
       {showParticipantTracks && participants.length > 0 && (
         effectiveHostRec && !uploadedTracks.has("host") ? (
-          <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
+          resubmittedIds.has(effectiveHostRec.id) ? (
+            <ResubmittedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
+          ) : (
+            <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          )
         ) : uploadedTracks.has("host") ? (
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <Mic className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-            <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>🎙️ {hostLabel}</span>
-            <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="h-3 w-3" /> Enviado
-            </span>
-          </div>
+          <UploadedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
         ) : (
           <MissingTrackRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} trackType="host" onUpload={handleUpload} uploading={uploading} progress={progress} />
         )
       )}
 
-      {/* Guest track — always show when we have participant data */}
+      {/* Guest track */}
       {showParticipantTracks && participants.length >= 2 && (
         effectiveGuestRec && !uploadedTracks.has("participant") ? (
-          <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
+          resubmittedIds.has(effectiveGuestRec.id) ? (
+            <ResubmittedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
+          ) : (
+            <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          )
         ) : uploadedTracks.has("participant") ? (
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <Users className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-            <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>👤 {guestLabel}</span>
-            <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="h-3 w-3" /> Enviado
-            </span>
-          </div>
+          <UploadedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
         ) : (
           <MissingTrackRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} trackType="participant" onUpload={handleUpload} uploading={uploading} progress={progress} />
         )
@@ -522,10 +516,15 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
 
       {/* Fallback: no participants at all — show raw individual recordings */}
       {showParticipantTracks && participants.length === 0 && recordings.filter(r => r.recording_type !== "mixed").map(r => (
-        <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
+        resubmittedIds.has(r.id) ? (
+          <ResubmittedRow key={r.id} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
+        ) : (
+          <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+        )
       ))}
 
       <input ref={fileInputRef} type="file" accept=".wav,audio/wav" className="hidden" onChange={onFileSelected} />
+      <input ref={resubFileInputRef} type="file" accept=".wav,audio/wav" className="hidden" onChange={onResubFileSelected} />
     </div>
   );
 }
