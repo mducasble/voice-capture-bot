@@ -8,6 +8,8 @@ interface UseDailyOptions {
   participantId: string | undefined;
   localStream: MediaStream | null;
   participants: { id: string; name: string }[];
+  /** When false, the hook will NOT connect to Daily. Defaults to true. */
+  enabled?: boolean;
 }
 
 /**
