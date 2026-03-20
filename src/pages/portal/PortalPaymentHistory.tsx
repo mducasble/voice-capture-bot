@@ -101,7 +101,7 @@ export default function PortalPaymentHistory() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <button
-        onClick={() => navigate("/portal/earnings")}
+        onClick={() => navigate("/earnings")}
         className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest transition-colors"
         style={{ color: "var(--portal-text-muted)" }}
       >
