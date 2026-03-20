@@ -136,7 +136,7 @@ export default function PortalPaymentHistory() {
               <div key={p.id} style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                  className="w-full flex items-center gap-3 p-4 text-left transition-colors"
+                  className="w-full flex items-center gap-3 p-4 text-left transition-colors cursor-pointer group"
                   style={{ color: "var(--portal-text)" }}
                 >
                   {isExpanded ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
