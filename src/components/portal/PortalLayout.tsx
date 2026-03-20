@@ -46,10 +46,10 @@ export default function PortalLayout() { // layout-root
   }
 
   const navItems = [
+    { to: "/rooms", icon: Radio, label: t("nav.publicRooms") },
     { to: "/", icon: FolderOpen, label: t("nav.opportunities"), exact: true },
     { to: "/my-campaigns", icon: Layers, label: t("nav.myCampaigns") },
     { to: "/earnings", icon: DollarSign, label: t("nav.myEarnings") },
-    { to: "/rooms", icon: Radio, label: t("nav.publicRooms") },
   ];
 
   return (
