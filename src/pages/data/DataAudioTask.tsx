@@ -242,26 +242,49 @@ export default function DataAudioTask() {
     refetchSiblings();
   }, [rec, refetchSiblings]);
 
-  // Auto-refresh: poll analysis_queue for queued jobs and refetch when done
+  // Auto-refresh: poll analysis_queue for queued jobs AND check metadata for enhance completion
   useEffect(() => {
     const queuedIds = Object.keys(queuedJobs);
     if (queuedIds.length === 0) return;
 
     const interval = setInterval(async () => {
+      // 1. Check analysis_queue for analyze jobs
       const { data: jobs } = await supabase
         .from("analysis_queue")
         .select("recording_id, job_type, status")
         .in("recording_id", queuedIds)
         .order("created_at", { ascending: false });
 
-      if (!jobs) return;
+      // 2. For enhance jobs, check metadata directly (edge function updates it)
+      const enhanceIds = queuedIds.filter(id => {
+        const job = queuedJobs[id];
+        return job === "enhance" || job === "both";
+      });
 
-      // Group latest status per recording+job_type
+      let enhanceDoneIds = new Set<string>();
+      if (enhanceIds.length > 0) {
+        const { data: recs } = await supabase
+          .from("voice_recordings")
+          .select("id, metadata")
+          .in("id", enhanceIds);
+        if (recs) {
+          for (const r of recs) {
+            const meta = (r.metadata || {}) as Record<string, unknown>;
+            if (meta.enhanced_file_url) {
+              enhanceDoneIds.add(r.id);
+            }
+          }
+        }
+      }
+
+      // Group latest status per recording+job_type from queue
       const latestStatus: Record<string, Record<string, string>> = {};
-      for (const j of jobs) {
-        if (!latestStatus[j.recording_id]) latestStatus[j.recording_id] = {};
-        if (!latestStatus[j.recording_id][j.job_type]) {
-          latestStatus[j.recording_id][j.job_type] = j.status;
+      if (jobs) {
+        for (const j of jobs) {
+          if (!latestStatus[j.recording_id]) latestStatus[j.recording_id] = {};
+          if (!latestStatus[j.recording_id][j.job_type]) {
+            latestStatus[j.recording_id][j.job_type] = j.status;
+          }
         }
       }
 
@@ -272,7 +295,7 @@ export default function DataAudioTask() {
         const statuses = latestStatus[recId] || {};
         const currentJob = newQueued[recId];
         const analyzeDone = statuses["analyze"] === "done";
-        const enhanceDone = statuses["enhance"] === "done";
+        const enhanceDone = enhanceDoneIds.has(recId) || statuses["enhance"] === "done";
 
         if (currentJob === "both") {
           if (analyzeDone && enhanceDone) { delete newQueued[recId]; anyDone = true; }
@@ -288,9 +311,9 @@ export default function DataAudioTask() {
       if (anyDone) {
         setQueuedJobs(newQueued);
         await refetchSiblings();
-        toast.success("Métricas atualizadas!", { description: "Os dados foram recarregados automaticamente." });
+        toast.success("Processamento concluído!", { description: "Os dados foram atualizados." });
       }
-    }, 30000);
+    }, 10000); // Poll every 10s instead of 30s
 
     return () => clearInterval(interval);
   }, [queuedJobs, refetchSiblings]);
@@ -516,54 +539,37 @@ export default function DataAudioTask() {
       return;
     }
 
-    let loadingDescription = "Aguarde enquanto o áudio é processado.";
-
+    // Get provider name first (fast call)
+    let serviceName = "";
     try {
       const { data: providerData } = await supabase.functions.invoke("enhance-audio", {
         body: { preview_provider: true },
       });
+      serviceName = providerData?.service || "";
+    } catch { /* ignore */ }
 
-      if (providerData?.service) {
-        loadingDescription = `Processando via ${providerData.service}.`;
-      }
-    } catch {
-      // Fallback silencioso para não bloquear o processamento principal
-    }
-
-    const toastId = toast.loading("Enhancement em andamento…", {
-      description: loadingDescription,
+    toast.info("Enhancement iniciado!", {
+      description: serviceName
+        ? `Processando via ${serviceName}. O polling atualizará quando concluir.`
+        : "O polling atualizará quando o processamento concluir.",
     });
 
-    const { data, error } = await supabase.functions.invoke("enhance-audio", {
+    // Fire-and-forget: don't await the long-running enhance call
+    // The polling mechanism (every 10s) will detect completion via metadata.enhanced_file_url
+    supabase.functions.invoke("enhance-audio", {
       body: {
         recording_id: sibId,
         file_url: fileUrl,
       },
+    }).then(({ data, error }) => {
+      if (error) {
+        console.warn("[enhance] Edge function returned error (may have timed out but still processing):", error.message);
+      } else {
+        console.log("[enhance] Edge function completed:", data);
+      }
+    }).catch((err) => {
+      console.warn("[enhance] Edge function call failed (processing may continue server-side):", err);
     });
-
-    if (error) {
-      toast.error("Erro ao processar enhancement", { id: toastId, description: error.message });
-      setQueuedJobs(prev => {
-        const copy = { ...prev };
-        if (copy[sibId] === "both") copy[sibId] = "analyze";
-        else delete copy[sibId];
-        return copy;
-      });
-      return;
-    }
-
-    const service = data?.service || "desconhecido";
-    toast.success("Enhancement concluído!", {
-      id: toastId,
-      description: `Serviço: ${service}`,
-    });
-    setQueuedJobs(prev => {
-      const copy = { ...prev };
-      if (copy[sibId] === "both") copy[sibId] = "analyze";
-      else delete copy[sibId];
-      return copy;
-    });
-    await refetchSiblings();
   };
 
   const remaining = Math.max(0, timeLimit - elapsed);
