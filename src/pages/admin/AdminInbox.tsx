@@ -383,7 +383,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
   isPending: boolean;
 }) {
   const [userSearch, setUserSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; wallet_id?: string; country?: string; email_contact?: string } | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("general");
@@ -419,13 +419,34 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
     },
   });
 
+  const replacePlaceholders = (text: string, user: { name: string; wallet_id?: string; country?: string; email_contact?: string } | null) => {
+    if (!user) return text;
+    return text
+      .replace(/\[NOME\]/g, user.name || "")
+      .replace(/\[WALLET_ADDRESS\]/g, user.wallet_id || "")
+      .replace(/\[COUNTRY\]/g, user.country || "")
+      .replace(/\[EMAIL\]/g, user.email_contact || "");
+  };
+
   const applyTemplate = (templateKey: string) => {
     const tpl = templates.find((t: any) => t.template_key === templateKey);
     if (tpl) {
-      setSubject(tpl.subject);
-      setBody(tpl.body);
+      setSubject(replacePlaceholders(tpl.subject, selectedUser));
+      setBody(replacePlaceholders(tpl.body, selectedUser));
       setCategory(tpl.category);
       setActiveTemplateKey(templateKey);
+    }
+  };
+
+  const handleSelectUser = (u: { id: string; name: string; wallet_id?: string; country?: string; email_contact?: string }) => {
+    setSelectedUser(u);
+    // Re-apply placeholders if a template is active
+    if (activeTemplateKey) {
+      const tpl = templates.find((t: any) => t.template_key === activeTemplateKey);
+      if (tpl) {
+        setSubject(replacePlaceholders(tpl.subject, u));
+        setBody(replacePlaceholders(tpl.body, u));
+      }
     }
   };
 
@@ -435,10 +456,10 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, wallet_id, country, email_contact")
         .ilike("full_name", `%${userSearch}%`)
         .limit(10);
-      return (data || []).map(u => ({ id: u.id, name: u.full_name || "Sem nome" }));
+      return (data || []).map(u => ({ id: u.id, name: u.full_name || "Sem nome", wallet_id: u.wallet_id || "", country: u.country || "", email_contact: u.email_contact || "" }));
     },
   });
 
@@ -489,7 +510,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
               {users.map(u => (
                 <button
                   key={u.id}
-                  onClick={() => setSelectedUser(u)}
+                  onClick={() => handleSelectUser(u)}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-muted/20 transition-colors border-b last:border-0 text-foreground"
                 >
                   {u.name}
