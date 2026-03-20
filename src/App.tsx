@@ -128,6 +128,7 @@ const App = () => (
                 <Route path="inbox" element={<PortalInbox />} />
                 <Route path="profile" element={<PortalProfile />} />
                 <Route path="room/:roomId" element={<Room />} />
+                <Route path="rooms" element={<Rooms />} />
               </Route>
 
               {/* Admin login (standalone, no layout) */}
