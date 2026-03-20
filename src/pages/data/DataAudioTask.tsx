@@ -253,12 +253,23 @@ export default function DataAudioTask() {
     if (queuedIds.length === 0) return;
 
     const interval = setInterval(async () => {
-      // 1. Check analysis_queue for analyze jobs
+      // 1. Check analysis_queue for analyze jobs + enhance progress
       const { data: jobs } = await supabase
         .from("analysis_queue")
-        .select("recording_id, job_type, status")
+        .select("recording_id, job_type, status, current_segment, total_segments")
         .in("recording_id", queuedIds)
         .order("created_at", { ascending: false });
+
+      // Update enhance progress from queue data
+      if (jobs) {
+        const newProgress: Record<string, { current: number; total: number }> = {};
+        for (const j of jobs) {
+          if (j.job_type === "enhance" && j.total_segments > 0 && j.status !== "done") {
+            newProgress[j.recording_id] = { current: j.current_segment, total: j.total_segments };
+          }
+        }
+        setEnhanceProgress(prev => ({ ...prev, ...newProgress }));
+      }
 
       // 2. For enhance jobs, check metadata directly (edge function updates it)
       const enhanceIds = queuedIds.filter(id => {
