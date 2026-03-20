@@ -58,6 +58,21 @@ function useEarnings() {
   });
 }
 
+function useSessions() {
+  return useQuery({
+    queryKey: ["admin-sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("voice_recordings")
+        .select("session_id, recording_type")
+        .eq("recording_type", "individual");
+      if (error) throw error;
+      const unique = new Set((data || []).map(r => r.session_id).filter(Boolean));
+      return unique.size;
+    },
+  });
+}
+
 function buildDailyData(
   profiles: { created_at: string }[],
   participants: { joined_at: string; user_id: string }[],
