@@ -313,13 +313,7 @@ export default function AdminDashboard() {
       {/* Users by Country */}
       <CountryBreakdown profiles={profiles} />
 
-      {/* Infrastructure — smaller gradient cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
-        <StatCard title="Duração" value={recStats.totalDuration} icon={Clock} gradientClass="admin-gradient-card-blue" />
-        <StatCard title="Armazenamento" value={recStats.totalSize} icon={HardDrive} gradientClass="admin-gradient-card-amber" />
-        <StatCard title="Servidores" value={recStats.uniqueServers.toLocaleString("pt-BR")} icon={Server} gradientClass="admin-gradient-card-green" />
-      </div>
+      {/* (Infrastructure cards moved to top stats) */}
 
       {/* Storage Breakdown */}
       <Card className="border-border/40 bg-card">
