@@ -759,7 +759,10 @@ const Room = () => {
     // Start mixed recording if creator has a local stream
     if (currentParticipant?.is_creator && mediaStreamRef.current) {
       await mixedRecorder.startRecording(mediaStreamRef.current, remoteStreams);
-      // Start recording each remote stream individually as backup
+    }
+
+    // ALL participants start recording remote streams as cross-backup
+    if (remoteStreams.size > 0 && !remoteRecorders.isRecording) {
       await remoteRecorders.startRecording(remoteStreams, participants);
     }
 
