@@ -217,9 +217,9 @@ export function useDaily({ roomId, participantId, localStream, participants, ena
     await joinDaily();
   }, [joinDaily]);
 
-  // Auto-join on mount
+  // Auto-join on mount (only when enabled)
   useEffect(() => {
-    if (!roomId || !participantId || joinedRef.current) return;
+    if (!roomId || !participantId || joinedRef.current || !enabled) return;
 
     let cancelled = false;
 
@@ -233,7 +233,7 @@ export function useDaily({ roomId, participantId, localStream, participants, ena
     return () => {
       cancelled = true;
     };
-  }, [roomId, participantId]);
+  }, [roomId, participantId, enabled]);
 
   // Update audio input device when localStream changes
   useEffect(() => {
