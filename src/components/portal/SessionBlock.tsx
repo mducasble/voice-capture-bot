@@ -154,6 +154,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingTrackType = useRef<TrackType | null>(null);
 
+  // Derive participant info from room_participants OR from recordings metadata
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -164,17 +165,48 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
           .eq("session_id", sessionId)
           .limit(1)
           .single();
-        if (!room || cancelled) { setLoadingParts(false); return; }
-        const { data: parts } = await supabase
-          .from("room_participants")
-          .select("id, name, user_id, is_creator")
-          .eq("room_id", room.id);
-        if (!cancelled && parts) setParticipants(parts as Participant[]);
+        if (room && !cancelled) {
+          const { data: parts } = await supabase
+            .from("room_participants")
+            .select("id, name, user_id, is_creator")
+            .eq("room_id", room.id);
+          if (!cancelled && parts && parts.length >= 2) {
+            setParticipants(parts as Participant[]);
+            setLoadingParts(false);
+            return;
+          }
+        }
       } catch { /* no room record */ }
-      finally { if (!cancelled) setLoadingParts(false); }
+
+      // Fallback: derive participants from existing recordings' discord_username
+      if (!cancelled) {
+        const individualRecs = recordings.filter(r => r.recording_type === "individual");
+        const mixedRec = recordings.find(r => r.recording_type === "mixed");
+        const names = new Set<string>();
+        for (const r of individualRecs) {
+          if (r.discord_username) names.add(r.discord_username);
+        }
+        // Also check mixed recording metadata for participant names embedded in filename
+        // Pattern: multi_<date>_<name>.wav or session_<date>.wav
+        if (mixedRec?.discord_username && mixedRec.discord_username !== "Multi-Speaker Session") {
+          names.add(mixedRec.discord_username);
+        }
+
+        if (names.size >= 1) {
+          const derived: Participant[] = [];
+          const nameArr = Array.from(names);
+          derived.push({ id: nameArr[0], name: nameArr[0], user_id: null, is_creator: true });
+          if (nameArr.length >= 2) {
+            derived.push({ id: nameArr[1], name: nameArr[1], user_id: null, is_creator: false });
+          }
+          if (!cancelled) setParticipants(derived);
+        }
+      }
+
+      if (!cancelled) setLoadingParts(false);
     })();
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [sessionId, recordings]);
 
   const host = participants.find(p => p.is_creator);
   const guest = participants.find(p => !p.is_creator);
