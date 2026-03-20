@@ -168,6 +168,7 @@ function MissingTrackRow({ label, icon, trackType, onUpload, uploading, progress
   );
 }
 
+interface SessionBlockProps {
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
