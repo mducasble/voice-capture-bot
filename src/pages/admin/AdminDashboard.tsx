@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Server, Database, FileAudio, FileArchive, Globe } from "lucide-react";
+import { Users, Zap, DollarSign, TrendingUp, CalendarIcon, Mic2, Clock, HardDrive, Database, FileAudio, FileArchive, Globe, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
@@ -54,6 +54,21 @@ function useEarnings() {
       const { data, error } = await supabase.from("earnings_ledger").select("id, amount, currency, status, created_at");
       if (error) throw error;
       return data || [];
+    },
+  });
+}
+
+function useSessions() {
+  return useQuery({
+    queryKey: ["admin-sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("voice_recordings")
+        .select("session_id, recording_type")
+        .eq("recording_type", "individual");
+      if (error) throw error;
+      const unique = new Set((data || []).map(r => r.session_id).filter(Boolean));
+      return unique.size;
     },
   });
 }
@@ -131,6 +146,7 @@ export default function AdminDashboard() {
   const { data: participants = [] } = useParticipants();
   const { data: earnings = [] } = useEarnings();
   const { data: recordings } = useRecordings();
+  const { data: totalSessions = 0 } = useSessions();
   const recStats = useRecordingStats(recordings);
 
   const totalUsers = profiles.length;
@@ -171,7 +187,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Top Stats — bold gradient cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard
           title="Usuários Inscritos"
           value={totalUsers.toLocaleString("pt-BR")}
@@ -190,6 +206,10 @@ export default function AdminDashboard() {
           icon={DollarSign}
           gradientClass="admin-gradient-card-amber"
         />
+        <StatCard title="Sessões" value={totalSessions.toLocaleString("pt-BR")} icon={Layers} gradientClass="admin-gradient-card-blue" />
+        <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
+        <StatCard title="Duração" value={recStats.totalDuration} icon={Clock} gradientClass="admin-gradient-card-green" />
+        <StatCard title="Armazenamento" value={recStats.totalSize} icon={HardDrive} gradientClass="admin-gradient-card-amber" />
       </div>
 
       {/* Chart */}
@@ -293,13 +313,7 @@ export default function AdminDashboard() {
       {/* Users by Country */}
       <CountryBreakdown profiles={profiles} />
 
-      {/* Infrastructure — smaller gradient cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
-        <StatCard title="Duração" value={recStats.totalDuration} icon={Clock} gradientClass="admin-gradient-card-blue" />
-        <StatCard title="Armazenamento" value={recStats.totalSize} icon={HardDrive} gradientClass="admin-gradient-card-amber" />
-        <StatCard title="Servidores" value={recStats.uniqueServers.toLocaleString("pt-BR")} icon={Server} gradientClass="admin-gradient-card-green" />
-      </div>
+      {/* (Infrastructure cards moved to top stats) */}
 
       {/* Storage Breakdown */}
       <Card className="border-border/40 bg-card">
