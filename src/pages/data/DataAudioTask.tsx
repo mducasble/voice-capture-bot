@@ -476,12 +476,22 @@ export default function DataAudioTask() {
     setSaving(true);
     logAction("reject", reasons.join(", "));
     const rejection = [...reasons, note].filter(Boolean).join("; ");
-    const { error } = await supabase.from("voice_recordings")
-      .update({ quality_status: "rejected", quality_rejection_reason: rejection }).eq("id", rec.id);
+
+    // Reject ALL recordings in the same session so siblings don't reappear in queue
+    let query = supabase.from("voice_recordings")
+      .update({ quality_status: "rejected", quality_rejection_reason: rejection });
+
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+
+    const { error } = await query;
     setSaving(false);
     setShowRejectModal(false);
     if (error) { toast.error("Erro ao reprovar"); return; }
-    toast.success("Reprovado.");
+    toast.success("Sessão reprovada.");
     await finishTask("completed", "rejected");
     loadNext();
   };
