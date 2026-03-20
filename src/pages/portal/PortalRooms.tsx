@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  Radio, Users, Clock, Loader2, LogIn, CheckCircle2, XCircle, Layers,
+  Radio, Users, Clock, Loader2, LogIn, Lock, Layers,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 interface PublicRoom {
@@ -19,7 +18,6 @@ interface PublicRoom {
   creator_user_id: string | null;
   participant_count?: number;
   campaign_name?: string;
-  my_request_status?: string | null;
 }
 
 export default function PortalRooms() {
@@ -30,8 +28,6 @@ export default function PortalRooms() {
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [userCountry, setUserCountry] = useState<string | null>(null);
-  const [userName, setUserName] = useState("");
-  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -42,7 +38,6 @@ export default function PortalRooms() {
       .single()
       .then(({ data }) => {
         setUserCountry(data?.country || null);
-        if (data?.full_name) setUserName(data.full_name);
       });
   }, [user]);
 
@@ -80,51 +75,17 @@ export default function PortalRooms() {
       if (parts) for (const p of parts) participantCounts[p.room_id] = (participantCounts[p.room_id] || 0) + 1;
     }
 
-    let myRequests: Record<string, string> = {};
-    if (user && roomIds.length > 0) {
-      const { data: reqs } = await supabase.from("room_join_requests").select("room_id, status").eq("user_id", user.id).in("room_id", roomIds);
-      if (reqs) for (const r of reqs) myRequests[r.room_id] = r.status;
-    }
-
     setPublicRooms(
       filtered.map((r: any) => ({
         ...r,
         participant_count: participantCounts[r.id] || 0,
         campaign_name: r.campaign_id ? campaignMap[r.campaign_id] : null,
-        my_request_status: myRequests[r.id] || null,
       }))
     );
     setLoading(false);
   };
 
   useEffect(() => { fetchPublicRooms(); }, [user, userCountry]);
-
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("room-join-requests-mine")
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_join_requests", filter: `user_id=eq.${user.id}` }, () => fetchPublicRooms())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, userCountry]);
-
-  const handleRequestJoin = async (room: PublicRoom) => {
-    if (!user) return;
-    setJoiningRoomId(room.id);
-    const { error } = await supabase.from("room_join_requests").insert({
-      room_id: room.id,
-      user_id: user.id,
-      user_name: userName || user.email || "Usuário",
-    });
-    setJoiningRoomId(null);
-    if (error) {
-      if (error.code === "23505") toast.info("Você já solicitou entrada nesta sala.");
-      else toast.error("Erro ao solicitar entrada");
-      return;
-    }
-    toast.success("Solicitação enviada! Aguarde a aprovação do host.");
-    fetchPublicRooms();
-  };
 
   const statusLabels: Record<string, string> = { waiting: "Aguardando", active: "Aberta", live: "Ao Vivo" };
   const statusDot: Record<string, string> = { waiting: "bg-amber-400", active: "bg-emerald-400", live: "bg-red-400" };
@@ -169,7 +130,7 @@ export default function PortalRooms() {
         <div className="space-y-3">
           {publicRooms.map((room) => {
             const isMyRoom = user && room.creator_user_id === user.id;
-            const reqStatus = room.my_request_status;
+            const isFull = !isMyRoom && (room.participant_count || 0) > 1;
 
             return (
               <div
@@ -215,46 +176,24 @@ export default function PortalRooms() {
                       >
                         Entrar
                       </button>
-                    ) : reqStatus === "approved" ? (
-                      <button
-                        onClick={() => navigate(`/room/${room.id}${room.campaign_id ? `?campaign=${room.campaign_id}` : ""}`)}
-                        className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-4 py-2 transition-colors"
-                        style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Entrar
-                      </button>
-                    ) : reqStatus === "pending" ? (
+                    ) : isFull ? (
                       <span
                         className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-4 py-2"
-                        style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                        style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)", opacity: 0.6 }}
                       >
-                        <Clock className="h-3.5 w-3.5" />
-                        Aguardando
-                      </span>
-                    ) : reqStatus === "rejected" ? (
-                      <span
-                        className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-4 py-2"
-                        style={{ border: "1px solid hsl(0 60% 50%)", color: "hsl(0 60% 60%)" }}
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        Recusado
+                        <Lock className="h-3.5 w-3.5" />
+                        Lotada
                       </span>
                     ) : (
                       <button
-                        onClick={() => handleRequestJoin(room)}
-                        disabled={joiningRoomId === room.id}
+                        onClick={() => navigate(`/room/${room.id}${room.campaign_id ? `?campaign=${room.campaign_id}` : ""}`)}
                         className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-4 py-2 transition-colors"
                         style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)", background: "transparent" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--portal-accent)"; e.currentTarget.style.color = "var(--portal-accent-text)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--portal-accent)"; }}
                       >
-                        {joiningRoomId === room.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <LogIn className="h-3.5 w-3.5" />
-                        )}
-                        Solicitar
+                        <LogIn className="h-3.5 w-3.5" />
+                        Entrar
                       </button>
                     )}
                   </div>
