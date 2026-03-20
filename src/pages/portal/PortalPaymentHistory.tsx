@@ -136,14 +136,14 @@ export default function PortalPaymentHistory() {
               <div key={p.id} style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                  className="w-full flex items-center gap-3 p-4 text-left transition-colors"
+                  className="w-full flex items-center gap-3 p-4 text-left transition-colors cursor-pointer group"
                   style={{ color: "var(--portal-text)" }}
                 >
                   {isExpanded ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-bold">
+                      <span className="font-mono text-sm font-bold transition-colors group-hover:underline" style={{ color: "var(--portal-accent)" }}>
                         US$ {p.total_amount.toFixed(2)}
                       </span>
                       {isTest && (
@@ -151,7 +151,7 @@ export default function PortalPaymentHistory() {
                           Teste
                         </span>
                       )}
-                      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-[10px] uppercase tracking-widest transition-colors group-hover:underline" style={{ color: "var(--portal-text-muted)" }}>
                         {p.payment_code}
                       </span>
                     </div>
