@@ -372,7 +372,9 @@ export default function DataAudioTask() {
     setTaskLogId(null);
     setQueuedJobs({});
     setSelectedVersions({});
+    setEnhanceProgress({});
     if (timerRef.current) clearInterval(timerRef.current);
+    fetchPendingCount();
 
     let query = supabase
       .from("voice_recordings")
