@@ -179,6 +179,7 @@ export default function DataAudioTask() {
   const [campaignName, setCampaignName] = useState("");
   const [taskTypeLabel, setTaskTypeLabel] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showFlagModal, setShowFlagModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [timeLimit, setTimeLimit] = useState(300);
   const [trackedActions, setTrackedActions] = useState<string[]>([]);
