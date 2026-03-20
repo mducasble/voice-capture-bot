@@ -125,12 +125,15 @@ serve(async (req) => {
         continue;
       }
 
-      // Insert messages
-      const messages = (insertedThreads || []).map((t: any) => ({
-        thread_id: t.id,
-        sender_id: user.id,
-        body,
-      }));
+      // Insert messages with personalized body
+      const messages = (insertedThreads || []).map((t: any) => {
+        const profile = profileMap[t.user_id];
+        return {
+          thread_id: t.id,
+          sender_id: user.id,
+          body: profile ? replacePlaceholders(body, profile) : body,
+        };
+      });
 
       const { error: mErr } = await supabaseAdmin
         .from("inbox_messages")
