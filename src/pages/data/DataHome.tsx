@@ -15,7 +15,7 @@ export default function DataHome() {
 
   const handleSelect = (type: MediaType) => {
     if (type === "extras") {
-      navigate("/data/extras/campaigns");
+      navigate("/data/extras/qc/standalone");
     } else {
       navigate(`/data/${type}/campaigns`);
     }
