@@ -107,13 +107,16 @@ serve(async (req) => {
       const batch = userIds.slice(i, i + batchSize);
 
       // Insert threads
-      const threads = batch.map(uid => ({
-        user_id: uid,
-        subject,
-        category: category || "general",
-        created_by: user.id,
-        last_message_at: now,
-      }));
+      const threads = batch.map(uid => {
+        const profile = profileMap[uid];
+        return {
+          user_id: uid,
+          subject: profile ? replacePlaceholders(subject, profile) : subject,
+          category: category || "general",
+          created_by: user.id,
+          last_message_at: now,
+        };
+      });
 
       const { data: insertedThreads, error: tErr } = await supabaseAdmin
         .from("inbox_threads")
