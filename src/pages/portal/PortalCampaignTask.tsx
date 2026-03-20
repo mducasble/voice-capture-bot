@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users, Globe,
 } from "lucide-react";
-import { useEffect } from "react";
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import KGenButton from "@/components/portal/KGenButton";
