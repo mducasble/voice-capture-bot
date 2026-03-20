@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DataAudioPlayerProps {
