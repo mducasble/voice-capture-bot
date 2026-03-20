@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DataAudioPlayerProps {
   src: string;
@@ -18,34 +19,127 @@ const formatTime = (s: number) => {
 
 export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const waveContainerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [peaks, setPeaks] = useState<number[] | null>(null);
+  const [waveLoading, setWaveLoading] = useState(true);
 
   useEffect(() => {
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setPeaks(null);
+    setWaveLoading(true);
   }, [src]);
+
+  // Decode audio and extract peaks
+  useEffect(() => {
+    if (!src) return;
+    setWaveLoading(true);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch(src, { mode: "cors", credentials: "omit" });
+        if (!response.ok || cancelled) return;
+        const buffer = await response.arrayBuffer();
+        if (cancelled) return;
+        const ctx = new AudioContext();
+        const decoded = await ctx.decodeAudioData(buffer);
+        const channelData = decoded.getChannelData(0);
+        await ctx.close();
+
+        const numBars = 200;
+        const samplesPerBar = Math.floor(channelData.length / numBars);
+        const p: number[] = [];
+        for (let i = 0; i < numBars; i++) {
+          let max = 0;
+          const start = i * samplesPerBar;
+          const end = Math.min(start + samplesPerBar, channelData.length);
+          for (let j = start; j < end; j++) {
+            const abs = Math.abs(channelData[j]);
+            if (abs > max) max = abs;
+          }
+          p.push(max);
+        }
+        if (!cancelled) setPeaks(p);
+      } catch (err) {
+        console.error("Waveform decode failed:", err);
+        if (!cancelled) setPeaks(null);
+      } finally {
+        if (!cancelled) setWaveLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [src]);
+
+  // Draw waveform
+  useEffect(() => {
+    if (!peaks || !canvasRef.current || !waveContainerRef.current) return;
+
+    const canvas = canvasRef.current;
+    const container = waveContainerRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+    const barWidth = width / peaks.length;
+    const midY = height / 2;
+    const progress = duration > 0 ? currentTime / duration : 0;
+    const playedBarIndex = Math.floor(progress * peaks.length);
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw bars
+    for (let i = 0; i < peaks.length; i++) {
+      const barHeight = Math.max(peaks[i] * (height * 0.85), 2);
+      const x = i * barWidth;
+      const isPlayed = i <= playedBarIndex;
+
+      ctx.fillStyle = isPlayed
+        ? "hsl(88, 100%, 51%)"   // #8cff05
+        : "hsla(88, 100%, 51%, 0.2)";
+      ctx.fillRect(x + 0.5, midY - barHeight / 2, Math.max(barWidth - 1, 1), barHeight);
+    }
+
+    // Draw playhead
+    if (progress > 0) {
+      const playheadX = progress * width;
+      ctx.strokeStyle = "hsl(88, 100%, 51%)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(playheadX, 0);
+      ctx.lineTo(playheadX, height);
+      ctx.stroke();
+    }
+  }, [peaks, currentTime, duration]);
 
   const toggle = useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
-    if (a.paused) {
-      a.play();
-    } else {
-      a.pause();
-    }
+    if (a.paused) a.play(); else a.pause();
   }, []);
 
   const seekTo = useCallback((clientX: number) => {
-    const bar = progressRef.current;
+    const container = waveContainerRef.current;
     const a = audioRef.current;
-    if (!bar || !a || !isFinite(a.duration)) return;
-    const rect = bar.getBoundingClientRect();
+    if (!container || !a || !isFinite(a.duration)) return;
+    const rect = container.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     a.currentTime = ratio * a.duration;
     onSeeked?.();
@@ -68,74 +162,67 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
     };
   }, [dragging, seekTo]);
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
   return (
-    <div className="flex items-center gap-4 px-4 py-3 rounded-[0.625rem] bg-[hsl(0_0%_100%/0.05)] border border-[hsl(0_0%_100%/0.08)]">
-      {/* Play / Pause */}
-      <button
-        onClick={toggle}
-        className="h-10 w-10 shrink-0 rounded-lg bg-[hsl(88_100%_51%/0.15)] hover:bg-[hsl(88_100%_51%/0.25)] flex items-center justify-center transition-colors"
-      >
-        {playing ? (
-          <Pause className="h-5 w-5 text-[#8cff05]" />
-        ) : (
-          <Play className="h-5 w-5 text-[#8cff05] ml-0.5" />
-        )}
-      </button>
-
-      {/* Time */}
-      <span className="text-[15px] font-semibold tabular-nums text-[#8cff05] w-[44px] text-right shrink-0">
-        {formatTime(currentTime)}
-      </span>
-
-      {/* Progress bar */}
+    <div className="rounded-[0.625rem] bg-[hsl(0_0%_100%/0.05)] border border-[hsl(0_0%_100%/0.08)] overflow-hidden">
+      {/* Waveform */}
       <div
-        ref={progressRef}
-        className="flex-1 h-8 flex items-center cursor-pointer group"
+        ref={waveContainerRef}
+        className="relative h-20 w-full cursor-pointer hover:bg-[hsl(0_0%_100%/0.03)] transition-colors"
         onMouseDown={handleMouseDown}
       >
-        <div className="w-full h-[6px] rounded-full bg-white/[0.08] relative overflow-visible">
-          <div
-            className="h-full rounded-full bg-[#8cff05] transition-[width] duration-75"
-            style={{ width: `${progress}%` }}
-          />
-          {/* Thumb */}
-          <div
-            className={cn(
-              "absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-[#8cff05] shadow-md transition-opacity",
-              dragging ? "opacity-100 scale-110" : "opacity-0 group-hover:opacity-100"
-            )}
-            style={{ left: `calc(${progress}% - 8px)` }}
-          />
-        </div>
+        {waveLoading ? (
+          <Skeleton className="h-full w-full rounded-none bg-white/[0.04]" />
+        ) : peaks ? (
+          <canvas ref={canvasRef} className="absolute inset-0" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-xs text-white/30">
+            Waveform indisponível
+          </div>
+        )}
       </div>
 
-      {/* Duration */}
-      <span className="text-[15px] font-semibold tabular-nums text-[#8cff05] w-[44px] shrink-0">
-        {formatTime(duration)}
-      </span>
+      {/* Controls row */}
+      <div className="flex items-center gap-4 px-4 py-2.5">
+        {/* Play / Pause */}
+        <button
+          onClick={toggle}
+          className="h-10 w-10 shrink-0 rounded-lg bg-[hsl(88_100%_51%/0.15)] hover:bg-[hsl(88_100%_51%/0.25)] flex items-center justify-center transition-colors"
+        >
+          {playing ? (
+            <Pause className="h-5 w-5 text-[#8cff05]" />
+          ) : (
+            <Play className="h-5 w-5 text-[#8cff05] ml-0.5" />
+          )}
+        </button>
 
-      {/* Download */}
-      <a
-        href={src}
-        download
-        className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-white/50 hover:text-[#8cff05]"
-        title="Baixar áudio"
-      >
-        <Download className="h-5 w-5" />
-      </a>
+        {/* Time */}
+        <span className="text-[15px] font-semibold tabular-nums text-[#8cff05]">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
 
-      {/* Mute */}
-      <button
-        onClick={() => {
-          if (audioRef.current) audioRef.current.muted = !muted;
-          setMuted(!muted);
-        }}
-        className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-red-500 hover:text-red-400"
-      >
-        {muted ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
-      </button>
+        <div className="flex-1" />
+
+        {/* Download */}
+        <a
+          href={src}
+          download
+          className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-white/50 hover:text-[#8cff05]"
+          title="Baixar áudio"
+        >
+          <Download className="h-5 w-5" />
+        </a>
+
+        {/* Mute */}
+        <button
+          onClick={() => {
+            if (audioRef.current) audioRef.current.muted = !muted;
+            setMuted(!muted);
+          }}
+          className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-red-500 hover:text-red-400"
+        >
+          {muted ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
+        </button>
+      </div>
 
       {/* Hidden audio element */}
       <audio
