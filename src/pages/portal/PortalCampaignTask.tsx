@@ -293,7 +293,35 @@ export default function PortalCampaignTask() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="px-6 pb-2">
+              <button
+                type="button"
+                onClick={() => setIsPublicRoom(!isPublicRoom)}
+                className="flex items-center gap-3 w-full py-3 font-mono text-xs uppercase tracking-widest transition-colors"
+                style={{ color: isPublicRoom ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
+              >
+                <span
+                  className="flex items-center justify-center w-5 h-5 shrink-0 transition-colors"
+                  style={{
+                    border: `2px solid ${isPublicRoom ? "var(--portal-accent)" : "var(--portal-border)"}`,
+                    background: isPublicRoom ? "var(--portal-accent)" : "transparent",
+                  }}
+                >
+                  {isPublicRoom && <Globe className="h-3 w-3" style={{ color: "var(--portal-accent-text)" }} />}
+                </span>
+                Sala Pública
+                {isPublicRoom && userCountry && (
+                  <span
+                    className="font-mono text-[10px] px-2 py-0.5 ml-auto"
+                    style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                  >
+                    {userCountry}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="p-6 pt-2">
               <KGenButton
                 onClick={handleCreateRoom}
                 disabled={creating || !topic.trim()}
