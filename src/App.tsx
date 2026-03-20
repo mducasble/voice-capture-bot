@@ -177,7 +177,8 @@ const App = () => (
               <Route path="/data/login" element={<DataLogin />} />
               <Route path="/data" element={<DataLayout />}>
                 <Route index element={<DataHome />} />
-                <Route path="video/task/:campaignId" element={<DataVideoTask />} />
+                <Route path="video/review/:campaignId" element={<DataVideoReview />} />
+                <Route path="extras/qc/:campaignId" element={<DataVideoTask />} />
                 <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
                 <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
                 <Route path="profile" element={<DataProfile />} />
