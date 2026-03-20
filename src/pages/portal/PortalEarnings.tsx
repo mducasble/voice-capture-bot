@@ -64,6 +64,8 @@ export default function PortalEarnings() {
     enabled: !!user?.id,
   });
 
+  const [earningsView, setEarningsView] = useState<"pending" | "all">("pending");
+
   const stats = useMemo(() => {
     const rows = ledgerRows || [];
     const byActivity: Record<string, { direct: number; referral: number; pending: number; tasks: number; total: number }> = {};
@@ -80,6 +82,14 @@ export default function PortalEarnings() {
 
       if (row.status === "cancelled") continue;
 
+      // Global totals always count everything
+      totalAccumulated += amount;
+      if (row.status === "credited") totalCredited += amount;
+      if (row.status === "paid") totalPaid += amount;
+
+      // Activity breakdown respects the view filter
+      if (earningsView === "pending" && row.status !== "pending") continue;
+
       if (row.entry_type === "referral_bonus") {
         bucket.referral += amount;
       } else {
@@ -91,14 +101,10 @@ export default function PortalEarnings() {
       if (row.status === "pending") {
         bucket.pending += 1;
       }
-
-      totalAccumulated += amount;
-      if (row.status === "credited") totalCredited += amount;
-      if (row.status === "paid") totalPaid += amount;
     }
 
     return { byActivity, totalAccumulated, availableWithdraw: totalCredited, totalPaid };
-  }, [ledgerRows]);
+  }, [ledgerRows, earningsView]);
 
   const referralCode = (profile as any)?.referral_code || "";
 
