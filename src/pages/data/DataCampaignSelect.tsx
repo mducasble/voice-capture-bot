@@ -32,7 +32,7 @@ export default function DataCampaignSelect() {
     let query = supabase
       .from("campaigns")
       .select("id, name, description, campaign_status, language_primary, target_hours, accumulated_value")
-      .eq("is_active", true)
+      .in("campaign_status", ["active", "paused", "completed"])
       .order("name");
 
     if (allowedTypes.length > 0) {
