@@ -797,7 +797,35 @@ const Room = () => {
         }
       }
 
-      // Add new participant to database
+      // Public room: submit join request instead of direct join
+      if (room?.is_public && !asCreator) {
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        const userId = currentUser?.id;
+        if (!userId) {
+          toast.error("Você precisa estar logado para entrar em salas públicas");
+          return;
+        }
+
+        const { error: reqError } = await supabase.from("room_join_requests").insert({
+          room_id: roomId,
+          user_id: userId,
+          user_name: participantName,
+        });
+
+        if (reqError) {
+          if (reqError.code === "23505") {
+            toast.info("Solicitação já enviada, aguardando aprovação...");
+          } else {
+            throw reqError;
+          }
+        }
+
+        setAwaitingApproval(true);
+        toast.success("Solicitação enviada! Aguardando aprovação do host...");
+        return;
+      }
+
+      // Private room: add participant directly
       const { data, error } = await supabase
         .from("room_participants")
         .insert({
