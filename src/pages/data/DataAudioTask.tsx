@@ -474,10 +474,20 @@ export default function DataAudioTask() {
     if (!rec) return;
     setSaving(true);
     logAction("approve");
-    const { error } = await supabase.from("voice_recordings").update({ quality_status: "approved" }).eq("id", rec.id);
+
+    // Approve ALL recordings in the same session so siblings don't reappear in queue
+    let query = supabase.from("voice_recordings").update({ quality_status: "approved" });
+
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+
+    const { error } = await query;
     setSaving(false);
     if (error) { toast.error("Erro ao aprovar"); return; }
-    toast.success("Aprovado!");
+    toast.success("Sessão aprovada!");
     await finishTask("completed", "approved");
     loadNext();
   };
