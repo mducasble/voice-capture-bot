@@ -295,6 +295,36 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
     return true;
   }) : undefined);
 
+  const formatSessionDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const checkSessionMismatch = useCallback(async (fileName: string): Promise<boolean> => {
+    const match = fileName.match(/room_([a-f0-9-]{36})/i);
+    if (!match) return true; // no session id in filename, allow
+    const fileSessionId = match[1];
+    if (fileSessionId === sessionId) return true; // same session, allow
+
+    // Get the date of the other session from its recordings
+    let otherDate = "desconhecida";
+    try {
+      const { data } = await supabase
+        .from("voice_recordings")
+        .select("created_at")
+        .eq("session_id", fileSessionId)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (data?.[0]?.created_at) otherDate = formatSessionDate(data[0].created_at);
+    } catch { /* ignore */ }
+
+    const currentDate = recordings[0]?.created_at ? formatSessionDate(recordings[0].created_at) : "desconhecida";
+
+    return window.confirm(
+      `⚠️ Esse áudio parece ser de uma outra sessão/conversa (${otherDate}), enquanto essa é de ${currentDate}.\n\nVocê corre o risco de alterar a conversa errada e perder todo o material.\n\nTem certeza?`
+    );
+  }, [sessionId, recordings]);
+
   const handleUpload = useCallback((trackType: TrackType) => {
     pendingTrackType.current = trackType;
     fileInputRef.current?.click();
@@ -311,19 +341,9 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       return;
     }
 
-    // Check if the filename contains a session ID that doesn't match this session
-    const filenameSessionMatch = file.name.match(/room_([a-f0-9-]{36})/i);
-    if (filenameSessionMatch) {
-      const fileSessionId = filenameSessionMatch[1];
-      if (fileSessionId !== sessionId) {
-        const shortFile = fileSessionId.slice(0, 8);
-        const shortCurrent = sessionId.slice(0, 8);
-        const proceed = window.confirm(
-          `⚠️ Atenção: este arquivo parece ser da sessão ${shortFile}…, mas você está enviando para a sessão ${shortCurrent}…\n\nTem certeza que deseja continuar?`
-        );
-        if (!proceed) return;
-      }
-    }
+    // Check if the file belongs to a different session
+    const canProceed = await checkSessionMismatch(file.name);
+    if (!canProceed) return;
 
     setUploading(trackType);
     setProgress(0);
@@ -403,7 +423,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       setUploading(null);
       setProgress(0);
     }
-  }, [sessionId, campaignId, host, guest]);
+  }, [sessionId, campaignId, host, guest, checkSessionMismatch]);
 
   const handleResubmit = useCallback((recordingId: string) => {
     pendingResubId.current = recordingId;
@@ -421,19 +441,9 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       return;
     }
 
-    // Check if the filename contains a session ID that doesn't match this session
-    const filenameSessionMatch = file.name.match(/room_([a-f0-9-]{36})/i);
-    if (filenameSessionMatch) {
-      const fileSessionId = filenameSessionMatch[1];
-      if (fileSessionId !== sessionId) {
-        const shortFile = fileSessionId.slice(0, 8);
-        const shortCurrent = sessionId.slice(0, 8);
-        const proceed = window.confirm(
-          `⚠️ Atenção: este arquivo parece ser da sessão ${shortFile}…, mas você está reenviando para a sessão ${shortCurrent}…\n\nTem certeza que deseja continuar?`
-        );
-        if (!proceed) return;
-      }
-    }
+    // Check if the file belongs to a different session
+    const canProceed = await checkSessionMismatch(file.name);
+    if (!canProceed) return;
 
     setResubmitting(recordingId);
     setResubProgress(0);
@@ -496,7 +506,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       setResubmitting(null);
       setResubProgress(0);
     }
-  }, [sessionId]);
+  }, [sessionId, checkSessionMismatch]);
 
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
