@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Radio, Plus, Mic2, Globe, Lock, Users, Clock,
-  Loader2, LogIn, CheckCircle2, XCircle,
+  Radio, Plus, Mic2, Globe, Users, Clock,
+  Loader2, LogIn, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,6 @@ interface PublicRoom {
   creator_user_id: string | null;
   participant_count?: number;
   campaign_name?: string;
-  my_request_status?: string | null;
 }
 
 const Rooms = () => {
@@ -41,7 +40,7 @@ const Rooms = () => {
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [userCountry, setUserCountry] = useState<string | null>(null);
-  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
+  
 
   // Fetch user country from profile
   useEffect(() => {
@@ -108,27 +107,11 @@ const Rooms = () => {
       }
     }
 
-    // Get my join request statuses
-    let myRequests: Record<string, string> = {};
-    if (user && roomIds.length > 0) {
-      const { data: reqs } = await supabase
-        .from("room_join_requests")
-        .select("room_id, status")
-        .eq("user_id", user.id)
-        .in("room_id", roomIds);
-      if (reqs) {
-        for (const r of reqs) {
-          myRequests[r.room_id] = r.status;
-        }
-      }
-    }
-
     setPublicRooms(
       filtered.map((r: any) => ({
         ...r,
         participant_count: participantCounts[r.id] || 0,
         campaign_name: r.campaign_id ? campaignMap[r.campaign_id] : null,
-        my_request_status: myRequests[r.id] || null,
       }))
     );
     setLoadingRooms(false);
@@ -138,19 +121,6 @@ const Rooms = () => {
     fetchPublicRooms();
   }, [user, userCountry]);
 
-  // Realtime: listen for join request updates
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("room-join-requests-mine")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "room_join_requests", filter: `user_id=eq.${user.id}` },
-        () => fetchPublicRooms()
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, userCountry]);
 
   const handleCreateRoom = async () => {
     if (!creatorName.trim()) {
@@ -208,26 +178,6 @@ const Rooms = () => {
     }
   };
 
-  const handleRequestJoin = async (room: PublicRoom) => {
-    if (!user) {
-      toast.error("Faça login para solicitar entrada");
-      return;
-    }
-    setJoiningRoomId(room.id);
-    const { error } = await supabase.from("room_join_requests").insert({
-      room_id: room.id,
-      user_id: user.id,
-      user_name: creatorName || user.email || "Usuário",
-    });
-    setJoiningRoomId(null);
-    if (error) {
-      if (error.code === "23505") toast.info("Você já solicitou entrada nesta sala.");
-      else toast.error("Erro ao solicitar entrada");
-      return;
-    }
-    toast.success("Solicitação enviada! Aguarde a aprovação do host.");
-    fetchPublicRooms();
-  };
 
   const statusLabels: Record<string, string> = {
     waiting: "Aguardando",
@@ -357,7 +307,6 @@ const Rooms = () => {
               <div className="space-y-3">
                 {publicRooms.map((room) => {
                   const isMyRoom = user && room.creator_user_id === user.id;
-                  const requestStatus = room.my_request_status;
 
                   return (
                     <Card key={room.id} className="overflow-hidden">
@@ -411,42 +360,23 @@ const Rooms = () => {
                               >
                                 Entrar
                               </Button>
-                            ) : requestStatus === "approved" ? (
+                            ) : (room.participant_count || 0) > 1 ? (
+                              <Button size="sm" variant="outline" disabled>
+                                <Lock className="h-3.5 w-3.5 mr-1" />
+                                Lotada
+                              </Button>
+                            ) : (
                               <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700"
+                                variant="outline"
                                 onClick={() =>
                                   navigate(
                                     `/room/${room.id}${room.campaign_id ? `?campaign=${room.campaign_id}` : ""}`
                                   )
                                 }
                               >
-                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                <LogIn className="h-3.5 w-3.5 mr-1" />
                                 Entrar
-                              </Button>
-                            ) : requestStatus === "pending" ? (
-                              <Button size="sm" variant="outline" disabled>
-                                <Clock className="h-3.5 w-3.5 mr-1" />
-                                Aguardando
-                              </Button>
-                            ) : requestStatus === "rejected" ? (
-                              <Button size="sm" variant="outline" disabled className="text-destructive">
-                                <XCircle className="h-3.5 w-3.5 mr-1" />
-                                Recusado
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRequestJoin(room)}
-                                disabled={joiningRoomId === room.id}
-                              >
-                                {joiningRoomId === room.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                                ) : (
-                                  <LogIn className="h-3.5 w-3.5 mr-1" />
-                                )}
-                                Solicitar
                               </Button>
                             )}
                           </div>
