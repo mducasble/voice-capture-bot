@@ -629,16 +629,87 @@ export function SessionBlock({ sessionId, campaignId, recordings, sessionEarning
         )}
       </div>
 
+      {/* Revision banner */}
+      {isSessionRejected && revisionStatus === null && (
+        <div className="px-4 py-3 flex items-center gap-3 flex-wrap" style={{ background: "rgba(239,68,68,0.08)", borderBottom: "1px solid var(--portal-border)" }}>
+          <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: "#ef4444" }} />
+          <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "#ef4444" }}>Sessão reprovada</span>
+          <button
+            onClick={handleRequestRevision}
+            disabled={revisionLoading}
+            className="ml-auto inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-3 py-1.5 transition-all"
+            style={{
+              color: "var(--portal-accent)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid var(--portal-border)",
+              cursor: revisionLoading ? "default" : "pointer",
+            }}
+          >
+            {revisionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Solicitar Revisão
+          </button>
+        </div>
+      )}
+
+      {revisionStatus === "open" && (
+        <div className="px-4 py-3" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid var(--portal-border)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <RefreshCw className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+            <span className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "#8b5cf6" }}>Revisão em andamento</span>
+          </div>
+          <p className="font-mono text-xs mb-3" style={{ color: "var(--portal-text-muted)" }}>
+            Faça as modificações necessárias (reenvie ou envie trilhas faltantes) e clique em enviar.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={revisionNotes}
+              onChange={(e) => setRevisionNotes(e.target.value)}
+              placeholder="Nota opcional (ex: reenviei o áudio do host)"
+              className="flex-1 font-mono text-xs px-3 py-2"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid var(--portal-border)",
+                color: "var(--portal-text)",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={handleSubmitRevision}
+              disabled={submittingRevision}
+              className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest font-bold px-4 py-2 transition-all"
+              style={{
+                color: "#fff",
+                background: "#8b5cf6",
+                cursor: submittingRevision ? "default" : "pointer",
+              }}
+            >
+              {submittingRevision ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Enviar para Revisão
+            </button>
+          </div>
+        </div>
+      )}
+
+      {revisionStatus === "submitted" && (
+        <div className="px-4 py-3 flex items-center gap-2" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid var(--portal-border)" }}>
+          <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#8b5cf6" }} />
+          <span className="font-mono text-xs uppercase tracking-widest" style={{ color: "#8b5cf6" }}>Revisão enviada — aguardando análise</span>
+        </div>
+      )}
+
       {/* Mixed track — always show */}
       {mixedRec && !uploadedTracks.has("mixed") ? (
         resubmittedIds.has(mixedRec.id) ? (
           <ResubmittedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
         ) : (
-          <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} onResubmit={canEdit ? handleResubmit : undefined} resubmitting={resubmitting} resubProgress={resubProgress} />
         )
       ) : uploadedTracks.has("mixed") ? (
         <UploadedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
-      ) : showParticipantTracks ? (
+      ) : showParticipantTracks && canEdit ? (
+        <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
+      ) : showParticipantTracks && !mixedRec ? (
         <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
       ) : null}
 
@@ -648,7 +719,7 @@ export function SessionBlock({ sessionId, campaignId, recordings, sessionEarning
           resubmittedIds.has(effectiveHostRec.id) ? (
             <ResubmittedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
           ) : (
-            <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+            <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={canEdit ? handleResubmit : undefined} resubmitting={resubmitting} resubProgress={resubProgress} />
           )
         ) : uploadedTracks.has("host") ? (
           <UploadedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
@@ -663,7 +734,7 @@ export function SessionBlock({ sessionId, campaignId, recordings, sessionEarning
           resubmittedIds.has(effectiveGuestRec.id) ? (
             <ResubmittedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
           ) : (
-            <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+            <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} onResubmit={canEdit ? handleResubmit : undefined} resubmitting={resubmitting} resubProgress={resubProgress} />
           )
         ) : uploadedTracks.has("participant") ? (
           <UploadedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
@@ -677,7 +748,7 @@ export function SessionBlock({ sessionId, campaignId, recordings, sessionEarning
         resubmittedIds.has(r.id) ? (
           <ResubmittedRow key={r.id} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
         ) : (
-          <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={canEdit ? handleResubmit : undefined} resubmitting={resubmitting} resubProgress={resubProgress} />
         )
       ))}
 
