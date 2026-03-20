@@ -343,11 +343,20 @@ function CampaignCard({ participation, submissions, rewardConfig }: { participat
               {/* Audio sessions grouped */}
               {Array.from(sessionGroups.entries())
                 .filter(([, recs]) => sessionFilter === "all" || getSessionStatus(recs) === sessionFilter)
-                .map(([sessionId, recs]) => (
-                <div key={sessionId}>
-                  <SessionBlock sessionId={sessionId} campaignId={campaign.id} recordings={recs} />
-                </div>
-              ))}
+                .map(([sid, recs]) => {
+                  // Calculate session earnings only for approved tab
+                  let sessionEarnings: number | undefined;
+                  if (sessionFilter === "approved" && rewardConfig?.base_rate) {
+                    const approvedIndividuals = recs.filter(r => r.recording_type === "individual" && getUnifiedStatus(r).label === "Aprovado");
+                    const totalHours = approvedIndividuals.reduce((sum, r) => sum + ((r.duration_seconds || 0) / 3600), 0);
+                    sessionEarnings = rewardConfig.base_rate * totalHours;
+                  }
+                  return (
+                    <div key={sid}>
+                      <SessionBlock sessionId={sid} campaignId={campaign.id} recordings={recs} sessionEarnings={sessionEarnings} earningsCurrency={rewardConfig?.currency} />
+                    </div>
+                  );
+                })}
 
               {/* Non-audio submissions (videos, images, etc.) */}
               {nonAudioSubmissions.length > 0 && (
