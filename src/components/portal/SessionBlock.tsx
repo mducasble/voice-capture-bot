@@ -337,8 +337,8 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
   // Track definitions
-  const hostLabel = host?.name || "Host";
-  const guestLabel = guest?.name || "Participante";
+  const hostLabel = host?.name || "Pessoa 1";
+  const guestLabel = guest?.name || "Pessoa 2";
 
   const hasParts = !loadingParts && participants.length >= 1;
 
