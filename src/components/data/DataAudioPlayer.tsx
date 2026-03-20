@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DataAudioPlayerProps {
@@ -115,6 +115,16 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
       <span className="text-[15px] font-semibold tabular-nums text-[#8cff05] w-[44px] shrink-0">
         {formatTime(duration)}
       </span>
+
+      {/* Download */}
+      <a
+        href={src}
+        download
+        className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-white/50 hover:text-[#8cff05]"
+        title="Baixar áudio"
+      >
+        <Download className="h-5 w-5" />
+      </a>
 
       {/* Mute */}
       <button
