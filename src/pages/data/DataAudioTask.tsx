@@ -409,7 +409,7 @@ export default function DataAudioTask() {
       }).select("id").single();
       if (log) setTaskLogId(log.id);
     }
-  }, [campaignId, user, taskSetId]);
+  }, [campaignId, user, taskSetId, fetchPendingCount]);
 
   useEffect(() => { loadNext(); }, [loadNext]);
 
