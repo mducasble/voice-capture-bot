@@ -54,7 +54,7 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function TrackRow({ rec, label, icon }: { rec: SubmissionRow; label: string; icon: React.ReactNode }) {
+function TrackRow({ rec, label, icon, onResubmit }: { rec: SubmissionRow; label: string; icon: React.ReactNode; onResubmit?: (recId: string) => void }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -97,6 +97,16 @@ function TrackRow({ rec, label, icon }: { rec: SubmissionRow; label: string; ico
           <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
             <Clock className="h-3 w-3 inline mr-0.5" />{formatDuration(rec.duration_seconds)}
           </span>
+        )}
+        {onResubmit && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onResubmit(rec.id); }}
+            className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5 transition-opacity hover:opacity-80"
+            style={{ color: "var(--portal-accent)", background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}
+            title="Substituir trilha por um novo arquivo"
+          >
+            <RefreshCw className="h-3 w-3" /> Reenviar
+          </button>
         )}
       </div>
     </div>
