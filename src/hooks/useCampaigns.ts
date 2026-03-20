@@ -309,39 +309,92 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   }
 
   // Task sets
-  // First, get existing task sets for cleanup
-  const { data: existingTaskSets } = await supabase
+  // Update existing rows in place to avoid breaking references from submissions/reviews.
+  const { data: existingTaskSets, error: existingTaskSetsError } = await supabase
     .from("campaign_task_sets")
-    .select("id, task_type")
+    .select("id, task_set_id, task_type")
     .eq("campaign_id", campaignId);
 
-  // Delete validation rules for existing task sets before deleting them
-  if (existingTaskSets) {
-    for (const ts of existingTaskSets) {
-      const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
-      if (category === "audio") {
-        await supabase.from("campaign_audio_validation").delete().eq("task_set_id", ts.id);
-        await supabase.from("campaign_content_validation").delete().eq("task_set_id", ts.id);
-      } else {
-        const table = getValidationTableForCategory(category) as any;
-        await supabase.from(table).delete().eq("task_set_id", ts.id);
-      }
+  if (existingTaskSetsError) throw existingTaskSetsError;
+
+  const existingTaskSetMap = new Map((existingTaskSets || []).map(ts => [ts.id, ts]));
+  const incomingTaskSetIds = new Set(
+    (payload.task_sets || [])
+      .map(ts => ts.id)
+      .filter((id): id is string => !!id)
+  );
+
+  const taskSetsToDelete = (existingTaskSets || []).filter(ts => !incomingTaskSetIds.has(ts.id));
+
+  for (const ts of taskSetsToDelete) {
+    const category = TASK_TYPE_CATEGORIES[ts.task_type] || "audio";
+    if (category === "audio") {
+      const [{ error: audioDeleteError }, { error: contentDeleteError }] = await Promise.all([
+        supabase.from("campaign_audio_validation").delete().eq("task_set_id", ts.id),
+        supabase.from("campaign_content_validation").delete().eq("task_set_id", ts.id),
+      ]);
+      if (audioDeleteError) throw audioDeleteError;
+      if (contentDeleteError) throw contentDeleteError;
+    } else {
+      const table = getValidationTableForCategory(category) as any;
+      const { error: validationDeleteError } = await supabase.from(table).delete().eq("task_set_id", ts.id);
+      if (validationDeleteError) throw validationDeleteError;
     }
+
+    const { error: taskSetDeleteError } = await supabase
+      .from("campaign_task_sets")
+      .delete()
+      .eq("id", ts.id)
+      .eq("campaign_id", campaignId);
+
+    if (taskSetDeleteError) throw taskSetDeleteError;
   }
 
-  await supabase.from("campaign_task_sets").delete().eq("campaign_id", campaignId);
-
   if (payload.task_sets && payload.task_sets.length > 0) {
-    // Deduplicate task_set_id to avoid unique constraint violation on (campaign_id, task_set_id)
     const usedSetIds = new Set<string>();
+
     for (const ts of payload.task_sets) {
-      let setId = ts.task_set_id;
+      const existingTaskSet = ts.id ? existingTaskSetMap.get(ts.id) : undefined;
+      const originalSetId = ts.task_set_id;
+      let setId = originalSetId;
       let suffix = 2;
+
       while (usedSetIds.has(setId)) {
-        setId = `${ts.task_set_id}-${suffix}`;
+        setId = `${originalSetId}-${suffix}`;
         suffix++;
       }
       usedSetIds.add(setId);
+
+      if (existingTaskSet) {
+        const { error } = await supabase
+          .from("campaign_task_sets")
+          .update({
+            task_set_id: setId,
+            task_type: ts.task_type,
+            enabled: ts.enabled,
+            weight: ts.weight,
+            instructions_title: ts.instructions_title,
+            instructions_summary: ts.instructions_summary,
+            prompt_topic: ts.prompt_topic,
+            prompt_do: ts.prompt_do,
+            prompt_dont: ts.prompt_dont,
+            admin_rules: ts.admin_rules,
+          })
+          .eq("id", existingTaskSet.id)
+          .eq("campaign_id", campaignId);
+
+        if (error) throw error;
+
+        await upsertTaskSetValidation(
+          existingTaskSet.id,
+          ts.task_type,
+          ts.tech_validation || [],
+          ts.content_validation || [],
+          campaignId
+        );
+
+        continue;
+      }
 
       const { data: inserted, error } = await supabase
         .from("campaign_task_sets")
