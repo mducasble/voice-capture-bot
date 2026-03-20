@@ -48,6 +48,7 @@ const PortalPaymentHistory = lazy(() => import("./pages/portal/PortalPaymentHist
 const PortalInbox = lazy(() => import("./pages/portal/PortalInbox"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
+const PortalRooms = lazy(() => import("./pages/portal/PortalRooms"));
 
 // Audit pages
 const AuditLayout = lazy(() => import("./components/audit/AuditLayout"));
