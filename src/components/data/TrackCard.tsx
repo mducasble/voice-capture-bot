@@ -54,7 +54,7 @@ interface TrackCardProps {
 export function TrackCard({
   sib, isMain, hasEnhanced, enhancedUrl, originalUrl,
   sibTier, enhancedTier, sibMetrics, enhancedMetrics,
-  analyzeQueued, enhanceQueued,
+  analyzeQueued, enhanceQueued, enhanceProgress,
   logAction, handleReanalyze, handleEnhance,
   selectedVersion, onSelectVersion,
 }: TrackCardProps) {
