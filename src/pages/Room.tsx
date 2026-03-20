@@ -2030,8 +2030,7 @@ const Room = () => {
                   </p>
                 </div>
               )}
-              </div>
-            )}
+            </div>
 
             {/* Script / Talking Points — AI generated */}
             <TalkingPointsBlock topic={room.topic} />
