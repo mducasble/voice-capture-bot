@@ -122,9 +122,9 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
           if (audioRef.current) audioRef.current.muted = !muted;
           setMuted(!muted);
         }}
-        className="h-9 w-9 shrink-0 rounded-md flex items-center justify-center transition-colors text-red-500 hover:text-red-400"
+        className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-red-500 hover:text-red-400"
       >
-        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        {muted ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
       </button>
 
       {/* Hidden audio element */}
