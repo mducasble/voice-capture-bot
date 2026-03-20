@@ -133,7 +133,7 @@ export default function PortalEarnings() {
               className="px-3 py-1.5 transition-colors"
               style={{
                 background: earningsView === "pending" ? "var(--portal-accent)" : "transparent",
-                color: earningsView === "pending" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                color: earningsView === "pending" ? "var(--portal-accent-text)" : "var(--portal-text)",
               }}
             >
               Pendente
