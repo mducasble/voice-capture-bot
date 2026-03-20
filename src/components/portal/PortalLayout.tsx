@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Mail } from "lucide-react";
+import { FolderOpen, Layers, LogOut, User, Loader2, DollarSign, Copy, Check, Menu, X, Mail, Link2, Radio } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -49,6 +49,7 @@ export default function PortalLayout() { // layout-root
     { to: "/", icon: FolderOpen, label: t("nav.opportunities"), exact: true },
     { to: "/my-campaigns", icon: Layers, label: t("nav.myCampaigns") },
     { to: "/earnings", icon: DollarSign, label: t("nav.myEarnings") },
+    { to: "/rooms", icon: Radio, label: t("nav.publicRooms") },
   ];
 
   return (
@@ -347,7 +348,7 @@ function CopyReferralButton({ userId }: { userId: string }) {
       }}
       title={t("nav.myLink")}
     >
-      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {copied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
       <span className="hidden sm:inline">{copied ? t("nav.copied") : t("nav.myLink")}</span>
     </button>
   );
