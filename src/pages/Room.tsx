@@ -1705,8 +1705,8 @@ const Room = () => {
                 />
               )}
               {isCreator && room.is_public && (
-                <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>
-                  <Globe className="h-3.5 w-3.5" /> Sala Pública
+                <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-widest px-3 py-1.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>
+                  <Globe className="h-4 w-4" /> Sala Pública
                 </span>
               )}
             </div>
