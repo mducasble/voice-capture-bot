@@ -122,19 +122,6 @@ const Rooms = () => {
     fetchPublicRooms();
   }, [user, userCountry]);
 
-  // Realtime: listen for join request updates
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("room-join-requests-mine")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "room_join_requests", filter: `user_id=eq.${user.id}` },
-        () => fetchPublicRooms()
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, userCountry]);
 
   const handleCreateRoom = async () => {
     if (!creatorName.trim()) {
