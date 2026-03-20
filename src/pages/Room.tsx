@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb, Download, RotateCw } from "lucide-react";
 import { AudioLevelIndicator } from "@/components/rooms/AudioLevelIndicator";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
@@ -100,6 +100,11 @@ const Room = () => {
   const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
   const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
   const [uploadOverlayHold, setUploadOverlayHold] = useState(false);
+  const [savedBlobs, setSavedBlobs] = useState<Map<string, { blob: Blob; label: string }>>(new Map());
+  const [overlayStartedAt, setOverlayStartedAt] = useState<number | null>(null);
+  const [overlayElapsed, setOverlayElapsed] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const nonCreatorUploadedRef = useRef<string | null>(null);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
@@ -277,6 +282,93 @@ const Room = () => {
     // We only want to react to new streams appearing
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteStreams.size]);
+
+  // ALL participants: start remote recorders when recording begins (not just creator)
+  useEffect(() => {
+    if (
+      room?.is_recording &&
+      currentParticipant &&
+      !currentParticipant.is_creator &&
+      remoteStreams.size > 0 &&
+      !remoteRecorders.isRecording
+    ) {
+      console.log("[Room] Non-creator starting remote recorders for cross-backup");
+      remoteRecorders.startRecording(remoteStreams, participants);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.is_recording, currentParticipant?.is_creator, remoteStreams.size]);
+
+  // Non-creator: stop remote recorders and upload when recording ends
+  useEffect(() => {
+    if (
+      room?.status === "completed" &&
+      !room.is_recording &&
+      currentParticipant &&
+      !currentParticipant.is_creator &&
+      remoteRecorders.isRecording &&
+      nonCreatorUploadedRef.current !== room.session_id
+    ) {
+      nonCreatorUploadedRef.current = room.session_id;
+      (async () => {
+        setUploadOverlayHold(true);
+        const remoteBlobs = await remoteRecorders.stopRecording();
+        if (remoteBlobs.size > 0) {
+          const newBlobs = new Map<string, { blob: Blob; label: string }>();
+          remoteBlobs.forEach(({ blob, participantName }, peerId) => {
+            newBlobs.set(`remote_${peerId}`, { blob, label: `Backup - ${participantName}` });
+          });
+          setSavedBlobs(newBlobs);
+
+          // Save to IndexedDB
+          for (const [peerId, { blob }] of remoteBlobs) {
+            try {
+              const { saveBlob } = await import("@/lib/audioIndexedDB");
+              await saveBlob(`${room.session_id}_remote_${peerId}`, blob);
+            } catch (e) { console.warn("[IndexedDB] Save failed:", e); }
+          }
+
+          setRemoteUploadsInProgress(remoteBlobs.size);
+          setRemoteUploadsDone(0);
+          const uploadPromises: Promise<void>[] = [];
+          for (const [peerId, { blob, participantName }] of remoteBlobs) {
+            const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+              setRemoteUploadsDone(prev => {
+                const next = prev + 1;
+                if (next >= remoteBlobs.size) {
+                  setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+                }
+                return next;
+              });
+            });
+            uploadPromises.push(p);
+          }
+          await Promise.allSettled(uploadPromises);
+        }
+        // Don't auto-dismiss — user will dismiss manually
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.status, room?.is_recording, currentParticipant?.is_creator, remoteRecorders.isRecording]);
+
+  // Overlay elapsed timer
+  useEffect(() => {
+    const isActive = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    if (isActive && !overlayStartedAt) {
+      setOverlayStartedAt(Date.now());
+    }
+    if (!isActive && overlayStartedAt) {
+      setOverlayStartedAt(null);
+      setOverlayElapsed(0);
+    }
+  }, [isMixedUploading, remoteUploadsInProgress, uploadOverlayHold, overlayStartedAt]);
+
+  useEffect(() => {
+    if (!overlayStartedAt) return;
+    const interval = setInterval(() => {
+      setOverlayElapsed(Math.floor((Date.now() - overlayStartedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [overlayStartedAt]);
 
   // Enumerate audio input devices
   useEffect(() => {
@@ -667,7 +759,10 @@ const Room = () => {
     // Start mixed recording if creator has a local stream
     if (currentParticipant?.is_creator && mediaStreamRef.current) {
       await mixedRecorder.startRecording(mediaStreamRef.current, remoteStreams);
-      // Start recording each remote stream individually as backup
+    }
+
+    // ALL participants start recording remote streams as cross-backup
+    if (remoteStreams.size > 0 && !remoteRecorders.isRecording) {
       await remoteRecorders.startRecording(remoteStreams, participants);
     }
 
@@ -817,57 +912,134 @@ const Room = () => {
 
     setUploadOverlayHold(true);
     const uploadPromises: Promise<void>[] = [];
+    const newBlobs = new Map<string, { blob: Blob; label: string }>();
 
-    // Stop mixed recording and upload
+    // Stop mixed recording
+    let mixedBlob: Blob | null = null;
+    let mixedSampleRate: number | undefined;
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
       const mixedResult = await mixedRecorder.stopRecording();
       if (mixedResult) {
-        uploadPromises.push(uploadMixedRecording(mixedResult.blob, mixedResult.sampleRate));
+        mixedBlob = mixedResult.blob;
+        mixedSampleRate = mixedResult.sampleRate;
+        newBlobs.set("mixed", { blob: mixedResult.blob, label: "Áudio Mixado" });
       }
     }
 
-    // Stop remote backup recorders and upload each
-    if (currentParticipant?.is_creator && remoteRecorders.isRecording) {
-      const remoteBlobs = await remoteRecorders.stopRecording();
+    // Stop remote backup recorders (all participants)
+    let remoteBlobs: Map<string, { blob: Blob; participantName: string }> | null = null;
+    if (remoteRecorders.isRecording) {
+      remoteBlobs = await remoteRecorders.stopRecording();
       if (remoteBlobs.size > 0) {
-        setRemoteUploadsInProgress(remoteBlobs.size);
-        setRemoteUploadsDone(0);
-        
-        for (const [peerId, { blob, participantName }] of remoteBlobs) {
-          const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
-            setRemoteUploadsDone(prev => {
-              const next = prev + 1;
-              if (next >= remoteBlobs.size) {
-                setTimeout(() => {
-                  setRemoteUploadsInProgress(0);
-                  setRemoteUploadsDone(0);
-                }, 2000);
-              }
-              return next;
-            });
+        remoteBlobs.forEach(({ blob, participantName }, peerId) => {
+          newBlobs.set(`remote_${peerId}`, { blob, label: `Backup - ${participantName}` });
+        });
+      }
+    }
+
+    // Save blobs to state for download links
+    setSavedBlobs(newBlobs);
+
+    // Save to IndexedDB for offline recovery
+    for (const [key, { blob }] of newBlobs) {
+      try {
+        const { saveBlob } = await import("@/lib/audioIndexedDB");
+        await saveBlob(`${room.session_id}_${key}`, blob);
+      } catch (e) {
+        console.warn("[IndexedDB] Save failed:", e);
+      }
+    }
+
+    // Start uploads
+    if (mixedBlob) {
+      uploadPromises.push(uploadMixedRecording(mixedBlob, mixedSampleRate));
+    }
+    if (remoteBlobs && remoteBlobs.size > 0) {
+      setRemoteUploadsInProgress(remoteBlobs.size);
+      setRemoteUploadsDone(0);
+      for (const [peerId, { blob, participantName }] of remoteBlobs) {
+        const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+          setRemoteUploadsDone(prev => {
+            const next = prev + 1;
+            if (next >= remoteBlobs!.size) {
+              setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+            }
+            return next;
           });
-          uploadPromises.push(p);
-        }
+        });
+        uploadPromises.push(p);
       }
     }
 
     await supabase
       .from("rooms")
-      .update({ 
-        is_recording: false, 
-        status: "completed"
-      })
+      .update({ is_recording: false, status: "completed" })
       .eq("id", roomId);
 
     toast.success(t("room.recordingStopped") || "Gravação finalizada! Processando uploads...");
 
-    // Wait for ALL uploads to finish, then hold overlay 3s so user sees confirmation toasts
     if (uploadPromises.length > 0) {
       await Promise.allSettled(uploadPromises);
-      setTimeout(() => setUploadOverlayHold(false), 3000);
-    } else {
-      setUploadOverlayHold(false);
+      // Don't auto-dismiss — overlay stays for download links
     }
+  };
+
+  // Force retry: re-upload from saved blobs in memory
+  const handleForceRetry = async () => {
+    if (savedBlobs.size === 0 || isRetrying) return;
+    setIsRetrying(true);
+
+    const uploadPromises: Promise<void>[] = [];
+
+    const mixedEntry = savedBlobs.get("mixed");
+    if (mixedEntry) {
+      uploadPromises.push(uploadMixedRecording(mixedEntry.blob));
+    }
+
+    const remoteEntries = Array.from(savedBlobs.entries()).filter(([k]) => k.startsWith("remote_"));
+    if (remoteEntries.length > 0) {
+      setRemoteUploadsInProgress(remoteEntries.length);
+      setRemoteUploadsDone(0);
+      for (const [key, { blob, label }] of remoteEntries) {
+        const peerId = key.replace("remote_", "");
+        const name = label.replace("Backup - ", "");
+        const p = uploadRemoteBackup(peerId, blob, name).finally(() => {
+          setRemoteUploadsDone(prev => {
+            const next = prev + 1;
+            if (next >= remoteEntries.length) {
+              setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+            }
+            return next;
+          });
+        });
+        uploadPromises.push(p);
+      }
+    }
+
+    if (uploadPromises.length > 0) {
+      await Promise.allSettled(uploadPromises);
+    }
+    setIsRetrying(false);
+  };
+
+  // Download a blob directly from memory
+  const downloadBlobFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Dismiss overlay and navigate away
+  const handleDismissOverlay = () => {
+    setUploadOverlayHold(false);
+    setSavedBlobs(new Map());
+    setOverlayStartedAt(null);
+    setOverlayElapsed(0);
   };
 
   // Copy room link with referral code
@@ -978,30 +1150,41 @@ const Room = () => {
   }
 
     const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    const uploadsActive = isMixedUploading || remoteUploadsInProgress > 0 || isRetrying;
 
-    // Full-screen upload overlay
+    // Full-screen upload overlay with force retry + download links
     const uploadOverlay = isAnyUploadInProgress && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center">
+        <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center w-full">
           <div className="relative">
-            <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+            {uploadsActive ? (
+              <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+            ) : null}
             <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-500/20 border-2 border-red-500">
-              <ShieldAlert className="h-10 w-10 text-red-400" />
+              {uploadsActive ? (
+                <Loader2 className="h-10 w-10 text-red-400 animate-spin" />
+              ) : (
+                <Check className="h-10 w-10 text-green-400" />
+              )}
             </div>
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-              {t("room.uploadOverlayTitle")}
+              {uploadsActive ? (t("room.uploadOverlayTitle") || "Enviando áudios...") : "Upload concluído"}
             </h2>
             <p className="text-sm text-red-300 font-medium">
-              {t("room.uploadOverlayDesc")}
+              {uploadsActive
+                ? (t("room.uploadOverlayDesc") || "Não feche esta aba!")
+                : "Você pode baixar os arquivos abaixo como backup."}
             </p>
           </div>
+
+          {/* Upload progress */}
           <div className="w-full space-y-3">
             {isMixedUploading && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>{t("room.uploadMixedAudio")}</span>
+                  <span>{t("room.uploadMixedAudio") || "Áudio mixado"}</span>
                   <span>{mixedUploadProgress}%</span>
                 </div>
                 <Progress value={mixedUploadProgress} className="h-2" />
@@ -1010,14 +1193,67 @@ const Room = () => {
             {remoteUploadsInProgress > 0 && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>{t("room.uploadRemoteBackups")}</span>
+                  <span>{t("room.uploadRemoteBackups") || "Backups remotos"}</span>
                   <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
                 </div>
                 <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-2" />
               </div>
             )}
           </div>
-          <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
+
+          {/* Force retry button: visible at 30s, clickable at 2min */}
+          {overlayElapsed >= 30 && uploadsActive && (
+            <button
+              onClick={handleForceRetry}
+              disabled={overlayElapsed < 120 || isRetrying}
+              className="flex items-center gap-2 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white border transition-all"
+              style={{
+                borderColor: overlayElapsed < 120 ? "hsl(0 0% 40%)" : "hsl(45 93% 47%)",
+                background: overlayElapsed < 120 ? "transparent" : "hsl(45 93% 47% / 0.15)",
+                color: overlayElapsed < 120 ? "hsl(0 0% 60%)" : "hsl(45 93% 47%)",
+                cursor: overlayElapsed < 120 ? "not-allowed" : "pointer",
+              }}
+            >
+              <RotateCw className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`} />
+              {overlayElapsed < 120
+                ? `Forçar reenvio (${formatDuration(120 - overlayElapsed)})`
+                : isRetrying
+                  ? "Reenviando..."
+                  : "Forçar reenvio"}
+            </button>
+          )}
+
+          {/* Download links for saved blobs */}
+          {savedBlobs.size > 0 && (
+            <div className="w-full space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/50">
+                Backup local dos arquivos
+              </p>
+              {Array.from(savedBlobs.entries()).map(([key, { blob, label }]) => (
+                <button
+                  key={key}
+                  onClick={() => downloadBlobFile(blob, `${room?.session_id || "session"}_${key}.wav`)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left font-mono text-xs text-white/80 hover:text-white transition-colors"
+                  style={{ border: "1px solid hsl(0 0% 30%)", background: "hsl(0 0% 10%)" }}
+                >
+                  <Download className="h-4 w-4 shrink-0 text-green-400" />
+                  <span className="flex-1">{label}</span>
+                  <span className="text-white/40">{(blob.size / 1024 / 1024).toFixed(1)} MB</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Dismiss button (only when not actively uploading) */}
+          {!uploadsActive && (
+            <button
+              onClick={handleDismissOverlay}
+              className="px-6 py-2.5 font-mono text-sm font-bold uppercase tracking-wider text-black"
+              style={{ background: "hsl(45 93% 47%)" }}
+            >
+              Concluir
+            </button>
+          )}
         </div>
       </div>
     );
