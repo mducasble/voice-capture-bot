@@ -308,6 +308,7 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
                       <ResendAudioButton sessionId={sessionId} campaignId={campaign.id} />
                     </div>
                     {recs.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
+                    <SessionManualUpload sessionId={sessionId} campaignId={campaign.id} />
                   </div>
                 );
               })}
