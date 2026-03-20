@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useState, useRef, useEffect } from "react";
 
 const LANGUAGES = [
   { code: "pt", flag: "https://flagcdn.com/w80/br.png", label: "Português" },
@@ -9,46 +10,60 @@ const LANGUAGES = [
 export default function LanguageSelector({ variant = "flags" }: { variant?: "flags" | "compact" }) {
   const { i18n } = useTranslation();
   const currentLang = i18n.language?.substring(0, 2) || "pt";
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  if (variant === "compact") {
-    return (
-      <div className="flex items-center gap-1">
-        {LANGUAGES.map(l => (
-          <button
-            key={l.code}
-            type="button"
-            onClick={() => i18n.changeLanguage(l.code)}
-            className="w-7 h-7 flex items-center justify-center overflow-hidden transition-all"
-            style={{
-              border: currentLang === l.code ? "2px solid var(--portal-accent)" : "1px solid var(--portal-border)",
-              background: "transparent",
-            }}
-            title={l.label}
-          >
-            <img src={l.flag} alt={l.label} className="w-5 h-auto" />
-          </button>
-        ))}
-      </div>
-    );
-  }
+  const current = LANGUAGES.find(l => l.code === currentLang) || LANGUAGES[0];
+  const others = LANGUAGES.filter(l => l.code !== currentLang);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const size = variant === "compact" ? "w-7 h-7" : "w-10 h-10";
+  const imgSize = variant === "compact" ? "w-5" : "w-7";
 
   return (
-    <div className="flex items-center gap-2">
-      {LANGUAGES.map(l => (
-        <button
-          key={l.code}
-          type="button"
-          onClick={() => i18n.changeLanguage(l.code)}
-          className="w-10 h-10 flex items-center justify-center cursor-pointer overflow-hidden transition-all"
-          style={{
-            border: currentLang === l.code ? "2px solid var(--portal-accent)" : "1px solid var(--portal-border)",
-            background: "var(--portal-input-bg)",
-          }}
-          title={l.label}
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`${size} flex items-center justify-center overflow-hidden transition-all`}
+        style={{
+          border: "2px solid var(--portal-accent)",
+          background: "transparent",
+        }}
+        title={current.label}
+      >
+        <img src={current.flag} alt={current.label} className={`${imgSize} h-auto`} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 flex flex-col gap-1 z-50 p-1"
+          style={{ background: "var(--portal-card-bg)", border: "1px solid var(--portal-border)" }}
         >
-          <img src={l.flag} alt={l.label} className="w-7 h-auto" />
-        </button>
-      ))}
+          {others.map(l => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => { i18n.changeLanguage(l.code); setOpen(false); }}
+              className={`${size} flex items-center justify-center overflow-hidden transition-all`}
+              style={{
+                border: "1px solid var(--portal-border)",
+                background: "transparent",
+              }}
+              title={l.label}
+            >
+              <img src={l.flag} alt={l.label} className={`${imgSize} h-auto`} />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
