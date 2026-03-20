@@ -8,6 +8,8 @@ interface UseDailyOptions {
   participantId: string | undefined;
   localStream: MediaStream | null;
   participants: { id: string; name: string }[];
+  /** When false, the hook will NOT connect to Daily. Defaults to true. */
+  enabled?: boolean;
 }
 
 /**
@@ -15,7 +17,7 @@ interface UseDailyOptions {
  * Returns the same interface: { remoteStreams, peerStatuses }
  * Plus: leave() to disconnect, rejoin() to reconnect, isDailyConnected state.
  */
-export function useDaily({ roomId, participantId, localStream, participants }: UseDailyOptions) {
+export function useDaily({ roomId, participantId, localStream, participants, enabled = true }: UseDailyOptions) {
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [peerStatuses, setPeerStatuses] = useState<Map<string, PeerConnectionStatus>>(new Map());
   const [isDailyConnected, setIsDailyConnected] = useState(false);
@@ -215,9 +217,9 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     await joinDaily();
   }, [joinDaily]);
 
-  // Auto-join on mount
+  // Auto-join on mount (only when enabled)
   useEffect(() => {
-    if (!roomId || !participantId || joinedRef.current) return;
+    if (!roomId || !participantId || joinedRef.current || !enabled) return;
 
     let cancelled = false;
 
@@ -231,7 +233,7 @@ export function useDaily({ roomId, participantId, localStream, participants }: U
     return () => {
       cancelled = true;
     };
-  }, [roomId, participantId]);
+  }, [roomId, participantId, enabled]);
 
   // Update audio input device when localStream changes
   useEffect(() => {
