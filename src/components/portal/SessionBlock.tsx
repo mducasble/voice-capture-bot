@@ -336,11 +336,12 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   // While loading participants, show what we have
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
-  // Track definitions
-  const hostLabel = host?.name || "Pessoa 1";
-  const guestLabel = guest?.name || "Pessoa 2";
+  // Track definitions — always use real names from room_participants
+  const hostLabel = host?.name || "Host";
+  const guestLabel = guest?.name || "Participante";
 
-  const hasParts = !loadingParts && participants.length >= 1;
+  // Always show all 3 tracks once loading is done
+  const showParticipantTracks = !loadingParts;
 
   return (
     <div>
@@ -358,7 +359,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
         )}
       </div>
 
-      {/* Mixed track */}
+      {/* Mixed track — always show */}
       {mixedRec && !uploadedTracks.has("mixed") ? (
         <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
       ) : uploadedTracks.has("mixed") ? (
@@ -369,12 +370,12 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
             <CheckCircle className="h-3 w-3" /> Enviado
           </span>
         </div>
-      ) : !loadingParts ? (
+      ) : showParticipantTracks ? (
         <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
       ) : null}
 
-      {/* Host track */}
-      {hasParts && (
+      {/* Host track — always show when we have participant data */}
+      {showParticipantTracks && participants.length > 0 && (
         effectiveHostRec && !uploadedTracks.has("host") ? (
           <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
         ) : uploadedTracks.has("host") ? (
@@ -390,8 +391,8 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
         )
       )}
 
-      {/* Guest track */}
-      {hasParts && (
+      {/* Guest track — always show when we have participant data */}
+      {showParticipantTracks && participants.length >= 2 && (
         effectiveGuestRec && !uploadedTracks.has("participant") ? (
           <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
         ) : uploadedTracks.has("participant") ? (
@@ -407,8 +408,8 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
         )
       )}
 
-      {/* Fallback: if no participants derived at all, show raw recordings */}
-      {!hasParts && !loadingParts && recordings.filter(r => r.recording_type !== "mixed").map(r => (
+      {/* Fallback: no participants at all — show raw individual recordings */}
+      {showParticipantTracks && participants.length === 0 && recordings.filter(r => r.recording_type !== "mixed").map(r => (
         <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
       ))}
 
