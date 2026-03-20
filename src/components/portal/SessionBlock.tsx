@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, Loader2, CheckCircle, Play, Pause, Mic, Users, AudioLines, Signal, XCircle, Clock } from "lucide-react";
+import { Upload, Loader2, CheckCircle, Play, Pause, Mic, Users, AudioLines, Signal, XCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -54,9 +54,15 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function TrackRow({ rec, label, icon }: { rec: SubmissionRow; label: string; icon: React.ReactNode }) {
+function TrackRow({ rec, label, icon, onResubmit, resubmitting, resubProgress }: {
+  rec: SubmissionRow; label: string; icon: React.ReactNode;
+  onResubmit?: (recId: string) => void;
+  resubmitting?: string | null;
+  resubProgress?: number;
+}) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isResubmitting = resubmitting === rec.id;
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
@@ -97,6 +103,27 @@ function TrackRow({ rec, label, icon }: { rec: SubmissionRow; label: string; ico
           <span className="font-mono text-xs" style={{ color: "var(--portal-text-muted)" }}>
             <Clock className="h-3 w-3 inline mr-0.5" />{formatDuration(rec.duration_seconds)}
           </span>
+        )}
+        {onResubmit && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onResubmit(rec.id); }}
+            disabled={!!resubmitting}
+            className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5 transition-opacity hover:opacity-80"
+            style={{
+              color: isResubmitting ? "var(--portal-text-muted)" : "var(--portal-accent)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid var(--portal-border)",
+              cursor: resubmitting ? "default" : "pointer",
+              opacity: resubmitting && !isResubmitting ? 0.5 : 1,
+            }}
+            title="Substituir trilha por um novo arquivo"
+          >
+            {isResubmitting ? (
+              <><Loader2 className="h-3 w-3 animate-spin" /> {resubProgress || 0}%</>
+            ) : (
+              <><RefreshCw className="h-3 w-3" /> Reenviar</>
+            )}
+          </button>
         )}
       </div>
     </div>
@@ -141,6 +168,30 @@ function MissingTrackRow({ label, icon, trackType, onUpload, uploading, progress
   );
 }
 
+function UploadedRow({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+      {icon && <span style={{ color: "var(--portal-text-muted)" }}>{icon}</span>}
+      <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>{label}</span>
+      <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+        <CheckCircle className="h-3 w-3" /> Enviado
+      </span>
+    </div>
+  );
+}
+
+function ResubmittedRow({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
+      {icon && <span style={{ color: "var(--portal-text-muted)" }}>{icon}</span>}
+      <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>{label}</span>
+      <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+        <RefreshCw className="h-3 w-3" /> Reenviado
+      </span>
+    </div>
+  );
+}
+
 interface SessionBlockProps {
   sessionId: string;
   campaignId: string;
@@ -153,8 +204,13 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   const [uploading, setUploading] = useState<TrackType | null>(null);
   const [progress, setProgress] = useState(0);
   const [uploadedTracks, setUploadedTracks] = useState<Set<TrackType>>(new Set());
+  const [resubmitting, setResubmitting] = useState<string | null>(null);
+  const [resubProgress, setResubProgress] = useState(0);
+  const [resubmittedIds, setResubmittedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resubFileInputRef = useRef<HTMLInputElement>(null);
   const pendingTrackType = useRef<TrackType | null>(null);
+  const pendingResubId = useRef<string | null>(null);
 
   // Derive participant info from room_participants OR from recordings metadata
   useEffect(() => {
@@ -335,7 +391,85 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
     }
   }, [sessionId, campaignId, host, guest]);
 
-  // While loading participants, show what we have
+  const handleResubmit = useCallback((recordingId: string) => {
+    pendingResubId.current = recordingId;
+    resubFileInputRef.current?.click();
+  }, []);
+
+  const onResubFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const recordingId = pendingResubId.current;
+    if (!file || !recordingId) return;
+    e.target.value = "";
+
+    if (!file.name.toLowerCase().endsWith(".wav")) {
+      toast.error("Apenas arquivos .WAV são aceitos");
+      return;
+    }
+
+    setResubmitting(recordingId);
+    setResubProgress(0);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const filename = `room_${sessionId}_resub_${recordingId.slice(0, 8)}_${Date.now()}.wav`;
+      setResubProgress(10);
+
+      // Upload to S3
+      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-upload-to-s3?filename=${encodeURIComponent(filename)}&session_id=${encodeURIComponent(sessionId)}&content_type=${encodeURIComponent("audio/wav")}`;
+
+      const xhr = new XMLHttpRequest();
+      const uploadPromise = new Promise<string>((resolve, reject) => {
+        xhr.upload.addEventListener("progress", (ev) => {
+          if (ev.lengthComputable) setResubProgress(10 + Math.round((ev.loaded / ev.total) * 60));
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText).public_url); }
+            catch { reject(new Error("Invalid response")); }
+          } else { reject(new Error(`Upload failed: ${xhr.status}`)); }
+        });
+        xhr.addEventListener("error", () => reject(new Error("Network error")));
+        xhr.open("POST", streamUrl);
+        xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
+        xhr.setRequestHeader("Content-Type", "audio/wav");
+        xhr.send(file);
+      });
+
+      const finalUrl = await uploadPromise;
+      setResubProgress(80);
+
+      // Call resubmit-track to update the record
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resubmit-track`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recording_id: recordingId,
+            new_file_url: finalUrl,
+            new_filename: filename,
+            file_size_bytes: file.size,
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error(`Reenvio falhou: ${await res.text()}`);
+
+      setResubProgress(100);
+      setResubmittedIds(prev => new Set(prev).add(recordingId));
+      toast.success("Trilha reenviada com sucesso! Será reanalisada.");
+    } catch (err) {
+      console.error("[SessionBlock] Resubmit error:", err);
+      toast.error("Erro ao reenviar: " + (err as Error).message);
+    } finally {
+      setResubmitting(null);
+      setResubProgress(0);
+    }
+  }, [sessionId]);
+
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
   // Track definitions — always use real names from room_participants
@@ -363,48 +497,42 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
 
       {/* Mixed track — always show */}
       {mixedRec && !uploadedTracks.has("mixed") ? (
-        <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
+        resubmittedIds.has(mixedRec.id) ? (
+          <ResubmittedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
+        ) : (
+          <TrackRow rec={mixedRec} label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+        )
       ) : uploadedTracks.has("mixed") ? (
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-          <AudioLines className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-          <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>🎧 Áudio Combinado</span>
-          <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-            <CheckCircle className="h-3 w-3" /> Enviado
-          </span>
-        </div>
+        <UploadedRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} />
       ) : showParticipantTracks ? (
         <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
       ) : null}
 
-      {/* Host track — always show when we have participant data */}
+      {/* Host track */}
       {showParticipantTracks && participants.length > 0 && (
         effectiveHostRec && !uploadedTracks.has("host") ? (
-          <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
+          resubmittedIds.has(effectiveHostRec.id) ? (
+            <ResubmittedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
+          ) : (
+            <TrackRow rec={effectiveHostRec} label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          )
         ) : uploadedTracks.has("host") ? (
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <Mic className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-            <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>🎙️ {hostLabel}</span>
-            <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="h-3 w-3" /> Enviado
-            </span>
-          </div>
+          <UploadedRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} />
         ) : (
           <MissingTrackRow label={`🎙️ ${hostLabel}`} icon={<Mic className="h-3.5 w-3.5" />} trackType="host" onUpload={handleUpload} uploading={uploading} progress={progress} />
         )
       )}
 
-      {/* Guest track — always show when we have participant data */}
+      {/* Guest track */}
       {showParticipantTracks && participants.length >= 2 && (
         effectiveGuestRec && !uploadedTracks.has("participant") ? (
-          <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
+          resubmittedIds.has(effectiveGuestRec.id) ? (
+            <ResubmittedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
+          ) : (
+            <TrackRow rec={effectiveGuestRec} label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+          )
         ) : uploadedTracks.has("participant") ? (
-          <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--portal-border)" }}>
-            <Users className="h-3.5 w-3.5" style={{ color: "var(--portal-text-muted)" }} />
-            <span className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>👤 {guestLabel}</span>
-            <span className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 ml-auto" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="h-3 w-3" /> Enviado
-            </span>
-          </div>
+          <UploadedRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} />
         ) : (
           <MissingTrackRow label={`👤 ${guestLabel}`} icon={<Users className="h-3.5 w-3.5" />} trackType="participant" onUpload={handleUpload} uploading={uploading} progress={progress} />
         )
@@ -412,10 +540,15 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
 
       {/* Fallback: no participants at all — show raw individual recordings */}
       {showParticipantTracks && participants.length === 0 && recordings.filter(r => r.recording_type !== "mixed").map(r => (
-        <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
+        resubmittedIds.has(r.id) ? (
+          <ResubmittedRow key={r.id} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
+        ) : (
+          <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} onResubmit={handleResubmit} resubmitting={resubmitting} resubProgress={resubProgress} />
+        )
       ))}
 
       <input ref={fileInputRef} type="file" accept=".wav,audio/wav" className="hidden" onChange={onFileSelected} />
+      <input ref={resubFileInputRef} type="file" accept=".wav,audio/wav" className="hidden" onChange={onResubFileSelected} />
     </div>
   );
 }
