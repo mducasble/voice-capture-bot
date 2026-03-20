@@ -456,10 +456,10 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, wallet_id, country, email_contact")
         .ilike("full_name", `%${userSearch}%`)
         .limit(10);
-      return (data || []).map(u => ({ id: u.id, name: u.full_name || "Sem nome" }));
+      return (data || []).map(u => ({ id: u.id, name: u.full_name || "Sem nome", wallet_id: u.wallet_id || "", country: u.country || "", email_contact: u.email_contact || "" }));
     },
   });
 
