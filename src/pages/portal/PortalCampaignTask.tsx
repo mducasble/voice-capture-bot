@@ -26,6 +26,18 @@ export default function PortalCampaignTask() {
   const [topic, setTopic] = useState("");
   const [durationMinutes, setDurationMinutes] = useState<number>(10);
   const [mode, setMode] = useState<"choose" | "room" | "upload">("choose");
+  const [isPublicRoom, setIsPublicRoom] = useState(false);
+  const [userCountry, setUserCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("country")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => setUserCountry(data?.country || null));
+  }, [user]);
 
   const enabledTaskSets = campaign?.task_sets?.filter(ts => ts.enabled) || [];
   const activeSections = campaign?.sections?.filter(s => s.is_active) || [];
