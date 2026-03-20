@@ -165,7 +165,7 @@ export default function PortalPaymentHistory() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="flex-shrink-0 font-mono text-[11px] px-3 py-1.5 uppercase tracking-widest transition-colors hover:bg-[var(--portal-accent)] hover:text-black"
+                    className="flex-shrink-0 font-mono text-[11px] px-3 py-1.5 uppercase tracking-widest transition-colors hover:bg-[var(--portal-accent)] hover:!text-[hsl(0,0%,5%)]"
                     style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}
                   >
                     Link da Transação
