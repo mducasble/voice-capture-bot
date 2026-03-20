@@ -444,9 +444,10 @@ export function CampaignDialog({ open, onClose, campaignId, duplicateFromId }: C
         toast({ title: "Campanha criada!" });
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar campanha:", error);
-      toast({ title: "Erro ao salvar campanha", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      const msg = error?.message || error?.details || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      toast({ title: "Erro ao salvar campanha", description: msg, variant: "destructive" });
     }
   };
 
