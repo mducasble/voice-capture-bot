@@ -116,6 +116,16 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
         {formatTime(duration)}
       </span>
 
+      {/* Download */}
+      <a
+        href={src}
+        download
+        className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center transition-colors text-white/50 hover:text-[#8cff05]"
+        title="Baixar áudio"
+      >
+        <Download className="h-5 w-5" />
+      </a>
+
       {/* Mute */}
       <button
         onClick={() => {
