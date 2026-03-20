@@ -117,6 +117,8 @@ const Room = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const nonCreatorUploadedRef = useRef<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
+  const [joinRequestRejected, setJoinRequestRejected] = useState(false);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
@@ -144,12 +146,16 @@ const Room = () => {
   // Remote individual recorders (creator records each remote stream as backup)
   const remoteRecorders = useRemoteRecorders();
 
+  // Daily should only connect when: not awaiting approval for public rooms
+  const dailyEnabled = !awaitingApproval && !joinRequestRejected;
+
   // Daily.co SFU audio connection (replaces P2P WebRTC)
   const { remoteStreams, peerStatuses, isDailyConnected, leaveDaily, rejoinDaily } = useDaily({
     roomId,
     participantId: currentParticipant?.id,
     localStream,
     participants,
+    enabled: dailyEnabled,
   });
 
   // Idle timer: 5 minutes to start recording or Daily disconnects
