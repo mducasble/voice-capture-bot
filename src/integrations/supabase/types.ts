@@ -2733,6 +2733,7 @@ export type Database = {
           file_size_bytes: number | null
           file_url: string | null
           filename: string
+          flag_reason: string | null
           format: string | null
           gemini_chunk_state: Json | null
           id: string
@@ -2777,6 +2778,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_url?: string | null
           filename: string
+          flag_reason?: string | null
           format?: string | null
           gemini_chunk_state?: Json | null
           id?: string
@@ -2821,6 +2823,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_url?: string | null
           filename?: string
+          flag_reason?: string | null
           format?: string | null
           gemini_chunk_state?: Json | null
           id?: string
