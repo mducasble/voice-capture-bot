@@ -167,41 +167,74 @@ function SubmissionRowItem({ rec }: { rec: SubmissionRow }) {
   );
 }
 
-function CampaignStatusSummary({ submissions }: { submissions: SubmissionRow[] }) {
-  // Count non-mixed items for status summary
+function CampaignStatusSummary({ submissions, sessionGroups, sessionFilter, setSessionFilter }: { submissions: SubmissionRow[]; sessionGroups: Map<string, SubmissionRow[]>; sessionFilter: SessionFilter; setSessionFilter: (f: SessionFilter) => void }) {
   const countable = submissions.filter(r => r.recording_type !== "mixed");
-  if (countable.length === 0) return null;
 
   const approved = countable.filter(r => getUnifiedStatus(r).label === "Aprovado").length;
   const rejected = countable.filter(r => getUnifiedStatus(r).label.startsWith("Reprovado")).length;
   const pending = countable.length - approved - rejected;
 
+  const showFilters = sessionGroups.size > 1;
+
   return (
-    <div className="px-4 py-3.5 flex items-center justify-end gap-3 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
-      <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}>
-        <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Status</span>
+    <div className="px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "rgba(0,0,0,0.1)", borderBottom: "1px solid var(--portal-border)" }}>
+      {/* Filter tabs */}
+      {showFilters ? (
         <div className="flex items-center gap-1.5">
-          {approved > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
-              <CheckCircle className="h-3 w-3" /> {approved}
-            </span>
-          )}
-          {rejected > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#ef4444", background: "rgba(239,68,68,0.15)" }}>
-              <XCircle className="h-3 w-3" /> {rejected}
-            </span>
-          )}
-          {pending > 0 && (
-            <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "var(--portal-text-muted)", background: "rgba(255,255,255,0.05)" }}>
-              <Loader2 className="h-3 w-3 animate-spin" /> {pending}
-            </span>
-          )}
+          {([
+            { key: "pending" as SessionFilter, label: "Não analisados" },
+            { key: "approved" as SessionFilter, label: "Aprovados" },
+            { key: "rejected" as SessionFilter, label: "Reprovados" },
+            { key: "all" as SessionFilter, label: "Todas" },
+          ]).map(tab => {
+            const isActive = sessionFilter === tab.key;
+            const count = tab.key === "all"
+              ? sessionGroups.size
+              : Array.from(sessionGroups.values()).filter(recs => getSessionStatus(recs) === tab.key).length;
+            return (
+              <button
+                key={tab.key}
+                onClick={(e) => { e.stopPropagation(); setSessionFilter(tab.key); }}
+                className="font-mono text-xs uppercase tracking-widest px-2.5 py-1 transition-all"
+                style={{
+                  color: isActive ? "var(--portal-accent)" : "var(--portal-text-muted)",
+                  background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
+                  border: isActive ? "1px solid var(--portal-border)" : "1px solid transparent",
+                }}
+              >
+                {tab.label} {count > 0 && <span style={{ opacity: 0.6 }}>({count})</span>}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      ) : <div />}
+
+      {/* Status counters */}
+      {countable.length > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>Status</span>
+          <div className="flex items-center gap-1.5">
+            {approved > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.15)" }}>
+                <CheckCircle className="h-3 w-3" /> {approved}
+              </span>
+            )}
+            {rejected > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "#ef4444", background: "rgba(239,68,68,0.15)" }}>
+                <XCircle className="h-3 w-3" /> {rejected}
+              </span>
+            )}
+            {pending > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-xs font-bold px-1.5 py-0.5" style={{ color: "var(--portal-text-muted)", background: "rgba(255,255,255,0.05)" }}>
+                <Loader2 className="h-3 w-3 animate-spin" /> {pending}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 type SessionFilter = "all" | "pending" | "approved" | "rejected";
 
 function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "rejected" {
