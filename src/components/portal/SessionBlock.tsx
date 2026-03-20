@@ -202,6 +202,7 @@ interface SessionBlockProps {
 }
 
 export function SessionBlock({ sessionId, campaignId, recordings, sessionEarnings, earningsCurrency }: SessionBlockProps) {
+  const { user } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loadingParts, setLoadingParts] = useState(true);
   const [uploading, setUploading] = useState<TrackType | null>(null);
@@ -214,6 +215,91 @@ export function SessionBlock({ sessionId, campaignId, recordings, sessionEarning
   const resubFileInputRef = useRef<HTMLInputElement>(null);
   const pendingTrackType = useRef<TrackType | null>(null);
   const pendingResubId = useRef<string | null>(null);
+
+  // Revision state
+  const [revisionStatus, setRevisionStatus] = useState<string | null>(null); // null = no revision, 'open', 'submitted', 'approved', 'rejected'
+  const [revisionLoading, setRevisionLoading] = useState(false);
+  const [revisionNotes, setRevisionNotes] = useState("");
+  const [submittingRevision, setSubmittingRevision] = useState(false);
+
+  // Check if session is rejected
+  const countable = recordings.filter(r => r.recording_type !== "mixed");
+  const isSessionRejected = countable.some(r => {
+    const qa = r.quality_status;
+    const val = r.validation_status;
+    return qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed";
+  });
+
+  // Fetch existing revision for this session
+  useEffect(() => {
+    if (!isSessionRejected) return;
+    supabase
+      .from("session_revisions")
+      .select("status")
+      .eq("session_id", sessionId)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setRevisionStatus(data?.status || null);
+      });
+  }, [sessionId, isSessionRejected]);
+
+  const handleRequestRevision = async () => {
+    if (!user) return;
+    setRevisionLoading(true);
+    const { error } = await supabase.from("session_revisions").insert({
+      session_id: sessionId,
+      user_id: user.id,
+      campaign_id: campaignId,
+      status: "open",
+    });
+    setRevisionLoading(false);
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Revisão já solicitada para esta sessão.");
+      } else {
+        toast.error("Erro ao solicitar revisão.");
+      }
+      return;
+    }
+    setRevisionStatus("open");
+    toast.success("Revisão aberta! Faça as modificações necessárias e envie.");
+  };
+
+  const handleSubmitRevision = async () => {
+    if (!user) return;
+    setSubmittingRevision(true);
+
+    // Update revision status to submitted
+    const { error: revError } = await supabase
+      .from("session_revisions")
+      .update({
+        status: "submitted",
+        submitted_at: new Date().toISOString(),
+        notes: revisionNotes || null,
+      })
+      .eq("session_id", sessionId)
+      .eq("status", "open");
+
+    if (revError) {
+      toast.error("Erro ao enviar revisão.");
+      setSubmittingRevision(false);
+      return;
+    }
+
+    // Reset recordings to revision_pending
+    await supabase
+      .from("voice_recordings")
+      .update({ quality_status: "revision_pending", validation_status: "pending" })
+      .eq("session_id", sessionId);
+
+    setSubmittingRevision(false);
+    setRevisionStatus("submitted");
+    toast.success("Revisão enviada para análise!");
+  };
+
+  // Allow edits only when revision is open
+  const canEdit = revisionStatus === "open";
 
   // Derive participant info from room_participants OR from recordings metadata
   useEffect(() => {
