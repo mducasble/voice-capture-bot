@@ -37,11 +37,7 @@ export async function connectPolygonWallet(): Promise<{ address: string; balance
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("Nenhuma wallet detectada. Instale MetaMask ou Rabby.");
 
-  await ethereum.request({
-    method: "wallet_requestPermissions",
-    params: [{ eth_accounts: {} }],
-  });
-  const accounts = await ethereum.request({ method: "eth_accounts" });
+  const accounts = await ethereum.request({ method: "eth_requestAccounts" });
   if (!accounts?.[0]) throw new Error("Nenhuma conta encontrada");
 
   try {
