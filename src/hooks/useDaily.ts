@@ -17,7 +17,7 @@ interface UseDailyOptions {
  * Returns the same interface: { remoteStreams, peerStatuses }
  * Plus: leave() to disconnect, rejoin() to reconnect, isDailyConnected state.
  */
-export function useDaily({ roomId, participantId, localStream, participants }: UseDailyOptions) {
+export function useDaily({ roomId, participantId, localStream, participants, enabled = true }: UseDailyOptions) {
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [peerStatuses, setPeerStatuses] = useState<Map<string, PeerConnectionStatus>>(new Map());
   const [isDailyConnected, setIsDailyConnected] = useState(false);
