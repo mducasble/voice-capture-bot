@@ -2,8 +2,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, Loader2, CheckCircle, Play, Pause, Mic, Users, AudioLines, Signal, XCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface Participant {
   id: string;
