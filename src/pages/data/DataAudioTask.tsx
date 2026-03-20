@@ -848,6 +848,12 @@ export default function DataAudioTask() {
           useAdminReasons
         />
       )}
+
+      <FlagReasonModal
+        open={showFlagModal}
+        onClose={() => setShowFlagModal(false)}
+        onConfirm={handleFlag}
+      />
     </div>
   );
 }
