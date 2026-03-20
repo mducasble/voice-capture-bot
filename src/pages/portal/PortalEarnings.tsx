@@ -2,7 +2,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText, AlertCircle } from "lucide-react";
+import { Link2, Users, Copy, Check, Loader2, DollarSign, Clock, Mic, Video, Image, Tag, FileText, AlertCircle, Receipt } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import EarningsDetailPanel from "@/components/portal/EarningsDetailPanel";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ function MoneyValue({ value, size = "sm", color }: { value: string; size?: "sm" 
 export default function PortalEarnings() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -170,7 +172,16 @@ export default function PortalEarnings() {
         </div>
       </div>
 
-      {/* <EarningsDetailPanel /> */}
+      <div style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
+        <button
+          onClick={() => navigate("/payment-history")}
+          className="w-full flex items-center justify-center gap-3 p-4 font-mono text-sm uppercase tracking-widest font-bold transition-colors"
+          style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
+        >
+          <Receipt className="h-4 w-4" />
+          Extrato de Pagamentos
+        </button>
+      </div>
     </div>
   );
 }
