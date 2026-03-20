@@ -72,6 +72,8 @@ const DataCampaignSelect = lazy(() => import("./pages/data/DataCampaignSelect"))
 const DataAudioTask = lazy(() => import("./pages/data/DataAudioTask"));
 const DataVideoTask = lazy(() => import("./pages/data/DataVideoTask"));
 const DataVideoReview = lazy(() => import("./pages/data/DataVideoReview"));
+const DataFlaggedQueue = lazy(() => import("./pages/data/DataFlaggedQueue"));
+const DataRevisionQueue = lazy(() => import("./pages/data/DataRevisionQueue"));
 const DataProfile = lazy(() => import("./pages/data/DataProfile"));
 
 
@@ -185,6 +187,8 @@ const App = () => (
                 <Route path="extras/qc/:campaignId" element={<DataVideoTask />} />
                 <Route path=":mediaType/campaigns" element={<DataCampaignSelect />} />
                 <Route path=":mediaType/task/:campaignId" element={<DataAudioTask />} />
+                <Route path="audio/flagged/:campaignId" element={<DataFlaggedQueue />} />
+                <Route path="audio/revisions/:campaignId" element={<DataRevisionQueue />} />
                 <Route path="profile" element={<DataProfile />} />
               </Route>
 

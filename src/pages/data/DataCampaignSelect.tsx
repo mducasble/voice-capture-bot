@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, FolderOpen, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
+import { Search, FolderOpen, ChevronRight, Loader2, ArrowLeft, Flag, RotateCcw, PlayCircle } from "lucide-react";
 
 interface CampaignRow {
   id: string;
@@ -19,6 +19,8 @@ export default function DataCampaignSelect() {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [flagCounts, setFlagCounts] = useState<Record<string, number>>({});
+  const [revisionCounts, setRevisionCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const typeMap: Record<string, string[]> = {
@@ -39,12 +41,57 @@ export default function DataCampaignSelect() {
       query = query.in("campaign_type", allowedTypes);
     }
 
-    query.then(({ data }) => { setCampaigns(data || []); setLoading(false); });
+    query.then(({ data }) => {
+      const rows = data || [];
+      setCampaigns(rows);
+      setLoading(false);
+
+      // Fetch flag counts for audio campaigns
+      if (mediaType === "audio" && rows.length > 0) {
+        const ids = rows.map((c) => c.id);
+        supabase
+          .from("voice_recordings")
+          .select("campaign_id", { count: "exact", head: false })
+          .in("campaign_id", ids)
+          .eq("quality_status", "flagged")
+          .then(({ data: flagData }) => {
+            const counts: Record<string, number> = {};
+            flagData?.forEach((r: any) => {
+              counts[r.campaign_id] = (counts[r.campaign_id] || 0) + 1;
+            });
+            setFlagCounts(counts);
+          });
+
+        // Fetch revision counts
+        supabase
+          .from("session_revisions")
+          .select("campaign_id", { count: "exact", head: false })
+          .in("campaign_id", ids)
+          .eq("status", "submitted")
+          .then(({ data: revData }) => {
+            const counts: Record<string, number> = {};
+            revData?.forEach((r: any) => {
+              counts[r.campaign_id] = (counts[r.campaign_id] || 0) + 1;
+            });
+            setRevisionCounts(counts);
+          });
+      }
+    });
   }, [mediaType]);
 
   const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const mediaLabel = mediaType === "audio" ? "Áudio" : mediaType === "video" ? "Vídeo" : mediaType === "extras" ? "Extras" : "Imagem (Foto)";
+
+  const handleMain = (c: CampaignRow) => {
+    if (mediaType === "video") {
+      navigate(`/data/video/review/${c.id}`);
+    } else if (mediaType === "extras") {
+      navigate(`/data/extras/qc/${c.id}`);
+    } else {
+      navigate(`/data/${mediaType}/task/${c.id}`);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -99,42 +146,64 @@ export default function DataCampaignSelect() {
           {filtered.map((c) => {
             const progress = c.target_hours && c.target_hours > 0
               ? Math.min(100, (c.accumulated_value / c.target_hours) * 100) : 0;
+            const flags = flagCounts[c.id] || 0;
+            const revisions = revisionCounts[c.id] || 0;
+            const isAudio = mediaType === "audio";
 
             return (
-              <button
-                key={c.id}
-                onClick={() => {
-                  if (mediaType === "video") {
-                    navigate(`/data/video/review/${c.id}`);
-                  } else if (mediaType === "extras") {
-                    navigate(`/data/extras/qc/${c.id}`);
-                  } else {
-                    navigate(`/data/${mediaType}/task/${c.id}`);
-                  }
-                }}
-                className="group w-full text-left p-5 md:p-6 rounded-2xl data-glass-card hover:bg-white/[0.08] hover:border-white/[0.15] transition-all flex items-center gap-5"
-              >
-                <div className="h-12 w-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
-                  <FolderOpen className="h-6 w-6 text-white/60" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[17px] font-semibold text-white truncate">{c.name}</h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[13px] text-white/40">{c.language_primary || "—"}</span>
-                    <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${
-                      c.campaign_status === "active" ? "bg-emerald-500/15 text-emerald-400" : "bg-white/[0.06] text-white/40"
-                    }`}>
-                      {c.campaign_status || "draft"}
-                    </span>
-                    {c.target_hours && c.target_hours > 0 && (
-                      <span className="text-[12px] text-white/30">
-                        {progress.toFixed(0)}% concluído
+              <div key={c.id} className="rounded-2xl data-glass-card overflow-hidden">
+                {/* Main campaign row */}
+                <button
+                  onClick={() => handleMain(c)}
+                  className="group w-full text-left p-5 md:p-6 hover:bg-white/[0.08] transition-all flex items-center gap-5"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                    <FolderOpen className="h-6 w-6 text-white/60" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[17px] font-semibold text-white truncate">{c.name}</h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[13px] text-white/40">{c.language_primary || "—"}</span>
+                      <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${
+                        c.campaign_status === "active" ? "bg-emerald-500/15 text-emerald-400" : "bg-white/[0.06] text-white/40"
+                      }`}>
+                        {c.campaign_status || "draft"}
                       </span>
+                      {c.target_hours && c.target_hours > 0 && (
+                        <span className="text-[12px] text-white/30">
+                          {progress.toFixed(0)}% concluído
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[13px] text-white/30 font-medium mr-1">Validar</span>
+                    <PlayCircle className="h-5 w-5 text-emerald-400/70" />
+                  </div>
+                </button>
+
+                {/* Secondary actions: flags & revisions */}
+                {isAudio && (flags > 0 || revisions > 0) && (
+                  <div className="flex items-center gap-2 px-5 pb-4 pt-0">
+                    {flags > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/data/audio/flagged/${c.id}`); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[13px] font-semibold hover:bg-amber-500/20 transition-colors"
+                      >
+                        <Flag className="h-3.5 w-3.5" /> Flags ({flags})
+                      </button>
+                    )}
+                    {revisions > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/data/audio/revisions/${c.id}`); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[13px] font-semibold hover:bg-violet-500/20 transition-colors"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" /> Revisões ({revisions})
+                      </button>
                     )}
                   </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-white/20 group-hover:text-white/50 transition-colors shrink-0" />
-              </button>
+                )}
+              </div>
             );
           })}
         </div>
