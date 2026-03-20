@@ -726,15 +726,24 @@ function RecentPayments() {
                           <p className="text-xs text-muted-foreground">Carregando detalhes...</p>
                         ) : (
                           <div className="space-y-1">
-                            {expandedEarnings.map((e: any) => (
-                              <div key={e.id} className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">
-                                  {e.entry_type === "task_payment" ? "📋 Tarefa" : "🔗 Referral"}{" "}
-                                  <span className="text-foreground/60">{e.description}</span>
-                                </span>
-                                <span className="font-medium text-foreground">${Number(e.amount).toFixed(4)}</span>
-                              </div>
-                            ))}
+                            {expandedEarnings.map((e: any) => {
+                              const typeLabel = e.entry_type === "task_payment" ? "📋 Tarefa" : "🔗 Referral";
+                              const submissionType = e.description?.match(/audio|image|video|text|annotation/i)?.[0] || "";
+                              const levelMatch = e.description?.match(/L(\d)/);
+                              const levelLabel = levelMatch ? ` (Nível ${levelMatch[1]})` : "";
+                              const cleanDesc = submissionType
+                                ? submissionType.charAt(0).toUpperCase() + submissionType.slice(1) + levelLabel
+                                : "";
+                              return (
+                                <div key={e.id} className="flex items-center justify-between text-xs gap-4">
+                                  <span className="text-muted-foreground truncate">
+                                    {typeLabel}
+                                    {cleanDesc && <span className="text-foreground/60 ml-1">— {cleanDesc}</span>}
+                                  </span>
+                                  <span className="font-medium text-foreground whitespace-nowrap">${Number(e.amount).toFixed(4)}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </td>
