@@ -2166,6 +2166,44 @@ export type Database = {
         }
         Relationships: []
       }
+      room_join_requests: {
+        Row: {
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          room_id: string
+          status: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          room_id: string
+          status?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          room_id?: string
+          status?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_join_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_participants: {
         Row: {
           audio_test_results: Json | null
@@ -2215,12 +2253,16 @@ export type Database = {
       }
       rooms: {
         Row: {
+          campaign_id: string | null
+          country: string | null
           created_at: string
           creator_name: string
+          creator_user_id: string | null
           daily_room_name: string | null
           duration_minutes: number | null
           id: string
           idle_seconds_before_recording: number | null
+          is_public: boolean
           is_recording: boolean | null
           noise_gate_enabled: boolean
           recording_started_at: string | null
@@ -2231,12 +2273,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
+          country?: string | null
           created_at?: string
           creator_name: string
+          creator_user_id?: string | null
           daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
           idle_seconds_before_recording?: number | null
+          is_public?: boolean
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
           recording_started_at?: string | null
@@ -2247,12 +2293,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
+          country?: string | null
           created_at?: string
           creator_name?: string
+          creator_user_id?: string | null
           daily_room_name?: string | null
           duration_minutes?: number | null
           id?: string
           idle_seconds_before_recording?: number | null
+          is_public?: boolean
           is_recording?: boolean | null
           noise_gate_enabled?: boolean
           recording_started_at?: string | null
@@ -2262,7 +2312,15 @@ export type Database = {
           topic?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rooms_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_revisions: {
         Row: {
