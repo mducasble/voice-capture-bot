@@ -85,9 +85,13 @@ export default function PortalPaymentHistory() {
     const typeMap: Record<string, string> = {
       audio: "Áudio", video: "Vídeo", image: "Imagem", text: "Texto", annotation: "Anotação",
     };
-    const prefix = e.entry_type === "referral_bonus" ? "Referral" : "Tarefa";
     const sub = typeMap[e.submission_type] || e.submission_type;
-    return `${prefix} · ${sub}`;
+    if (e.entry_type === "referral_bonus") {
+      const levelMatch = e.description?.match(/L(\d)/);
+      const level = levelMatch ? `L${levelMatch[1]}` : "";
+      return `Referral ${level} · ${sub}`.trim();
+    }
+    return `Tarefa · ${sub}`;
   };
 
   if (isLoading) {
@@ -189,7 +193,7 @@ export default function PortalPaymentHistory() {
                               {e.campaign_name}
                             </p>
                           </div>
-                          <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-accent)" }}>
+                          <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>
                             US$ {e.amount.toFixed(4)}
                           </span>
                         </div>
