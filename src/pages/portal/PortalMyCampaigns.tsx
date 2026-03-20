@@ -202,8 +202,24 @@ function CampaignStatusSummary({ submissions }: { submissions: SubmissionRow[] }
   );
 }
 
+type SessionFilter = "all" | "pending" | "approved" | "rejected";
+
+function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "rejected" {
+  const countable = recs.filter(r => r.recording_type !== "mixed");
+  if (countable.length === 0) return "pending";
+  const hasRejected = countable.some(r => {
+    const s = getUnifiedStatus(r);
+    return s.label.startsWith("Reprovado");
+  });
+  if (hasRejected) return "rejected";
+  const allApproved = countable.every(r => getUnifiedStatus(r).label === "Aprovado");
+  if (allApproved) return "approved";
+  return "pending";
+}
+
 function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
   const navigate = useNavigate();
   const { t } = useTranslation();
   const campaign = participation.campaigns;
@@ -288,8 +304,41 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
             <div>
               <CampaignStatusSummary submissions={submissions} />
 
+              {/* Session filter tabs */}
+              {sessionGroups.size > 1 && (
+                <div className="px-4 py-2 flex items-center gap-1.5" style={{ background: "rgba(0,0,0,0.08)", borderBottom: "1px solid var(--portal-border)" }}>
+                  {([
+                    { key: "all" as SessionFilter, label: "Todas" },
+                    { key: "pending" as SessionFilter, label: "Não analisados" },
+                    { key: "approved" as SessionFilter, label: "Aprovados" },
+                    { key: "rejected" as SessionFilter, label: "Reprovados" },
+                  ]).map(tab => {
+                    const isActive = sessionFilter === tab.key;
+                    const count = tab.key === "all"
+                      ? sessionGroups.size
+                      : Array.from(sessionGroups.values()).filter(recs => getSessionStatus(recs) === tab.key).length;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={(e) => { e.stopPropagation(); setSessionFilter(tab.key); }}
+                        className="font-mono text-xs uppercase tracking-widest px-2.5 py-1 transition-all"
+                        style={{
+                          color: isActive ? "var(--portal-accent)" : "var(--portal-text-muted)",
+                          background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
+                          border: isActive ? "1px solid var(--portal-border)" : "1px solid transparent",
+                        }}
+                      >
+                        {tab.label} {count > 0 && <span style={{ opacity: 0.6 }}>({count})</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Audio sessions grouped */}
-              {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => (
+              {Array.from(sessionGroups.entries())
+                .filter(([, recs]) => sessionFilter === "all" || getSessionStatus(recs) === sessionFilter)
+                .map(([sessionId, recs]) => (
                 <div key={sessionId}>
                   <SessionBlock sessionId={sessionId} campaignId={campaign.id} recordings={recs} />
                 </div>
