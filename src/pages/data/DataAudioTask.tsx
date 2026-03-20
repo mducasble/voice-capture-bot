@@ -749,9 +749,9 @@ export default function DataAudioTask() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: Mic2, label: "Sessão", value: rec.session_id?.slice(0, 8) || "—" },
+            { icon: User, label: "Enviado por", value: uploaderName || rec.discord_username || "—" },
             { icon: Clock, label: "Duração", value: formatTime(rec.duration_seconds || 0) },
             { icon: Globe, label: "Data", value: new Date(rec.created_at).toLocaleDateString("pt-BR") },
-            { icon: User, label: "Tipo", value: rec.recording_type || "—" },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
