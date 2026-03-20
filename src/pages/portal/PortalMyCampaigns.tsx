@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FolderOpen, FileAudio, Clock, ChevronDown, Play, Pause, ArrowRight, CheckCircle, XCircle, Loader2, Signal, Video, Image, FileText, Tag } from "lucide-react";
+import { ResendAudioButton } from "@/components/portal/ResendAudioButton";
 import KGenButton from "@/components/portal/KGenButton";
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -292,7 +293,7 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
                   ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
                 return (
                   <div key={sessionId}>
-                    <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(0,0,0,0.15)" }}>
+                    <div className="px-4 py-2 flex items-center gap-2 flex-wrap" style={{ background: "rgba(0,0,0,0.15)" }}>
                       <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
                         {t("myCampaigns.session")}{" "}
                         <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
@@ -303,6 +304,7 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
                       {sessionDuration > 0 && (
                         <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
                       )}
+                      <ResendAudioButton sessionId={sessionId} campaignId={campaign.id} />
                     </div>
                     {recs.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
                   </div>
