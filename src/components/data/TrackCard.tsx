@@ -166,7 +166,7 @@ export function TrackCard({
             key={activeUrl}
             controls
             src={activeUrl}
-            className="w-full h-10 rounded-lg"
+            className="w-full h-10"
             preload="none"
             onPlay={() => logAction("play", `${sib.recording_type || sib.id}${playingEnhanced ? "_enhanced" : ""}`)}
             onPause={() => logAction("pause", sib.recording_type || sib.id)}

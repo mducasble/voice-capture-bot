@@ -324,6 +324,24 @@
       inset 0 -1px 0 hsl(0 0% 0% / 0.1);
   }
 
+  /* Data theme – custom audio player */
+  .data-theme audio {
+    border-radius: 0.5rem;
+    background: hsl(0 0% 100% / 0.08);
+  }
+  .data-theme audio::-webkit-media-controls-panel {
+    background: hsl(0 0% 100% / 0.08);
+    border-radius: 0.5rem;
+  }
+  .data-theme audio::-webkit-media-controls-current-time-display,
+  .data-theme audio::-webkit-media-controls-time-remaining-display {
+    color: hsl(0 0% 70%);
+    font-size: 12px;
+  }
+  .data-theme audio::-webkit-media-controls-play-button {
+    border-radius: 0.375rem;
+  }
+
   /* Portal - Brutalist Grid Style (Dark - default) */
   .portal-auth-page {
     --portal-bg: hsl(0 0% 7%);
