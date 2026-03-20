@@ -316,33 +316,8 @@ export default function AdminFinance() {
         .single();
       if (paymentErr) throw paymentErr;
 
-      // Pick $1 worth of earning IDs to mark as paid (oldest first)
-      const { data: userEarnings } = await supabase
-        .from("earnings_ledger")
-        .select("id, amount")
-        .eq("user_id", user.user_id)
-        .eq("status", "credited")
-        .order("created_at", { ascending: true });
-
-      let remaining = 1;
-      const idsToMark: string[] = [];
-      for (const e of userEarnings || []) {
-        if (remaining <= 0) break;
-        idsToMark.push(e.id);
-        remaining -= Number(e.amount);
-      }
-
-      if (idsToMark.length > 0) {
-        await supabase
-          .from("earnings_ledger")
-          .update({
-            status: "paid",
-            paid_at: new Date().toISOString(),
-            tx_hash: tx.hash,
-            payment_id: payment.id,
-          } as any)
-          .in("id", idsToMark);
-      }
+      // Test TX does NOT mark any earnings as paid — it's purely a wallet verification.
+      // The $1 is tracked only in the payments table for audit purposes.
 
       // Auto-send inbox message with wallet_test_tx template
       const { data: tpl } = await supabase
