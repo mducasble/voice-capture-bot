@@ -1528,7 +1528,7 @@ const Room = () => {
                 className="w-full"
                 onClick={() => handleJoin(false)}
                 disabled={isJoining || !joinName.trim()}
-                scrambleText={isJoining ? "CONECTANDO..." : room?.is_public ? "SOLICITAR ENTRADA" : "ENTRAR COMO PARTICIPANTE"}
+                scrambleText={isJoining ? "CONECTANDO..." : "ENTRAR COMO PARTICIPANTE"}
               />
 
               {!room?.is_public && (

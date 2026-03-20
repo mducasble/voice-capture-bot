@@ -411,42 +411,23 @@ const Rooms = () => {
                               >
                                 Entrar
                               </Button>
-                            ) : requestStatus === "approved" ? (
+                            ) : (room.participant_count || 0) > 1 ? (
+                              <Button size="sm" variant="outline" disabled>
+                                <Lock className="h-3.5 w-3.5 mr-1" />
+                                Lotada
+                              </Button>
+                            ) : (
                               <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700"
+                                variant="outline"
                                 onClick={() =>
                                   navigate(
                                     `/room/${room.id}${room.campaign_id ? `?campaign=${room.campaign_id}` : ""}`
                                   )
                                 }
                               >
-                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                <LogIn className="h-3.5 w-3.5 mr-1" />
                                 Entrar
-                              </Button>
-                            ) : requestStatus === "pending" ? (
-                              <Button size="sm" variant="outline" disabled>
-                                <Clock className="h-3.5 w-3.5 mr-1" />
-                                Aguardando
-                              </Button>
-                            ) : requestStatus === "rejected" ? (
-                              <Button size="sm" variant="outline" disabled className="text-destructive">
-                                <XCircle className="h-3.5 w-3.5 mr-1" />
-                                Recusado
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRequestJoin(room)}
-                                disabled={joiningRoomId === room.id}
-                              >
-                                {joiningRoomId === room.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                                ) : (
-                                  <LogIn className="h-3.5 w-3.5 mr-1" />
-                                )}
-                                Solicitar
                               </Button>
                             )}
                           </div>
