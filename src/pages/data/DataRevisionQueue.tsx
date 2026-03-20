@@ -129,7 +129,8 @@ export default function DataRevisionQueue() {
     setRevisions((prev) => prev.filter((r) => r.id !== rev.id));
   };
 
-  const handleReject = async (reason: string) => {
+  const handleReject = async (reasons: string[], note: string) => {
+    const reason = [reasons.join(", "), note].filter(Boolean).join(" — ");
     if (!rejectTarget) return;
     const rev = revisions.find((r) => r.id === rejectTarget);
     if (!rev) return;
