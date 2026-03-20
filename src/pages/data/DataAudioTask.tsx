@@ -521,10 +521,17 @@ export default function DataAudioTask() {
     if (!rec) return;
     setSaving(true);
     logAction("reserve");
-    const { error } = await supabase.from("voice_recordings").update({ quality_status: "reserve" }).eq("id", rec.id);
+    // Apply to ALL tracks in the same session
+    let query = supabase.from("voice_recordings").update({ quality_status: "reserve" });
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+    const { error } = await query;
     setSaving(false);
     if (error) { toast.error("Erro ao reservar"); return; }
-    toast.success("Marcado como Reserva.");
+    toast.success("Sessão marcada como Reserva.");
     await finishTask("completed", "reserve");
     loadNext();
   };
@@ -533,14 +540,21 @@ export default function DataAudioTask() {
     if (!rec) return;
     setSaving(true);
     logAction("flag", reason);
-    const { error } = await supabase.from("voice_recordings").update({
+    // Apply to ALL tracks in the same session
+    let query = supabase.from("voice_recordings").update({
       quality_status: "flagged",
       flag_reason: reason,
-    }).eq("id", rec.id);
+    });
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+    const { error } = await query;
     setSaving(false);
     setShowFlagModal(false);
     if (error) { toast.error("Erro ao flaguear"); return; }
-    toast.success("Flagueado para revisão.");
+    toast.success("Sessão flagueada para revisão.");
     await finishTask("completed", "flagged");
     loadNext();
   };
