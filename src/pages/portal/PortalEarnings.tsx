@@ -117,8 +117,31 @@ export default function PortalEarnings() {
         </h1>
       </div>
 
-      <ReferralSection userId={user?.id} referralCode={referralCode} />
+      {/* Totals */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { label: t("earnings.totalAccumulated"), value: fmt(stats.totalAccumulated) },
+          { label: t("earnings.availableWithdraw"), value: fmt(stats.availableWithdraw) },
+          { label: t("earnings.totalWithdrawn"), value: fmt(stats.totalPaid) },
+        ].map(item => (
+          <div key={item.label} className="flex flex-col items-center justify-center p-4" style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}>
+            <MoneyValue value={item.value} size="lg" color="var(--portal-accent)" />
+            <span className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
 
+      {/* Payment history button */}
+      <button
+        onClick={() => navigate("/payment-history")}
+        className="w-full flex items-center justify-center gap-3 p-4 font-mono text-sm uppercase tracking-widest font-bold transition-colors"
+        style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
+      >
+        <Receipt className="h-4 w-4" />
+        Extrato de Pagamentos
+      </button>
+
+      {/* Earnings by activity */}
       <div className="space-y-4" style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -188,31 +211,10 @@ export default function PortalEarnings() {
             );
           })}
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { label: t("earnings.totalAccumulated"), value: fmt(stats.totalAccumulated) },
-            { label: t("earnings.availableWithdraw"), value: fmt(stats.availableWithdraw) },
-            { label: t("earnings.totalWithdrawn"), value: fmt(stats.totalPaid) },
-          ].map(item => (
-            <div key={item.label} className="flex flex-col items-center justify-center p-4" style={{ border: "1px solid var(--portal-accent)", background: "hsl(0 0% 8%)" }}>
-              <MoneyValue value={item.value} size="lg" color="var(--portal-accent)" />
-              <span className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--portal-text-muted)" }}>{item.label}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
-      <div style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
-        <button
-          onClick={() => navigate("/payment-history")}
-          className="w-full flex items-center justify-center gap-3 p-4 font-mono text-sm uppercase tracking-widest font-bold transition-colors"
-          style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
-        >
-          <Receipt className="h-4 w-4" />
-          Extrato de Pagamentos
-        </button>
-      </div>
+      {/* Referral section at the bottom */}
+      <ReferralSection userId={user?.id} referralCode={referralCode} />
     </div>
   );
 }
