@@ -348,8 +348,8 @@ function CopyReferralButton({ userId }: { userId: string }) {
       }}
       title={t("nav.myLink")}
     >
-      {copied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
       <span className="hidden sm:inline">{copied ? t("nav.copied") : t("nav.myLink")}</span>
+      {copied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
     </button>
   );
 }
