@@ -44,7 +44,7 @@ export default function DataCampaignSelect() {
 
   const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
-  const mediaLabel = mediaType === "audio" ? "Áudio" : mediaType === "video" ? "Vídeo" : "Foto";
+  const mediaLabel = mediaType === "audio" ? "Áudio" : mediaType === "video" ? "Vídeo" : mediaType === "extras" ? "Extras" : "Imagem (Foto)";
 
   return (
     <div className="max-w-3xl mx-auto">
