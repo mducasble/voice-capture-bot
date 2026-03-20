@@ -827,7 +827,7 @@ export default function DataAudioTask() {
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
             <Archive className="h-4 w-4 mr-1.5" /> Reserva
           </Button>
-          <Button onClick={handleFlag} disabled={saving}
+          <Button onClick={() => setShowFlagModal(true)} disabled={saving}
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
             <Flag className="h-4 w-4 mr-1.5" /> Flag
           </Button>
