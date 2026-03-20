@@ -52,6 +52,8 @@ serve(async (req) => {
       topic,
       duration_minutes, // optional: session duration in minutes
       participants,   // optional: array of { name, user_id? } to pre-register
+      is_public,      // optional: make room visible in public listing
+      country,        // optional: country filter for public rooms
     } = body;
 
     if (!creator_name) {
@@ -111,6 +113,10 @@ serve(async (req) => {
         topic: topic || null,
         daily_room_name: dailyRoomName,
         duration_minutes: duration_minutes || null,
+        is_public: is_public || false,
+        country: country || null,
+        campaign_id: campaign_id || null,
+        creator_user_id: resolvedUserId,
       })
       .select()
       .single();

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb, Download, RotateCw } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb, Download, RotateCw, LogIn, XCircle } from "lucide-react";
 import { AudioLevelIndicator } from "@/components/rooms/AudioLevelIndicator";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
@@ -36,6 +36,17 @@ interface Room {
   created_at: string;
   topic: string | null;
   duration_minutes: number | null;
+  is_public?: boolean;
+  creator_user_id?: string | null;
+}
+
+interface JoinRequest {
+  id: string;
+  room_id: string;
+  user_id: string;
+  user_name: string;
+  status: string;
+  created_at: string;
 }
 
 interface Participant {
@@ -105,6 +116,7 @@ const Room = () => {
   const [overlayElapsed, setOverlayElapsed] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const nonCreatorUploadedRef = useRef<string | null>(null);
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
@@ -211,6 +223,62 @@ const Room = () => {
     setIdleSecondsLeft(IDLE_TIMEOUT_SECONDS);
     await rejoinDaily();
   }, [rejoinDaily, roomId, currentParticipant]);
+
+  // ===== Join Requests (for public rooms) =====
+  const isCreator = currentParticipant?.is_creator === true;
+
+  const fetchJoinRequests = useCallback(async () => {
+    if (!roomId || !isCreator) return;
+    const { data } = await supabase
+      .from("room_join_requests")
+      .select("*")
+      .eq("room_id", roomId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+    setJoinRequests((data as JoinRequest[]) || []);
+  }, [roomId, isCreator]);
+
+  useEffect(() => {
+    fetchJoinRequests();
+  }, [fetchJoinRequests]);
+
+  // Realtime: listen for new join requests
+  useEffect(() => {
+    if (!roomId || !isCreator) return;
+    const channel = supabase
+      .channel(`join-requests-${roomId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "room_join_requests", filter: `room_id=eq.${roomId}` },
+        () => fetchJoinRequests()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [roomId, isCreator, fetchJoinRequests]);
+
+  const handleApproveJoin = async (req: JoinRequest) => {
+    // 1. Update request status
+    await supabase.from("room_join_requests")
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
+      .eq("id", req.id);
+    // 2. Add as participant
+    await supabase.from("room_participants").insert({
+      room_id: req.room_id,
+      name: req.user_name,
+      is_creator: false,
+      user_id: req.user_id,
+    });
+    toast.success(`${req.user_name} aprovado!`);
+    fetchJoinRequests();
+  };
+
+  const handleRejectJoin = async (req: JoinRequest) => {
+    await supabase.from("room_join_requests")
+      .update({ status: "rejected", reviewed_at: new Date().toISOString() })
+      .eq("id", req.id);
+    toast.info(`${req.user_name} recusado.`);
+    fetchJoinRequests();
+  };
 
   // Play remote audio streams with volume boost via Web Audio API
   // IMPORTANT: Uses createMediaElementSource to route through a SINGLE playback
@@ -2048,6 +2116,58 @@ const Room = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Join Requests (host only, public rooms) */}
+        {isCreator && room?.is_public && joinRequests.length > 0 && (
+          <Card className="border-amber-500/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LogIn className="h-4 w-4 text-amber-400" />
+                Solicitações de Entrada ({joinRequests.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {joinRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{req.user_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(req.created_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                        onClick={() => handleApproveJoin(req)}
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRejectJoin(req)}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Recusar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
     </>
