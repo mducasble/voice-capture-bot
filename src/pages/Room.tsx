@@ -2116,6 +2116,58 @@ const Room = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Join Requests (host only, public rooms) */}
+        {isCreator && room?.is_public && joinRequests.length > 0 && (
+          <Card className="border-amber-500/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LogIn className="h-4 w-4 text-amber-400" />
+                Solicitações de Entrada ({joinRequests.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {joinRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{req.user_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(req.created_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                        onClick={() => handleApproveJoin(req)}
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRejectJoin(req)}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Recusar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
     </>
