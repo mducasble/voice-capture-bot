@@ -196,9 +196,11 @@ interface SessionBlockProps {
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
+  sessionEarnings?: number;
+  earningsCurrency?: string;
 }
 
-export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlockProps) {
+export function SessionBlock({ sessionId, campaignId, recordings, sessionEarnings, earningsCurrency }: SessionBlockProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loadingParts, setLoadingParts] = useState(true);
   const [uploading, setUploading] = useState<TrackType | null>(null);
@@ -520,16 +522,23 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   return (
     <div>
       {/* Session header */}
-      <div className="px-4 py-2 flex items-center gap-2 flex-wrap" style={{ background: "rgba(0,0,0,0.15)" }}>
-        <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
-          Sessão{" "}
-          <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
-            {sessionId.slice(0, 8)}
+      <div className="px-4 py-2 flex items-center gap-2 flex-wrap justify-between" style={{ background: "rgba(0,0,0,0.15)" }}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
+            Sessão{" "}
+            <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
+              {sessionId.slice(0, 8)}
+            </span>
+            {" "}— {new Date(recordings[0]?.created_at || Date.now()).toLocaleDateString("pt-BR")}
           </span>
-          {" "}— {new Date(recordings[0]?.created_at || Date.now()).toLocaleDateString("pt-BR")}
-        </span>
-        {sessionDuration > 0 && (
-          <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
+          {sessionDuration > 0 && (
+            <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
+          )}
+        </div>
+        {sessionEarnings != null && sessionEarnings > 0 && (
+          <span className="font-mono text-sm font-bold px-2.5 py-0.5" style={{ color: "#22c55e", background: "rgba(34,197,94,0.12)" }}>
+            {earningsCurrency === "BRL" ? "R$" : "$"}{sessionEarnings.toFixed(2)}
+          </span>
         )}
       </div>
 

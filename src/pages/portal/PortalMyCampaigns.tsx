@@ -253,7 +253,7 @@ function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "reje
   return "pending";
 }
 
-function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
+function CampaignCard({ participation, submissions, rewardConfig }: { participation: any; submissions: SubmissionRow[]; rewardConfig?: { base_rate: number; currency: string } }) {
   const [expanded, setExpanded] = useState(false);
   const [sessionFilter, setSessionFilter] = useState<SessionFilter>("pending");
   const navigate = useNavigate();
@@ -343,11 +343,20 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
               {/* Audio sessions grouped */}
               {Array.from(sessionGroups.entries())
                 .filter(([, recs]) => sessionFilter === "all" || getSessionStatus(recs) === sessionFilter)
-                .map(([sessionId, recs]) => (
-                <div key={sessionId}>
-                  <SessionBlock sessionId={sessionId} campaignId={campaign.id} recordings={recs} />
-                </div>
-              ))}
+                .map(([sid, recs]) => {
+                  // Calculate session earnings only for approved tab
+                  let sessionEarnings: number | undefined;
+                  if (sessionFilter === "approved" && rewardConfig?.base_rate) {
+                    const approvedIndividuals = recs.filter(r => r.recording_type === "individual" && getUnifiedStatus(r).label === "Aprovado");
+                    const totalHours = approvedIndividuals.reduce((sum, r) => sum + ((r.duration_seconds || 0) / 3600), 0);
+                    sessionEarnings = rewardConfig.base_rate * totalHours;
+                  }
+                  return (
+                    <div key={sid}>
+                      <SessionBlock sessionId={sid} campaignId={campaign.id} recordings={recs} sessionEarnings={sessionEarnings} earningsCurrency={rewardConfig?.currency} />
+                    </div>
+                  );
+                })}
 
               {/* Non-audio submissions (videos, images, etc.) */}
               {nonAudioSubmissions.length > 0 && (
@@ -395,6 +404,25 @@ export default function PortalMyCampaigns() {
   });
 
   const campaignIds = participations?.map((p: any) => p.campaign_id) || [];
+
+  // Fetch reward configs for all campaigns
+  const { data: rewardConfigs } = useQuery({
+    queryKey: ["campaign_reward_configs", campaignIds],
+    queryFn: async () => {
+      if (!campaignIds.length) return [];
+      const { data } = await supabase
+        .from("campaign_reward_config")
+        .select("campaign_id, base_rate, currency")
+        .in("campaign_id", campaignIds);
+      return data || [];
+    },
+    enabled: campaignIds.length > 0,
+  });
+
+  const rewardConfigMap = new Map<string, { base_rate: number; currency: string }>();
+  for (const rc of (rewardConfigs || [])) {
+    if (rc.base_rate != null) rewardConfigMap.set(rc.campaign_id, { base_rate: rc.base_rate, currency: rc.currency || "USD" });
+  }
 
   // Fetch all submission types in parallel
   const { data: allSubmissions } = useQuery({
@@ -587,7 +615,7 @@ export default function PortalMyCampaigns() {
 
       <div className="space-y-3">
         {participations.map((p: any) => (
-          <CampaignCard key={p.campaign_id} participation={p} submissions={submissionsByCampaign(p.campaign_id)} />
+          <CampaignCard key={p.campaign_id} participation={p} submissions={submissionsByCampaign(p.campaign_id)} rewardConfig={rewardConfigMap.get(p.campaign_id)} />
         ))}
       </div>
     </div>
