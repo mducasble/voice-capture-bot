@@ -186,6 +186,7 @@ export default function DataAudioTask() {
   const [taskLogId, setTaskLogId] = useState<string | null>(null);
   const [taskSetId, setTaskSetId] = useState<string | null>(null);
   const [queuedJobs, setQueuedJobs] = useState<Record<string, "analyze" | "enhance" | "both">>({});
+  const [enhanceProgress, setEnhanceProgress] = useState<Record<string, { current: number; total: number }>>({});
   const [selectedVersions, setSelectedVersions] = useState<Record<string, "original" | "enhanced">>({});
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -252,12 +253,23 @@ export default function DataAudioTask() {
     if (queuedIds.length === 0) return;
 
     const interval = setInterval(async () => {
-      // 1. Check analysis_queue for analyze jobs
+      // 1. Check analysis_queue for analyze jobs + enhance progress
       const { data: jobs } = await supabase
         .from("analysis_queue")
-        .select("recording_id, job_type, status")
+        .select("recording_id, job_type, status, current_segment, total_segments")
         .in("recording_id", queuedIds)
         .order("created_at", { ascending: false });
+
+      // Update enhance progress from queue data
+      if (jobs) {
+        const newProgress: Record<string, { current: number; total: number }> = {};
+        for (const j of jobs) {
+          if (j.job_type === "enhance" && j.total_segments > 0 && j.status !== "done") {
+            newProgress[j.recording_id] = { current: j.current_segment, total: j.total_segments };
+          }
+        }
+        setEnhanceProgress(prev => ({ ...prev, ...newProgress }));
+      }
 
       // 2. For enhance jobs, check metadata directly (edge function updates it)
       const enhanceIds = queuedIds.filter(id => {
@@ -314,6 +326,16 @@ export default function DataAudioTask() {
 
       if (anyDone) {
         setQueuedJobs(newQueued);
+        // Clean up progress for finished enhance jobs
+        setEnhanceProgress(prev => {
+          const copy = { ...prev };
+          for (const recId of queuedIds) {
+            if (!newQueued[recId] || (newQueued[recId] !== "enhance" && newQueued[recId] !== "both")) {
+              delete copy[recId];
+            }
+          }
+          return copy;
+        });
         await refetchSiblings();
         toast.success("Processamento concluído!", { description: "Os dados foram atualizados." });
       }
@@ -730,6 +752,7 @@ export default function DataAudioTask() {
                 enhancedMetrics={sibEnhancedMetrics}
                 analyzeQueued={analyzeQueued}
                 enhanceQueued={enhanceQueued}
+                enhanceProgress={enhanceProgress[sib.id]}
                 logAction={logAction}
                 handleReanalyze={handleReanalyze}
                 handleEnhance={handleEnhance}
