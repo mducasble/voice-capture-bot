@@ -21,11 +21,10 @@ _device = None
 def stft_magnitude(x, hop_size, fft_size=512, win_length=512):
     window = torch.hann_window(win_length).to(x.device)
     x_stft = torch.stft(
-        x, fft_size, hop_size, win_length, window=window, return_complex=False
+        x, fft_size, hop_size, win_length, window=window, return_complex=True
     )
-    real = x_stft[..., 0]
-    imag = x_stft[..., 1]
-    return torch.sqrt(torch.clamp(real ** 2 + imag ** 2, min=1e-7)).transpose(2, 1)
+    mag = torch.sqrt(torch.clamp(x_stft.real ** 2 + x_stft.imag ** 2, min=1e-7))
+    return mag.transpose(2, 1)
 
 
 def cos_loss(SP_noisy, SP_y_noisy):
