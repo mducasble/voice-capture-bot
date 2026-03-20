@@ -187,7 +187,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Top Stats — bold gradient cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard
           title="Usuários Inscritos"
           value={totalUsers.toLocaleString("pt-BR")}
@@ -206,6 +206,10 @@ export default function AdminDashboard() {
           icon={DollarSign}
           gradientClass="admin-gradient-card-amber"
         />
+        <StatCard title="Sessões" value={totalSessions.toLocaleString("pt-BR")} icon={Layers} gradientClass="admin-gradient-card-blue" />
+        <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
+        <StatCard title="Duração" value={recStats.totalDuration} icon={Clock} gradientClass="admin-gradient-card-green" />
+        <StatCard title="Armazenamento" value={recStats.totalSize} icon={HardDrive} gradientClass="admin-gradient-card-amber" />
       </div>
 
       {/* Chart */}
