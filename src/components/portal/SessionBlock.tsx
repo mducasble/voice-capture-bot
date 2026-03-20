@@ -54,9 +54,15 @@ function formatDuration(seconds: number) {
   return `${h}h ${m % 60}min`;
 }
 
-function TrackRow({ rec, label, icon, onResubmit }: { rec: SubmissionRow; label: string; icon: React.ReactNode; onResubmit?: (recId: string) => void }) {
+function TrackRow({ rec, label, icon, onResubmit, resubmitting, resubProgress }: {
+  rec: SubmissionRow; label: string; icon: React.ReactNode;
+  onResubmit?: (recId: string) => void;
+  resubmitting?: string | null;
+  resubProgress?: number;
+}) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isResubmitting = resubmitting === rec.id;
 
   const toggle = useCallback(() => {
     if (!rec.file_url) return;
@@ -101,52 +107,25 @@ function TrackRow({ rec, label, icon, onResubmit }: { rec: SubmissionRow; label:
         {onResubmit && (
           <button
             onClick={(e) => { e.stopPropagation(); onResubmit(rec.id); }}
+            disabled={!!resubmitting}
             className="inline-flex items-center gap-1 font-mono text-xs uppercase tracking-widest px-2 py-0.5 transition-opacity hover:opacity-80"
-            style={{ color: "var(--portal-accent)", background: "rgba(255,255,255,0.05)", border: "1px solid var(--portal-border)" }}
+            style={{
+              color: isResubmitting ? "var(--portal-text-muted)" : "var(--portal-accent)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid var(--portal-border)",
+              cursor: resubmitting ? "default" : "pointer",
+              opacity: resubmitting && !isResubmitting ? 0.5 : 1,
+            }}
             title="Substituir trilha por um novo arquivo"
           >
-            <RefreshCw className="h-3 w-3" /> Reenviar
+            {isResubmitting ? (
+              <><Loader2 className="h-3 w-3 animate-spin" /> {resubProgress || 0}%</>
+            ) : (
+              <><RefreshCw className="h-3 w-3" /> Reenviar</>
+            )}
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function MissingTrackRow({ label, icon, trackType, onUpload, uploading, progress }: {
-  label: string;
-  icon: React.ReactNode;
-  trackType: TrackType;
-  onUpload: (type: TrackType) => void;
-  uploading: TrackType | null;
-  progress: number;
-}) {
-  const isUploading = uploading === trackType;
-  const isDisabled = !!uploading;
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderBottom: "1px solid var(--portal-border)", opacity: isDisabled && !isUploading ? 0.5 : 1 }}>
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <span className="shrink-0" style={{ color: "var(--portal-text-muted)" }}>{icon}</span>
-        <span className="font-mono text-sm truncate" style={{ color: "var(--portal-text-muted)" }}>{label}</span>
-      </div>
-      <button
-        onClick={(e) => { e.stopPropagation(); onUpload(trackType); }}
-        disabled={isDisabled}
-        className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-3 py-1.5 transition-all"
-        style={{
-          color: isUploading ? "var(--portal-text-muted)" : "var(--portal-accent)",
-          background: "rgba(255,255,255,0.05)",
-          border: "1px solid var(--portal-border)",
-          cursor: isDisabled ? "default" : "pointer",
-        }}
-      >
-        {isUploading ? (
-          <><Loader2 className="h-3 w-3 animate-spin" /> {progress}%</>
-        ) : (
-          <><Upload className="h-3 w-3" /> Enviar áudio</>
-        )}
-      </button>
     </div>
   );
 }
