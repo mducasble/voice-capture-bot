@@ -165,11 +165,10 @@ export default function PortalPaymentHistory() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="p-2 flex-shrink-0 transition-colors"
-                    style={{ color: "var(--portal-accent)" }}
-                    title="Ver na blockchain"
+                    className="flex-shrink-0 font-mono text-[11px] px-3 py-1.5 uppercase tracking-widest transition-colors"
+                    style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    Link da Transação
                   </a>
                 </button>
 
