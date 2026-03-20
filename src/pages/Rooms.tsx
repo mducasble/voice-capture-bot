@@ -26,7 +26,6 @@ interface PublicRoom {
   creator_user_id: string | null;
   participant_count?: number;
   campaign_name?: string;
-  my_request_status?: string | null;
 }
 
 const Rooms = () => {
