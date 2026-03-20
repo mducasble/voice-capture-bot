@@ -151,7 +151,7 @@ export default function PortalPaymentHistory() {
                           Teste
                         </span>
                       )}
-                      <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--portal-text-muted)" }}>
+                      <span className="font-mono text-[10px] uppercase tracking-widest transition-colors group-hover:underline" style={{ color: "var(--portal-text-muted)" }}>
                         {p.payment_code}
                       </span>
                     </div>
