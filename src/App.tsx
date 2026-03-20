@@ -152,6 +152,7 @@ const App = () => (
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="inbox" element={<AdminInbox />} />
+                <Route path="report/videos-editados" element={<VideoSubmissionsReport />} />
               </Route>
 
               {/* Audit login (standalone) */}
