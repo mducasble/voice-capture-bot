@@ -615,7 +615,7 @@ export default function PortalMyCampaigns() {
 
       <div className="space-y-3">
         {participations.map((p: any) => (
-          <CampaignCard key={p.campaign_id} participation={p} submissions={submissionsByCampaign(p.campaign_id)} />
+          <CampaignCard key={p.campaign_id} participation={p} submissions={submissionsByCampaign(p.campaign_id)} rewardConfig={rewardConfigMap.get(p.campaign_id)} />
         ))}
       </div>
     </div>
