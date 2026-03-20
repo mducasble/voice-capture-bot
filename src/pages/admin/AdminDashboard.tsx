@@ -209,7 +209,7 @@ export default function AdminDashboard() {
         <StatCard title="Sessões" value={totalSessions.toLocaleString("pt-BR")} icon={Layers} gradientClass="admin-gradient-card-blue" />
         <StatCard title="Gravações" value={recStats.totalRecordings.toLocaleString("pt-BR")} icon={Mic2} gradientClass="admin-gradient-card-purple" />
         <StatCard title="Duração" value={recStats.totalDuration} icon={Clock} gradientClass="admin-gradient-card-green" />
-        <StatCard title="Armazenamento" value={recStats.totalSize} icon={HardDrive} gradientClass="admin-gradient-card-amber" />
+        
       </div>
 
       {/* Chart */}
