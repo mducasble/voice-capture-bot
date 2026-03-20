@@ -103,7 +103,15 @@ export default function DataCampaignSelect() {
             return (
               <button
                 key={c.id}
-                onClick={() => navigate(`/data/${mediaType}/task/${c.id}`)}
+                onClick={() => {
+                  if (mediaType === "video") {
+                    navigate(`/data/video/review/${c.id}`);
+                  } else if (mediaType === "extras") {
+                    navigate(`/data/extras/qc/${c.id}`);
+                  } else {
+                    navigate(`/data/${mediaType}/task/${c.id}`);
+                  }
+                }}
                 className="group w-full text-left p-5 md:p-6 rounded-2xl data-glass-card hover:bg-white/[0.08] hover:border-white/[0.15] transition-all flex items-center gap-5"
               >
                 <div className="h-12 w-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
