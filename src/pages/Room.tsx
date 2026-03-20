@@ -1689,38 +1689,43 @@ const Room = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
-            <KGenButton
-              variant="primary"
-              size="sm"
-              onClick={copyLink}
-              scrambleText={copied ? t("room.copied") : t("room.inviteOther")}
-              icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            />
-            {isCreator && !room.is_public && (
+          <div className="flex items-center gap-2 flex-wrap w-full">
+            <div className="flex items-center gap-2">
+              {isCreator && !room.is_public && (
+                <KGenButton
+                  size="sm"
+                  onClick={async () => {
+                    const { error } = await supabase.from("rooms").update({ is_public: true }).eq("id", room.id);
+                    if (error) { toast.error("Erro ao abrir sala"); return; }
+                    setRoom(prev => prev ? { ...prev, is_public: true } : prev);
+                    toast.success("Sala agora é pública!");
+                  }}
+                  scrambleText="ABRIR SALA PÚBLICA"
+                  icon={<Globe className="h-4 w-4" />}
+                />
+              )}
+              {isCreator && room.is_public && (
+                <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>
+                  <Globe className="h-3.5 w-3.5" /> Sala Pública
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <KGenButton
+                variant="primary"
+                size="sm"
+                onClick={copyLink}
+                scrambleText={copied ? t("room.copied") : t("room.inviteOther")}
+                icon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              />
               <KGenButton
                 size="sm"
-                onClick={async () => {
-                  const { error } = await supabase.from("rooms").update({ is_public: true }).eq("id", room.id);
-                  if (error) { toast.error("Erro ao abrir sala"); return; }
-                  setRoom(prev => prev ? { ...prev, is_public: true } : prev);
-                  toast.success("Sala agora é pública!");
-                }}
-                scrambleText="ABRIR SALA PÚBLICA"
-                icon={<Globe className="h-4 w-4" />}
+                onClick={handleLeave}
+                scrambleText={t("room.leave")}
+                className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
               />
-            )}
-            {isCreator && room.is_public && (
-              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>
-                <Globe className="h-3.5 w-3.5" /> Sala Pública
-              </span>
-            )}
-            <KGenButton
-              size="sm"
-              onClick={handleLeave}
-              scrambleText={t("room.leave")}
-              className="!bg-[hsl(0,84%,45%)] !text-white hover:!brightness-[1.1]"
-            />
+            </div>
           </div>
         </div>
 
