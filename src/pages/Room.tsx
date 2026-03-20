@@ -36,6 +36,17 @@ interface Room {
   created_at: string;
   topic: string | null;
   duration_minutes: number | null;
+  is_public?: boolean;
+  creator_user_id?: string | null;
+}
+
+interface JoinRequest {
+  id: string;
+  room_id: string;
+  user_id: string;
+  user_name: string;
+  status: string;
+  created_at: string;
 }
 
 interface Participant {
