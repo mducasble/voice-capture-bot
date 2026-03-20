@@ -196,9 +196,11 @@ interface SessionBlockProps {
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
+  sessionEarnings?: number;
+  earningsCurrency?: string;
 }
 
-export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlockProps) {
+export function SessionBlock({ sessionId, campaignId, recordings, sessionEarnings, earningsCurrency }: SessionBlockProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loadingParts, setLoadingParts] = useState(true);
   const [uploading, setUploading] = useState<TrackType | null>(null);
