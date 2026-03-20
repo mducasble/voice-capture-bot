@@ -18,8 +18,11 @@ const CarouselEditor = lazy(() => import("@/components/admin/carousel/CarouselEd
 
 const FORMATS = [
   { id: "instagram-post", label: "Instagram Post", width: 1080, height: 1080 },
+  { id: "instagram-new", label: "Instagram Novo", width: 1180, height: 1350 },
   { id: "instagram-story", label: "Instagram Story", width: 1080, height: 1920 },
   { id: "twitter", label: "Twitter / X", width: 1200, height: 675 },
+  { id: "discord-banner", label: "Discord Event Banner", width: 800, height: 320 },
+  { id: "discord-post", label: "Discord Post", width: 1920, height: 1080 },
   { id: "whatsapp", label: "WhatsApp Status", width: 1080, height: 1920 },
 ] as const;
 
