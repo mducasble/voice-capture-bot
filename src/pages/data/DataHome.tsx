@@ -1,24 +1,28 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Headphones, Video, Image } from "lucide-react";
+import { Headphones, Video, Image, Wrench } from "lucide-react";
 
-type MediaType = "audio" | "video" | "photo";
+type MediaType = "audio" | "video" | "photo" | "extras";
 
 const mediaOptions: { id: MediaType; label: string; description: string; icon: typeof Headphones; ready: boolean }[] = [
   { id: "audio", label: "Áudio", description: "Valide gravações de voz e conversas", icon: Headphones, ready: true },
-  { id: "video", label: "Vídeo", description: "Analise qualidade de vídeos com IA", icon: Video, ready: true },
-  { id: "photo", label: "Foto", description: "Valide imagens e capturas", icon: Image, ready: false },
+  { id: "video", label: "Vídeo", description: "Revise submissões de vídeo das campanhas", icon: Video, ready: true },
+  { id: "photo", label: "Imagem (Foto)", description: "Valide imagens e capturas", icon: Image, ready: true },
+  { id: "extras", label: "Extras", description: "Ferramentas avulsas de QC e análise", icon: Wrench, ready: true },
 ];
 
 export default function DataHome() {
   const navigate = useNavigate();
 
   const handleSelect = (type: MediaType) => {
-    navigate(`/data/${type}/campaigns`);
+    if (type === "extras") {
+      navigate("/data/extras/campaigns");
+    } else {
+      navigate(`/data/${type}/campaigns`);
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col items-center pt-8 md:pt-16">
+    <div className="max-w-4xl mx-auto flex flex-col items-center pt-8 md:pt-16">
       <h1 className="text-[32px] md:text-[40px] font-bold text-white tracking-tight text-center mb-3">
         O que você quer validar?
       </h1>
@@ -26,7 +30,7 @@ export default function DataHome() {
         Escolha o tipo de conteúdo para começar a contribuir
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
         {mediaOptions.map((opt) => (
           <button
             key={opt.id}
