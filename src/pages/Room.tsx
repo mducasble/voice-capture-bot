@@ -299,6 +299,7 @@ const Room = () => {
   }, [room?.is_recording, remoteStreams.size, remoteRecorders.isRecording]);
 
   // Non-creator: stop remote recorders and upload when recording ends
+  // (Creator handles this in handleStopRecording directly)
   useEffect(() => {
     if (
       room?.status === "completed" &&
