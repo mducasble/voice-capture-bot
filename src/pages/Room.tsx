@@ -100,6 +100,11 @@ const Room = () => {
   const [remoteUploadsInProgress, setRemoteUploadsInProgress] = useState(0);
   const [remoteUploadsDone, setRemoteUploadsDone] = useState(0);
   const [uploadOverlayHold, setUploadOverlayHold] = useState(false);
+  const [savedBlobs, setSavedBlobs] = useState<Map<string, { blob: Blob; label: string }>>(new Map());
+  const [overlayStartedAt, setOverlayStartedAt] = useState<number | null>(null);
+  const [overlayElapsed, setOverlayElapsed] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const nonCreatorUploadedRef = useRef<string | null>(null);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
