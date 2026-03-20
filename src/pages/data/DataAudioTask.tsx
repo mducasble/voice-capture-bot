@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
+import { FlagReasonModal } from "@/components/data/FlagReasonModal";
 import { TrackCard } from "@/components/data/TrackCard";
 import { cn } from "@/lib/utils";
 
@@ -179,6 +180,7 @@ export default function DataAudioTask() {
   const [campaignName, setCampaignName] = useState("");
   const [taskTypeLabel, setTaskTypeLabel] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showFlagModal, setShowFlagModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [timeLimit, setTimeLimit] = useState(300);
   const [trackedActions, setTrackedActions] = useState<string[]>([]);
@@ -517,12 +519,16 @@ export default function DataAudioTask() {
     loadNext();
   };
 
-  const handleFlag = async () => {
+  const handleFlag = async (reason: string) => {
     if (!rec) return;
     setSaving(true);
-    logAction("flag");
-    const { error } = await supabase.from("voice_recordings").update({ quality_status: "flagged" }).eq("id", rec.id);
+    logAction("flag", reason);
+    const { error } = await supabase.from("voice_recordings").update({
+      quality_status: "flagged",
+      quality_rejection_reason: reason,
+    }).eq("id", rec.id);
     setSaving(false);
+    setShowFlagModal(false);
     if (error) { toast.error("Erro ao flaguear"); return; }
     toast.success("Flagueado para revisão.");
     await finishTask("completed", "flagged");
@@ -822,7 +828,7 @@ export default function DataAudioTask() {
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
             <Archive className="h-4 w-4 mr-1.5" /> Reserva
           </Button>
-          <Button onClick={handleFlag} disabled={saving}
+          <Button onClick={() => setShowFlagModal(true)} disabled={saving}
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
             <Flag className="h-4 w-4 mr-1.5" /> Flag
           </Button>
@@ -842,6 +848,12 @@ export default function DataAudioTask() {
           useAdminReasons
         />
       )}
+
+      <FlagReasonModal
+        open={showFlagModal}
+        onClose={() => setShowFlagModal(false)}
+        onConfirm={handleFlag}
+      />
     </div>
   );
 }
