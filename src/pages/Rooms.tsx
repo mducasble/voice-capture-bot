@@ -41,7 +41,7 @@ const Rooms = () => {
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [userCountry, setUserCountry] = useState<string | null>(null);
-  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
+  
 
   // Fetch user country from profile
   useEffect(() => {
