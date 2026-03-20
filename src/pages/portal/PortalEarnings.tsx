@@ -127,7 +127,7 @@ export default function PortalEarnings() {
               {t("earnings.earningsByActivity")}
             </h2>
           </div>
-          <div className="flex font-mono text-[11px] uppercase tracking-widest" style={{ border: "1px solid var(--portal-border)" }}>
+          <div className="flex font-mono text-[11px] uppercase tracking-widest font-black" style={{ border: "1px solid var(--portal-border)" }}>
             <button
               onClick={() => setEarningsView("pending")}
               className="px-3 py-1.5 transition-colors"
