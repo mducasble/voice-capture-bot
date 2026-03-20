@@ -510,7 +510,7 @@ function NewAdminMessage({ onSend, onCancel, isPending }: {
               {users.map(u => (
                 <button
                   key={u.id}
-                  onClick={() => setSelectedUser(u)}
+                  onClick={() => handleSelectUser(u)}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-muted/20 transition-colors border-b last:border-0 text-foreground"
                 >
                   {u.name}
