@@ -81,6 +81,8 @@ export default function PortalCampaignTask() {
             campaign_id: campaign.id,
             topic: topic.trim(),
             duration_minutes: durationMinutes,
+            is_public: isPublicRoom,
+            country: isPublicRoom ? userCountry : null,
           }),
         }
       );
