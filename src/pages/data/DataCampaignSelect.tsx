@@ -25,6 +25,7 @@ export default function DataCampaignSelect() {
       audio: ["audio_capture_group", "audio_capture_solo"],
       video: ["video_submission", "video_prompt_pair"],
       photo: ["image_submission"],
+      extras: ["video_submission", "video_prompt_pair"],
     };
     const allowedTypes = typeMap[mediaType || ""] || [];
 
