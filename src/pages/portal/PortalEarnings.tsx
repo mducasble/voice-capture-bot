@@ -84,11 +84,12 @@ export default function PortalEarnings() {
 
       // Global totals always count everything
       totalAccumulated += amount;
-      if (row.status === "credited") totalCredited += amount;
+      if (row.status === "credited" || row.status === "pending") totalCredited += amount;
       if (row.status === "paid") totalPaid += amount;
 
-      // Activity breakdown respects the view filter
-      if (earningsView === "pending" && row.status !== "pending") continue;
+      // "Pendente" shows credited (money waiting to be paid out)
+      // "Geral" shows everything (credited + paid)
+      if (earningsView === "pending" && row.status !== "credited" && row.status !== "pending") continue;
 
       if (row.entry_type === "referral_bonus") {
         bucket.referral += amount;
@@ -98,7 +99,7 @@ export default function PortalEarnings() {
       bucket.tasks += 1;
       bucket.total += amount;
 
-      if (row.status === "pending") {
+      if (row.status === "credited" || row.status === "pending") {
         bucket.pending += 1;
       }
     }
