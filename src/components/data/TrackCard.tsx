@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
+import { DataAudioPlayer } from "@/components/data/DataAudioPlayer";
 import { cn } from "@/lib/utils";
 
 const tierColors: Record<string, string> = {
@@ -162,12 +163,8 @@ export function TrackCard({
       {/* Player */}
       {activeUrl && (
         <div className="mb-4">
-          <audio
-            key={activeUrl}
-            controls
+          <DataAudioPlayer
             src={activeUrl}
-            className="w-full h-10"
-            preload="none"
             onPlay={() => logAction("play", `${sib.recording_type || sib.id}${playingEnhanced ? "_enhanced" : ""}`)}
             onPause={() => logAction("pause", sib.recording_type || sib.id)}
             onSeeked={() => logAction("seek", sib.recording_type || sib.id)}
