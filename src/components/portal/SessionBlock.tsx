@@ -506,7 +506,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       setResubmitting(null);
       setResubProgress(0);
     }
-  }, [sessionId]);
+  }, [sessionId, checkSessionMismatch]);
 
   const sessionDuration = mixedRec?.duration_seconds ?? individualRecs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
 
