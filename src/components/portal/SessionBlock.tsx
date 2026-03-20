@@ -423,7 +423,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
       setUploading(null);
       setProgress(0);
     }
-  }, [sessionId, campaignId, host, guest]);
+  }, [sessionId, campaignId, host, guest, checkSessionMismatch]);
 
   const handleResubmit = useCallback((recordingId: string) => {
     pendingResubId.current = recordingId;
