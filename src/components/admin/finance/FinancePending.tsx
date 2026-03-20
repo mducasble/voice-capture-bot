@@ -21,6 +21,7 @@ export function FinancePending({ walletAddr, onWalletRefresh }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
   const [countryFilter, setCountryFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   const { data: pendingUsers = [], isLoading } = useQuery({
     queryKey: ["admin-finance-pending"],
