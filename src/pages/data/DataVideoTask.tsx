@@ -206,7 +206,7 @@ export default function DataVideoTask() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <button onClick={() => navigate(`/data/video/campaigns`)}
+      <button onClick={() => navigate(`/data/extras/campaigns`)}
         className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors mb-6">
         <ArrowLeft className="h-4 w-4" /> Voltar
       </button>
