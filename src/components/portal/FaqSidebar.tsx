@@ -216,6 +216,9 @@ export function FaqSidebar() {
                 </div>
               </div>
             ))}
+
+            {/* Community links */}
+            <CommunityLinks />
           </div>
         </ScrollArea>
       </div>
