@@ -57,17 +57,17 @@ export default function DataCampaignSelect() {
       </h1>
       <p className="text-[16px] text-white/40 mb-8">Selecione uma campanha para começar a validar</p>
 
-      {/* Quick individual analysis (video only) */}
-      {mediaType === "video" && (
+      {/* Quick individual analysis (extras only) */}
+      {mediaType === "extras" && (
         <button
-          onClick={() => navigate("/data/video/task/standalone")}
+          onClick={() => navigate("/data/extras/qc/standalone")}
           className="w-full mb-6 p-5 rounded-2xl border-2 border-dashed border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.04] transition-all flex items-center gap-4 group"
         >
           <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           </div>
           <div className="flex-1 text-left">
-            <h3 className="text-[17px] font-semibold text-white">Análise individual</h3>
+            <h3 className="text-[17px] font-semibold text-white">Análise QC individual</h3>
             <p className="text-[13px] text-white/40 mt-0.5">Suba um vídeo avulso para análise QC rápida, sem vincular a campanha</p>
           </div>
           <ChevronRight className="h-5 w-5 text-white/20 group-hover:text-white/50 transition-colors shrink-0" />
