@@ -108,27 +108,11 @@ const Rooms = () => {
       }
     }
 
-    // Get my join request statuses
-    let myRequests: Record<string, string> = {};
-    if (user && roomIds.length > 0) {
-      const { data: reqs } = await supabase
-        .from("room_join_requests")
-        .select("room_id, status")
-        .eq("user_id", user.id)
-        .in("room_id", roomIds);
-      if (reqs) {
-        for (const r of reqs) {
-          myRequests[r.room_id] = r.status;
-        }
-      }
-    }
-
     setPublicRooms(
       filtered.map((r: any) => ({
         ...r,
         participant_count: participantCounts[r.id] || 0,
         campaign_name: r.campaign_id ? campaignMap[r.campaign_id] : null,
-        my_request_status: myRequests[r.id] || null,
       }))
     );
     setLoadingRooms(false);
