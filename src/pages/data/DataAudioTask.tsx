@@ -656,11 +656,19 @@ export default function DataAudioTask() {
 
   return (
     <div className="max-w-4xl mx-auto pb-32">
-      {/* Back + Campaign */}
+      {/* Back + Campaign + Counter */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate(`/data/audio/campaigns`)} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
           <ArrowLeft className="h-4 w-4" /> {campaignName}
         </button>
+        {pendingCount && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+            <span className="text-[13px] font-mono font-bold text-white">{pendingCount.done}</span>
+            <span className="text-[13px] text-white/30">/</span>
+            <span className="text-[13px] font-mono text-white/50">{pendingCount.total}</span>
+            <span className="text-[11px] text-white/30 ml-1">validados</span>
+          </div>
+        )}
       </div>
 
       {/* Timer bar */}
