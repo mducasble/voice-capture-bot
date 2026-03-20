@@ -208,35 +208,45 @@ const Room = () => {
   }, [rejoinDaily, roomId, currentParticipant]);
 
   // Play remote audio streams with volume boost via Web Audio API
+  // IMPORTANT: Uses createMediaElementSource to route through a SINGLE playback
+  // path. Previously, audio was played BOTH through the <audio> element AND a
+  // separate AudioContext→destination, which broke the browser's echo cancellation
+  // (AEC only references the <audio> element output, not extra AudioContext outputs).
   useEffect(() => {
     remoteStreams.forEach((stream, peerId) => {
       let audioEl = remoteAudioRefs.current.get(peerId);
       if (!audioEl) {
         audioEl = new Audio();
         audioEl.autoplay = true;
+        // crossOrigin not needed for MediaStream sources
         remoteAudioRefs.current.set(peerId, audioEl);
       }
       if (audioEl.srcObject !== stream) {
+        // Clean up previous gain context for this peer first
+        const existing = remoteGainContexts.current.get(peerId);
+        if (existing) {
+          try { existing.ctx.close(); } catch {}
+          remoteGainContexts.current.delete(peerId);
+        }
+
         audioEl.srcObject = stream;
         audioEl.play().catch(e => console.warn("[WebRTC] Audio play failed:", e));
 
-        // Apply volume boost via Web Audio API GainNode
-        const existing = remoteGainContexts.current.get(peerId);
-        if (existing) {
-          existing.ctx.close();
-          remoteGainContexts.current.delete(peerId);
-        }
+        // Use createMediaElementSource to take ownership of the <audio> output.
+        // This routes playback through the AudioContext (with gain) as the ONLY
+        // output path, so the browser's AEC can properly cancel it from the mic input.
         try {
           const ctx = new AudioContext();
-          const source = ctx.createMediaStreamSource(stream);
+          const source = ctx.createMediaElementSource(audioEl);
           const gain = ctx.createGain();
           gain.gain.value = 2.5; // 2.5x volume boost for remote audio
           source.connect(gain);
           gain.connect(ctx.destination);
           remoteGainContexts.current.set(peerId, { ctx, gain });
-          console.log(`[WebRTC] Applied 2.5x volume boost for ${peerId}`);
+          console.log(`[WebRTC] Applied 2.5x volume boost (single path) for ${peerId}`);
         } catch (e) {
-          console.warn("[WebRTC] Failed to create gain node:", e);
+          // Fallback: if AudioContext fails, at least the <audio> element plays at 1x
+          console.warn("[WebRTC] Failed to create gain node, falling back to native playback:", e);
         }
       }
     });
@@ -248,7 +258,7 @@ const Room = () => {
         remoteAudioRefs.current.delete(peerId);
         const gainCtx = remoteGainContexts.current.get(peerId);
         if (gainCtx) {
-          gainCtx.ctx.close();
+          try { gainCtx.ctx.close(); } catch {}
           remoteGainContexts.current.delete(peerId);
         }
       }
