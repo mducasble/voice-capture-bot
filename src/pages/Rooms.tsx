@@ -307,7 +307,6 @@ const Rooms = () => {
               <div className="space-y-3">
                 {publicRooms.map((room) => {
                   const isMyRoom = user && room.creator_user_id === user.id;
-                  const requestStatus = room.my_request_status;
 
                   return (
                     <Card key={room.id} className="overflow-hidden">
