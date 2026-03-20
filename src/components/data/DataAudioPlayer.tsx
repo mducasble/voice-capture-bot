@@ -71,31 +71,31 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-[0.625rem] bg-[hsl(0_0%_100%/0.05)] border border-[hsl(0_0%_100%/0.08)]">
+    <div className="flex items-center gap-4 px-4 py-3 rounded-[0.625rem] bg-[hsl(0_0%_100%/0.05)] border border-[hsl(0_0%_100%/0.08)]">
       {/* Play / Pause */}
       <button
         onClick={toggle}
-        className="h-8 w-8 shrink-0 rounded-lg bg-[hsl(160_50%_45%/0.2)] hover:bg-[hsl(160_50%_45%/0.35)] flex items-center justify-center transition-colors"
+        className="h-10 w-10 shrink-0 rounded-lg bg-[hsl(160_50%_45%/0.2)] hover:bg-[hsl(160_50%_45%/0.35)] flex items-center justify-center transition-colors"
       >
         {playing ? (
-          <Pause className="h-3.5 w-3.5 text-[hsl(160_50%_65%)]" />
+          <Pause className="h-5 w-5 text-[hsl(160_50%_65%)]" />
         ) : (
-          <Play className="h-3.5 w-3.5 text-[hsl(160_50%_65%)] ml-0.5" />
+          <Play className="h-5 w-5 text-[hsl(160_50%_65%)] ml-0.5" />
         )}
       </button>
 
       {/* Time */}
-      <span className="text-[11px] tabular-nums text-white/50 w-[36px] text-right shrink-0">
+      <span className="text-[13px] tabular-nums text-white/50 w-[40px] text-right shrink-0">
         {formatTime(currentTime)}
       </span>
 
       {/* Progress bar */}
       <div
         ref={progressRef}
-        className="flex-1 h-6 flex items-center cursor-pointer group"
+        className="flex-1 h-8 flex items-center cursor-pointer group"
         onMouseDown={handleMouseDown}
       >
-        <div className="w-full h-[4px] rounded-full bg-white/[0.08] relative overflow-visible">
+        <div className="w-full h-[6px] rounded-full bg-white/[0.08] relative overflow-visible">
           <div
             className="h-full rounded-full bg-[hsl(160_50%_45%)] transition-[width] duration-75"
             style={{ width: `${progress}%` }}
@@ -103,16 +103,16 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
           {/* Thumb */}
           <div
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-[hsl(160_50%_55%)] shadow-md transition-opacity",
+              "absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-[hsl(160_50%_55%)] shadow-md transition-opacity",
               dragging ? "opacity-100 scale-110" : "opacity-0 group-hover:opacity-100"
             )}
-            style={{ left: `calc(${progress}% - 6px)` }}
+            style={{ left: `calc(${progress}% - 8px)` }}
           />
         </div>
       </div>
 
       {/* Duration */}
-      <span className="text-[11px] tabular-nums text-white/50 w-[36px] shrink-0">
+      <span className="text-[13px] tabular-nums text-white/50 w-[40px] shrink-0">
         {formatTime(duration)}
       </span>
 
@@ -122,9 +122,9 @@ export function DataAudioPlayer({ src, onPlay, onPause, onSeeked }: DataAudioPla
           if (audioRef.current) audioRef.current.muted = !muted;
           setMuted(!muted);
         }}
-        className="h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
+        className="h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
       >
-        {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
       {/* Hidden audio element */}
