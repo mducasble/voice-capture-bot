@@ -93,8 +93,23 @@ export function FinancePending({ walletAddr, onWalletRefresh }: Props) {
     if (campaignFilter !== "all" && !u.campaigns?.includes(campaignFilter)) return false;
     return true;
   });
+  // Fetch earnings detail for expanded user
+  const { data: expandedEarnings = [] } = useQuery({
+    queryKey: ["admin-finance-user-earnings", expandedUserId],
+    enabled: !!expandedUserId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("earnings_ledger")
+        .select("id, amount, currency, entry_type, submission_type, description, campaign_id, created_at")
+        .eq("user_id", expandedUserId!)
+        .eq("status", "credited")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
-  /* ─── Pay mutation ─── */
+
   const payMutation = useMutation({
     mutationFn: async (user: PendingUser) => {
       if (!walletAddr) throw new Error("Wallet não conectada");
