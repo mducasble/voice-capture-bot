@@ -162,16 +162,17 @@ export function TrackCard({
       {/* Player */}
       {activeUrl && (
         <div className="mb-4">
-          <audio
-            key={activeUrl}
-            controls
-            src={activeUrl}
-            className="w-full h-10"
-            preload="none"
-            onPlay={() => logAction("play", `${sib.recording_type || sib.id}${playingEnhanced ? "_enhanced" : ""}`)}
-            onPause={() => logAction("pause", sib.recording_type || sib.id)}
-            onSeeked={() => logAction("seek", sib.recording_type || sib.id)}
-          />
+          <div className="data-audio-player">
+            <audio
+              key={activeUrl}
+              controls
+              src={activeUrl}
+              preload="none"
+              onPlay={() => logAction("play", `${sib.recording_type || sib.id}${playingEnhanced ? "_enhanced" : ""}`)}
+              onPause={() => logAction("pause", sib.recording_type || sib.id)}
+              onSeeked={() => logAction("seek", sib.recording_type || sib.id)}
+            />
+          </div>
         </div>
       )}
 
