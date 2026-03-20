@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb, Download, RotateCw, LogIn, XCircle } from "lucide-react";
+import { Radio, Mic, MicOff, Users, Copy, Check, Square, Circle, Volume2, MessageSquare, Timer, AlertCircle, Loader2, ShieldAlert, Lightbulb, Download, RotateCw, LogIn, XCircle, Globe } from "lucide-react";
 import { AudioLevelIndicator } from "@/components/rooms/AudioLevelIndicator";
 import KGenButton from "@/components/portal/KGenButton";
 import { useTranslation } from "react-i18next";
