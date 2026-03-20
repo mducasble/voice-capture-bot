@@ -143,7 +143,7 @@ export default function PortalEarnings() {
               className="px-3 py-1.5 transition-colors"
               style={{
                 background: earningsView === "all" ? "var(--portal-accent)" : "transparent",
-                color: earningsView === "all" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                color: earningsView === "all" ? "var(--portal-accent-text)" : "var(--portal-text)",
                 borderLeft: "1px solid var(--portal-border)",
               }}
             >
