@@ -192,6 +192,7 @@ function ResubmittedRow({ label, icon }: { label: string; icon: React.ReactNode 
   );
 }
 
+interface SessionBlockProps {
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
