@@ -325,7 +325,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
     );
   }, [sessionId, recordings]);
 
-
+  const handleUpload = useCallback((trackType: TrackType) => {
     pendingTrackType.current = trackType;
     fileInputRef.current?.click();
   }, []);
