@@ -130,7 +130,44 @@ function TrackRow({ rec, label, icon, onResubmit, resubmitting, resubProgress }:
   );
 }
 
-interface SessionBlockProps {
+function MissingTrackRow({ label, icon, trackType, onUpload, uploading, progress }: {
+  label: string;
+  icon: React.ReactNode;
+  trackType: TrackType;
+  onUpload: (type: TrackType) => void;
+  uploading: TrackType | null;
+  progress: number;
+}) {
+  const isUploading = uploading === trackType;
+  const isDisabled = !!uploading;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 flex-wrap" style={{ borderBottom: "1px solid var(--portal-border)", opacity: isDisabled && !isUploading ? 0.5 : 1 }}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <span className="shrink-0" style={{ color: "var(--portal-text-muted)" }}>{icon}</span>
+        <span className="font-mono text-sm truncate" style={{ color: "var(--portal-text-muted)" }}>{label}</span>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onUpload(trackType); }}
+        disabled={isDisabled}
+        className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest px-3 py-1.5 transition-all"
+        style={{
+          color: isUploading ? "var(--portal-text-muted)" : "var(--portal-accent)",
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid var(--portal-border)",
+          cursor: isDisabled ? "default" : "pointer",
+        }}
+      >
+        {isUploading ? (
+          <><Loader2 className="h-3 w-3 animate-spin" /> {progress}%</>
+        ) : (
+          <><Upload className="h-3 w-3" /> Enviar áudio</>
+        )}
+      </button>
+    </div>
+  );
+}
+
   sessionId: string;
   campaignId: string;
   recordings: SubmissionRow[];
