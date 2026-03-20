@@ -43,6 +43,7 @@ interface TrackCardProps {
   enhancedMetrics: { key: string; label: string; unit?: string; val: any }[];
   analyzeQueued: boolean;
   enhanceQueued: boolean;
+  enhanceProgress?: { current: number; total: number };
   logAction: (action: string, detail?: string) => void;
   handleReanalyze: (id: string) => void;
   handleEnhance: (id: string) => void;
