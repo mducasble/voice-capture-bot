@@ -113,6 +113,10 @@ serve(async (req) => {
         topic: topic || null,
         daily_room_name: dailyRoomName,
         duration_minutes: duration_minutes || null,
+        is_public: is_public || false,
+        country: country || null,
+        campaign_id: campaign_id || null,
+        creator_user_id: resolvedUserId,
       })
       .select()
       .single();
