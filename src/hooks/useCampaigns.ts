@@ -332,12 +332,22 @@ async function upsertRelations(campaignId: string, payload: SaveCampaignPayload)
   await supabase.from("campaign_task_sets").delete().eq("campaign_id", campaignId);
 
   if (payload.task_sets && payload.task_sets.length > 0) {
+    // Deduplicate task_set_id to avoid unique constraint violation on (campaign_id, task_set_id)
+    const usedSetIds = new Set<string>();
     for (const ts of payload.task_sets) {
+      let setId = ts.task_set_id;
+      let suffix = 2;
+      while (usedSetIds.has(setId)) {
+        setId = `${ts.task_set_id}-${suffix}`;
+        suffix++;
+      }
+      usedSetIds.add(setId);
+
       const { data: inserted, error } = await supabase
         .from("campaign_task_sets")
         .insert({
           campaign_id: campaignId,
-          task_set_id: ts.task_set_id,
+          task_set_id: setId,
           task_type: ts.task_type,
           enabled: ts.enabled,
           weight: ts.weight,
