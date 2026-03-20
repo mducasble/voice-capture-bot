@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Radio, Plus, Mic2, Globe, Lock, Users, Clock,
-  Loader2, LogIn, CheckCircle2, XCircle,
+  Loader2, LogIn, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
