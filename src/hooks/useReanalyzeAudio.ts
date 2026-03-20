@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -7,9 +8,18 @@ type AnalysisTarget = "original" | "enhanced";
 
 export function useReanalyzeAudio(mode: AnalysisMode = "sampled", target: AnalysisTarget = "original") {
   const queryClient = useQueryClient();
+  const toastIdRef = useRef<string | number | undefined>();
 
   return useMutation({
     mutationFn: async (recordingId: string) => {
+      const targetLabel = target === "enhanced" ? " (Enhanced)" : "";
+      const modeLabel = mode === "full_segments"
+        ? "Análise completa"
+        : "Análise amostrada";
+      toastIdRef.current = toast.loading(`${modeLabel}${targetLabel} em andamento…`, {
+        description: "Aguarde enquanto o processamento é realizado.",
+      });
+
       const { data: recording, error: fetchError } = await supabase
         .from("voice_recordings")
         .select("file_url, mp3_file_url, metadata")
@@ -54,17 +64,20 @@ export function useReanalyzeAudio(mode: AnalysisMode = "sampled", target: Analys
     },
     onSuccess: (data) => {
       const targetLabel = target === "enhanced" ? " (Enhanced)" : "";
-      const modeLabel = mode === "full_segments" 
-        ? "Análise completa (segmentos de 1min)" 
+      const modeLabel = mode === "full_segments"
+        ? "Análise completa (segmentos de 1min)"
         : "Análise amostrada (10s/min)";
-      const service = data?.service ? ` via ${data.service}` : "";
-      toast.success(`${modeLabel}${targetLabel} reenviada com sucesso!`, {
-        description: service ? `Serviço: ${data.service}` : undefined,
+      const service = data?.service || "";
+      toast.success(`${modeLabel}${targetLabel} concluída!`, {
+        id: toastIdRef.current,
+        description: service ? `Serviço: ${service}` : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
     },
     onError: (error) => {
-      toast.error(`Erro ao reenviar análise: ${error.message}`);
+      toast.error(`Erro ao reenviar análise: ${error.message}`, {
+        id: toastIdRef.current,
+      });
     },
   });
 }

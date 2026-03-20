@@ -1,12 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function useEnhanceAudio() {
   const queryClient = useQueryClient();
+  const toastIdRef = useRef<string | number | undefined>();
 
   return useMutation({
     mutationFn: async (params: { recordingId: string; fileUrl: string }) => {
+      toastIdRef.current = toast.loading("Enhancement em andamento…", {
+        description: "Aguarde enquanto o áudio é processado.",
+      });
+
       // 1. Create a queue entry for tracking (needed for multi-segment enhance)
       const { data: queueEntry, error: queueError } = await supabase
         .from('analysis_queue')
@@ -49,14 +55,16 @@ export function useEnhanceAudio() {
     },
     onSuccess: (data, variables) => {
       const service = data?.service || "desconhecido";
-      toast.success("Enhancement iniciado!", {
-        description: `Serviço: ${service} — O áudio está sendo processado.`,
+      toast.success("Enhancement concluído!", {
+        id: toastIdRef.current,
+        description: `Serviço: ${service}`,
       });
       queryClient.invalidateQueries({ queryKey: ["recordings"] });
       queryClient.invalidateQueries({ queryKey: ["enhance-job", variables.recordingId] });
     },
     onError: (error: Error) => {
-      toast.error("Erro ao iniciar enhancement", {
+      toast.error("Erro ao processar enhancement", {
+        id: toastIdRef.current,
         description: error.message,
       });
     },
