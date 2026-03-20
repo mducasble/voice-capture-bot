@@ -289,29 +289,11 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
               <CampaignStatusSummary submissions={submissions} />
 
               {/* Audio sessions grouped */}
-              {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => {
-                const sessionDuration = recs.find(r => r.recording_type === "mixed")?.duration_seconds
-                  ?? recs.reduce((s, r) => Math.max(s, r.duration_seconds || 0), 0);
-                return (
-                  <div key={sessionId}>
-                    <div className="px-4 py-2 flex items-center gap-2 flex-wrap" style={{ background: "rgba(0,0,0,0.15)" }}>
-                      <span className="font-mono text-sm uppercase tracking-widest font-bold" style={{ color: "var(--portal-accent)" }}>
-                        {t("myCampaigns.session")}{" "}
-                        <span className="px-1.5 py-0.5" style={{ background: "var(--portal-border)", color: "var(--portal-text)" }}>
-                          {sessionId.slice(0, 8)}
-                        </span>
-                        {" "}— {new Date(recs[0].created_at).toLocaleDateString("pt-BR")}
-                      </span>
-                      {sessionDuration > 0 && (
-                        <span className="font-mono text-sm" style={{ color: "var(--portal-text-muted)" }}>{formatDuration(sessionDuration)}</span>
-                      )}
-                      <ResendAudioButton sessionId={sessionId} campaignId={campaign.id} />
-                    </div>
-                    {recs.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
-                    <SessionManualUpload sessionId={sessionId} campaignId={campaign.id} />
-                  </div>
-                );
-              })}
+              {Array.from(sessionGroups.entries()).map(([sessionId, recs]) => (
+                <div key={sessionId}>
+                  <SessionBlock sessionId={sessionId} campaignId={campaign.id} recordings={recs} />
+                </div>
+              ))}
 
               {/* Non-audio submissions (videos, images, etc.) */}
               {nonAudioSubmissions.length > 0 && (
