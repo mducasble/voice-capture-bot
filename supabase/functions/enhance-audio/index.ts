@@ -501,7 +501,7 @@ async function phaseInit(recording_id: string, file_url: string, jobId: string) 
     return { done: true };
   }
 
-  // Multi-segment: store config and process segment 0
+  // Multi-segment: store config and process ALL segments in a loop
   const originalPath = new URL(file_url).pathname;
   const pathParts = originalPath.split('/');
   const basePath = pathParts.slice(1, -1).join('/');
@@ -520,27 +520,31 @@ async function phaseInit(recording_id: string, file_url: string, jobId: string) 
     base_path: basePath,
   };
 
-  // Process segment 0 right now
-  const seg0Result = await processOneSegment(0, numSegments, segmentData);
-  segmentData.temp_s3_keys = seg0Result.temp_s3_keys;
-  segmentData.rms_values = seg0Result.rms_values;
-  segmentData.steps_applied = seg0Result.steps_applied;
+  // Process ALL segments in a direct loop (no cron dependency)
+  for (let seg = 0; seg < numSegments; seg++) {
+    console.log(`[enhance] Processing segment ${seg + 1}/${numSegments} for ${recording_id}`);
+    const segResult = await processOneSegment(seg, numSegments, segmentData);
+    segmentData.temp_s3_keys = segResult.temp_s3_keys;
+    segmentData.rms_values = segResult.rms_values;
+    segmentData.steps_applied = segResult.steps_applied;
 
-  // Save progress — set current_segment=1 (next to process), status=pending for cron to pick up
-  await supabase
-    .from('analysis_queue')
-    .update({
-      status: 'pending',
-      current_segment: 1,
-      total_segments: numSegments,
-      segment_data: segmentData,
-      started_at: null,
-      updated_at: new Date().toISOString(),
-    } as any)
-    .eq('id', jobId);
+    // Update progress in queue
+    await supabase
+      .from('analysis_queue')
+      .update({
+        current_segment: seg + 1,
+        total_segments: numSegments,
+        segment_data: segmentData,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', jobId);
+  }
 
-  console.log(`[enhance] Segment 0/${numSegments} done. Saved progress, re-queued for next segment.`);
-  return { segment_done: 0, total: numSegments };
+  // All segments done — run assembly (finalize)
+  console.log(`[enhance] All ${numSegments} segments done. Running assembly for ${recording_id}`);
+  await phaseFinalize(jobId, recording_id, segmentData, supabase);
+
+  return { done: true, segments: numSegments };
 }
 
 // ---------------------------------------------------------------------------
