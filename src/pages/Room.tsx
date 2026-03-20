@@ -283,22 +283,23 @@ const Room = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteStreams.size]);
 
-  // ALL participants: start remote recorders when recording begins (not just creator)
+  // ALL participants: start remote recorders when recording begins
+  // This covers both creator (if streams arrive after clicking Record) and non-creator
   useEffect(() => {
     if (
       room?.is_recording &&
       currentParticipant &&
-      !currentParticipant.is_creator &&
       remoteStreams.size > 0 &&
       !remoteRecorders.isRecording
     ) {
-      console.log("[Room] Non-creator starting remote recorders for cross-backup");
+      console.log("[Room] Starting remote recorders for cross-backup (participant:", currentParticipant.id, "streams:", remoteStreams.size, ")");
       remoteRecorders.startRecording(remoteStreams, participants);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.is_recording, currentParticipant?.is_creator, remoteStreams.size]);
+  }, [room?.is_recording, remoteStreams.size, remoteRecorders.isRecording]);
 
   // Non-creator: stop remote recorders and upload when recording ends
+  // (Creator handles this in handleStopRecording directly)
   useEffect(() => {
     if (
       room?.status === "completed" &&
