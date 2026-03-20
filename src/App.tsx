@@ -48,6 +48,7 @@ const PortalPaymentHistory = lazy(() => import("./pages/portal/PortalPaymentHist
 const PortalInbox = lazy(() => import("./pages/portal/PortalInbox"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
+const PortalRooms = lazy(() => import("./pages/portal/PortalRooms"));
 
 // Audit pages
 const AuditLayout = lazy(() => import("./components/audit/AuditLayout"));
@@ -128,7 +129,7 @@ const App = () => (
                 <Route path="inbox" element={<PortalInbox />} />
                 <Route path="profile" element={<PortalProfile />} />
                 <Route path="room/:roomId" element={<Room />} />
-                <Route path="rooms" element={<Rooms />} />
+                <Route path="rooms" element={<PortalRooms />} />
               </Route>
 
               {/* Admin login (standalone, no layout) */}
