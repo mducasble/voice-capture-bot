@@ -823,37 +823,19 @@ const Room = () => {
 
     setIsJoining(true);
     try {
-      // Public room (non-creator): submit join request WITHOUT requiring microphone first
+      // Public room (non-creator): check if room is full (max 1 guest besides creator)
       if (room?.is_public && !asCreator) {
-        const currentUser = (await supabase.auth.getUser()).data.user;
-        const userId = currentUser?.id;
-        console.log("[PublicRoom] Attempting join request. userId:", userId, "roomId:", roomId, "name:", participantName);
-        if (!userId) {
-          toast.error("Você precisa estar logado para entrar em salas públicas");
-          console.warn("[PublicRoom] No userId found - user not authenticated");
+        const { count } = await supabase
+          .from("room_participants")
+          .select("id", { count: "exact", head: true })
+          .eq("room_id", roomId)
+          .eq("is_creator", false)
+          .eq("is_connected", true);
+
+        if (count && count > 0) {
+          toast.error("Esta sala já está cheia.");
           return;
         }
-
-        const { error: reqError, data: reqData } = await supabase.from("room_join_requests").insert({
-          room_id: roomId,
-          user_id: userId,
-          user_name: participantName,
-        }).select();
-
-        console.log("[PublicRoom] Insert result:", { reqData, reqError });
-
-        if (reqError) {
-          if (reqError.code === "23505") {
-            toast.info("Solicitação já enviada, aguardando aprovação...");
-          } else {
-            console.error("[PublicRoom] Insert error:", reqError);
-            throw reqError;
-          }
-        }
-
-        setAwaitingApproval(true);
-        toast.success("Solicitação enviada! Aguardando aprovação do host...");
-        return;
       }
 
       // Request microphone permission (only after join request for public rooms, or immediately for private)
