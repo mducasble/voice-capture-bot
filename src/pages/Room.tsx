@@ -1957,7 +1957,7 @@ const Room = () => {
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-4">
               {/* Topic (left, smaller) */}
               {room.topic && (
-                <div className="p-4 flex flex-col justify-center" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                <div className="p-4 flex flex-col items-center justify-center text-center" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
                   <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
                     {t("room.conversationTopicLabel")}
                   </span>
