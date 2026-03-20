@@ -407,7 +407,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
         )
       )}
 
-      {/* Fallback: if no room_participants found, show raw recordings */}
+      {/* Fallback: if no participants derived at all, show raw recordings */}
       {!hasParts && !loadingParts && recordings.filter(r => r.recording_type !== "mixed").map(r => (
         <TrackRow key={r.id} rec={r} label={r.discord_username || r.filename} icon={<Mic className="h-3.5 w-3.5" />} />
       ))}
