@@ -286,7 +286,62 @@ const Room = () => {
     fetchJoinRequests();
   };
 
-  // Play remote audio streams with volume boost via Web Audio API
+  // Realtime: participant listens for their own join request approval/rejection
+  useEffect(() => {
+    if (!roomId || !awaitingApproval) return;
+
+    const checkApproval = async () => {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (!currentUser) return;
+
+      const channel = supabase
+        .channel(`my-join-request-${roomId}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "room_join_requests", filter: `room_id=eq.${roomId}` },
+          async (payload) => {
+            const row = payload.new as any;
+            if (row.user_id !== currentUser.id) return;
+
+            if (row.status === "approved") {
+              // Host approved — now find our participant record (host created it)
+              const { data: myParticipant } = await supabase
+                .from("room_participants")
+                .select("*")
+                .eq("room_id", roomId)
+                .eq("user_id", currentUser.id)
+                .eq("is_creator", false)
+                .single();
+
+              if (myParticipant) {
+                localStorage.setItem(`room_${roomId}_participant`, myParticipant.id);
+                setCurrentParticipant(myParticipant as Participant);
+                setAwaitingApproval(false);
+                toast.success("Aprovado! Conectando ao áudio...");
+              }
+            } else if (row.status === "rejected") {
+              setAwaitingApproval(false);
+              setJoinRequestRejected(true);
+              // Stop mic since we won't connect
+              if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(t => t.stop());
+                mediaStreamRef.current = null;
+                setLocalStream(null);
+              }
+              toast.error("Sua solicitação foi recusada pelo host.");
+            }
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    };
+
+    const cleanup = checkApproval();
+    return () => { cleanup.then(fn => fn?.()); };
+  }, [roomId, awaitingApproval]);
+
+
   // IMPORTANT: Uses createMediaElementSource to route through a SINGLE playback
   // path. Previously, audio was played BOTH through the <audio> element AND a
   // separate AudioContext→destination, which broke the browser's echo cancellation
