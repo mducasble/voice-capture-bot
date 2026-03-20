@@ -202,8 +202,24 @@ function CampaignStatusSummary({ submissions }: { submissions: SubmissionRow[] }
   );
 }
 
+type SessionFilter = "all" | "pending" | "approved" | "rejected";
+
+function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "rejected" {
+  const countable = recs.filter(r => r.recording_type !== "mixed");
+  if (countable.length === 0) return "pending";
+  const hasRejected = countable.some(r => {
+    const s = getUnifiedStatus(r);
+    return s.label.startsWith("Reprovado");
+  });
+  if (hasRejected) return "rejected";
+  const allApproved = countable.every(r => getUnifiedStatus(r).label === "Aprovado");
+  if (allApproved) return "approved";
+  return "pending";
+}
+
 function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
   const navigate = useNavigate();
   const { t } = useTranslation();
   const campaign = participation.campaigns;
