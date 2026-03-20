@@ -42,7 +42,10 @@ function getUnifiedStatus(rec: SubmissionRow): { label: string; color: string; b
   const qa = rec.quality_status;
   const val = rec.validation_status;
 
-  if (qa === "rejected" || val === "rejected") {
+  const isRejected = qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed";
+  const isApproved = (qa === "approved" || qa === "validated" || qa === "passed") && (val === "approved" || val === "validated" || val === "passed");
+
+  if (isRejected) {
     const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
     return {
       label: reason ? `Reprovado: ${reason}` : "Reprovado",
@@ -53,7 +56,7 @@ function getUnifiedStatus(rec: SubmissionRow): { label: string; color: string; b
     };
   }
 
-  if ((qa === "approved" || qa === "validated") && (val === "approved" || val === "validated")) {
+  if (isApproved) {
     return {
       label: "Aprovado",
       color: "#22c55e",

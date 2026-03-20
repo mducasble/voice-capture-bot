@@ -34,11 +34,13 @@ type TrackType = "mixed" | "host" | "participant";
 function getUnifiedStatus(rec: SubmissionRow): { label: string; color: string; bg: string; icon: React.ReactNode; reason?: string | null } {
   const qa = rec.quality_status;
   const val = rec.validation_status;
-  if (qa === "rejected" || val === "rejected") {
+  const isRejected = qa === "rejected" || qa === "failed" || val === "rejected" || val === "failed";
+  const isApproved = (qa === "approved" || qa === "validated" || qa === "passed") && (val === "approved" || val === "validated" || val === "passed");
+  if (isRejected) {
     const reason = rec.quality_rejection_reason || rec.validation_rejection_reason;
     return { label: reason ? `Reprovado: ${reason}` : "Reprovado", color: "#ef4444", bg: "rgba(239,68,68,0.15)", icon: <XCircle className="h-3.5 w-3.5" />, reason };
   }
-  if ((qa === "approved" || qa === "validated") && (val === "approved" || val === "validated")) {
+  if (isApproved) {
     return { label: "Aprovado", color: "#22c55e", bg: "rgba(34,197,94,0.15)", icon: <CheckCircle className="h-3.5 w-3.5" /> };
   }
   return { label: "Em análise", color: "var(--portal-text-muted)", bg: "rgba(255,255,255,0.05)", icon: <Loader2 className="h-3.5 w-3.5 animate-spin" /> };
