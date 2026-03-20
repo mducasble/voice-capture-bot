@@ -5,9 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users,
+  ArrowLeft, Radio, Loader2, MessageSquare, Timer, Upload, Users, Globe,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import KGenButton from "@/components/portal/KGenButton";
 import { TASK_TYPE_LABELS, TASK_TYPE_CATEGORIES } from "@/lib/campaignTypes";
@@ -26,6 +26,18 @@ export default function PortalCampaignTask() {
   const [topic, setTopic] = useState("");
   const [durationMinutes, setDurationMinutes] = useState<number>(10);
   const [mode, setMode] = useState<"choose" | "room" | "upload">("choose");
+  const [isPublicRoom, setIsPublicRoom] = useState(false);
+  const [userCountry, setUserCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("country")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => setUserCountry(data?.country || null));
+  }, [user]);
 
   const enabledTaskSets = campaign?.task_sets?.filter(ts => ts.enabled) || [];
   const activeSections = campaign?.sections?.filter(s => s.is_active) || [];
@@ -69,6 +81,8 @@ export default function PortalCampaignTask() {
             campaign_id: campaign.id,
             topic: topic.trim(),
             duration_minutes: durationMinutes,
+            is_public: isPublicRoom,
+            country: isPublicRoom ? userCountry : null,
           }),
         }
       );
@@ -279,7 +293,35 @@ export default function PortalCampaignTask() {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="px-6 pb-2">
+              <button
+                type="button"
+                onClick={() => setIsPublicRoom(!isPublicRoom)}
+                className="flex items-center gap-3 w-full py-3 font-mono text-xs uppercase tracking-widest transition-colors"
+                style={{ color: isPublicRoom ? "var(--portal-accent)" : "var(--portal-text-muted)" }}
+              >
+                <span
+                  className="flex items-center justify-center w-5 h-5 shrink-0 transition-colors"
+                  style={{
+                    border: `2px solid ${isPublicRoom ? "var(--portal-accent)" : "var(--portal-border)"}`,
+                    background: isPublicRoom ? "var(--portal-accent)" : "transparent",
+                  }}
+                >
+                  {isPublicRoom && <Globe className="h-3 w-3" style={{ color: "var(--portal-accent-text)" }} />}
+                </span>
+                Sala Pública
+                {isPublicRoom && userCountry && (
+                  <span
+                    className="font-mono text-[10px] px-2 py-0.5 ml-auto"
+                    style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}
+                  >
+                    {userCountry}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="p-6 pt-2">
               <KGenButton
                 onClick={handleCreateRoom}
                 disabled={creating || !topic.trim()}
