@@ -253,7 +253,7 @@ function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "reje
   return "pending";
 }
 
-function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
+function CampaignCard({ participation, submissions, rewardConfig }: { participation: any; submissions: SubmissionRow[]; rewardConfig?: { base_rate: number; currency: string } }) {
   const [expanded, setExpanded] = useState(false);
   const [sessionFilter, setSessionFilter] = useState<SessionFilter>("pending");
   const navigate = useNavigate();
