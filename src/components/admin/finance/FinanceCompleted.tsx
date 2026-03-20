@@ -103,8 +103,9 @@ export function FinanceCompleted() {
               {filtered.map((r: any) => {
                 const isExpanded = expandedId === r.id;
                 return (
-                  <tr key={r.id} className="contents">
+                  <>
                     <tr
+                      key={r.id}
                       className="border-b last:border-0 hover:bg-muted/10 cursor-pointer transition-colors"
                       onClick={() => setExpandedId(isExpanded ? null : r.id)}
                     >
@@ -130,7 +131,7 @@ export function FinanceCompleted() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="border-b last:border-0">
+                      <tr key={`${r.id}-details`} className="border-b last:border-0">
                         <td colSpan={5} className="px-8 py-3 bg-muted/5">
                           {expandedEarnings.length === 0 ? (
                             <p className="text-xs text-muted-foreground">Carregando detalhes...</p>
@@ -157,7 +158,7 @@ export function FinanceCompleted() {
                         </td>
                       </tr>
                     )}
-                  </tr>
+                  </>
                 );
               })}
             </tbody>
