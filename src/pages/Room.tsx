@@ -1150,30 +1150,41 @@ const Room = () => {
   }
 
     const isAnyUploadInProgress = isMixedUploading || remoteUploadsInProgress > 0 || uploadOverlayHold;
+    const uploadsActive = isMixedUploading || remoteUploadsInProgress > 0 || isRetrying;
 
-    // Full-screen upload overlay
+    // Full-screen upload overlay with force retry + download links
     const uploadOverlay = isAnyUploadInProgress && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center">
+        <div className="flex flex-col items-center gap-6 p-8 max-w-md text-center w-full">
           <div className="relative">
-            <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+            {uploadsActive ? (
+              <div className="absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+            ) : null}
             <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-500/20 border-2 border-red-500">
-              <ShieldAlert className="h-10 w-10 text-red-400" />
+              {uploadsActive ? (
+                <Loader2 className="h-10 w-10 text-red-400 animate-spin" />
+              ) : (
+                <Check className="h-10 w-10 text-green-400" />
+              )}
             </div>
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-              {t("room.uploadOverlayTitle")}
+              {uploadsActive ? (t("room.uploadOverlayTitle") || "Enviando áudios...") : "Upload concluído"}
             </h2>
             <p className="text-sm text-red-300 font-medium">
-              {t("room.uploadOverlayDesc")}
+              {uploadsActive
+                ? (t("room.uploadOverlayDesc") || "Não feche esta aba!")
+                : "Você pode baixar os arquivos abaixo como backup."}
             </p>
           </div>
+
+          {/* Upload progress */}
           <div className="w-full space-y-3">
             {isMixedUploading && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>{t("room.uploadMixedAudio")}</span>
+                  <span>{t("room.uploadMixedAudio") || "Áudio mixado"}</span>
                   <span>{mixedUploadProgress}%</span>
                 </div>
                 <Progress value={mixedUploadProgress} className="h-2" />
@@ -1182,14 +1193,67 @@ const Room = () => {
             {remoteUploadsInProgress > 0 && (
               <div className="space-y-1">
                 <div className="flex justify-between text-xs text-white/70">
-                  <span>{t("room.uploadRemoteBackups")}</span>
+                  <span>{t("room.uploadRemoteBackups") || "Backups remotos"}</span>
                   <span>{remoteUploadsDone}/{remoteUploadsInProgress}</span>
                 </div>
                 <Progress value={(remoteUploadsDone / remoteUploadsInProgress) * 100} className="h-2" />
               </div>
             )}
           </div>
-          <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
+
+          {/* Force retry button: visible at 30s, clickable at 2min */}
+          {overlayElapsed >= 30 && uploadsActive && (
+            <button
+              onClick={handleForceRetry}
+              disabled={overlayElapsed < 120 || isRetrying}
+              className="flex items-center gap-2 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white border transition-all"
+              style={{
+                borderColor: overlayElapsed < 120 ? "hsl(0 0% 40%)" : "hsl(45 93% 47%)",
+                background: overlayElapsed < 120 ? "transparent" : "hsl(45 93% 47% / 0.15)",
+                color: overlayElapsed < 120 ? "hsl(0 0% 60%)" : "hsl(45 93% 47%)",
+                cursor: overlayElapsed < 120 ? "not-allowed" : "pointer",
+              }}
+            >
+              <RotateCw className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`} />
+              {overlayElapsed < 120
+                ? `Forçar reenvio (${formatDuration(120 - overlayElapsed)})`
+                : isRetrying
+                  ? "Reenviando..."
+                  : "Forçar reenvio"}
+            </button>
+          )}
+
+          {/* Download links for saved blobs */}
+          {savedBlobs.size > 0 && (
+            <div className="w-full space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/50">
+                Backup local dos arquivos
+              </p>
+              {Array.from(savedBlobs.entries()).map(([key, { blob, label }]) => (
+                <button
+                  key={key}
+                  onClick={() => downloadBlobFile(blob, `${room?.session_id || "session"}_${key}.wav`)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left font-mono text-xs text-white/80 hover:text-white transition-colors"
+                  style={{ border: "1px solid hsl(0 0% 30%)", background: "hsl(0 0% 10%)" }}
+                >
+                  <Download className="h-4 w-4 shrink-0 text-green-400" />
+                  <span className="flex-1">{label}</span>
+                  <span className="text-white/40">{(blob.size / 1024 / 1024).toFixed(1)} MB</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Dismiss button (only when not actively uploading) */}
+          {!uploadsActive && (
+            <button
+              onClick={handleDismissOverlay}
+              className="px-6 py-2.5 font-mono text-sm font-bold uppercase tracking-wider text-black"
+              style={{ background: "hsl(45 93% 47%)" }}
+            >
+              Concluir
+            </button>
+          )}
         </div>
       </div>
     );
