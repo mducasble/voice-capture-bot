@@ -912,57 +912,134 @@ const Room = () => {
 
     setUploadOverlayHold(true);
     const uploadPromises: Promise<void>[] = [];
+    const newBlobs = new Map<string, { blob: Blob; label: string }>();
 
-    // Stop mixed recording and upload
+    // Stop mixed recording
+    let mixedBlob: Blob | null = null;
+    let mixedSampleRate: number | undefined;
     if (currentParticipant?.is_creator && mixedRecorder.isRecording) {
       const mixedResult = await mixedRecorder.stopRecording();
       if (mixedResult) {
-        uploadPromises.push(uploadMixedRecording(mixedResult.blob, mixedResult.sampleRate));
+        mixedBlob = mixedResult.blob;
+        mixedSampleRate = mixedResult.sampleRate;
+        newBlobs.set("mixed", { blob: mixedResult.blob, label: "Áudio Mixado" });
       }
     }
 
-    // Stop remote backup recorders and upload each
-    if (currentParticipant?.is_creator && remoteRecorders.isRecording) {
-      const remoteBlobs = await remoteRecorders.stopRecording();
+    // Stop remote backup recorders (all participants)
+    let remoteBlobs: Map<string, { blob: Blob; participantName: string }> | null = null;
+    if (remoteRecorders.isRecording) {
+      remoteBlobs = await remoteRecorders.stopRecording();
       if (remoteBlobs.size > 0) {
-        setRemoteUploadsInProgress(remoteBlobs.size);
-        setRemoteUploadsDone(0);
-        
-        for (const [peerId, { blob, participantName }] of remoteBlobs) {
-          const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
-            setRemoteUploadsDone(prev => {
-              const next = prev + 1;
-              if (next >= remoteBlobs.size) {
-                setTimeout(() => {
-                  setRemoteUploadsInProgress(0);
-                  setRemoteUploadsDone(0);
-                }, 2000);
-              }
-              return next;
-            });
+        remoteBlobs.forEach(({ blob, participantName }, peerId) => {
+          newBlobs.set(`remote_${peerId}`, { blob, label: `Backup - ${participantName}` });
+        });
+      }
+    }
+
+    // Save blobs to state for download links
+    setSavedBlobs(newBlobs);
+
+    // Save to IndexedDB for offline recovery
+    for (const [key, { blob }] of newBlobs) {
+      try {
+        const { saveBlob } = await import("@/lib/audioIndexedDB");
+        await saveBlob(`${room.session_id}_${key}`, blob);
+      } catch (e) {
+        console.warn("[IndexedDB] Save failed:", e);
+      }
+    }
+
+    // Start uploads
+    if (mixedBlob) {
+      uploadPromises.push(uploadMixedRecording(mixedBlob, mixedSampleRate));
+    }
+    if (remoteBlobs && remoteBlobs.size > 0) {
+      setRemoteUploadsInProgress(remoteBlobs.size);
+      setRemoteUploadsDone(0);
+      for (const [peerId, { blob, participantName }] of remoteBlobs) {
+        const p = uploadRemoteBackup(peerId, blob, participantName).finally(() => {
+          setRemoteUploadsDone(prev => {
+            const next = prev + 1;
+            if (next >= remoteBlobs!.size) {
+              setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+            }
+            return next;
           });
-          uploadPromises.push(p);
-        }
+        });
+        uploadPromises.push(p);
       }
     }
 
     await supabase
       .from("rooms")
-      .update({ 
-        is_recording: false, 
-        status: "completed"
-      })
+      .update({ is_recording: false, status: "completed" })
       .eq("id", roomId);
 
     toast.success(t("room.recordingStopped") || "Gravação finalizada! Processando uploads...");
 
-    // Wait for ALL uploads to finish, then hold overlay 3s so user sees confirmation toasts
     if (uploadPromises.length > 0) {
       await Promise.allSettled(uploadPromises);
-      setTimeout(() => setUploadOverlayHold(false), 3000);
-    } else {
-      setUploadOverlayHold(false);
+      // Don't auto-dismiss — overlay stays for download links
     }
+  };
+
+  // Force retry: re-upload from saved blobs in memory
+  const handleForceRetry = async () => {
+    if (savedBlobs.size === 0 || isRetrying) return;
+    setIsRetrying(true);
+
+    const uploadPromises: Promise<void>[] = [];
+
+    const mixedEntry = savedBlobs.get("mixed");
+    if (mixedEntry) {
+      uploadPromises.push(uploadMixedRecording(mixedEntry.blob));
+    }
+
+    const remoteEntries = Array.from(savedBlobs.entries()).filter(([k]) => k.startsWith("remote_"));
+    if (remoteEntries.length > 0) {
+      setRemoteUploadsInProgress(remoteEntries.length);
+      setRemoteUploadsDone(0);
+      for (const [key, { blob, label }] of remoteEntries) {
+        const peerId = key.replace("remote_", "");
+        const name = label.replace("Backup - ", "");
+        const p = uploadRemoteBackup(peerId, blob, name).finally(() => {
+          setRemoteUploadsDone(prev => {
+            const next = prev + 1;
+            if (next >= remoteEntries.length) {
+              setTimeout(() => { setRemoteUploadsInProgress(0); setRemoteUploadsDone(0); }, 2000);
+            }
+            return next;
+          });
+        });
+        uploadPromises.push(p);
+      }
+    }
+
+    if (uploadPromises.length > 0) {
+      await Promise.allSettled(uploadPromises);
+    }
+    setIsRetrying(false);
+  };
+
+  // Download a blob directly from memory
+  const downloadBlobFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Dismiss overlay and navigate away
+  const handleDismissOverlay = () => {
+    setUploadOverlayHold(false);
+    setSavedBlobs(new Map());
+    setOverlayStartedAt(null);
+    setOverlayElapsed(0);
   };
 
   // Copy room link with referral code
