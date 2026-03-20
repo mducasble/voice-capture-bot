@@ -218,7 +218,8 @@ async function callMetricsApi(audioBlob: Blob, filename: string, apiUrl: string,
     });
 
     if (apiResponse.ok) {
-      return await apiResponse.json();
+      const rawMetrics = await apiResponse.json() as Record<string, unknown>;
+      return normalizeMetrics(rawMetrics);
     }
 
     const errText = await apiResponse.text();
@@ -257,6 +258,260 @@ function averageMetrics(results: Record<string, number | null>[]): Record<string
   return averaged;
 }
 
+function averageNumbers(values: Array<number | null>): number | null {
+  const valid = values.filter((value): value is number => value !== null && Number.isFinite(value));
+  if (valid.length === 0) return null;
+  return Math.round((valid.reduce((sum, value) => sum + value, 0) / valid.length) * 10) / 10;
+}
+
+function normalizeMetricValue(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeMetrics(metrics: Record<string, unknown>): Record<string, number | null> {
+  const normalized: Record<string, number | null> = {};
+  for (const [key, value] of Object.entries(metrics ?? {})) {
+    normalized[key] = normalizeMetricValue(value);
+  }
+  return normalized;
+}
+
+type SpeechRegion = {
+  start: number;
+  end: number;
+  energy: number;
+};
+
+function detectSpeechRegions(samples: Int16Array, sampleRate: number): SpeechRegion[] {
+  if (samples.length === 0) return [];
+
+  const windowSize = Math.floor(sampleRate * 0.02);
+  const hopSize = Math.floor(windowSize / 2);
+  const numWindows = Math.floor((samples.length - windowSize) / hopSize) + 1;
+
+  if (numWindows < 3) return [];
+
+  const energies: number[] = [];
+  for (let w = 0; w < numWindows; w++) {
+    const start = w * hopSize;
+    let energy = 0;
+    for (let i = 0; i < windowSize && start + i < samples.length; i++) {
+      const sample = samples[start + i] / 32768.0;
+      energy += sample * sample;
+    }
+    energies.push(energy / windowSize);
+  }
+
+  const sortedEnergies = [...energies].sort((a, b) => a - b);
+  const noiseFloorIdx = Math.floor(sortedEnergies.length * 0.2);
+  let noiseFloorEnergy = 0;
+  for (let i = 0; i < noiseFloorIdx; i++) {
+    noiseFloorEnergy += sortedEnergies[i];
+  }
+  noiseFloorEnergy = noiseFloorIdx > 0 ? noiseFloorEnergy / noiseFloorIdx : 0.0001;
+
+  const threshold = Math.max(noiseFloorEnergy * 3, 0.0001);
+  const regions: SpeechRegion[] = [];
+  let inSpeech = false;
+  let regionStart = 0;
+  let regionEnergy = 0;
+  let regionCount = 0;
+  const minSpeechWindows = 5;
+  const hangoverWindows = 10;
+  let hangoverCounter = 0;
+
+  for (let w = 0; w < numWindows; w++) {
+    const isAboveThreshold = energies[w] > threshold;
+
+    if (!inSpeech && isAboveThreshold) {
+      inSpeech = true;
+      regionStart = w * hopSize;
+      regionEnergy = energies[w];
+      regionCount = 1;
+      hangoverCounter = hangoverWindows;
+    } else if (inSpeech) {
+      if (isAboveThreshold) {
+        regionEnergy += energies[w];
+        regionCount++;
+        hangoverCounter = hangoverWindows;
+      } else {
+        hangoverCounter--;
+        if (hangoverCounter <= 0) {
+          if (regionCount >= minSpeechWindows) {
+            const regionEnd = Math.min(w * hopSize + windowSize, samples.length);
+            regions.push({
+              start: regionStart,
+              end: regionEnd,
+              energy: regionEnergy / regionCount,
+            });
+          }
+          inSpeech = false;
+        }
+      }
+    }
+  }
+
+  if (inSpeech && regionCount >= minSpeechWindows) {
+    regions.push({
+      start: regionStart,
+      end: samples.length,
+      energy: regionEnergy / regionCount,
+    });
+  }
+
+  return regions;
+}
+
+function calculateSNR(samples: Int16Array, sampleRate: number = 16000): number {
+  if (samples.length === 0) return 0;
+
+  const speechRegions = detectSpeechRegions(samples, sampleRate);
+  if (speechRegions.length === 0) {
+    return 5.0;
+  }
+
+  const speechSamples: number[] = [];
+  for (const region of speechRegions) {
+    for (let i = region.start; i < region.end; i++) {
+      speechSamples.push(samples[i] / 32768.0);
+    }
+  }
+
+  if (speechSamples.length < sampleRate * 0.5) {
+    return 8.0;
+  }
+
+  let signalSum = 0;
+  for (const sample of speechSamples) {
+    signalSum += sample * sample;
+  }
+  const signalRMS = Math.sqrt(signalSum / speechSamples.length);
+
+  if (signalRMS < 0.001) {
+    return 5.0;
+  }
+
+  const silenceSamples: number[] = [];
+  let lastEnd = 0;
+  for (const region of speechRegions) {
+    for (let i = lastEnd; i < region.start; i++) {
+      silenceSamples.push(samples[i] / 32768.0);
+    }
+    lastEnd = region.end;
+  }
+  for (let i = lastEnd; i < samples.length; i++) {
+    silenceSamples.push(samples[i] / 32768.0);
+  }
+
+  let noiseFloor: number;
+  if (silenceSamples.length >= sampleRate * 0.2) {
+    let noiseSum = 0;
+    for (const sample of silenceSamples) {
+      noiseSum += sample * sample;
+    }
+    noiseFloor = Math.sqrt(noiseSum / silenceSamples.length);
+  } else {
+    const sortedAbs = speechSamples.map(Math.abs).sort((a, b) => a - b);
+    const bottomCount = Math.max(1, Math.floor(sortedAbs.length * 0.1));
+    let noiseSum = 0;
+    for (let i = 0; i < bottomCount; i++) {
+      noiseSum += sortedAbs[i] * sortedAbs[i];
+    }
+    noiseFloor = Math.sqrt(noiseSum / bottomCount);
+  }
+
+  if (noiseFloor < 0.0001) {
+    return 60.0;
+  }
+
+  const snr = 20 * Math.log10(signalRMS / noiseFloor);
+  if (!isFinite(snr) || snr > 100) return 60.0;
+  if (snr < 0) return 5.0;
+
+  return Math.round(snr * 10) / 10;
+}
+
+function readPcmSampleAsFloat(view: DataView, offset: number, bitsPerSample: number): number | null {
+  switch (bitsPerSample) {
+    case 8:
+      return (view.getUint8(offset) - 128) / 128;
+    case 16:
+      return view.getInt16(offset, true) / 32768;
+    case 24: {
+      const b0 = view.getUint8(offset);
+      const b1 = view.getUint8(offset + 1);
+      const b2 = view.getUint8(offset + 2);
+      let value = b0 | (b1 << 8) | (b2 << 16);
+      if (value & 0x800000) {
+        value |= ~0xffffff;
+      }
+      return value / 8388608;
+    }
+    case 32:
+      return view.getInt32(offset, true) / 2147483648;
+    default:
+      return null;
+  }
+}
+
+function extractMonoSamplesFromWav(bytes: Uint8Array, header: { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number }): Int16Array | null {
+  const bytesPerSample = header.bitsPerSample / 8;
+  if (!Number.isInteger(bytesPerSample) || bytesPerSample <= 0) return null;
+
+  const bytesPerFrame = header.channels * bytesPerSample;
+  const frameCount = Math.floor(header.dataSize / bytesPerFrame);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const monoSamples = new Int16Array(frameCount);
+
+  for (let frame = 0; frame < frameCount; frame++) {
+    const frameOffset = header.dataOffset + frame * bytesPerFrame;
+    let sum = 0;
+    let validChannels = 0;
+
+    for (let channel = 0; channel < header.channels; channel++) {
+      const sampleOffset = frameOffset + channel * bytesPerSample;
+      if (sampleOffset + bytesPerSample > bytes.byteOffset + bytes.byteLength) {
+        continue;
+      }
+      const sample = readPcmSampleAsFloat(view, sampleOffset, header.bitsPerSample);
+      if (sample === null) continue;
+      sum += sample;
+      validChannels++;
+    }
+
+    if (validChannels === 0) {
+      monoSamples[frame] = 0;
+      continue;
+    }
+
+    const averaged = sum / validChannels;
+    monoSamples[frame] = Math.max(-32768, Math.min(32767, Math.round(averaged * 32767)));
+  }
+
+  return monoSamples;
+}
+
+function computeSnrFromWavBytes(bytes: Uint8Array): number | null {
+  const header = parseWavHeader(bytes);
+  if (!header) return null;
+
+  const monoSamples = extractMonoSamplesFromWav(bytes, header);
+  if (!monoSamples || monoSamples.length === 0) return null;
+
+  return calculateSNR(monoSamples, header.sampleRate);
+}
+
+async function computeAverageSnrFromBlobs(blobs: Blob[]): Promise<number | null> {
+  const snrValues: Array<number | null> = [];
+  for (const blob of blobs) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    snrValues.push(computeSnrFromWavBytes(bytes));
+  }
+  return averageNumbers(snrValues);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -286,10 +541,10 @@ serve(async (req) => {
     const isMP3 = file_url.toLowerCase().includes('.mp3');
     let metrics: Record<string, number | null>;
     let metricsMode: string;
+    let fallbackSnr: number | null = null;
 
     if (isMP3) {
-      // MP3: must download full file (can't parse without decoding)
-      console.log(`MP3 file — downloading full file`);
+      console.log('MP3 file — downloading full file');
       const audioResp = await fetch(file_url);
       if (!audioResp.ok) throw new Error(`Failed to download audio: ${audioResp.status}`);
       const audioBytes = new Uint8Array(await audioResp.arrayBuffer());
@@ -298,22 +553,18 @@ serve(async (req) => {
       metrics = await callMetricsApi(audioBlob, 'audio.mp3', METRICS_API_URL, METRICS_API_SECRET);
       metricsMode = 'full_mp3';
     } else {
-      // WAV: use Range requests to avoid loading full file
       const rangeSupported = await supportsRange(file_url);
       console.log(`Range requests supported: ${rangeSupported}`);
 
-      // Download just the header (first 4KB is more than enough)
       let headerBytes: Uint8Array;
       if (rangeSupported) {
         headerBytes = await fetchRange(file_url, 0, 4096);
       } else {
-        // Fallback: download full file if Range not supported
         console.warn('Range requests not supported, downloading full file');
         const audioResp = await fetch(file_url);
         if (!audioResp.ok) throw new Error(`Failed to download audio: ${audioResp.status}`);
         const fullBytes = new Uint8Array(await audioResp.arrayBuffer());
-        
-        // Process in-memory (old behavior) for servers without Range support
+
         const header = parseWavHeader(fullBytes);
         if (!header) {
           console.warn('Could not parse WAV header, sending full file');
@@ -321,7 +572,6 @@ serve(async (req) => {
           metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
           metricsMode = 'full_unparsed';
         } else {
-          // Extract individual samples in-memory (no concatenation)
           const { sampleRate, channels, bitsPerSample, dataOffset, dataSize } = header;
           const bytesPerFrame = channels * (bitsPerSample / 8);
           const totalFrames = Math.floor(dataSize / bytesPerFrame);
@@ -331,14 +581,13 @@ serve(async (req) => {
           const sampleOffsetFrames = sampleRate * 25;
 
           if (totalDuration <= SAMPLE_SECONDS) {
-            // Very short file — send as-is
             const audioBlob = new Blob([fullBytes], { type: 'audio/wav' });
             metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+            fallbackSnr = computeSnrFromWavBytes(fullBytes);
           } else {
-            // Build individual WAV blobs per sample, send each separately
             const numSegments = Math.ceil(totalFrames / segmentFrames);
             const sampleBlobs: Blob[] = [];
-            
+
             for (let seg = 0; seg < numSegments; seg++) {
               const segStartFrame = seg * segmentFrames;
               const segEndFrame = Math.min(segStartFrame + segmentFrames, totalFrames);
@@ -355,6 +604,8 @@ serve(async (req) => {
               sampleBlobs.push(buildWav([chunk], extractedFrames, sampleRate, channels, bitsPerSample));
             }
 
+            fallbackSnr = await computeAverageSnrFromBlobs(sampleBlobs);
+
             if (sampleBlobs.length === 1) {
               metrics = await callMetricsApi(sampleBlobs[0], 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
             } else {
@@ -369,9 +620,13 @@ serve(async (req) => {
           metricsMode = `sampled_${SAMPLE_SECONDS}s_per_${SEGMENT_SECONDS}s`;
         }
 
-        // Save and return early for non-Range path
-        if (metrics! !== undefined) {
-          await saveMetrics(recording_id, metrics!, metricsMode!, target);
+        if (metrics !== undefined) {
+          if (metrics.snr_db == null && fallbackSnr != null) {
+            metrics.snr_db = fallbackSnr;
+            console.log(`Fallback SNR applied for recording ${recording_id}: ${fallbackSnr}dB`);
+          }
+
+          await saveMetrics(recording_id, metrics, metricsMode, target);
           return new Response(
             JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -388,29 +643,35 @@ serve(async (req) => {
         const audioBytes = new Uint8Array(await audioResp.arrayBuffer());
         const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
         metrics = await callMetricsApi(audioBlob, 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
+        fallbackSnr = computeSnrFromWavBytes(audioBytes);
         metricsMode = 'full_unparsed';
       } else if (mode === 'full_segments') {
-        // Full segments mode: download one segment at a time via Range requests
         const results: Record<string, number | null>[] = [];
+        const localSnrValues: number[] = [];
+
         for await (const { blob, index, total } of streamSegments(file_url, header)) {
           console.log(`Analyzing segment ${index + 1}/${total} (${(blob.size / 1024).toFixed(0)}KB)`);
           const result = await callMetricsApi(blob, `segment_${index}.wav`, METRICS_API_URL, METRICS_API_SECRET);
           results.push(result);
+
+          const localSnr = await computeAverageSnrFromBlobs([blob]);
+          if (localSnr != null) {
+            localSnrValues.push(localSnr);
+          }
         }
+
         metrics = averageMetrics(results);
-        metricsMode = `full_segments`;
+        fallbackSnr = averageNumbers(localSnrValues);
+        metricsMode = 'full_segments';
         console.log(`Averaged metrics from ${results.length} segments`);
       } else {
-        // Sampled mode (default): download individual samples via Range requests,
-        // send each separately to avoid concatenation artifacts (WVMOS/SigMOS sensitive)
         const sampleBlobs = await buildSampledWavSegments(file_url, header);
-        
+        fallbackSnr = await computeAverageSnrFromBlobs(sampleBlobs);
+
         if (sampleBlobs.length === 1) {
-          // Short file or single sample — one call is enough
           console.log(`Sending single sample ${(sampleBlobs[0].size / 1024).toFixed(0)}KB to metrics API`);
           metrics = await callMetricsApi(sampleBlobs[0], 'audio.wav', METRICS_API_URL, METRICS_API_SECRET);
         } else {
-          // Multiple samples — send each individually and average
           console.log(`Sending ${sampleBlobs.length} individual samples to metrics API`);
           const results: Record<string, number | null>[] = [];
           for (let i = 0; i < sampleBlobs.length; i++) {
@@ -423,6 +684,11 @@ serve(async (req) => {
         }
         metricsMode = `sampled_${SAMPLE_SECONDS}s_per_${SEGMENT_SECONDS}s`;
       }
+    }
+
+    if (metrics.snr_db == null && fallbackSnr != null) {
+      metrics.snr_db = fallbackSnr;
+      console.log(`Fallback SNR applied for recording ${recording_id}: ${fallbackSnr}dB`);
     }
 
     console.log(`Metrics received for recording ${recording_id}:`, JSON.stringify(metrics));
@@ -451,15 +717,12 @@ function computeQualityTier(metrics: Record<string, number | null>): string {
   const srmr = metrics.srmr ?? null;
   const rms = metrics.rms_dbfs ?? null;
 
-  // PQ (Premium): ALL must pass
   if (snr !== null && snr >= 30 && sigmos !== null && sigmos >= 3.0 && srmr !== null && srmr >= 7.0 && rms !== null && rms >= -24) {
     return 'pq';
   }
-  // HQ (High): ALL must pass
   if (snr !== null && snr >= 25 && sigmos !== null && sigmos >= 2.3 && srmr !== null && srmr >= 5.4 && rms !== null && rms >= -26) {
     return 'hq';
   }
-  // MQ (Medium): sigmos, srmr, rms must pass
   if (sigmos !== null && sigmos >= 2.0 && srmr !== null && srmr >= 4.0 && rms !== null && rms >= -28) {
     return 'mq';
   }
@@ -479,13 +742,29 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
     .single();
 
   const existingMeta = (recording?.metadata || {}) as Record<string, unknown>;
+  const existingQualityMetrics = typeof existingMeta.quality_metrics === 'object' && existingMeta.quality_metrics !== null
+    ? existingMeta.quality_metrics as Record<string, unknown>
+    : {};
+  const existingEnhancedMetrics = typeof existingMeta.enhanced_metrics === 'object' && existingMeta.enhanced_metrics !== null
+    ? existingMeta.enhanced_metrics as Record<string, unknown>
+    : {};
+
+  const resolvedSnrDb = normalizeMetricValue(metrics.snr_db) ?? normalizeMetricValue(existingMeta.snr_db) ?? normalizeMetricValue(existingQualityMetrics.snr_db);
+  const resolvedRmsDbfs = normalizeMetricValue(metrics.rms_dbfs) ?? normalizeMetricValue(existingMeta.rms_dbfs) ?? normalizeMetricValue(existingMeta.rms_level_db) ?? normalizeMetricValue(existingQualityMetrics.rms_dbfs);
+  const resolvedEnhancedSnrDb = normalizeMetricValue(metrics.snr_db) ?? normalizeMetricValue(existingMeta.enhanced_snr_db) ?? normalizeMetricValue(existingEnhancedMetrics.snr_db);
+  const resolvedEnhancedRmsDbfs = normalizeMetricValue(metrics.rms_dbfs) ?? normalizeMetricValue(existingMeta.enhanced_rms_level_db) ?? normalizeMetricValue(existingEnhancedMetrics.rms_dbfs);
 
   if (target === 'enhanced') {
-    const enhancedTier = computeQualityTier(metrics);
+    const enhancedMetrics = {
+      ...metrics,
+      snr_db: resolvedEnhancedSnrDb,
+      rms_dbfs: resolvedEnhancedRmsDbfs,
+    };
+    const enhancedTier = computeQualityTier(enhancedMetrics);
     const metadata = {
       ...existingMeta,
-      enhanced_snr_db: metrics.snr_db ?? existingMeta.enhanced_snr_db ?? null,
-      enhanced_rms_level_db: metrics.rms_dbfs ?? existingMeta.enhanced_rms_level_db ?? null,
+      enhanced_snr_db: resolvedEnhancedSnrDb,
+      enhanced_rms_level_db: resolvedEnhancedRmsDbfs,
       enhanced_quality_tier: enhancedTier,
       enhanced_metrics: {
         srmr: metrics.srmr ?? null,
@@ -497,8 +776,8 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
         utmos: metrics.utmos ?? null,
         mic_sr: metrics.mic_sr ?? null,
         file_sr: metrics.file_sr ?? null,
-        rms_dbfs: metrics.rms_dbfs ?? null,
-        snr_db: metrics.snr_db ?? null,
+        rms_dbfs: resolvedEnhancedRmsDbfs,
+        snr_db: resolvedEnhancedSnrDb,
         quality_tier: enhancedTier,
         metrics_source: 'huggingface-space',
         metrics_estimated_at: new Date().toISOString(),
@@ -511,7 +790,12 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
       .update({ metadata })
       .eq('id', recording_id);
   } else {
-    const qualityTier = computeQualityTier(metrics);
+    const normalizedMetrics = {
+      ...metrics,
+      snr_db: resolvedSnrDb,
+      rms_dbfs: resolvedRmsDbfs,
+    };
+    const qualityTier = computeQualityTier(normalizedMetrics);
     const metadata = {
       ...existingMeta,
       srmr: metrics.srmr ?? null,
@@ -523,23 +807,21 @@ async function saveMetrics(recording_id: string, metrics: Record<string, number 
       utmos: metrics.utmos ?? null,
       mic_sr: metrics.mic_sr ?? null,
       file_sr: metrics.file_sr ?? null,
-      rms_dbfs: metrics.rms_dbfs ?? null,
-      rms_level_db: metrics.rms_dbfs ?? existingMeta.rms_level_db ?? null,
-      snr_db: metrics.snr_db ?? null,
+      rms_dbfs: resolvedRmsDbfs,
+      rms_level_db: resolvedRmsDbfs,
+      snr_db: resolvedSnrDb,
       quality_tier: qualityTier,
       metrics_source: 'huggingface-space',
       metrics_estimated_at: new Date().toISOString(),
       metrics_mode: metricsMode,
     };
 
-    const updatePayload: Record<string, unknown> = { metadata };
-    if (metrics.snr_db != null) {
-      updatePayload.snr_db = metrics.snr_db;
-    }
-
     await supabase
       .from('voice_recordings')
-      .update(updatePayload)
+      .update({
+        metadata,
+        snr_db: resolvedSnrDb,
+      })
       .eq('id', recording_id);
   }
 

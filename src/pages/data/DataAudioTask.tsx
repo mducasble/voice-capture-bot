@@ -70,14 +70,18 @@ function deriveTierForMetric(key: string, v: number): "PQ" | "HQ" | "MQ" | "LQ" 
 const TIER_ORDER: Record<string, number> = { LQ: 0, MQ: 1, HQ: 2, PQ: 3 };
 const TIER_FROM_ORDER = ["LQ", "MQ", "HQ", "PQ"];
 
+function getOriginalSnr(sib: any) {
+  const meta = sib.metadata || {};
+  return sib.snr_db ?? meta.snr_db ?? meta.quality_metrics?.snr_db ?? null;
+}
+
 function deriveTier(sib: any): string | undefined {
   const meta = sib.metadata || {};
   const stored = typeof meta.quality_tier === "string" ? meta.quality_tier.toUpperCase() : undefined;
   if (stored) return stored;
 
-  // Derive from individual metrics — overall tier = lowest tier among all available metrics
   const metrics: [string, number | null | undefined][] = [
-    ["snr_db", sib.snr_db ?? meta.snr_db],
+    ["snr_db", getOriginalSnr(sib)],
     ["sigmos_ovrl", meta.sigmos_ovrl],
     ["srmr", meta.srmr],
     ["rms_dbfs", meta.rms_dbfs],
@@ -87,7 +91,7 @@ function deriveTier(sib: any): string | undefined {
     ["sigmos_disc", meta.sigmos_disc],
   ];
 
-  let minOrder = 3; // start at PQ
+  let minOrder = 3;
   let hasAny = false;
   for (const [key, val] of metrics) {
     if (val == null) continue;
@@ -103,7 +107,7 @@ function deriveTier(sib: any): string | undefined {
 function getTrackMetrics(sib: any) {
   const meta = sib.metadata || {};
   return [
-    { key: "snr_db", label: "SNR", unit: "dB", val: sib.snr_db ?? meta.snr_db },
+    { key: "snr_db", label: "SNR", unit: "dB", val: getOriginalSnr(sib) },
     { key: "sigmos_ovrl", label: "SigMOS Overall", val: meta.sigmos_ovrl },
     { key: "srmr", label: "SRMR", val: meta.srmr },
     { key: "rms_dbfs", label: "RMS Level", unit: "dBFS", val: meta.rms_dbfs },
