@@ -1691,19 +1691,6 @@ const Room = () => {
           </div>
           <div className="flex items-center gap-2 flex-wrap w-full">
             <div className="flex items-center gap-2">
-              {isCreator && !room.is_public && (
-                <KGenButton
-                  size="sm"
-                  onClick={async () => {
-                    const { error } = await supabase.from("rooms").update({ is_public: true }).eq("id", room.id);
-                    if (error) { toast.error("Erro ao abrir sala"); return; }
-                    setRoom(prev => prev ? { ...prev, is_public: true } : prev);
-                    toast.success("Sala agora é pública!");
-                  }}
-                  scrambleText="ABRIR SALA PÚBLICA"
-                  icon={<Globe className="h-4 w-4" />}
-                />
-              )}
               {isCreator && room.is_public && (
                 <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-widest px-3 py-1.5" style={{ border: "1px solid var(--portal-accent)", color: "var(--portal-accent)" }}>
                   <Globe className="h-4 w-4" /> Sala Pública
