@@ -208,26 +208,6 @@ const Rooms = () => {
     }
   };
 
-  const handleRequestJoin = async (room: PublicRoom) => {
-    if (!user) {
-      toast.error("Faça login para solicitar entrada");
-      return;
-    }
-    setJoiningRoomId(room.id);
-    const { error } = await supabase.from("room_join_requests").insert({
-      room_id: room.id,
-      user_id: user.id,
-      user_name: creatorName || user.email || "Usuário",
-    });
-    setJoiningRoomId(null);
-    if (error) {
-      if (error.code === "23505") toast.info("Você já solicitou entrada nesta sala.");
-      else toast.error("Erro ao solicitar entrada");
-      return;
-    }
-    toast.success("Solicitação enviada! Aguarde a aprovação do host.");
-    fetchPublicRooms();
-  };
 
   const statusLabels: Record<string, string> = {
     waiting: "Aguardando",
