@@ -43,29 +43,50 @@ serve(async (req) => {
       throw new Error("Subject and body are required");
     }
 
-    // Get target user IDs based on mode
-    let userIds: string[] = [];
+    // Get target users with profile data for placeholder replacement
+    let profiles: { id: string; full_name: string | null; wallet_id: string | null; country: string | null; email_contact: string | null }[] = [];
 
     if (mode === "all") {
       const { data } = await supabaseAdmin
         .from("profiles")
-        .select("id");
-      userIds = (data || []).map((p: any) => p.id);
+        .select("id, full_name, wallet_id, country, email_contact");
+      profiles = (data || []) as any;
     } else if (mode === "country" && country) {
       const { data } = await supabaseAdmin
         .from("profiles")
-        .select("id")
+        .select("id, full_name, wallet_id, country, email_contact")
         .eq("country", country);
-      userIds = (data || []).map((p: any) => p.id);
+      profiles = (data || []) as any;
     } else if (mode === "campaign" && campaign_id) {
-      const { data } = await supabaseAdmin
+      const { data: participants } = await supabaseAdmin
         .from("campaign_participants")
         .select("user_id")
         .eq("campaign_id", campaign_id);
-      userIds = (data || []).map((p: any) => p.user_id);
+      const pUserIds = (participants || []).map((p: any) => p.user_id);
+      if (pUserIds.length > 0) {
+        const { data } = await supabaseAdmin
+          .from("profiles")
+          .select("id, full_name, wallet_id, country, email_contact")
+          .in("id", pUserIds);
+        profiles = (data || []) as any;
+      }
     } else {
       throw new Error("Invalid mode or missing parameters");
     }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    profiles = profiles.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+    let userIds = profiles.map(p => p.id);
+    const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+
+    const replacePlaceholders = (text: string, profile: typeof profiles[0]) => {
+      return text
+        .replace(/\[NOME\]/g, profile.full_name || "")
+        .replace(/\[WALLET_ADDRESS\]/g, profile.wallet_id || "")
+        .replace(/\[COUNTRY\]/g, profile.country || "")
+        .replace(/\[EMAIL\]/g, profile.email_contact || "");
+    };
 
     // Deduplicate
     userIds = [...new Set(userIds)];
