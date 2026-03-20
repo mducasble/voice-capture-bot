@@ -516,8 +516,22 @@ export default function DataAudioTask() {
       return;
     }
 
+    let loadingDescription = "Aguarde enquanto o áudio é processado.";
+
+    try {
+      const { data: providerData } = await supabase.functions.invoke("enhance-audio", {
+        body: { preview_provider: true },
+      });
+
+      if (providerData?.service) {
+        loadingDescription = `Processando via ${providerData.service}.`;
+      }
+    } catch {
+      // Fallback silencioso para não bloquear o processamento principal
+    }
+
     const toastId = toast.loading("Enhancement em andamento…", {
-      description: "Aguarde enquanto o áudio é processado.",
+      description: loadingDescription,
     });
 
     const { data, error } = await supabase.functions.invoke("enhance-audio", {

@@ -825,19 +825,29 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { recording_id, file_url, job_id, current_segment, total_segments, segment_data } = body;
+    const { recording_id, file_url, job_id, preview_provider } = body;
+
+    const metricsUrl = Deno.env.get('METRICS_API_URL') || '';
+    if (!metricsUrl) {
+      return new Response(
+        JSON.stringify({ error: 'METRICS_API_URL not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const serviceName = metricsUrl.includes('hf.space') || metricsUrl.includes('huggingface') ? 'HuggingFace' : 'VPS Metrics';
+
+    if (preview_provider === true) {
+      return new Response(
+        JSON.stringify({ success: true, service: serviceName }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!recording_id) {
       return new Response(
         JSON.stringify({ error: 'Missing recording_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!Deno.env.get('METRICS_API_URL')) {
-      return new Response(
-        JSON.stringify({ error: 'METRICS_API_URL not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -851,8 +861,6 @@ serve(async (req) => {
     }
     await phaseInit(recording_id, file_url, job_id || 'direct');
 
-    const metricsUrl = Deno.env.get('METRICS_API_URL') || '';
-    const serviceName = metricsUrl.includes('hf.space') || metricsUrl.includes('huggingface') ? 'HuggingFace' : 'VPS Metrics';
     return new Response(
       JSON.stringify({ success: true, recording_id, service: serviceName }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
