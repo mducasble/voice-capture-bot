@@ -91,7 +91,8 @@ export default function DataFlaggedQueue() {
     setRecs((prev) => prev.filter((r) => r.id !== rec.id));
   };
 
-  const handleReject = async (reason: string) => {
+  const handleReject = async (reasons: string[], note: string) => {
+    const reason = [reasons.join(", "), note].filter(Boolean).join(" — ");
     if (!rejectTarget) return;
     setSaving(rejectTarget);
     const { error } = await supabase
