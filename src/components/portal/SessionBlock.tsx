@@ -369,7 +369,7 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
             <CheckCircle className="h-3 w-3" /> Enviado
           </span>
         </div>
-      ) : hasParts ? (
+      ) : !loadingParts ? (
         <MissingTrackRow label="🎧 Áudio Combinado" icon={<AudioLines className="h-3.5 w-3.5" />} trackType="mixed" onUpload={handleUpload} uploading={uploading} progress={progress} />
       ) : null}
 
