@@ -183,21 +183,31 @@ export default function PortalPaymentHistory() {
                         <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--portal-text-muted)" }} />
                       </div>
                     ) : (
-                      expandedEntries.map(e => (
-                        <div key={e.id} className="flex items-center justify-between py-2 px-3" style={{ background: "hsl(0 0% 10%)" }}>
-                          <div>
-                            <p className="font-mono text-xs" style={{ color: "var(--portal-text)" }}>
-                              {entryLabel(e)}
+                      (() => {
+                        const grouped = expandedEntries.reduce<Record<string, LedgerEntry[]>>((acc, e) => {
+                          const key = e.campaign_name || "—";
+                          if (!acc[key]) acc[key] = [];
+                          acc[key].push(e);
+                          return acc;
+                        }, {});
+                        return Object.entries(grouped).map(([campaignName, entries]) => (
+                          <div key={campaignName} className="space-y-1">
+                            <p className="font-mono text-xs uppercase tracking-widest pt-2 pb-1" style={{ color: "var(--portal-text-muted)" }}>
+                              {campaignName}
                             </p>
-                            <p className="font-mono text-[10px]" style={{ color: "var(--portal-text-muted)" }}>
-                              {e.campaign_name}
-                            </p>
+                            {entries.map(e => (
+                              <div key={e.id} className="flex items-center justify-between py-2 px-3" style={{ background: "hsl(0 0% 10%)" }}>
+                                <p className="font-mono text-sm" style={{ color: "var(--portal-text)" }}>
+                                  {entryLabel(e)}
+                                </p>
+                                <span className="font-mono text-base font-bold" style={{ color: "var(--portal-text)" }}>
+                                  US$ {e.amount.toFixed(4)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                          <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>
-                            US$ {e.amount.toFixed(4)}
-                          </span>
-                        </div>
-                      ))
+                        ));
+                      })()
                     )}
                   </div>
                 )}
