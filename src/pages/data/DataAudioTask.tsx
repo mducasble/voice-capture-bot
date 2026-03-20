@@ -525,7 +525,7 @@ export default function DataAudioTask() {
     logAction("flag", reason);
     const { error } = await supabase.from("voice_recordings").update({
       quality_status: "flagged",
-      quality_rejection_reason: reason,
+      flag_reason: reason,
     }).eq("id", rec.id);
     setSaving(false);
     setShowFlagModal(false);
