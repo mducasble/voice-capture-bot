@@ -295,7 +295,37 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
     return true;
   }) : undefined);
 
-  const handleUpload = useCallback((trackType: TrackType) => {
+  const formatSessionDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const checkSessionMismatch = useCallback(async (fileName: string): Promise<boolean> => {
+    const match = fileName.match(/room_([a-f0-9-]{36})/i);
+    if (!match) return true; // no session id in filename, allow
+    const fileSessionId = match[1];
+    if (fileSessionId === sessionId) return true; // same session, allow
+
+    // Get the date of the other session from its recordings
+    let otherDate = "desconhecida";
+    try {
+      const { data } = await supabase
+        .from("voice_recordings")
+        .select("created_at")
+        .eq("session_id", fileSessionId)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (data?.[0]?.created_at) otherDate = formatSessionDate(data[0].created_at);
+    } catch { /* ignore */ }
+
+    const currentDate = recordings[0]?.created_at ? formatSessionDate(recordings[0].created_at) : "desconhecida";
+
+    return window.confirm(
+      `⚠️ Esse áudio parece ser de uma outra sessão/conversa (${otherDate}), enquanto essa é de ${currentDate}.\n\nVocê corre o risco de alterar a conversa errada e perder todo o material.\n\nTem certeza?`
+    );
+  }, [sessionId, recordings]);
+
+
     pendingTrackType.current = trackType;
     fileInputRef.current?.click();
   }, []);
