@@ -163,8 +163,13 @@ export function SessionBlock({ sessionId, campaignId, recordings }: SessionBlock
   const [uploading, setUploading] = useState<TrackType | null>(null);
   const [progress, setProgress] = useState(0);
   const [uploadedTracks, setUploadedTracks] = useState<Set<TrackType>>(new Set());
+  const [resubmitting, setResubmitting] = useState<string | null>(null);
+  const [resubProgress, setResubProgress] = useState(0);
+  const [resubmittedIds, setResubmittedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resubFileInputRef = useRef<HTMLInputElement>(null);
   const pendingTrackType = useRef<TrackType | null>(null);
+  const pendingResubId = useRef<string | null>(null);
 
   // Derive participant info from room_participants OR from recordings metadata
   useEffect(() => {
