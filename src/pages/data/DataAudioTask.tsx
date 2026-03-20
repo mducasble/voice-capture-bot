@@ -338,7 +338,7 @@ export default function DataAudioTask() {
       .from("voice_recordings")
       .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id")
       .eq("campaign_id", campaignId)
-      .eq("quality_status", "pending")
+      .in("quality_status", ["pending", "failed"])
       .order("created_at", { ascending: true });
 
     // Exclude already skipped/timed-out IDs in this session
