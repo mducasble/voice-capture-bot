@@ -44,6 +44,7 @@ const PortalCampaignTask = lazy(() => import("./pages/portal/PortalCampaignTask"
 const PortalMyCampaigns = lazy(() => import("./pages/portal/PortalMyCampaigns"));
 const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
 const PortalEarnings = lazy(() => import("./pages/portal/PortalEarnings"));
+const PortalPaymentHistory = lazy(() => import("./pages/portal/PortalPaymentHistory"));
 const PortalInbox = lazy(() => import("./pages/portal/PortalInbox"));
 const InvitePage = lazy(() => import("./pages/portal/InvitePage"));
 const PrivateUpload = lazy(() => import("./pages/portal/PrivateUpload"));
