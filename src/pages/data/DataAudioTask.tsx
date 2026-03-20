@@ -539,54 +539,37 @@ export default function DataAudioTask() {
       return;
     }
 
-    let loadingDescription = "Aguarde enquanto o áudio é processado.";
-
+    // Get provider name first (fast call)
+    let serviceName = "";
     try {
       const { data: providerData } = await supabase.functions.invoke("enhance-audio", {
         body: { preview_provider: true },
       });
+      serviceName = providerData?.service || "";
+    } catch { /* ignore */ }
 
-      if (providerData?.service) {
-        loadingDescription = `Processando via ${providerData.service}.`;
-      }
-    } catch {
-      // Fallback silencioso para não bloquear o processamento principal
-    }
-
-    const toastId = toast.loading("Enhancement em andamento…", {
-      description: loadingDescription,
+    toast.info("Enhancement iniciado!", {
+      description: serviceName
+        ? `Processando via ${serviceName}. O polling atualizará quando concluir.`
+        : "O polling atualizará quando o processamento concluir.",
     });
 
-    const { data, error } = await supabase.functions.invoke("enhance-audio", {
+    // Fire-and-forget: don't await the long-running enhance call
+    // The polling mechanism (every 10s) will detect completion via metadata.enhanced_file_url
+    supabase.functions.invoke("enhance-audio", {
       body: {
         recording_id: sibId,
         file_url: fileUrl,
       },
+    }).then(({ data, error }) => {
+      if (error) {
+        console.warn("[enhance] Edge function returned error (may have timed out but still processing):", error.message);
+      } else {
+        console.log("[enhance] Edge function completed:", data);
+      }
+    }).catch((err) => {
+      console.warn("[enhance] Edge function call failed (processing may continue server-side):", err);
     });
-
-    if (error) {
-      toast.error("Erro ao processar enhancement", { id: toastId, description: error.message });
-      setQueuedJobs(prev => {
-        const copy = { ...prev };
-        if (copy[sibId] === "both") copy[sibId] = "analyze";
-        else delete copy[sibId];
-        return copy;
-      });
-      return;
-    }
-
-    const service = data?.service || "desconhecido";
-    toast.success("Enhancement concluído!", {
-      id: toastId,
-      description: `Serviço: ${service}`,
-    });
-    setQueuedJobs(prev => {
-      const copy = { ...prev };
-      if (copy[sibId] === "both") copy[sibId] = "analyze";
-      else delete copy[sibId];
-      return copy;
-    });
-    await refetchSiblings();
   };
 
   const remaining = Math.max(0, timeLimit - elapsed);
