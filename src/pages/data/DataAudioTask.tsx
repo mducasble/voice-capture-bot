@@ -326,6 +326,16 @@ export default function DataAudioTask() {
 
       if (anyDone) {
         setQueuedJobs(newQueued);
+        // Clean up progress for finished enhance jobs
+        setEnhanceProgress(prev => {
+          const copy = { ...prev };
+          for (const recId of queuedIds) {
+            if (!newQueued[recId] || (newQueued[recId] !== "enhance" && newQueued[recId] !== "both")) {
+              delete copy[recId];
+            }
+          }
+          return copy;
+        });
         await refetchSiblings();
         toast.success("Processamento concluído!", { description: "Os dados foram atualizados." });
       }
