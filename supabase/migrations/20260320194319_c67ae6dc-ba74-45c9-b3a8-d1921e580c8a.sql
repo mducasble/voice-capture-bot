@@ -1,0 +1,1 @@
+ALTER TABLE public.voice_recordings ADD COLUMN flag_reason text;
