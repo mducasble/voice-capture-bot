@@ -189,6 +189,7 @@ export default function DataAudioTask() {
   const [enhanceProgress, setEnhanceProgress] = useState<Record<string, { current: number; total: number }>>({});
   const [selectedVersions, setSelectedVersions] = useState<Record<string, "original" | "enhanced">>({});
   const [pendingCount, setPendingCount] = useState<{ done: number; total: number } | null>(null);
+  const [uploaderName, setUploaderName] = useState<string | null>(null);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -392,8 +393,16 @@ export default function DataAudioTask() {
 
     const { data } = await query.limit(1);
 
-    if (!data?.length) { setRec(null); setLoading(false); return; }
+    if (!data?.length) { setRec(null); setLoading(false); setUploaderName(null); return; }
     setRec(data[0] as Recording);
+
+    // Fetch uploader profile name
+    if (data[0].user_id) {
+      supabase.from("profiles").select("full_name").eq("id", data[0].user_id).single()
+        .then(({ data: profile }) => setUploaderName(profile?.full_name || null));
+    } else {
+      setUploaderName(null);
+    }
     setLoading(false);
 
     if (user && taskSetId) {
@@ -740,9 +749,9 @@ export default function DataAudioTask() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: Mic2, label: "Sessão", value: rec.session_id?.slice(0, 8) || "—" },
+            { icon: User, label: "Enviado por", value: uploaderName || rec.discord_username || "—" },
             { icon: Clock, label: "Duração", value: formatTime(rec.duration_seconds || 0) },
             { icon: Globe, label: "Data", value: new Date(rec.created_at).toLocaleDateString("pt-BR") },
-            { icon: User, label: "Tipo", value: rec.recording_type || "—" },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
