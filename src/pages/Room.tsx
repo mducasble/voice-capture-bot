@@ -224,6 +224,62 @@ const Room = () => {
     await rejoinDaily();
   }, [rejoinDaily, roomId, currentParticipant]);
 
+  // ===== Join Requests (for public rooms) =====
+  const isCreator = currentParticipant?.is_creator === true;
+
+  const fetchJoinRequests = useCallback(async () => {
+    if (!roomId || !isCreator) return;
+    const { data } = await supabase
+      .from("room_join_requests")
+      .select("*")
+      .eq("room_id", roomId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+    setJoinRequests((data as JoinRequest[]) || []);
+  }, [roomId, isCreator]);
+
+  useEffect(() => {
+    fetchJoinRequests();
+  }, [fetchJoinRequests]);
+
+  // Realtime: listen for new join requests
+  useEffect(() => {
+    if (!roomId || !isCreator) return;
+    const channel = supabase
+      .channel(`join-requests-${roomId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "room_join_requests", filter: `room_id=eq.${roomId}` },
+        () => fetchJoinRequests()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [roomId, isCreator, fetchJoinRequests]);
+
+  const handleApproveJoin = async (req: JoinRequest) => {
+    // 1. Update request status
+    await supabase.from("room_join_requests")
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
+      .eq("id", req.id);
+    // 2. Add as participant
+    await supabase.from("room_participants").insert({
+      room_id: req.room_id,
+      name: req.user_name,
+      is_creator: false,
+      user_id: req.user_id,
+    });
+    toast.success(`${req.user_name} aprovado!`);
+    fetchJoinRequests();
+  };
+
+  const handleRejectJoin = async (req: JoinRequest) => {
+    await supabase.from("room_join_requests")
+      .update({ status: "rejected", reviewed_at: new Date().toISOString() })
+      .eq("id", req.id);
+    toast.info(`${req.user_name} recusado.`);
+    fetchJoinRequests();
+  };
+
   // Play remote audio streams with volume boost via Web Audio API
   // IMPORTANT: Uses createMediaElementSource to route through a SINGLE playback
   // path. Previously, audio was played BOTH through the <audio> element AND a
