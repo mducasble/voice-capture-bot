@@ -429,8 +429,9 @@ serve(async (req) => {
 
     await saveMetrics(recording_id, metrics, metricsMode, target);
 
+    const serviceName = (METRICS_API_URL || '').includes('hf.space') || (METRICS_API_URL || '').includes('huggingface') ? 'HuggingFace' : 'VPS Metrics';
     return new Response(
-      JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode }),
+      JSON.stringify({ success: true, recording_id, metrics, mode: metricsMode, service: serviceName }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
