@@ -64,6 +64,8 @@ export default function PortalEarnings() {
     enabled: !!user?.id,
   });
 
+  const [earningsView, setEarningsView] = useState<"pending" | "all">("pending");
+
   const stats = useMemo(() => {
     const rows = ledgerRows || [];
     const byActivity: Record<string, { direct: number; referral: number; pending: number; tasks: number; total: number }> = {};
@@ -80,6 +82,14 @@ export default function PortalEarnings() {
 
       if (row.status === "cancelled") continue;
 
+      // Global totals always count everything
+      totalAccumulated += amount;
+      if (row.status === "credited") totalCredited += amount;
+      if (row.status === "paid") totalPaid += amount;
+
+      // Activity breakdown respects the view filter
+      if (earningsView === "pending" && row.status !== "pending") continue;
+
       if (row.entry_type === "referral_bonus") {
         bucket.referral += amount;
       } else {
@@ -91,14 +101,10 @@ export default function PortalEarnings() {
       if (row.status === "pending") {
         bucket.pending += 1;
       }
-
-      totalAccumulated += amount;
-      if (row.status === "credited") totalCredited += amount;
-      if (row.status === "paid") totalPaid += amount;
     }
 
     return { byActivity, totalAccumulated, availableWithdraw: totalCredited, totalPaid };
-  }, [ledgerRows]);
+  }, [ledgerRows, earningsView]);
 
   const referralCode = (profile as any)?.referral_code || "";
 
@@ -114,11 +120,36 @@ export default function PortalEarnings() {
       <ReferralSection userId={user?.id} referralCode={referralCode} />
 
       <div className="space-y-4" style={{ borderTop: "1px solid var(--portal-border)", paddingTop: "24px" }}>
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
-          <h2 className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
-            {t("earnings.earningsByActivity")}
-          </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" style={{ color: "var(--portal-accent)" }} />
+            <h2 className="font-mono text-xs uppercase tracking-widest font-bold" style={{ color: "var(--portal-text-muted)" }}>
+              {t("earnings.earningsByActivity")}
+            </h2>
+          </div>
+          <div className="flex font-mono text-[11px] uppercase tracking-widest" style={{ border: "1px solid var(--portal-border)" }}>
+            <button
+              onClick={() => setEarningsView("pending")}
+              className="px-3 py-1.5 transition-colors"
+              style={{
+                background: earningsView === "pending" ? "var(--portal-accent)" : "transparent",
+                color: earningsView === "pending" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+              }}
+            >
+              Pendente
+            </button>
+            <button
+              onClick={() => setEarningsView("all")}
+              className="px-3 py-1.5 transition-colors"
+              style={{
+                background: earningsView === "all" ? "var(--portal-accent)" : "transparent",
+                color: earningsView === "all" ? "var(--portal-accent-text)" : "var(--portal-text-muted)",
+                borderLeft: "1px solid var(--portal-border)",
+              }}
+            >
+              Geral
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
