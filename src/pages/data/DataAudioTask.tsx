@@ -367,9 +367,14 @@ export default function DataAudioTask() {
 
   useEffect(() => { loadNext(); }, [loadNext]);
 
-  // Timer
+  // Timer — pauses while an enhance job is in progress
+  const hasActiveEnhance = Object.values(queuedJobs).some(j => j === "enhance" || j === "both");
+
   useEffect(() => {
-    if (!rec || loading) return;
+    if (!rec || loading || hasActiveEnhance) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      return;
+    }
     timerRef.current = setInterval(() => {
       setElapsed((prev) => {
         const next = prev + 1;
@@ -378,7 +383,7 @@ export default function DataAudioTask() {
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [rec, loading, timeLimit]);
+  }, [rec, loading, timeLimit, hasActiveEnhance]);
 
   const logAction = (action: string, detail?: string) => {
     if (trackedActions.length > 0 && !trackedActions.includes(action)) return;
