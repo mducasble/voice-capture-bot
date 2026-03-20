@@ -146,6 +146,7 @@ export default function AdminDashboard() {
   const { data: participants = [] } = useParticipants();
   const { data: earnings = [] } = useEarnings();
   const { data: recordings } = useRecordings();
+  const { data: totalSessions = 0 } = useSessions();
   const recStats = useRecordingStats(recordings);
 
   const totalUsers = profiles.length;
