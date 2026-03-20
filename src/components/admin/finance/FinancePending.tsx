@@ -266,41 +266,83 @@ export function FinancePending({ walletAddr, onWalletRefresh }: Props) {
                 const isPaying = payingUserId === user.user_id;
                 const isTesting = testingUserId === user.user_id;
                 const hasWallet = !!user.wallet_id;
+                const isExpanded = expandedUserId === user.user_id;
                 return (
-                  <tr key={user.user_id} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-foreground">{user.full_name || "Sem nome"}</p>
-                      <p className="text-xs text-muted-foreground">{user.country || "—"}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {hasWallet ? (
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs bg-muted/50 px-2 py-1 rounded font-mono">{shortAddr(user.wallet_id!)}</code>
-                          <button onClick={() => { navigator.clipboard.writeText(user.wallet_id!); toast.success("Copiado!"); }} className="text-muted-foreground hover:text-foreground"><Copy className="h-3.5 w-3.5" /></button>
-                        </div>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-amber-400 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Sem wallet</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-foreground">${user.total_pending.toFixed(2)}</span>
-                      <span className="text-xs text-muted-foreground ml-1">{user.currency}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {hasWallet && !user.wallet_verified && (
-                          <Button size="sm" variant="outline" onClick={() => { if (window.confirm(`Enviar $1 de teste para ${user.full_name}?`)) testTxMutation.mutate(user); }} disabled={!walletAddr || isTesting || testTxMutation.isPending} className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
-                            {isTesting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <TestTube2 className="h-4 w-4 mr-1" />}
-                            Teste
-                          </Button>
+                  <>
+                    <tr key={user.user_id} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setExpandedUserId(isExpanded ? null : user.user_id)}
+                          className="flex items-center gap-1.5 text-left group"
+                        >
+                          {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <div>
+                            <p className="font-medium text-primary group-hover:underline">{user.full_name || "Sem nome"}</p>
+                            <p className="text-xs text-muted-foreground">{user.country || "—"}</p>
+                          </div>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        {hasWallet ? (
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-muted/50 px-2 py-1 rounded font-mono">{shortAddr(user.wallet_id!)}</code>
+                            <button onClick={() => { navigator.clipboard.writeText(user.wallet_id!); toast.success("Copiado!"); }} className="text-muted-foreground hover:text-foreground"><Copy className="h-3.5 w-3.5" /></button>
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-amber-400 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Sem wallet</span>
                         )}
-                        <Button size="sm" onClick={() => payMutation.mutate(user)} disabled={!walletAddr || !hasWallet || isPaying || payMutation.isPending}>
-                          {isPaying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                          {isPaying ? "Enviando..." : "Pagar"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-bold text-foreground">${user.total_pending.toFixed(2)}</span>
+                        <span className="text-xs text-muted-foreground ml-1">{user.currency}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {hasWallet && !user.wallet_verified && (
+                            <Button size="sm" variant="outline" onClick={() => { if (window.confirm(`Enviar $1 de teste para ${user.full_name}?`)) testTxMutation.mutate(user); }} disabled={!walletAddr || isTesting || testTxMutation.isPending} className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                              {isTesting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <TestTube2 className="h-4 w-4 mr-1" />}
+                              Teste
+                            </Button>
+                          )}
+                          <Button size="sm" onClick={() => payMutation.mutate(user)} disabled={!walletAddr || !hasWallet || isPaying || payMutation.isPending}>
+                            {isPaying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                            {isPaying ? "Enviando..." : "Pagar"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr key={`${user.user_id}-detail`} className="border-b last:border-0">
+                        <td colSpan={4} className="px-6 py-3 bg-muted/5">
+                          {expandedEarnings.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">Carregando...</p>
+                          ) : (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">{expandedEarnings.length} entrada(s) pendente(s)</p>
+                              {expandedEarnings.map((e: any) => {
+                                const typeLabel = e.entry_type === "task_payment" ? "📋" : "🔗";
+                                const subType = (e.submission_type || "").charAt(0).toUpperCase() + (e.submission_type || "").slice(1);
+                                const levelMatch = e.description?.match(/L(\d)/);
+                                const levelLabel = levelMatch ? ` L${levelMatch[1]}` : "";
+                                const campName = campaignNames[e.campaign_id] || "";
+                                const date = new Date(e.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                                return (
+                                  <div key={e.id} className="flex items-center justify-between text-xs gap-4 py-0.5">
+                                    <span className="text-muted-foreground truncate">
+                                      {typeLabel} {subType}{levelLabel}
+                                      {campName && <span className="text-foreground/40 ml-1">· {campName}</span>}
+                                      <span className="text-foreground/30 ml-1">· {date}</span>
+                                    </span>
+                                    <span className="font-medium text-foreground whitespace-nowrap">${Number(e.amount).toFixed(4)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
