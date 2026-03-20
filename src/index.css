@@ -324,22 +324,6 @@
       inset 0 -1px 0 hsl(0 0% 0% / 0.1);
   }
 
-  /* Data theme – custom audio player styling */
-  .data-audio-player {
-    width: 100%;
-    border-radius: 0.625rem;
-    overflow: hidden;
-    background: hsl(160 40% 18% / 0.3);
-    border: 1px solid hsl(160 50% 45% / 0.15);
-    padding: 2px;
-  }
-  .data-audio-player audio {
-    display: block;
-    width: 100%;
-    height: 40px;
-    accent-color: hsl(160 50% 45%);
-    color-scheme: dark;
-  }
 
   /* Portal - Brutalist Grid Style (Dark - default) */
   .portal-auth-page {
