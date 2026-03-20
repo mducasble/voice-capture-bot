@@ -252,7 +252,7 @@ function getSessionStatus(recs: SubmissionRow[]): "pending" | "approved" | "reje
 
 function CampaignCard({ participation, submissions }: { participation: any; submissions: SubmissionRow[] }) {
   const [expanded, setExpanded] = useState(false);
-  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("pending");
   const navigate = useNavigate();
   const { t } = useTranslation();
   const campaign = participation.campaigns;
