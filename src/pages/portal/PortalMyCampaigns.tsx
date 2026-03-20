@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FolderOpen, FileAudio, Clock, ChevronDown, Play, Pause, ArrowRight, CheckCircle, XCircle, Loader2, Signal, Video, Image, FileText, Tag } from "lucide-react";
 import { ResendAudioButton } from "@/components/portal/ResendAudioButton";
+import { SessionManualUpload } from "@/components/portal/SessionManualUpload";
 import KGenButton from "@/components/portal/KGenButton";
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -307,6 +308,7 @@ function CampaignCard({ participation, submissions }: { participation: any; subm
                       <ResendAudioButton sessionId={sessionId} campaignId={campaign.id} />
                     </div>
                     {recs.map(r => <SubmissionRowItem key={r.id} rec={r} />)}
+                    <SessionManualUpload sessionId={sessionId} campaignId={campaign.id} />
                   </div>
                 );
               })}

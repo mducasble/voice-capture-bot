@@ -47,12 +47,36 @@ serve(async (req) => {
       campaign_id,
       audio_profile,
       user_id: bodyUserId,
+      target_user_id,
       sample_rate: clientSampleRate,
     } = await req.json();
 
     // Resolve user_id: from JWT or from body (bot/electron)
     if (isBotAuth && bodyUserId) {
       authUserId = bodyUserId;
+    }
+
+    // If target_user_id is provided (manual upload for another participant),
+    // verify the uploader is a participant of the same session, then attribute to target
+    let effectiveUserId = authUserId;
+    if (target_user_id && authUserId && target_user_id !== authUserId) {
+      // Verify both users are participants of the same room/session
+      const { data: roomParticipants } = await supabase
+        .from('room_participants')
+        .select('user_id, room_id')
+        .in('user_id', [authUserId, target_user_id]);
+      
+      if (roomParticipants && roomParticipants.length >= 2) {
+        // Check they share at least one room
+        const uploaderRooms = new Set(roomParticipants.filter(p => p.user_id === authUserId).map(p => p.room_id));
+        const targetInSameRoom = roomParticipants.some(p => p.user_id === target_user_id && uploaderRooms.has(p.room_id));
+        if (targetInSameRoom) {
+          effectiveUserId = target_user_id;
+          console.log(`Manual upload: attributing recording to ${target_user_id} (uploaded by ${authUserId})`);
+        } else {
+          console.warn(`target_user_id ${target_user_id} not in same room as uploader ${authUserId}, ignoring`);
+        }
+      }
     }
 
     if (!filename || !file_url || !session_id || !campaign_id) {
@@ -98,7 +122,7 @@ serve(async (req) => {
         discord_channel_id: session_id,
         discord_user_id: participant_id,
         discord_username: participant_name,
-        user_id: authUserId,
+        user_id: effectiveUserId,
         campaign_id,
         filename,
         file_url,
