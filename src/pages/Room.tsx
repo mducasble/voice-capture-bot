@@ -116,6 +116,7 @@ const Room = () => {
   const [overlayElapsed, setOverlayElapsed] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const nonCreatorUploadedRef = useRef<string | null>(null);
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
 
   // Fetch campaign admin rules for min participants check
   const { data: campaignAdminRules } = useQuery({
