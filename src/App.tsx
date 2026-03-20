@@ -33,6 +33,7 @@ const AdminTaskValidation = lazy(() => import("./pages/admin/AdminTaskValidation
 const AdminInfrastructure = lazy(() => import("./pages/admin/AdminInfrastructure"));
 const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminInbox = lazy(() => import("./pages/admin/AdminInbox"));
+const VideoSubmissionsReport = lazy(() => import("./pages/admin/VideoSubmissionsReport"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -151,6 +152,7 @@ const App = () => (
                 <Route path="infrastructure" element={<AdminInfrastructure />} />
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="inbox" element={<AdminInbox />} />
+                <Route path="report/videos-editados" element={<VideoSubmissionsReport />} />
               </Route>
 
               {/* Audit login (standalone) */}
