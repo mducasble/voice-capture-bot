@@ -193,7 +193,7 @@ export default function PortalPaymentHistory() {
                               {e.campaign_name}
                             </p>
                           </div>
-                          <span className="font-mono text-xs font-bold" style={{ color: "var(--portal-accent)" }}>
+                          <span className="font-mono text-sm font-bold" style={{ color: "var(--portal-text)" }}>
                             US$ {e.amount.toFixed(4)}
                           </span>
                         </div>
