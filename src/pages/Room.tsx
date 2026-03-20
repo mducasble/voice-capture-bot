@@ -1953,9 +1953,21 @@ const Room = () => {
 
           {/* RIGHT COLUMN - Content */}
           <div className="space-y-4 w-full lg:w-[67%] order-first lg:order-2">
-            {/* Timer + Topic — two-column layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Timer */}
+            {/* Topic + Timer — two-column layout, timer takes 2/3 */}
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-4">
+              {/* Topic (left, smaller) */}
+              {room.topic && (
+                <div className="p-4 flex flex-col justify-center" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
+                  <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
+                    {t("room.conversationTopicLabel")}
+                  </span>
+                  <p className="font-mono text-lg font-bold uppercase" style={{ color: "var(--portal-text)" }}>
+                    {room.topic}
+                  </p>
+                </div>
+              )}
+
+              {/* Timer (right, larger) */}
               {(() => {
                 if (room.is_recording && room.recording_started_at) {
                   if (room.duration_minutes) {
@@ -2018,18 +2030,6 @@ const Room = () => {
                 }
                 return null;
               })()}
-
-              {/* Topic */}
-              {room.topic && (
-                <div className="p-4 flex flex-col justify-center" style={{ border: "1px solid var(--portal-border)", background: "var(--portal-card-bg)" }}>
-                  <span className="font-mono text-[10px] uppercase tracking-widest block mb-2" style={{ color: "var(--portal-text-muted)" }}>
-                    {t("room.conversationTopicLabel")}
-                  </span>
-                  <p className="font-mono text-lg font-bold uppercase" style={{ color: "var(--portal-text)" }}>
-                    {room.topic}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Script / Talking Points — AI generated */}
