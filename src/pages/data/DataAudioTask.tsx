@@ -393,8 +393,16 @@ export default function DataAudioTask() {
 
     const { data } = await query.limit(1);
 
-    if (!data?.length) { setRec(null); setLoading(false); return; }
+    if (!data?.length) { setRec(null); setLoading(false); setUploaderName(null); return; }
     setRec(data[0] as Recording);
+
+    // Fetch uploader profile name
+    if (data[0].user_id) {
+      supabase.from("profiles").select("full_name").eq("id", data[0].user_id).single()
+        .then(({ data: profile }) => setUploaderName(profile?.full_name || null));
+    } else {
+      setUploaderName(null);
+    }
     setLoading(false);
 
     if (user && taskSetId) {
