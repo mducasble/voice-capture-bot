@@ -112,10 +112,10 @@ export default function PortalRooms() {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Radio className="h-12 w-12 mb-4" style={{ color: "var(--portal-text-muted)", opacity: 0.3 }} />
           <p className="font-mono text-sm mb-1" style={{ color: "var(--portal-text-muted)" }}>
-            Sem salas criadas no momento
+            {t("rooms.noRooms")}
           </p>
           <p className="font-mono text-xs mb-6" style={{ color: "var(--portal-text-muted)", opacity: 0.6 }}>
-            Crie uma sala a partir das suas campanhas
+            {t("rooms.noRoomsDesc")}
           </p>
           <Link
             to="/my-campaigns"
