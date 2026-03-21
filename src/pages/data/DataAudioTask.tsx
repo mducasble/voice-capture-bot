@@ -221,19 +221,29 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
   // Fetch pending count for this campaign
   const fetchPendingCount = useCallback(async () => {
     if (!campaignId) return;
-    const { count: totalCount } = await supabase
-      .from("voice_recordings")
-      .select("id", { count: "exact", head: true })
-      .eq("campaign_id", campaignId);
-    const { count: pendingTotal } = await supabase
-      .from("voice_recordings")
-      .select("id", { count: "exact", head: true })
-      .eq("campaign_id", campaignId)
-      .in("quality_status", ["pending", "failed"]);
-    if (totalCount != null && pendingTotal != null) {
-      setPendingCount({ done: totalCount - pendingTotal, total: totalCount });
+    if (isFlaggedMode) {
+      const { count: flaggedCount } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .eq("quality_status", "flagged")
+        .eq("recording_type", "mixed");
+      setPendingCount({ done: 0, total: flaggedCount || 0 });
+    } else {
+      const { count: totalCount } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId);
+      const { count: pendingTotal } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .in("quality_status", ["pending", "failed"]);
+      if (totalCount != null && pendingTotal != null) {
+        setPendingCount({ done: totalCount - pendingTotal, total: totalCount });
+      }
     }
-  }, [campaignId]);
+  }, [campaignId, isFlaggedMode]);
 
   // Load task config
   useEffect(() => {
