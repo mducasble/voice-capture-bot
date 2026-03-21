@@ -216,7 +216,7 @@ async function handleApply(
       validation_reviewed_at: null,
       validation_reviewed_by: null,
       snr_db: null,
-      status: 'pending',
+      status: 'completed',
       filename: newFilename,
       updated_at: new Date().toISOString(),
     })
@@ -282,7 +282,7 @@ async function handleCreate(
       recording_type: 'individual',
       quality_status: 'pending',
       validation_status: 'pending',
-      status: 'pending',
+      status: 'completed',
       metadata: {
         reconstructed_from: 'mixed',
         reconstruction_speaker_label: speaker_label,
