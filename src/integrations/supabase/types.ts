@@ -1321,6 +1321,86 @@ export type Database = {
         }
         Relationships: []
       }
+      dataset_items: {
+        Row: {
+          campaign_id: string
+          content_score: Json | null
+          content_validated_at: string | null
+          created_at: string
+          dataset_batch: string | null
+          dataset_version: string | null
+          flagged_track_ids: string[] | null
+          has_flagged_tracks: boolean | null
+          id: string
+          notes: string | null
+          pipeline_status: string
+          quality_approved_at: string | null
+          quality_tier: string | null
+          submission_id: string
+          submission_type: string
+          tags: string[] | null
+          transcription_completed_at: string | null
+          transcription_provider: string | null
+          transcription_queued_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          content_score?: Json | null
+          content_validated_at?: string | null
+          created_at?: string
+          dataset_batch?: string | null
+          dataset_version?: string | null
+          flagged_track_ids?: string[] | null
+          has_flagged_tracks?: boolean | null
+          id?: string
+          notes?: string | null
+          pipeline_status?: string
+          quality_approved_at?: string | null
+          quality_tier?: string | null
+          submission_id: string
+          submission_type: string
+          tags?: string[] | null
+          transcription_completed_at?: string | null
+          transcription_provider?: string | null
+          transcription_queued_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          content_score?: Json | null
+          content_validated_at?: string | null
+          created_at?: string
+          dataset_batch?: string | null
+          dataset_version?: string | null
+          flagged_track_ids?: string[] | null
+          has_flagged_tracks?: boolean | null
+          id?: string
+          notes?: string | null
+          pipeline_status?: string
+          quality_approved_at?: string | null
+          quality_tier?: string | null
+          submission_id?: string
+          submission_type?: string
+          tags?: string[] | null
+          transcription_completed_at?: string | null
+          transcription_provider?: string | null
+          transcription_queued_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       earnings_ledger: {
         Row: {
           amount: number
