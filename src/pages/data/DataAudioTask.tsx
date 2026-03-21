@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
   SkipForward, Mic2, User, Globe, Headphones,
-  Archive, Flag, RefreshCw, Wand2, UserX,
+  Archive, Flag, RefreshCw, Wand2, UserX, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
@@ -30,6 +30,7 @@ interface Recording {
   snr_db: number | null;
   campaign_id: string | null;
   user_id: string | null;
+  flag_reason: string | null;
 }
 
 type ActionEvent = { action: string; timestamp: string; detail?: string };
@@ -172,7 +173,21 @@ const formatTime = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-export default function DataAudioTask() {
+const FLAG_REASONS_LIST = [
+  "Áudio Pode Melhorar (Enhance)",
+  "Chance de ser Duplicado",
+  "Mais de 2 participantes",
+  "Som estourado",
+  "Uma ou mais trilhas ruins",
+];
+
+interface DataAudioTaskProps {
+  mode?: "normal" | "flagged";
+}
+
+export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
+  const isFlaggedMode = mode === "flagged";
+  const [flagReasonFilter, setFlagReasonFilter] = useState<string>("all");
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -207,19 +222,29 @@ export default function DataAudioTask() {
   // Fetch pending count for this campaign
   const fetchPendingCount = useCallback(async () => {
     if (!campaignId) return;
-    const { count: totalCount } = await supabase
-      .from("voice_recordings")
-      .select("id", { count: "exact", head: true })
-      .eq("campaign_id", campaignId);
-    const { count: pendingTotal } = await supabase
-      .from("voice_recordings")
-      .select("id", { count: "exact", head: true })
-      .eq("campaign_id", campaignId)
-      .in("quality_status", ["pending", "failed"]);
-    if (totalCount != null && pendingTotal != null) {
-      setPendingCount({ done: totalCount - pendingTotal, total: totalCount });
+    if (isFlaggedMode) {
+      const { count: flaggedCount } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .eq("quality_status", "flagged")
+        .eq("recording_type", "mixed");
+      setPendingCount({ done: 0, total: flaggedCount || 0 });
+    } else {
+      const { count: totalCount } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId);
+      const { count: pendingTotal } = await supabase
+        .from("voice_recordings")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .in("quality_status", ["pending", "failed"]);
+      if (totalCount != null && pendingTotal != null) {
+        setPendingCount({ done: totalCount - pendingTotal, total: totalCount });
+      }
     }
-  }, [campaignId]);
+  }, [campaignId, isFlaggedMode]);
 
   // Load task config
   useEffect(() => {
@@ -426,10 +451,18 @@ export default function DataAudioTask() {
 
     let query = supabase
       .from("voice_recordings")
-      .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id")
+      .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id, flag_reason")
       .eq("campaign_id", campaignId)
-      .in("quality_status", ["pending", "failed"])
       .order("created_at", { ascending: true });
+
+    if (isFlaggedMode) {
+      query = query.eq("quality_status", "flagged").eq("recording_type", "mixed");
+      if (flagReasonFilter !== "all") {
+        query = query.eq("flag_reason", flagReasonFilter);
+      }
+    } else {
+      query = query.in("quality_status", ["pending", "failed"]);
+    }
 
     // Exclude already skipped/timed-out IDs in this session
     const skippedArr = Array.from(skippedIdsRef.current);
@@ -465,7 +498,7 @@ export default function DataAudioTask() {
       }).select("id").single();
       if (log) setTaskLogId(log.id);
     }
-  }, [campaignId, user, taskSetId, fetchPendingCount]);
+  }, [campaignId, user, taskSetId, fetchPendingCount, isFlaggedMode, flagReasonFilter]);
 
   useEffect(() => { loadNext(); }, [loadNext]);
 
@@ -578,6 +611,24 @@ export default function DataAudioTask() {
     if (error) { toast.error("Erro ao reservar"); return; }
     toast.success("Sessão marcada como Reserva.");
     await finishTask("completed", "reserve");
+    loadNext();
+  };
+
+  const handleReturnToQueue = async () => {
+    if (!rec) return;
+    setSaving(true);
+    logAction("return_to_queue");
+    let query = supabase.from("voice_recordings").update({ quality_status: "pending", flag_reason: null });
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+    const { error } = await query;
+    setSaving(false);
+    if (error) { toast.error("Erro ao devolver"); return; }
+    toast.success("Devolvido para fila de pendentes.");
+    await finishTask("completed", "returned");
     loadNext();
   };
 
@@ -896,9 +947,9 @@ export default function DataAudioTask() {
   if (!rec) {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
-        <Headphones className="h-16 w-16 text-white/10 mx-auto mb-4" />
-        <h2 className="text-[24px] font-bold text-white mb-2">Tudo validado!</h2>
-        <p className="text-white/40 mb-6">Não há mais áudios pendentes nesta campanha.</p>
+        {isFlaggedMode ? <Flag className="h-16 w-16 text-white/10 mx-auto mb-4" /> : <Headphones className="h-16 w-16 text-white/10 mx-auto mb-4" />}
+        <h2 className="text-[24px] font-bold text-white mb-2">{isFlaggedMode ? "Nenhum flag pendente!" : "Tudo validado!"}</h2>
+        <p className="text-white/40 mb-6">{isFlaggedMode ? "Não há mais áudios flagueados nesta campanha." : "Não há mais áudios pendentes nesta campanha."}</p>
         <Button variant="outline" onClick={() => navigate("/data")}
           className="bg-white/5 border-white/10 text-white hover:bg-white/10">
           Voltar ao início
@@ -915,17 +966,46 @@ export default function DataAudioTask() {
       {/* Back + Campaign + Counter */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate(`/data/audio/campaigns`)} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> {campaignName}
+          <ArrowLeft className="h-4 w-4" /> {isFlaggedMode && <Flag className="h-3.5 w-3.5 text-amber-400" />} {campaignName}
         </button>
         {pendingCount && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
-            <span className="text-[13px] font-mono font-bold text-white">{pendingCount.done}</span>
-            <span className="text-[13px] text-white/30">/</span>
-            <span className="text-[13px] font-mono text-white/50">{pendingCount.total}</span>
-            <span className="text-[11px] text-white/30 ml-1">validados</span>
+            {isFlaggedMode ? (
+              <>
+                <span className="text-[13px] font-mono font-bold text-amber-400">{pendingCount.total}</span>
+                <span className="text-[11px] text-white/30 ml-1">flags</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[13px] font-mono font-bold text-white">{pendingCount.done}</span>
+                <span className="text-[13px] text-white/30">/</span>
+                <span className="text-[13px] font-mono text-white/50">{pendingCount.total}</span>
+                <span className="text-[11px] text-white/30 ml-1">validados</span>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {/* Flag reason filter */}
+      {isFlaggedMode && (
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {["all", ...FLAG_REASONS_LIST].map((reason) => (
+            <button
+              key={reason}
+              onClick={() => { setFlagReasonFilter(reason); }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all border",
+                flagReasonFilter === reason
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  : "bg-white/[0.04] text-white/50 border-white/[0.08] hover:bg-white/[0.08] hover:text-white/70"
+              )}
+            >
+              {reason === "all" ? "Todos" : reason}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Timer bar */}
       <div className="data-glass-card rounded-2xl p-5 mb-6">
@@ -975,6 +1055,11 @@ export default function DataAudioTask() {
                 </span>
               );
             })()}
+            {isFlaggedMode && rec.flag_reason && (
+              <span className="text-[12px] font-bold px-2.5 py-1 rounded-lg border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
+                <Flag className="h-3 w-3" /> {rec.flag_reason}
+              </span>
+            )}
             {mainTier && (
               <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
                 {mainTier} — {tierLabels[mainTier] || mainTier}
@@ -1097,14 +1182,23 @@ export default function DataAudioTask() {
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20">
             <CheckCircle2 className="h-4 w-4 mr-1.5" /> Aprovar
           </Button>
-          <Button onClick={handleReserve} disabled={saving}
-            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
-            <Archive className="h-4 w-4 mr-1.5" /> Reserva
-          </Button>
-          <Button onClick={() => setShowFlagModal(true)} disabled={saving}
-            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
-            <Flag className="h-4 w-4 mr-1.5" /> Flag
-          </Button>
+          {isFlaggedMode ? (
+            <Button onClick={handleReturnToQueue} disabled={saving}
+              className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20">
+              <RotateCcw className="h-4 w-4 mr-1.5" /> Devolver
+            </Button>
+          ) : (
+            <>
+              <Button onClick={handleReserve} disabled={saving}
+                className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
+                <Archive className="h-4 w-4 mr-1.5" /> Reserva
+              </Button>
+              <Button onClick={() => setShowFlagModal(true)} disabled={saving}
+                className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
+                <Flag className="h-4 w-4 mr-1.5" /> Flag
+              </Button>
+            </>
+          )}
           <Button onClick={() => setShowRejectModal(true)} disabled={saving}
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20">
             <XCircle className="h-4 w-4 mr-1.5" /> Reprovar
