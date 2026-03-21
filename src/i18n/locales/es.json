@@ -184,7 +184,10 @@
     "detailTitle": "Extracto Detallado",
     "detailDirect": "Ganancias Directas",
     "detailReferral": "Bono de Referido",
-    "detailEmpty": "No se encontraron registros."
+    "detailEmpty": "No se encontraron registros.",
+    "paymentHistory": "Extracto de Pagos",
+    "pending": "Pendiente",
+    "overall": "General"
   },
   "profile": {
     "title": "Mi Perfil",

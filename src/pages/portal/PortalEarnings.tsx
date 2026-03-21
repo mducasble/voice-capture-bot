@@ -139,7 +139,7 @@ export default function PortalEarnings() {
         style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
       >
         <Receipt className="h-4 w-4" />
-        Extrato de Pagamentos
+        {t("earnings.paymentHistory")}
       </button>
 
       {/* Earnings by activity */}
@@ -160,7 +160,7 @@ export default function PortalEarnings() {
                 color: earningsView === "pending" ? "var(--portal-accent-text)" : "var(--portal-text)",
               }}
             >
-              Pendente
+               {t("earnings.pending")}
             </button>
             <button
               onClick={() => setEarningsView("all")}
@@ -171,7 +171,7 @@ export default function PortalEarnings() {
                 borderLeft: "1px solid var(--portal-border)",
               }}
             >
-              Geral
+               {t("earnings.overall")}
             </button>
           </div>
         </div>
