@@ -160,7 +160,7 @@ export default function PortalEarnings() {
                 color: earningsView === "pending" ? "var(--portal-accent-text)" : "var(--portal-text)",
               }}
             >
-              Pendente
+               {t("earnings.pending")}
             </button>
             <button
               onClick={() => setEarningsView("all")}
