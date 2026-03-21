@@ -78,6 +78,49 @@ serve(async (req) => {
 });
 
 // ── PREVIEW: Send URL + diarization to VPS, VPS uploads to S3 ────
+async function waitForDiarizationWords(
+  supabase: any,
+  recordingId: string,
+  maxAttempts = 6,
+  delayMs = 2000,
+) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data: mixedRec, error } = await supabase
+      .from('voice_recordings')
+      .select('transcription_elevenlabs_status, metadata')
+      .eq('id', recordingId)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const metadata = (mixedRec?.metadata as Record<string, unknown>) || {};
+    const words = metadata.elevenlabs_words as Array<{
+      text: string; start: number; end: number; speaker?: string;
+    }> | undefined;
+
+    if (words?.length) {
+      if (attempt > 0) {
+        console.log(`[Reconstruct] Diarization became available after retry ${attempt}/${maxAttempts - 1}`);
+      }
+      return words;
+    }
+
+    const status = mixedRec?.transcription_elevenlabs_status;
+    if (status === 'failed') {
+      throw new Error('Mixed recording transcription failed before reconstruction');
+    }
+
+    if (attempt < maxAttempts - 1) {
+      console.warn(`[Reconstruct] Diarization not ready yet for ${recordingId} (status=${status ?? 'unknown'}), retrying...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return null;
+}
+
 async function handlePreview(
   supabase: any, supabaseUrl: string, serviceKey: string,
   session_id: string, cors: Record<string, string>
@@ -85,11 +128,12 @@ async function handlePreview(
   // 1. Fetch recordings
   const { data: recordings, error: recErr } = await supabase
     .from('voice_recordings')
-    .select('id, file_url, recording_type, discord_username, metadata, user_id, filename')
+    .select('id, file_url, recording_type, discord_username, metadata, user_id, filename, transcription_elevenlabs_status')
     .eq('session_id', session_id)
     .order('created_at', { ascending: true });
 
   if (recErr || !recordings?.length) {
+    console.warn(`[Reconstruct] No recordings found for session ${session_id}`);
     return new Response(JSON.stringify({ error: 'No recordings found for session' }), {
       status: 404, headers: { ...cors, 'Content-Type': 'application/json' }
     });
@@ -97,20 +141,17 @@ async function handlePreview(
 
   const mixed = recordings.find((r: any) => r.recording_type === 'mixed');
   if (!mixed?.file_url) {
+    console.warn(`[Reconstruct] No mixed recording with file_url for session ${session_id}`);
     return new Response(JSON.stringify({ error: 'No mixed recording with file_url found' }), {
       status: 400, headers: { ...cors, 'Content-Type': 'application/json' }
     });
   }
 
-  // Get diarization data
-  const mixedMeta = (mixed.metadata as Record<string, unknown>) || {};
-  const elWords = mixedMeta.elevenlabs_words as Array<{
-    text: string; start: number; end: number; speaker?: string;
-  }> | null;
-
+  const elWords = await waitForDiarizationWords(supabase, mixed.id);
   if (!elWords?.length) {
+    console.warn(`[Reconstruct] Diarization still unavailable for mixed ${mixed.id} in session ${session_id}`);
     return new Response(JSON.stringify({
-      error: 'Mixed recording has no ElevenLabs diarization data. Run transcription first.'
+      error: 'Mixed recording has no ElevenLabs diarization data yet. Try again in a few seconds.'
     }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
@@ -118,6 +159,7 @@ async function handlePreview(
   const metricsUrl = Deno.env.get('METRICS_API_URL');
   const metricsSecret = Deno.env.get('METRICS_API_SECRET');
   if (!metricsUrl) {
+    console.error('[Reconstruct] METRICS_API_URL not configured');
     return new Response(JSON.stringify({ error: 'METRICS_API_URL not configured' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
     });
