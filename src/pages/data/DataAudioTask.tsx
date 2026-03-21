@@ -951,6 +951,8 @@ export default function DataAudioTask() {
                 trackFlagReason={(sib.metadata as any)?.track_flag_reason || null}
                 selectedVersion={selectedVersions[sib.id] || "original"}
                 onSelectVersion={(id, v) => setSelectedVersions(prev => ({ ...prev, [id]: v }))}
+                handleReconstruct={canReconstruct && sib.recording_type === "individual" ? handleReconstructTrack : undefined}
+                reconstructing={reconstructing && reconstructTarget === sib.id}
               />
             );
           })}
