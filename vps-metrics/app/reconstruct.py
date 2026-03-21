@@ -108,18 +108,18 @@ def reconstruct_tracks(
             my_active[s:e] = True
 
         # Mute regions where OTHER speakers are active and this one is NOT
-        mute_ranges = []
+        others_active = np.zeros(total_samples, dtype=bool)
         for other_spk, other_segs in speaker_segments.items():
             if other_spk == speaker:
                 continue
             for seg_start_s, seg_end_s in other_segs:
                 s = max(0, int(seg_start_s * sr) - pad_samples)
                 e = min(total_samples, int(seg_end_s * sr) + pad_samples)
-                # Only mute where this speaker is NOT also active
-                for idx in range(s, e):
-                    if idx < total_samples and not my_active[idx]:
-                        mask[idx] = 0.0
-                mute_ranges.append((s, e))
+                others_active[s:e] = True
+
+        # Mute only where others talk AND this speaker is silent
+        mute_mask = others_active & ~my_active
+        mask[mute_mask] = 0.0
 
         # Apply crossfade at mute boundaries to avoid clicks
         mask = _apply_crossfade_mute(mask, fade_samples)
