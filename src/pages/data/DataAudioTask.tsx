@@ -1003,6 +1003,23 @@ export default function DataAudioTask() {
         onConfirm={handleTrackFlag}
         trackLabel={siblings.find((s: any) => s.id === trackFlagTarget)?.discord_username || siblings.find((s: any) => s.id === trackFlagTarget)?.recording_type || ""}
       />
+
+      <SpeakerSelectDialog
+        open={showSpeakerDialog}
+        speakers={speakerPreviews}
+        targetTrackName={
+          siblings.find((s: any) => s.id === reconstructTarget)?.discord_username ||
+          siblings.find((s: any) => s.id === reconstructTarget)?.recording_type || ""
+        }
+        onSelect={handleSpeakerSelected}
+        onCancel={() => {
+          setShowSpeakerDialog(false);
+          setReconstructing(false);
+          setReconstructTarget(null);
+          setSpeakerPreviews([]);
+        }}
+        applying={applyingSpeaker}
+      />
     </div>
   );
 }
