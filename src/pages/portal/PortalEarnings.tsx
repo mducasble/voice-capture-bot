@@ -139,7 +139,7 @@ export default function PortalEarnings() {
         style={{ border: "1px solid var(--portal-accent)", background: "transparent", color: "var(--portal-accent)" }}
       >
         <Receipt className="h-4 w-4" />
-        Extrato de Pagamentos
+        {t("earnings.paymentHistory")}
       </button>
 
       {/* Earnings by activity */}
