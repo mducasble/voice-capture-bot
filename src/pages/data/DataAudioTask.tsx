@@ -966,17 +966,46 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       {/* Back + Campaign + Counter */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate(`/data/audio/campaigns`)} className="flex items-center gap-2 text-[14px] text-white/40 hover:text-white/70 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> {campaignName}
+          <ArrowLeft className="h-4 w-4" /> {isFlaggedMode && <Flag className="h-3.5 w-3.5 text-amber-400" />} {campaignName}
         </button>
         {pendingCount && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
-            <span className="text-[13px] font-mono font-bold text-white">{pendingCount.done}</span>
-            <span className="text-[13px] text-white/30">/</span>
-            <span className="text-[13px] font-mono text-white/50">{pendingCount.total}</span>
-            <span className="text-[11px] text-white/30 ml-1">validados</span>
+            {isFlaggedMode ? (
+              <>
+                <span className="text-[13px] font-mono font-bold text-amber-400">{pendingCount.total}</span>
+                <span className="text-[11px] text-white/30 ml-1">flags</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[13px] font-mono font-bold text-white">{pendingCount.done}</span>
+                <span className="text-[13px] text-white/30">/</span>
+                <span className="text-[13px] font-mono text-white/50">{pendingCount.total}</span>
+                <span className="text-[11px] text-white/30 ml-1">validados</span>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {/* Flag reason filter */}
+      {isFlaggedMode && (
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {["all", ...FLAG_REASONS_LIST].map((reason) => (
+            <button
+              key={reason}
+              onClick={() => { setFlagReasonFilter(reason); }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all border",
+                flagReasonFilter === reason
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  : "bg-white/[0.04] text-white/50 border-white/[0.08] hover:bg-white/[0.08] hover:text-white/70"
+              )}
+            >
+              {reason === "all" ? "Todos" : reason}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Timer bar */}
       <div className="data-glass-card rounded-2xl p-5 mb-6">
