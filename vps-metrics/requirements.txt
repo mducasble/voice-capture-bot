@@ -34,3 +34,4 @@ wvmos @ git+https://github.com/AndreevP/wvmos.git
 
 # For model downloads
 requests>=2.31.0
+httpx>=0.27.0
