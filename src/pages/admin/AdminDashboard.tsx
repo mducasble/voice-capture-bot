@@ -440,6 +440,74 @@ function CountryBreakdown({ profiles }: { profiles: { country?: string | null }[
   );
 }
 
+function ActiveCampaigns() {
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["admin-active-campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, name, accumulated_value, target_hours, campaign_type, duration_unit")
+        .in("campaign_status", ["active", "paused"])
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const unitLabel = (c: { campaign_type?: string | null; duration_unit?: string | null }) => {
+    if (c.duration_unit === "hours" || c.campaign_type?.includes("audio") || c.campaign_type?.includes("capture")) return "h";
+    return "un";
+  };
+
+  if (campaigns.length === 0) return null;
+
+  return (
+    <Card className="border-border/40 bg-card">
+      <CardHeader className="pb-2 pt-5 px-5">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          Campanhas Ativas
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        <div className="space-y-3">
+          {campaigns.map((c) => {
+            const target = Number(c.target_hours) || 0;
+            const accumulated = Number(c.accumulated_value) || 0;
+            const pct = target > 0 ? Math.min(100, (accumulated / target) * 100) : 0;
+            const unit = unitLabel(c);
+
+            return (
+              <div key={c.id} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-foreground truncate max-w-[60%]" title={c.name}>
+                    {c.name}
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {accumulated.toFixed(1)}{unit}
+                    {target > 0 && <span className="text-muted-foreground font-normal"> / {target}{unit}</span>}
+                  </span>
+                </div>
+                {target > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground w-12 text-right">{pct.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
