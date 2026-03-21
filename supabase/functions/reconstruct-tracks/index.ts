@@ -41,16 +41,16 @@ serve(async (req) => {
       });
     }
 
-    // Check admin or data role
-    const { data: roleData } = await supabase
+    // Check admin role
+    const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .in('role', ['admin', 'data'])
-      .limit(1);
+      .eq('role', 'admin')
+      .maybeSingle();
 
-    if (!roleData?.length) {
-      return new Response(JSON.stringify({ error: 'Admin/data access required' }), {
+    if (roleError || !roleData) {
+      return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
