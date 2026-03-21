@@ -725,30 +725,19 @@ export default function DataAudioTask() {
       const isNewTrack = reconstructTarget.startsWith("new:");
       
       if (isNewTrack) {
-        // Create a new voice_recording for the missing participant
+        // Create a new voice_recording for the missing participant via edge function
         const participantName = reconstructTarget.replace("new:", "");
-        const newFilename = `reconstructed_${participantName}_${Date.now()}.wav`;
-        
-        const { error: insertError } = await supabase
-          .from("voice_recordings")
-          .insert({
+        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+          body: {
             session_id: rec.session_id,
-            campaign_id: rec.campaign_id,
-            user_id: rec.user_id, // Same session owner
-            file_url: speaker.url,
-            filename: newFilename,
-            recording_type: "individual",
-            discord_username: participantName,
-            quality_status: "pending",
-            validation_status: "pending",
-            status: "pending",
-            metadata: {
-              reconstructed_from: "mixed",
-              reconstruction_speaker_label: speaker.speaker,
-              last_reconstructed_at: new Date().toISOString(),
-            },
-          });
-        if (insertError) throw insertError;
+            mode: "create",
+            participant_name: participantName,
+            speaker_label: speaker.speaker,
+            preview_url: speaker.url,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
         toast.success(`Trilha criada para ${participantName}!`);
       } else {
         // Existing track — use reconstruct-tracks apply mode
