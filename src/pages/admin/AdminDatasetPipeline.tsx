@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
   Database, Loader2, CheckCircle2, Clock, Package, ArrowRight, RotateCcw,
-  ChevronRight, AlertTriangle, Flag,
+  ChevronRight, AlertTriangle, Flag, Brain,
 } from "lucide-react";
 
 const PIPELINE_STAGES = [
@@ -33,6 +33,7 @@ export default function AdminDatasetPipeline() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [advancing, setAdvancing] = useState(false);
   const [rescanning, setRescanning] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<{ current: number; total: number; results: any[] } | null>(null);
 
   // Pipeline stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -113,27 +114,81 @@ export default function AdminDatasetPipeline() {
     setAdvancing(true);
     try {
       const ids = Array.from(selectedIds);
+      const items = tabItems?.filter((i: any) => selectedIds.has(i.id)) ?? [];
       const now = new Date().toISOString();
-      const updateData: Record<string, any> = { pipeline_status: currentStage.next };
 
-      // Set appropriate timestamp
-      if (currentStage.next === "content_validated") updateData.content_validated_at = now;
+      // If advancing to content_validated, trigger Gemini analysis first
+      if (currentStage.next === "content_validated") {
+        setAnalysisProgress({ current: 0, total: items.length, results: [] });
+        const results: any[] = [];
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          setAnalysisProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+
+          try {
+            const { data, error } = await supabase.functions.invoke("analyze-content", {
+              body: { recording_id: item.submission_id },
+            });
+
+            if (error) {
+              results.push({ id: item.id, submission_id: item.submission_id, success: false, error: error.message });
+            } else if (data?.error) {
+              results.push({ id: item.id, submission_id: item.submission_id, success: false, error: data.error });
+            } else {
+              const analysis = data?.analysis;
+              // Update dataset_item with content_score
+              await supabase.from("dataset_items").update({
+                pipeline_status: "content_validated",
+                content_validated_at: now,
+                content_score: analysis ? {
+                  topic_adherence_percent: analysis.topic_adherence_percent,
+                  speakers: analysis.speakers,
+                  content_summary: analysis.content_summary,
+                  off_topic_summary: analysis.off_topic_summary,
+                } : null,
+              }).eq("id", item.id);
+
+              results.push({
+                id: item.id,
+                submission_id: item.submission_id,
+                success: true,
+                topic_adherence: analysis?.topic_adherence_percent,
+                speakers: analysis?.speakers,
+                summary: analysis?.content_summary,
+              });
+            }
+          } catch (err) {
+            results.push({ id: item.id, submission_id: item.submission_id, success: false, error: (err as Error).message });
+          }
+
+          // Small delay to avoid rate limiting
+          if (i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
+        }
+
+        setAnalysisProgress(prev => prev ? { ...prev, results } : null);
+        const successCount = results.filter(r => r.success).length;
+        toast.success(`Análise concluída: ${successCount}/${items.length} validados pelo Gemini`);
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
+        setAdvancing(false);
+        return;
+      }
+
+      // For other stages, just update status
+      const updateData: Record<string, any> = { pipeline_status: currentStage.next };
       if (currentStage.next === "transcription_queued") updateData.transcription_queued_at = now;
       if (currentStage.next === "transcribed") updateData.transcription_completed_at = now;
 
-      // Batch update in chunks of 50
       for (let i = 0; i < ids.length; i += 50) {
         const batch = ids.slice(i, i + 50);
-        const { error } = await supabase
-          .from("dataset_items")
-          .update(updateData)
-          .in("id", batch);
+        const { error } = await supabase.from("dataset_items").update(updateData).in("id", batch);
         if (error) throw error;
       }
 
       // If advancing to transcription_queued, also enqueue in analysis_queue
       if (currentStage.next === "transcription_queued") {
-        const items = tabItems?.filter((i: any) => selectedIds.has(i.id)) ?? [];
         const { data: { user } } = await supabase.auth.getUser();
         const toQueue = items.map((item: any) => ({
           recording_id: item.submission_id,
@@ -355,6 +410,65 @@ export default function AdminDatasetPipeline() {
         </CardContent>
       </Card>
 
+      {/* Analysis Progress & Results */}
+      {analysisProgress && (
+        <Card className="border-primary/30">
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary animate-pulse" />
+              <span className="text-sm font-medium">Análise de Conteúdo (Gemini)</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {analysisProgress.current}/{analysisProgress.total}
+              </span>
+            </div>
+            <Progress value={(analysisProgress.current / analysisProgress.total) * 100} className="h-2" />
+
+            {/* Show results when done */}
+            {analysisProgress.results.length > 0 && (
+              <div className="space-y-2 mt-3 max-h-[300px] overflow-y-auto">
+                {analysisProgress.results.map((r, idx) => (
+                  <div key={idx} className={`text-xs rounded-lg p-3 border ${r.success ? "border-border/50 bg-card" : "border-destructive/30 bg-destructive/5"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {r.success ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                      )}
+                      <span className="font-mono text-muted-foreground">{r.submission_id?.slice(0, 8)}</span>
+                      {r.success && r.topic_adherence != null && (
+                        <Badge variant="outline" className={`text-[10px] ml-auto ${
+                          r.topic_adherence >= 70 ? "text-emerald-400 border-emerald-400/30" :
+                          r.topic_adherence >= 40 ? "text-yellow-400 border-yellow-400/30" :
+                          "text-destructive border-destructive/30"
+                        }`}>
+                          {r.topic_adherence}% no tema
+                        </Badge>
+                      )}
+                    </div>
+                    {r.success && r.summary && (
+                      <p className="text-muted-foreground mt-1">{r.summary}</p>
+                    )}
+                    {r.success && r.speakers?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {r.speakers.map((s: any, si: number) => (
+                          <span key={si} className="bg-muted/50 px-1.5 py-0.5 rounded text-[10px]">
+                            {s.name}: {s.speaking_time_percent}% fala
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {!r.success && <p className="text-destructive mt-1">{r.error}</p>}
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setAnalysisProgress(null)} className="w-full text-xs">
+                  Fechar resultados
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Items list with batch controls */}
       <Card>
         <CardHeader className="pb-3">
@@ -375,8 +489,8 @@ export default function AdminDatasetPipeline() {
               )}
               {currentStage?.next && selectedIds.size > 0 && (
                 <Button onClick={advanceSelected} disabled={advancing} size="sm" className="gap-1">
-                  {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  {currentStage.nextLabel}
+                  {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : activeTab === "quality_approved" ? <Brain className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {activeTab === "quality_approved" ? "Analisar com Gemini" : currentStage.nextLabel}
                 </Button>
               )}
               {selectedIds.size > 0 && activeTab !== "standby" && activeTab !== "dataset_ready" && (
@@ -431,6 +545,15 @@ export default function AdminDatasetPipeline() {
                       "bg-yellow-500/20 text-yellow-400"
                     }`}>
                       {item.quality_tier}
+                    </span>
+                  )}
+                  {item.content_score && (item.content_score as any).topic_adherence_percent != null && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                      (item.content_score as any).topic_adherence_percent >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                      (item.content_score as any).topic_adherence_percent >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-destructive/20 text-destructive"
+                    }`}>
+                      {(item.content_score as any).topic_adherence_percent}% tema
                     </span>
                   )}
                   {item.has_flagged_tracks && (
