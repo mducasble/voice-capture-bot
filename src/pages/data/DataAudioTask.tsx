@@ -889,9 +889,10 @@ export default function DataAudioTask() {
                 onClick={handleReconstruct}
                 disabled={reconstructing}
                 className="text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                title={hasDiarization ? "Reconstruir trilhas a partir da diarização existente" : "Transcrever mixed + reconstruir trilhas"}
               >
                 {reconstructing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                Reconstruir Trilhas
+                {hasDiarization ? "Reconstruir Trilhas" : "Transcrever & Reconstruir"}
               </Button>
             )}
           </div>
