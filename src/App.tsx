@@ -162,6 +162,7 @@ const App = () => (
                 <Route path="inbox" element={<AdminInbox />} />
                 <Route path="report/videos-editados" element={<VideoSubmissionsReport />} />
                 <Route path="dataset" element={<AdminDatasetPipeline />} />
+                <Route path="datasets" element={<AdminDatasets />} />
               </Route>
 
               {/* Audit login (standalone) */}
