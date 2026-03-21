@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
   Database, Loader2, CheckCircle2, Clock, Package, ArrowRight, RotateCcw,
-  ChevronRight, AlertTriangle, Flag,
+  ChevronRight, AlertTriangle, Flag, Brain,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const PIPELINE_STAGES = [
   { key: "quality_approved", label: "Qualidade Aprovada", next: "content_validated", nextLabel: "Validar Conteúdo", color: "bg-blue-500/20 text-blue-400", dotColor: "bg-blue-400" },
