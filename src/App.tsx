@@ -35,6 +35,7 @@ const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminInbox = lazy(() => import("./pages/admin/AdminInbox"));
 const VideoSubmissionsReport = lazy(() => import("./pages/admin/VideoSubmissionsReport"));
 const AdminDatasetPipeline = lazy(() => import("./pages/admin/AdminDatasetPipeline"));
+const AdminDatasets = lazy(() => import("./pages/admin/AdminDatasets"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -161,6 +162,7 @@ const App = () => (
                 <Route path="inbox" element={<AdminInbox />} />
                 <Route path="report/videos-editados" element={<VideoSubmissionsReport />} />
                 <Route path="dataset" element={<AdminDatasetPipeline />} />
+                <Route path="datasets" element={<AdminDatasets />} />
               </Route>
 
               {/* Audit login (standalone) */}

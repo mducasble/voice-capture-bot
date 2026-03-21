@@ -1321,6 +1321,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dataset_campaigns: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          dataset_id: string
+          id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          dataset_id: string
+          id?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          dataset_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_campaigns_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dataset_campaigns_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dataset_items: {
         Row: {
           campaign_id: string
@@ -1328,6 +1364,7 @@ export type Database = {
           content_validated_at: string | null
           created_at: string
           dataset_batch: string | null
+          dataset_id: string | null
           dataset_version: string | null
           flagged_track_ids: string[] | null
           has_flagged_tracks: boolean | null
@@ -1351,6 +1388,7 @@ export type Database = {
           content_validated_at?: string | null
           created_at?: string
           dataset_batch?: string | null
+          dataset_id?: string | null
           dataset_version?: string | null
           flagged_track_ids?: string[] | null
           has_flagged_tracks?: boolean | null
@@ -1374,6 +1412,7 @@ export type Database = {
           content_validated_at?: string | null
           created_at?: string
           dataset_batch?: string | null
+          dataset_id?: string | null
           dataset_version?: string | null
           flagged_track_ids?: string[] | null
           has_flagged_tracks?: boolean | null
@@ -1399,7 +1438,218 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dataset_items_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      dataset_pipeline_stages: {
+        Row: {
+          automation_config: Json | null
+          created_at: string
+          dataset_id: string
+          description: string | null
+          id: string
+          label: string
+          sort_order: number
+          stage_key: string
+          stage_type: string
+          validation_rules: Json | null
+        }
+        Insert: {
+          automation_config?: Json | null
+          created_at?: string
+          dataset_id: string
+          description?: string | null
+          id?: string
+          label: string
+          sort_order?: number
+          stage_key: string
+          stage_type?: string
+          validation_rules?: Json | null
+        }
+        Update: {
+          automation_config?: Json | null
+          created_at?: string
+          dataset_id?: string
+          description?: string | null
+          id?: string
+          label?: string
+          sort_order?: number
+          stage_key?: string
+          stage_type?: string
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_pipeline_stages_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dataset_quality_params: {
+        Row: {
+          content_type: string
+          created_at: string
+          dataset_id: string
+          id: string
+          rules: Json
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          dataset_id: string
+          id?: string
+          rules?: Json
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          dataset_id?: string
+          id?: string
+          rules?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_quality_params_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dataset_versions: {
+        Row: {
+          changelog: string | null
+          created_at: string
+          dataset_id: string
+          id: string
+          is_current: boolean | null
+          item_count: number | null
+          published_at: string
+          published_by: string | null
+          stats: Json | null
+          total_duration_seconds: number | null
+          version_label: string
+        }
+        Insert: {
+          changelog?: string | null
+          created_at?: string
+          dataset_id: string
+          id?: string
+          is_current?: boolean | null
+          item_count?: number | null
+          published_at?: string
+          published_by?: string | null
+          stats?: Json | null
+          total_duration_seconds?: number | null
+          version_label: string
+        }
+        Update: {
+          changelog?: string | null
+          created_at?: string
+          dataset_id?: string
+          id?: string
+          is_current?: boolean | null
+          item_count?: number | null
+          published_at?: string
+          published_by?: string | null
+          stats?: Json | null
+          total_duration_seconds?: number | null
+          version_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_versions_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datasets: {
+        Row: {
+          annotation_process: string | null
+          collection_process: string | null
+          content_types: string[]
+          created_at: string
+          created_by: string | null
+          data_origin: string | null
+          exclusion_criteria: string | null
+          id: string
+          known_limitations: string | null
+          license_restrictions: string | null
+          name: string
+          not_recommended_uses: string | null
+          objective: string | null
+          population_coverage: string | null
+          primary_task: string | null
+          quality_metrics: string | null
+          recommended_uses: string | null
+          risks: string | null
+          slug: string | null
+          status: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          annotation_process?: string | null
+          collection_process?: string | null
+          content_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string | null
+          exclusion_criteria?: string | null
+          id?: string
+          known_limitations?: string | null
+          license_restrictions?: string | null
+          name: string
+          not_recommended_uses?: string | null
+          objective?: string | null
+          population_coverage?: string | null
+          primary_task?: string | null
+          quality_metrics?: string | null
+          recommended_uses?: string | null
+          risks?: string | null
+          slug?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          annotation_process?: string | null
+          collection_process?: string | null
+          content_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string | null
+          exclusion_criteria?: string | null
+          id?: string
+          known_limitations?: string | null
+          license_restrictions?: string | null
+          name?: string
+          not_recommended_uses?: string | null
+          objective?: string | null
+          population_coverage?: string | null
+          primary_task?: string | null
+          quality_metrics?: string | null
+          recommended_uses?: string | null
+          risks?: string | null
+          slug?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       earnings_ledger: {
         Row: {
