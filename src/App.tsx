@@ -35,6 +35,7 @@ const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminInbox = lazy(() => import("./pages/admin/AdminInbox"));
 const VideoSubmissionsReport = lazy(() => import("./pages/admin/VideoSubmissionsReport"));
 const AdminDatasetPipeline = lazy(() => import("./pages/admin/AdminDatasetPipeline"));
+const AdminDatasets = lazy(() => import("./pages/admin/AdminDatasets"));
 
 // Portal pages
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
