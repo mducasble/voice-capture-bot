@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag, Wand2,
+  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag, Wand2, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -63,6 +63,8 @@ export function TrackCard({
   selectedVersion, onSelectVersion, handleReconstruct, reconstructing,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
+  const meta = sib.metadata || {};
+  const isReconstructed = !!meta.reconstructed_from || !!meta.last_reconstructed_at;
 
   const activeUrl = playingEnhanced && enhancedUrl ? enhancedUrl : originalUrl;
   const showingEnhancedMetrics = playingEnhanced && enhancedMetrics.length > 0;
@@ -98,6 +100,11 @@ export function TrackCard({
             {hasEnhanced && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-violet-500/20 text-violet-400 border-violet-500/30 flex items-center gap-1">
                 <Zap className="h-3 w-3" /> Enhanced
+              </span>
+            )}
+            {isReconstructed && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-cyan-500/20 text-cyan-400 border-cyan-500/30 flex items-center gap-1">
+                <RotateCcw className="h-3 w-3" /> Reconstruída
               </span>
             )}
             {trackFlagReason && (
