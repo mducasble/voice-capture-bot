@@ -1031,6 +1031,42 @@ export default function DataAudioTask() {
               />
             );
           })}
+
+          {/* Missing participant tracks — show placeholder with reconstruct button */}
+          {canReconstruct && missingParticipants.map((p) => (
+            <div
+              key={`missing-${p.name}`}
+              className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <UserX className="h-5 w-5 text-white/30" />
+                  <div>
+                    <p className="text-sm font-medium text-white/60">
+                      {p.name} {p.is_creator ? "(Host)" : "(Participante)"}
+                    </p>
+                    <p className="text-xs text-white/30">Trilha individual não encontrada</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    // For missing participants, trigger reconstruction using mixedSib
+                    // We'll use a special ID format to indicate this is a new track creation
+                    handleReconstructTrack(`new:${p.name}`);
+                  }}
+                  disabled={reconstructing}
+                  className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 border border-violet-500/20"
+                >
+                  {reconstructing && reconstructTarget === `new:${p.name}` ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Reconstruindo...</>
+                  ) : (
+                    <><Wand2 className="h-3.5 w-3.5" /> Reconstruir Trilha</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
