@@ -163,7 +163,7 @@ export default function PortalRooms() {
                       {room.campaign_name && <span className="truncate">{room.campaign_name}</span>}
                     </div>
                     <p className="font-mono text-[11px] mt-1" style={{ color: "var(--portal-text-muted)", opacity: 0.6 }}>
-                      Host: {room.creator_name}
+                      {t("rooms.host")}: {room.creator_name}
                     </p>
                   </div>
 
