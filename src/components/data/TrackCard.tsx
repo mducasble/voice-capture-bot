@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag,
+  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag, Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -51,6 +51,8 @@ interface TrackCardProps {
   trackFlagReason?: string | null;
   selectedVersion: "original" | "enhanced";
   onSelectVersion: (id: string, version: "original" | "enhanced") => void;
+  handleReconstruct?: (id: string) => void;
+  reconstructing?: boolean;
 }
 
 export function TrackCard({
@@ -58,7 +60,7 @@ export function TrackCard({
   sibTier, enhancedTier, sibMetrics, enhancedMetrics,
   analyzeQueued, enhanceQueued, enhanceProgress,
   logAction, handleReanalyze, handleEnhance, handleTrackFlag, trackFlagReason,
-  selectedVersion, onSelectVersion,
+  selectedVersion, onSelectVersion, handleReconstruct, reconstructing,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
 
@@ -252,6 +254,20 @@ export function TrackCard({
             disabled={!!trackFlagReason}
           >
             <Flag className="h-3.5 w-3.5" /> {trackFlagReason ? "Flagueado" : "Flag Track"}
+          </Button>
+        )}
+        {handleReconstruct && (
+          <Button
+            size="sm"
+            onClick={() => handleReconstruct(sib.id)}
+            disabled={reconstructing}
+            className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 border border-violet-500/20"
+          >
+            {reconstructing ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Reconstruindo...</>
+            ) : (
+              <><Wand2 className="h-3.5 w-3.5" /> Reconstruir</>
+            )}
           </Button>
         )}
       </div>

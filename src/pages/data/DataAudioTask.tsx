@@ -13,6 +13,7 @@ import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
 import { FlagReasonModal } from "@/components/data/FlagReasonModal";
 import { TrackFlagReasonModal } from "@/components/data/TrackFlagReasonModal";
 import { TrackCard } from "@/components/data/TrackCard";
+import { SpeakerSelectDialog } from "@/components/data/SpeakerSelectDialog";
 import { cn } from "@/lib/utils";
 
 interface Recording {
@@ -195,6 +196,10 @@ export default function DataAudioTask() {
   const [uploaderName, setUploaderName] = useState<string | null>(null);
   const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
   const [reconstructing, setReconstructing] = useState(false);
+  const [reconstructTarget, setReconstructTarget] = useState<string | null>(null);
+  const [speakerPreviews, setSpeakerPreviews] = useState<Array<{ speaker: string; url: string }>>([]);
+  const [showSpeakerDialog, setShowSpeakerDialog] = useState(false);
+  const [applyingSpeaker, setApplyingSpeaker] = useState(false);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -586,9 +591,10 @@ export default function DataAudioTask() {
   const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
   const canReconstruct = !!mixedSib && individualSibs.length > 0;
 
-  const handleReconstruct = async () => {
+  const handleReconstructTrack = async (targetId: string) => {
     if (!rec?.session_id || !canReconstruct || !mixedSib) return;
     setReconstructing(true);
+    setReconstructTarget(targetId);
 
     try {
       // Step 1: If no diarization yet, run ElevenLabs transcription on the mixed first
@@ -603,38 +609,65 @@ export default function DataAudioTask() {
           if (transError) throw transError;
           if (transData?.error) throw new Error(transData.error);
           toast.success("Transcrição ElevenLabs concluída", { id: transToastId });
-          // Refetch siblings to get updated metadata with elevenlabs_words
           await refetchSiblings();
         } catch (err: any) {
           toast.error("Falha na transcrição ElevenLabs", { id: transToastId, description: err.message });
           setReconstructing(false);
+          setReconstructTarget(null);
           return;
         }
       }
 
-      // Step 2: Reconstruct tracks via VPS
+      // Step 2: Get speaker previews from VPS
       const reconToastId = toast.loading(
-        hasDiarization ? "Reconstruindo trilhas individuais a partir do mixed..." : "Etapa 2/2: Reconstruindo trilhas...",
+        hasDiarization ? "Separando speakers do mixed..." : "Etapa 2/2: Separando speakers...",
         { description: "Isso pode levar alguns minutos." }
       );
       try {
         const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
-          body: { session_id: rec.session_id },
+          body: { session_id: rec.session_id, mode: "preview" },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        toast.success(`Trilhas reconstruídas: ${data.updated}/${data.total_speakers} speakers`, {
-          id: reconToastId,
-          description: data.unmapped_speakers?.length
-            ? `Speakers não mapeados: ${data.unmapped_speakers.join(", ")}`
-            : "Todos os speakers foram mapeados.",
-        });
-        await refetchSiblings();
+        toast.success(`${data.speakers?.length || 0} speakers encontrados`, { id: reconToastId });
+        setSpeakerPreviews(data.speakers || []);
+        setShowSpeakerDialog(true);
       } catch (err: any) {
         toast.error("Erro na reconstrução", { id: reconToastId, description: err.message });
+        setReconstructing(false);
+        setReconstructTarget(null);
       }
-    } finally {
+    } catch {
       setReconstructing(false);
+      setReconstructTarget(null);
+    }
+  };
+
+  const handleSpeakerSelected = async (speaker: { speaker: string; url: string }) => {
+    if (!rec?.session_id || !reconstructTarget) return;
+    setApplyingSpeaker(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+        body: {
+          session_id: rec.session_id,
+          mode: "apply",
+          target_recording_id: reconstructTarget,
+          speaker_label: speaker.speaker,
+          preview_url: speaker.url,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Trilha substituída com sucesso!");
+      await refetchSiblings();
+    } catch (err: any) {
+      toast.error("Erro ao aplicar speaker", { description: err.message });
+    } finally {
+      setApplyingSpeaker(false);
+      setShowSpeakerDialog(false);
+      setReconstructing(false);
+      setReconstructTarget(null);
+      setSpeakerPreviews([]);
     }
   };
 
@@ -882,19 +915,6 @@ export default function DataAudioTask() {
             <h2 className="text-[18px] font-bold text-white/80">
               {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
             </h2>
-            {canReconstruct && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleReconstruct}
-                disabled={reconstructing}
-                className="text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
-                title={hasDiarization ? "Reconstruir trilhas a partir da diarização existente" : "Transcrever mixed + reconstruir trilhas"}
-              >
-                {reconstructing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                {hasDiarization ? "Reconstruir Trilhas" : "Transcrever & Reconstruir"}
-              </Button>
-            )}
           </div>
           {siblings.map((sib) => {
             const isMain = sib.id === rec.id;
@@ -931,6 +951,8 @@ export default function DataAudioTask() {
                 trackFlagReason={(sib.metadata as any)?.track_flag_reason || null}
                 selectedVersion={selectedVersions[sib.id] || "original"}
                 onSelectVersion={(id, v) => setSelectedVersions(prev => ({ ...prev, [id]: v }))}
+                handleReconstruct={canReconstruct && sib.recording_type === "individual" ? handleReconstructTrack : undefined}
+                reconstructing={reconstructing && reconstructTarget === sib.id}
               />
             );
           })}
@@ -980,6 +1002,23 @@ export default function DataAudioTask() {
         onClose={() => setTrackFlagTarget(null)}
         onConfirm={handleTrackFlag}
         trackLabel={siblings.find((s: any) => s.id === trackFlagTarget)?.discord_username || siblings.find((s: any) => s.id === trackFlagTarget)?.recording_type || ""}
+      />
+
+      <SpeakerSelectDialog
+        open={showSpeakerDialog}
+        speakers={speakerPreviews}
+        targetTrackName={
+          siblings.find((s: any) => s.id === reconstructTarget)?.discord_username ||
+          siblings.find((s: any) => s.id === reconstructTarget)?.recording_type || ""
+        }
+        onSelect={handleSpeakerSelected}
+        onCancel={() => {
+          setShowSpeakerDialog(false);
+          setReconstructing(false);
+          setReconstructTarget(null);
+          setSpeakerPreviews([]);
+        }}
+        applying={applyingSpeaker}
       />
     </div>
   );
