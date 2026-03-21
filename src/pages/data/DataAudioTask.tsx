@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
   SkipForward, Mic2, User, Globe, Headphones,
-  Archive, Flag,
+  Archive, Flag, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
