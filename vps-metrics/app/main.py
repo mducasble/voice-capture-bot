@@ -336,7 +336,91 @@ async def enhance_audio_endpoint(
                 pass
 
 
-@app.get("/queue/status")
+@app.post("/reconstruct-tracks")
+async def reconstruct_tracks_endpoint(
+    file: UploadFile = File(...),
+    diarization: str = Form(...),
+    authorization: Optional[str] = Header(None),
+    crossfade_ms: Optional[str] = Form("10"),
+    padding_ms: Optional[str] = Form("50"),
+    session_prefix: Optional[str] = Form("track"),
+):
+    """
+    Reconstruct individual speaker tracks from a mixed audio file.
+    
+    Accepts:
+      - file: mixed WAV/MP3 audio
+      - diarization: JSON string with ElevenLabs word-level data
+        (array of {text, start, end, speaker})
+      - crossfade_ms: fade at segment edges (default 10)
+      - padding_ms: padding around segments (default 50)
+      - session_prefix: filename prefix in ZIP (default "track")
+    
+    Returns: ZIP file containing one WAV per speaker.
+    """
+    _verify_auth(authorization)
+
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    try:
+        words = json.loads(diarization)
+        if not isinstance(words, list):
+            raise ValueError("diarization must be a JSON array")
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid diarization JSON: {e}")
+
+    if not words:
+        raise HTTPException(status_code=400, detail="Empty diarization data")
+
+    suffix = ".wav"
+    if file.filename and file.filename.lower().endswith(".mp3"):
+        suffix = ".mp3"
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        audio, sr = librosa.load(tmp_path, sr=None, mono=True)
+        duration = len(audio) / sr
+
+        # Get unique speakers
+        speakers = set(w.get("speaker", "unknown") for w in words)
+        print(f"[Reconstruct] {len(words)} words, {len(speakers)} speakers, {duration:.1f}s audio")
+
+        tracks = reconstruct_tracks(
+            audio, sr, words,
+            crossfade_ms=float(crossfade_ms),
+            padding_ms=float(padding_ms),
+        )
+
+        zip_buffer = tracks_to_zip(tracks, sr, session_prefix=session_prefix)
+
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{session_prefix}_tracks.zip"',
+                "X-Speaker-Count": str(len(tracks)),
+                "X-Duration-Seconds": f"{duration:.1f}",
+                "X-Sample-Rate": str(sr),
+            },
+        )
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+
 async def queue_status(authorization: Optional[str] = Header(None)):
     """Get Celery queue status."""
     _verify_auth(authorization)
