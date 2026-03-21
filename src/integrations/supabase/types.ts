@@ -3419,6 +3419,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _process_referral_cascade: {
+        Args: {
+          p_amount: number
+          p_campaign_id: string
+          p_currency: string
+          p_earning_id: string
+          p_submission_id: string
+          p_submission_type: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
