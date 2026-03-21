@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
-  Database, ArrowRight, Loader2, RefreshCw, CheckCircle2, Clock, Mic2, FileText, Package,
+  Database, Loader2, CheckCircle2, Clock, Package, ArrowRight, RotateCcw,
+  ChevronRight, AlertTriangle, Flag,
 } from "lucide-react";
 
 const PIPELINE_STAGES = [
-  { key: "quality_approved", label: "Qualidade Aprovada", color: "bg-blue-500/20 text-blue-400" },
-  { key: "content_validated", label: "Conteúdo Validado", color: "bg-indigo-500/20 text-indigo-400" },
-  { key: "transcription_queued", label: "Transcrição na Fila", color: "bg-yellow-500/20 text-yellow-400" },
-  { key: "transcribed", label: "Transcrito", color: "bg-emerald-500/20 text-emerald-400" },
-  { key: "dataset_ready", label: "Dataset Ready", color: "bg-green-500/20 text-green-300" },
-  { key: "standby", label: "Standby", color: "bg-muted text-muted-foreground" },
+  { key: "quality_approved", label: "Qualidade Aprovada", next: "content_validated", nextLabel: "Validar Conteúdo", color: "bg-blue-500/20 text-blue-400", dotColor: "bg-blue-400" },
+  { key: "content_validated", label: "Conteúdo Validado", next: "transcription_queued", nextLabel: "Enfileirar Transcrição", color: "bg-indigo-500/20 text-indigo-400", dotColor: "bg-indigo-400" },
+  { key: "transcription_queued", label: "Na Fila", next: "transcribed", nextLabel: "Marcar Transcrito", color: "bg-yellow-500/20 text-yellow-400", dotColor: "bg-yellow-400" },
+  { key: "transcribed", label: "Transcrito", next: "dataset_ready", nextLabel: "Dataset Ready ✓", color: "bg-emerald-500/20 text-emerald-400", dotColor: "bg-emerald-400" },
+  { key: "dataset_ready", label: "Dataset Ready", next: null, nextLabel: null, color: "bg-green-500/20 text-green-300", dotColor: "bg-green-400" },
+  { key: "standby", label: "Standby", next: null, nextLabel: null, color: "bg-muted text-muted-foreground", dotColor: "bg-muted-foreground" },
 ] as const;
 
 type PipelineStats = Record<string, number>;
@@ -26,7 +29,10 @@ export default function AdminDatasetPipeline() {
   const queryClient = useQueryClient();
   const [campaignId, setCampaignId] = useState("");
   const [ingesting, setIngesting] = useState(false);
-  const [queueingTranscription, setQueueingTranscription] = useState(false);
+  const [activeTab, setActiveTab] = useState("quality_approved");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [advancing, setAdvancing] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
 
   // Pipeline stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -46,7 +52,6 @@ export default function AdminDatasetPipeline() {
   });
 
   const total = stats ? Object.values(stats).reduce((a, b) => a + b, 0) : 0;
-  const readyCount = stats?.dataset_ready ?? 0;
 
   // Campaigns
   const { data: campaigns } = useQuery({
@@ -57,293 +62,399 @@ export default function AdminDatasetPipeline() {
     },
   });
 
-  // Recent items
-  const { data: recentItems } = useQuery({
-    queryKey: ["dataset-pipeline-recent"],
+  // Items for active tab
+  const { data: tabItems, isLoading: itemsLoading } = useQuery({
+    queryKey: ["dataset-pipeline-items", activeTab],
     queryFn: async () => {
       const { data } = await supabase
         .from("dataset_items")
-        .select("id, submission_id, submission_type, pipeline_status, quality_tier, campaign_id, has_flagged_tracks, created_at, updated_at")
-        .order("updated_at", { ascending: false })
-        .limit(30);
+        .select("id, submission_id, submission_type, pipeline_status, quality_tier, campaign_id, has_flagged_tracks, flagged_track_ids, notes, tags, created_at, updated_at, transcription_provider, content_score")
+        .eq("pipeline_status", activeTab)
+        .order("created_at", { ascending: false })
+        .limit(200);
       return data ?? [];
     },
     refetchInterval: 15_000,
   });
 
-  // Ingest: find approved recordings not yet in dataset_items
+  // Campaign name map
+  const campaignNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    campaigns?.forEach((c: any) => { map[c.id] = c.name; });
+    return map;
+  }, [campaigns]);
+
+  const currentStage = PIPELINE_STAGES.find(s => s.key === activeTab);
+
+  // Select all / none
+  const allSelected = tabItems?.length ? tabItems.every((i: any) => selectedIds.has(i.id)) : false;
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tabItems?.map((i: any) => i.id) ?? []));
+    }
+  };
+  const toggleItem = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  // Reset selection on tab change
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedIds(new Set());
+  };
+
+  // Advance selected items to next stage
+  const advanceSelected = async () => {
+    if (!currentStage?.next || selectedIds.size === 0) return;
+    setAdvancing(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const now = new Date().toISOString();
+      const updateData: Record<string, any> = { pipeline_status: currentStage.next };
+
+      // Set appropriate timestamp
+      if (currentStage.next === "content_validated") updateData.content_validated_at = now;
+      if (currentStage.next === "transcription_queued") updateData.transcription_queued_at = now;
+      if (currentStage.next === "transcribed") updateData.transcription_completed_at = now;
+
+      // Batch update in chunks of 50
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50);
+        const { error } = await supabase
+          .from("dataset_items")
+          .update(updateData)
+          .in("id", batch);
+        if (error) throw error;
+      }
+
+      // If advancing to transcription_queued, also enqueue in analysis_queue
+      if (currentStage.next === "transcription_queued") {
+        const items = tabItems?.filter((i: any) => selectedIds.has(i.id)) ?? [];
+        const { data: { user } } = await supabase.auth.getUser();
+        const toQueue = items.map((item: any) => ({
+          recording_id: item.submission_id,
+          status: "pending",
+          job_type: "transcribe_elevenlabs",
+          created_by: user?.id,
+        }));
+        for (let i = 0; i < toQueue.length; i += 50) {
+          await supabase.from("analysis_queue").insert(toQueue.slice(i, i + 50));
+        }
+      }
+
+      toast.success(`${ids.length} items avançados para "${PIPELINE_STAGES.find(s => s.key === currentStage.next)?.label}"`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
+    } catch (err) {
+      toast.error("Erro: " + (err as Error).message);
+    }
+    setAdvancing(false);
+  };
+
+  // Move selected to standby
+  const moveToStandby = async () => {
+    if (selectedIds.size === 0) return;
+    setAdvancing(true);
+    try {
+      const ids = Array.from(selectedIds);
+      for (let i = 0; i < ids.length; i += 50) {
+        await supabase.from("dataset_items").update({ pipeline_status: "standby" }).in("id", ids.slice(i, i + 50));
+      }
+      toast.success(`${ids.length} items movidos para Standby`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
+    } catch (err) {
+      toast.error("Erro: " + (err as Error).message);
+    }
+    setAdvancing(false);
+  };
+
+  // Re-scan: check metadata and update pipeline_status accordingly
+  const rescanItems = async () => {
+    setRescanning(true);
+    try {
+      // Get all items that aren't dataset_ready or standby
+      const { data: items, error } = await supabase
+        .from("dataset_items")
+        .select("id, submission_id, pipeline_status")
+        .in("pipeline_status", ["quality_approved", "content_validated", "transcription_queued"]);
+
+      if (error) throw error;
+      if (!items?.length) { toast.info("Nenhum item para re-escanear"); setRescanning(false); return; }
+
+      // Fetch voice_recordings metadata for these
+      const subIds = items.map((i: any) => i.submission_id);
+      const { data: recordings } = await supabase
+        .from("voice_recordings" as any)
+        .select("id, metadata")
+        .in("id", subIds);
+
+      const metaMap: Record<string, any> = {};
+      recordings?.forEach((r: any) => { metaMap[r.id] = r.metadata || {}; });
+
+      let updated = 0;
+      for (const item of items) {
+        const meta = metaMap[item.submission_id] || {};
+        let newStatus = item.pipeline_status;
+
+        const hasContent = !!(meta.content_analysis || meta.gemini_transcript);
+        const hasElevenlabs = !!(meta.elevenlabs_words && (meta.elevenlabs_words as any[]).length > 0);
+
+        if (hasElevenlabs) newStatus = "transcribed";
+        else if (hasContent && item.pipeline_status === "quality_approved") newStatus = "content_validated";
+
+        if (newStatus !== item.pipeline_status) {
+          const now = new Date().toISOString();
+          const upd: Record<string, any> = { pipeline_status: newStatus };
+          if (newStatus === "content_validated") upd.content_validated_at = now;
+          if (newStatus === "transcribed") { upd.transcription_completed_at = now; upd.transcription_provider = "elevenlabs"; }
+
+          await supabase.from("dataset_items").update(upd).eq("id", item.id);
+          updated++;
+        }
+      }
+
+      toast.success(`Re-scan concluído: ${updated} items atualizados`);
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
+    } catch (err) {
+      toast.error("Erro: " + (err as Error).message);
+    }
+    setRescanning(false);
+  };
+
+  // Ingest
   const ingestFromCampaign = async () => {
     if (!campaignId) { toast.error("Selecione uma campanha"); return; }
     setIngesting(true);
     try {
-      // Get approved recordings
       const { data: recordings, error } = await supabase
         .from("voice_recordings" as any)
-        .select("id, user_id, campaign_id, quality_status, validation_status, metadata, duration_seconds")
+        .select("id, user_id, campaign_id, metadata")
         .eq("campaign_id", campaignId)
         .eq("quality_status", "approved")
         .eq("recording_type", "individual");
 
       if (error) throw error;
-      if (!recordings?.length) {
-        toast.info("Nenhuma gravação aprovada encontrada");
-        setIngesting(false);
-        return;
-      }
+      if (!recordings?.length) { toast.info("Nenhuma gravação aprovada"); setIngesting(false); return; }
 
-      // Filter out already ingested
       const recIds = recordings.map((r: any) => r.id);
       const { data: existing } = await supabase
-        .from("dataset_items")
-        .select("submission_id")
-        .in("submission_id", recIds)
-        .eq("submission_type", "audio");
-
+        .from("dataset_items").select("submission_id").in("submission_id", recIds).eq("submission_type", "audio");
       const existingIds = new Set((existing ?? []).map((e: any) => e.submission_id));
       const toIngest = recordings.filter((r: any) => !existingIds.has(r.id));
 
-      if (!toIngest.length) {
-        toast.info("Todas as gravações aprovadas já estão no pipeline");
-        setIngesting(false);
-        return;
-      }
+      if (!toIngest.length) { toast.info("Tudo já está no pipeline"); setIngesting(false); return; }
 
-      // Determine quality tier and check for track flags
       const items = toIngest.map((r: any) => {
         const meta = r.metadata || {};
-        const qualityTier = meta.quality_tier || null;
-        const hasFlag = !!meta.track_flag_reason;
-        
-        // Determine initial pipeline_status based on available data
-        let pipelineStatus = "quality_approved";
-        if (meta.content_analysis || meta.gemini_transcript) {
-          pipelineStatus = "content_validated";
-        }
-        if (meta.elevenlabs_words && (meta.elevenlabs_words as any[]).length > 0) {
-          pipelineStatus = "transcribed";
-        }
+        const hasContent = !!(meta.content_analysis || meta.gemini_transcript);
+        const hasElevenlabs = !!(meta.elevenlabs_words && (meta.elevenlabs_words as any[]).length > 0);
+        let status = "quality_approved";
+        if (hasElevenlabs) status = "transcribed";
+        else if (hasContent) status = "content_validated";
 
         return {
           submission_id: r.id,
           submission_type: "audio",
           campaign_id: r.campaign_id,
           user_id: r.user_id,
-          pipeline_status: pipelineStatus,
+          pipeline_status: status,
           quality_approved_at: new Date().toISOString(),
-          quality_tier: qualityTier,
-          content_validated_at: pipelineStatus !== "quality_approved" ? new Date().toISOString() : null,
-          transcription_completed_at: pipelineStatus === "transcribed" ? new Date().toISOString() : null,
-          transcription_provider: pipelineStatus === "transcribed" ? "elevenlabs" : null,
-          has_flagged_tracks: hasFlag,
+          quality_tier: meta.quality_tier || null,
+          content_validated_at: hasContent ? new Date().toISOString() : null,
+          transcription_completed_at: hasElevenlabs ? new Date().toISOString() : null,
+          transcription_provider: hasElevenlabs ? "elevenlabs" : null,
+          has_flagged_tracks: !!meta.track_flag_reason,
         };
       });
 
-      // Insert in batches
       for (let i = 0; i < items.length; i += 50) {
-        const batch = items.slice(i, i + 50);
-        const { error: insertErr } = await supabase
-          .from("dataset_items")
-          .insert(batch);
+        const { error: insertErr } = await supabase.from("dataset_items").insert(items.slice(i, i + 50));
         if (insertErr) throw insertErr;
       }
 
-      toast.success(`${items.length} items ingeridos no pipeline`);
+      toast.success(`${items.length} items ingeridos`);
       queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-recent"] });
+      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
     } catch (err) {
       toast.error("Erro: " + (err as Error).message);
     }
     setIngesting(false);
   };
 
-  // Queue transcription for content_validated items
-  const queueTranscription = async () => {
-    setQueueingTranscription(true);
-    try {
-      const filter: any = { pipeline_status: "content_validated" };
-      let query = supabase
-        .from("dataset_items")
-        .select("id, submission_id")
-        .eq("pipeline_status", "content_validated");
-
-      if (campaignId) query = query.eq("campaign_id", campaignId);
-      
-      const { data: items, error } = await query.limit(100);
-      if (error) throw error;
-      if (!items?.length) {
-        toast.info("Nenhum item pendente de transcrição");
-        setQueueingTranscription(false);
-        return;
-      }
-
-      // Enqueue each into analysis_queue with job_type 'transcribe_elevenlabs'
-      const { data: { user } } = await supabase.auth.getUser();
-      const toQueue = items.map((item: any) => ({
-        recording_id: item.submission_id,
-        status: "pending",
-        job_type: "transcribe_elevenlabs",
-        created_by: user?.id,
-      }));
-
-      for (let i = 0; i < toQueue.length; i += 50) {
-        const batch = toQueue.slice(i, i + 50);
-        const { error: insertErr } = await supabase
-          .from("analysis_queue")
-          .insert(batch);
-        if (insertErr) throw insertErr;
-      }
-
-      // Update dataset_items to transcription_queued
-      const ids = items.map((i: any) => i.id);
-      await supabase
-        .from("dataset_items")
-        .update({ pipeline_status: "transcription_queued", transcription_queued_at: new Date().toISOString() })
-        .in("id", ids);
-
-      toast.success(`${items.length} items enfileirados para transcrição`);
-      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-recent"] });
-    } catch (err) {
-      toast.error("Erro: " + (err as Error).message);
-    }
-    setQueueingTranscription(false);
-  };
-
-  // Mark transcribed items as dataset_ready
-  const promoteToReady = async () => {
-    const { data, error } = await supabase
-      .from("dataset_items")
-      .update({
-        pipeline_status: "dataset_ready",
-      })
-      .eq("pipeline_status", "transcribed")
-      .eq("has_flagged_tracks", false)
-      .select("id");
-
-    if (error) {
-      toast.error("Erro ao promover");
-    } else {
-      toast.success(`${data?.length ?? 0} items marcados como Dataset Ready`);
-      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-recent"] });
-    }
-  };
-
   const stageColor = Object.fromEntries(PIPELINE_STAGES.map(s => [s.key, s.color]));
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Database className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Dataset Pipeline</h1>
-        <Badge variant="outline" className="ml-auto text-sm">
-          {total} items total • {readyCount} dataset ready
-        </Badge>
+        <Badge variant="outline" className="ml-auto text-sm">{total} items</Badge>
       </div>
 
       {/* Pipeline funnel */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {PIPELINE_STAGES.map((stage) => (
-          <Card key={stage.key} className="relative overflow-hidden">
-            <CardContent className="pt-4 pb-4">
-              <div className="text-xs text-muted-foreground mb-1">{stage.label}</div>
-              <div className="text-2xl font-bold">{statsLoading ? "—" : stats?.[stage.key] ?? 0}</div>
-              {total > 0 && (
-                <Progress
-                  value={((stats?.[stage.key] ?? 0) / total) * 100}
-                  className="h-1 mt-2"
-                />
-              )}
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        {PIPELINE_STAGES.map((stage) => {
+          const count = stats?.[stage.key] ?? 0;
+          const isActive = activeTab === stage.key;
+          return (
+            <button
+              key={stage.key}
+              onClick={() => handleTabChange(stage.key)}
+              className={`p-3 rounded-xl border transition-all text-left ${
+                isActive
+                  ? "border-primary/40 bg-primary/5"
+                  : "border-border/50 bg-card hover:border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`h-2 w-2 rounded-full ${stage.dotColor}`} />
+                <span className="text-[11px] text-muted-foreground truncate">{stage.label}</span>
+              </div>
+              <div className="text-xl font-bold">{statsLoading ? "—" : count}</div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Ingest + Actions */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Package className="h-5 w-5" />
-              Ingerir Gravações Aprovadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Select value={campaignId} onValueChange={setCampaignId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma campanha" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns?.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={ingestFromCampaign} disabled={ingesting || !campaignId} className="w-full">
-              {ingesting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Ingerir no Pipeline
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Importa gravações aprovadas e detecta automaticamente em qual etapa estão (qualidade, conteúdo ou transcrição).
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Mic2 className="h-5 w-5" />
-              Ações do Pipeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button onClick={queueTranscription} disabled={queueingTranscription} variant="outline" className="w-full justify-start">
-              {queueingTranscription ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-              Enfileirar Transcrição ElevenLabs
-            </Button>
-            <Button onClick={promoteToReady} variant="outline" className="w-full justify-start">
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Promover Transcritos → Dataset Ready
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Items com tracks flagueadas não são promovidos automaticamente.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent items */}
+      {/* Ingest + Rescan bar */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Items Recentes
-          </CardTitle>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs text-muted-foreground mb-1 block">Ingerir gravações aprovadas</label>
+              <div className="flex gap-2">
+                <Select value={campaignId} onValueChange={setCampaignId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Campanha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaigns?.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={ingestFromCampaign} disabled={ingesting || !campaignId} size="sm">
+                  {ingesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <Button onClick={rescanItems} disabled={rescanning} variant="outline" size="sm">
+              {rescanning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              Re-scan Metadata
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Items list with batch controls */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Badge className={currentStage ? stageColor[currentStage.key] : ""} variant="outline">
+                {currentStage?.label}
+              </Badge>
+              <span className="text-muted-foreground font-normal text-sm">
+                {tabItems?.length ?? 0} items
+              </span>
+            </CardTitle>
+
+            {/* Batch actions */}
+            <div className="flex items-center gap-2">
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-muted-foreground">{selectedIds.size} selecionados</span>
+              )}
+              {currentStage?.next && selectedIds.size > 0 && (
+                <Button onClick={advanceSelected} disabled={advancing} size="sm" className="gap-1">
+                  {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {currentStage.nextLabel}
+                </Button>
+              )}
+              {selectedIds.size > 0 && activeTab !== "standby" && activeTab !== "dataset_ready" && (
+                <Button onClick={moveToStandby} disabled={advancing} size="sm" variant="outline" className="gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Standby
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {recentItems?.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between text-sm border-b border-border/50 py-2">
-                <div className="flex items-center gap-3">
-                  <Badge className={stageColor[item.pipeline_status] || ""} variant="outline">
-                    {PIPELINE_STAGES.find(s => s.key === item.pipeline_status)?.label || item.pipeline_status}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">{item.submission_type}</Badge>
+          {/* Select all */}
+          {(tabItems?.length ?? 0) > 0 && (currentStage?.next || activeTab !== "dataset_ready") && (
+            <div className="flex items-center gap-2 pb-3 border-b border-border/50 mb-2">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+                id="select-all"
+              />
+              <label htmlFor="select-all" className="text-xs text-muted-foreground cursor-pointer">
+                Selecionar todos
+              </label>
+            </div>
+          )}
+
+          <div className="space-y-1 max-h-[500px] overflow-y-auto">
+            {itemsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {tabItems?.map((item: any) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 py-2 px-2 rounded-lg transition-colors ${
+                  selectedIds.has(item.id) ? "bg-primary/5" : "hover:bg-muted/30"
+                }`}
+              >
+                {(currentStage?.next || activeTab === "standby") && (
+                  <Checkbox
+                    checked={selectedIds.has(item.id)}
+                    onCheckedChange={() => toggleItem(item.id)}
+                  />
+                )}
+                <div className="flex-1 flex items-center gap-3 min-w-0">
+                  <Badge variant="secondary" className="text-[11px] shrink-0">{item.submission_type}</Badge>
                   {item.quality_tier && (
-                    <span className="text-xs font-mono text-muted-foreground">{item.quality_tier}</span>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
+                      item.quality_tier === "PQ" ? "bg-green-500/20 text-green-400" :
+                      item.quality_tier === "HQ" ? "bg-blue-500/20 text-blue-400" :
+                      "bg-yellow-500/20 text-yellow-400"
+                    }`}>
+                      {item.quality_tier}
+                    </span>
                   )}
                   {item.has_flagged_tracks && (
-                    <Badge variant="outline" className="bg-amber-500/20 text-amber-400 text-xs">flagged</Badge>
+                    <Flag className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                   )}
+                  {item.transcription_provider && (
+                    <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                      {item.transcription_provider}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground truncate">
+                    {campaignNameMap[item.campaign_id] || item.campaign_id?.slice(0, 8)}
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="font-mono">{item.submission_id?.slice(0, 8)}</span>
-                  <span>{new Date(item.updated_at).toLocaleString("pt-BR")}</span>
-                </div>
+                <span className="text-[11px] text-muted-foreground font-mono shrink-0">
+                  {item.submission_id?.slice(0, 8)}
+                </span>
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  {new Date(item.updated_at).toLocaleDateString("pt-BR")}
+                </span>
               </div>
             ))}
-            {!recentItems?.length && (
-              <p className="text-muted-foreground text-sm">Nenhum item no pipeline</p>
+            {!itemsLoading && !tabItems?.length && (
+              <p className="text-muted-foreground text-sm py-8 text-center">Nenhum item nesta etapa</p>
             )}
           </div>
         </CardContent>
