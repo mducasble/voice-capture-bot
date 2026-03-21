@@ -194,6 +194,7 @@ export default function DataAudioTask() {
   const [pendingCount, setPendingCount] = useState<{ done: number; total: number } | null>(null);
   const [uploaderName, setUploaderName] = useState<string | null>(null);
   const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
+  const [reconstructing, setReconstructing] = useState(false);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
