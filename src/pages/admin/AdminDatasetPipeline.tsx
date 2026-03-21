@@ -410,6 +410,65 @@ export default function AdminDatasetPipeline() {
         </CardContent>
       </Card>
 
+      {/* Analysis Progress & Results */}
+      {analysisProgress && (
+        <Card className="border-primary/30">
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary animate-pulse" />
+              <span className="text-sm font-medium">Análise de Conteúdo (Gemini)</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {analysisProgress.current}/{analysisProgress.total}
+              </span>
+            </div>
+            <Progress value={(analysisProgress.current / analysisProgress.total) * 100} className="h-2" />
+
+            {/* Show results when done */}
+            {analysisProgress.results.length > 0 && (
+              <div className="space-y-2 mt-3 max-h-[300px] overflow-y-auto">
+                {analysisProgress.results.map((r, idx) => (
+                  <div key={idx} className={`text-xs rounded-lg p-3 border ${r.success ? "border-border/50 bg-card" : "border-destructive/30 bg-destructive/5"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {r.success ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                      )}
+                      <span className="font-mono text-muted-foreground">{r.submission_id?.slice(0, 8)}</span>
+                      {r.success && r.topic_adherence != null && (
+                        <Badge variant="outline" className={`text-[10px] ml-auto ${
+                          r.topic_adherence >= 70 ? "text-emerald-400 border-emerald-400/30" :
+                          r.topic_adherence >= 40 ? "text-yellow-400 border-yellow-400/30" :
+                          "text-destructive border-destructive/30"
+                        }`}>
+                          {r.topic_adherence}% no tema
+                        </Badge>
+                      )}
+                    </div>
+                    {r.success && r.summary && (
+                      <p className="text-muted-foreground mt-1">{r.summary}</p>
+                    )}
+                    {r.success && r.speakers?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {r.speakers.map((s: any, si: number) => (
+                          <span key={si} className="bg-muted/50 px-1.5 py-0.5 rounded text-[10px]">
+                            {s.name}: {s.speaking_time_percent}% fala
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {!r.success && <p className="text-destructive mt-1">{r.error}</p>}
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setAnalysisProgress(null)} className="w-full text-xs">
+                  Fechar resultados
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Items list with batch controls */}
       <Card>
         <CardHeader className="pb-3">
