@@ -87,7 +87,7 @@ export default function PortalRooms() {
 
   useEffect(() => { fetchPublicRooms(); }, [user, userCountry]);
 
-  const statusLabels: Record<string, string> = { waiting: "Aguardando", active: "Aberta", live: "Ao Vivo" };
+  const statusLabels: Record<string, string> = { waiting: t("rooms.statusWaiting"), active: t("rooms.statusActive"), live: t("rooms.statusLive") };
   const statusDot: Record<string, string> = { waiting: "bg-amber-400", active: "bg-emerald-400", live: "bg-red-400" };
 
   return (
