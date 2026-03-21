@@ -900,6 +900,13 @@ export default function DataAudioTask() {
         onClose={() => setShowFlagModal(false)}
         onConfirm={handleFlag}
       />
+
+      <TrackFlagReasonModal
+        open={!!trackFlagTarget}
+        onClose={() => setTrackFlagTarget(null)}
+        onConfirm={handleTrackFlag}
+        trackLabel={siblings.find((s: any) => s.id === trackFlagTarget)?.discord_username || siblings.find((s: any) => s.id === trackFlagTarget)?.recording_type || ""}
+      />
     </div>
   );
 }
