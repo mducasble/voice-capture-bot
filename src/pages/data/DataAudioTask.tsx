@@ -604,10 +604,11 @@ export default function DataAudioTask() {
         });
         try {
           const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
-            body: { recording_id: mixedSib.id },
+            body: { recording_id: mixedSib.id, force: true, mode: "full" },
           });
           if (transError) throw transError;
           if (transData?.error) throw new Error(transData.error);
+          if (transData?.skipped) throw new Error(transData.reason || "Transcrição foi ignorada");
           toast.success("Transcrição ElevenLabs concluída", { id: transToastId });
           await refetchSiblings();
         } catch (err: any) {
