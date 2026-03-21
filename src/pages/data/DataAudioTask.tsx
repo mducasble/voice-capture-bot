@@ -692,7 +692,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     loadingLabel: string,
     loadingDescription: string,
   ) => {
-    const maxPolls = 40; // 40 × 5s = ~3.3 min
+    const maxPolls = 120; // 120 × 5s = 10 min
 
     for (let i = 0; i < maxPolls; i++) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -718,13 +718,47 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
         throw new Error("Transcrição falhou durante o processamento");
       }
 
-      toast.loading(`${loadingLabel} (${i + 1})`, {
+      toast.loading(`${loadingLabel} (${i + 1}/${maxPolls})`, {
         id: toastId,
         description: loadingDescription,
       });
     }
 
     throw new Error("Timeout aguardando transcrição do mixed");
+  };
+
+  const requestSpeakerPreviews = async (sessionId: string, toastId: string | number) => {
+    const maxAttempts = 12;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+        body: { session_id: sessionId, mode: "preview" },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.error) {
+        return data;
+      }
+
+      const isWaitingForDiarization = typeof data.error === "string"
+        && data.error.includes("no ElevenLabs diarization data yet");
+
+      if (!isWaitingForDiarization || attempt === maxAttempts - 1) {
+        throw new Error(data.error);
+      }
+
+      toast.loading(`Etapa 2/2: Separando speakers... (${attempt + 1}/${maxAttempts})`, {
+        id: toastId,
+        description: "A transcrição ainda está finalizando. Tentando novamente...",
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
+    throw new Error("Timeout aguardando previews dos speakers");
   };
 
   const handleReconstructTrack = async (targetId: string) => {
@@ -752,13 +786,19 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
             throw new Error(transData.reason || "Transcrição foi ignorada");
           }
 
-          if (transData?.scheduled_processing || alreadyProcessing) {
+          const stillProcessing = transData?.scheduled_processing || alreadyProcessing || transData?.done === false;
+
+          if (stillProcessing) {
             const loadingLabel = alreadyProcessing
               ? "Transcrição já estava em andamento..."
-              : "Gerando chunks de áudio...";
+              : transData?.scheduled_processing
+                ? "Gerando chunks de áudio..."
+                : "Processando transcrição do mixed...";
             const loadingDescription = alreadyProcessing
               ? "Aguardando o processamento iniciado antes do recarregamento."
-              : "Aguardando processamento.";
+              : transData?.scheduled_processing
+                ? "Aguardando processamento."
+                : "A transcrição começou, mas ainda não terminou.";
 
             toast.loading(loadingLabel, {
               id: transToastId,
@@ -789,11 +829,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
         { description: "Isso pode levar alguns minutos." }
       );
       try {
-        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
-          body: { session_id: rec.session_id, mode: "preview" },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        const data = await requestSpeakerPreviews(rec.session_id, reconToastId);
         toast.success(`${data.speakers?.length || 0} speakers encontrados`, { id: reconToastId });
         setSpeakerPreviews(data.speakers || []);
         setShowSpeakerDialog(true);

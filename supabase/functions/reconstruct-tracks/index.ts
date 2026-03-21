@@ -81,7 +81,7 @@ serve(async (req) => {
 async function waitForDiarizationWords(
   supabase: any,
   recordingId: string,
-  maxAttempts = 6,
+  maxAttempts = 30,
   delayMs = 2000,
 ) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -151,8 +151,10 @@ async function handlePreview(
   if (!elWords?.length) {
     console.warn(`[Reconstruct] Diarization still unavailable for mixed ${mixed.id} in session ${session_id}`);
     return new Response(JSON.stringify({
-      error: 'Mixed recording has no ElevenLabs diarization data yet. Try again in a few seconds.'
-    }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+      error: 'Mixed recording has no ElevenLabs diarization data yet. Try again in a few seconds.',
+      status: 'waiting',
+      recording_id: mixed.id,
+    }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
   // 2. Send to VPS with file_url (VPS downloads directly + uploads to S3)
