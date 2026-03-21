@@ -47,6 +47,8 @@ interface TrackCardProps {
   logAction: (action: string, detail?: string) => void;
   handleReanalyze: (id: string) => void;
   handleEnhance: (id: string) => void;
+  handleTrackFlag?: (id: string) => void;
+  trackFlagReason?: string | null;
   selectedVersion: "original" | "enhanced";
   onSelectVersion: (id: string, version: "original" | "enhanced") => void;
 }
