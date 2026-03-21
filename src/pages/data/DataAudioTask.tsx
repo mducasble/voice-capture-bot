@@ -686,6 +686,47 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     );
   });
 
+  const waitForMixedDiarization = async (
+    recordingId: string,
+    toastId: string | number,
+    loadingLabel: string,
+    loadingDescription: string,
+  ) => {
+    const maxPolls = 40; // 40 × 5s = ~3.3 min
+
+    for (let i = 0; i < maxPolls; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      const { data: recCheck, error: recCheckError } = await supabase
+        .from("voice_recordings")
+        .select("transcription_elevenlabs_status, metadata")
+        .eq("id", recordingId)
+        .single();
+
+      if (recCheckError) throw recCheckError;
+
+      const status = recCheck?.transcription_elevenlabs_status;
+      const metadata = (recCheck?.metadata ?? null) as { elevenlabs_words?: unknown[] } | null;
+      const diarizationReady = Array.isArray(metadata?.elevenlabs_words)
+        && metadata.elevenlabs_words.length > 0;
+
+      if (status === "completed" || diarizationReady) {
+        return;
+      }
+
+      if (status === "failed") {
+        throw new Error("Transcrição falhou durante o processamento");
+      }
+
+      toast.loading(`${loadingLabel} (${i + 1})`, {
+        id: toastId,
+        description: loadingDescription,
+      });
+    }
+
+    throw new Error("Timeout aguardando transcrição do mixed");
+  };
+
   const handleReconstructTrack = async (targetId: string) => {
     if (!rec?.session_id || !canReconstruct || !mixedSib) return;
     setReconstructing(true);
@@ -702,38 +743,36 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
           const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
             body: { recording_id: mixedSib.id, force: true, mode: "chunks" },
           });
+          const alreadyProcessing = transData?.skipped && transData?.reason === "Already processing";
+          const alreadyCompleted = transData?.skipped && transData?.reason === "already_completed";
+
           if (transError) throw transError;
           if (transData?.error) throw new Error(transData.error);
-          if (transData?.skipped) throw new Error(transData.reason || "Transcrição foi ignorada");
-          
-          // If processing was scheduled (chunks need to be generated first), poll until ready
-          if (transData?.scheduled_processing) {
-            toast.loading("Gerando chunks de áudio...", { id: transToastId, description: "Aguardando processamento." });
-            const maxPolls = 40; // 40 × 5s = ~3.3 min
-            let ready = false;
-            for (let i = 0; i < maxPolls; i++) {
-              await new Promise(r => setTimeout(r, 5000));
-              const { data: recCheck } = await supabase
-                .from("voice_recordings")
-                .select("transcription_elevenlabs_status, metadata")
-                .eq("id", mixedSib.id)
-                .single();
-              const status = recCheck?.transcription_elevenlabs_status;
-              if (status === "completed") {
-                ready = true;
-                break;
-              }
-              if (status === "failed") {
-                throw new Error("Transcrição falhou durante processamento dos chunks");
-              }
-              toast.loading(`Gerando chunks de áudio... (${i + 1})`, { id: transToastId });
-            }
-            if (!ready) {
-              throw new Error("Timeout aguardando transcrição dos chunks");
-            }
-            await refetchSiblings();
+          if (transData?.skipped && !alreadyProcessing && !alreadyCompleted) {
+            throw new Error(transData.reason || "Transcrição foi ignorada");
           }
-          
+
+          if (transData?.scheduled_processing || alreadyProcessing) {
+            const loadingLabel = alreadyProcessing
+              ? "Transcrição já estava em andamento..."
+              : "Gerando chunks de áudio...";
+            const loadingDescription = alreadyProcessing
+              ? "Aguardando o processamento iniciado antes do recarregamento."
+              : "Aguardando processamento.";
+
+            toast.loading(loadingLabel, {
+              id: transToastId,
+              description: loadingDescription,
+            });
+
+            await waitForMixedDiarization(
+              mixedSib.id,
+              transToastId,
+              loadingLabel,
+              loadingDescription,
+            );
+          }
+
           toast.success("Transcrição ElevenLabs concluída", { id: transToastId });
           await refetchSiblings();
         } catch (err: any) {
