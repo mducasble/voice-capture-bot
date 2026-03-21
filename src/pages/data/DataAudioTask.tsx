@@ -195,6 +195,10 @@ export default function DataAudioTask() {
   const [uploaderName, setUploaderName] = useState<string | null>(null);
   const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
   const [reconstructing, setReconstructing] = useState(false);
+  const [reconstructTarget, setReconstructTarget] = useState<string | null>(null);
+  const [speakerPreviews, setSpeakerPreviews] = useState<Array<{ speaker: string; url: string }>>([]);
+  const [showSpeakerDialog, setShowSpeakerDialog] = useState(false);
+  const [applyingSpeaker, setApplyingSpeaker] = useState(false);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
