@@ -722,18 +722,49 @@ export default function DataAudioTask() {
     if (!rec?.session_id || !reconstructTarget) return;
     setApplyingSpeaker(true);
     try {
-      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
-        body: {
-          session_id: rec.session_id,
-          mode: "apply",
-          target_recording_id: reconstructTarget,
-          speaker_label: speaker.speaker,
-          preview_url: speaker.url,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Trilha substituída com sucesso!");
+      const isNewTrack = reconstructTarget.startsWith("new:");
+      
+      if (isNewTrack) {
+        // Create a new voice_recording for the missing participant
+        const participantName = reconstructTarget.replace("new:", "");
+        const newFilename = `reconstructed_${participantName}_${Date.now()}.wav`;
+        
+        const { error: insertError } = await supabase
+          .from("voice_recordings")
+          .insert({
+            session_id: rec.session_id,
+            campaign_id: rec.campaign_id,
+            user_id: rec.user_id, // Same session owner
+            file_url: speaker.url,
+            filename: newFilename,
+            recording_type: "individual",
+            discord_username: participantName,
+            quality_status: "pending",
+            validation_status: "pending",
+            status: "pending",
+            metadata: {
+              reconstructed_from: "mixed",
+              reconstruction_speaker_label: speaker.speaker,
+              last_reconstructed_at: new Date().toISOString(),
+            },
+          });
+        if (insertError) throw insertError;
+        toast.success(`Trilha criada para ${participantName}!`);
+      } else {
+        // Existing track — use reconstruct-tracks apply mode
+        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+          body: {
+            session_id: rec.session_id,
+            mode: "apply",
+            target_recording_id: reconstructTarget,
+            speaker_label: speaker.speaker,
+            preview_url: speaker.url,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("Trilha substituída com sucesso!");
+      }
       await refetchSiblings();
     } catch (err: any) {
       toast.error("Erro ao aplicar speaker", { description: err.message });
