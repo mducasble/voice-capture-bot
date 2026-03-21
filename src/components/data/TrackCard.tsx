@@ -102,6 +102,11 @@ export function TrackCard({
                 <Zap className="h-3 w-3" /> Enhanced
               </span>
             )}
+            {isReconstructed && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-cyan-500/20 text-cyan-400 border-cyan-500/30 flex items-center gap-1">
+                <RotateCcw className="h-3 w-3" /> Reconstruída
+              </span>
+            )}
             {trackFlagReason && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
                 <Flag className="h-3 w-3" /> {trackFlagReason}
