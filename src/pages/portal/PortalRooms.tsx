@@ -95,7 +95,7 @@ export default function PortalRooms() {
       <div className="flex items-center gap-3 mb-8">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
         <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-          Salas Públicas
+          {t("rooms.title")}
         </h1>
         {userCountry && (
           <span className="font-mono text-xs px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
