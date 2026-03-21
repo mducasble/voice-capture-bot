@@ -174,7 +174,7 @@ export default function PortalRooms() {
                         className="font-mono text-xs uppercase tracking-widest px-4 py-2 transition-colors"
                         style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
                       >
-                        Entrar
+                        {t("rooms.enter")}
                       </button>
                     ) : isFull ? (
                       <span
