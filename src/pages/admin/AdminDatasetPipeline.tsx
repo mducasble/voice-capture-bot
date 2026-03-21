@@ -33,6 +33,7 @@ export default function AdminDatasetPipeline() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [advancing, setAdvancing] = useState(false);
   const [rescanning, setRescanning] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<{ current: number; total: number; results: any[] } | null>(null);
 
   // Pipeline stats
   const { data: stats, isLoading: statsLoading } = useQuery({
