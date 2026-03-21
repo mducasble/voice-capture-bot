@@ -614,7 +614,25 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     loadNext();
   };
 
-  const handleFlag = async (reason: string) => {
+  const handleReturnToQueue = async () => {
+    if (!rec) return;
+    setSaving(true);
+    logAction("return_to_queue");
+    let query = supabase.from("voice_recordings").update({ quality_status: "pending", flag_reason: null });
+    if (rec.session_id && rec.campaign_id) {
+      query = query.eq("session_id", rec.session_id).eq("campaign_id", rec.campaign_id);
+    } else {
+      query = query.eq("id", rec.id);
+    }
+    const { error } = await query;
+    setSaving(false);
+    if (error) { toast.error("Erro ao devolver"); return; }
+    toast.success("Devolvido para fila de pendentes.");
+    await finishTask("completed", "returned");
+    loadNext();
+  };
+
+
     if (!rec) return;
     setSaving(true);
     logAction("flag", reason);
