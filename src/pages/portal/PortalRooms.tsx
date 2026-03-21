@@ -87,7 +87,7 @@ export default function PortalRooms() {
 
   useEffect(() => { fetchPublicRooms(); }, [user, userCountry]);
 
-  const statusLabels: Record<string, string> = { waiting: "Aguardando", active: "Aberta", live: "Ao Vivo" };
+  const statusLabels: Record<string, string> = { waiting: t("rooms.statusWaiting"), active: t("rooms.statusActive"), live: t("rooms.statusLive") };
   const statusDot: Record<string, string> = { waiting: "bg-amber-400", active: "bg-emerald-400", live: "bg-red-400" };
 
   return (
@@ -95,7 +95,7 @@ export default function PortalRooms() {
       <div className="flex items-center gap-3 mb-8">
         <div className="w-3 h-3" style={{ background: "var(--portal-accent)" }} />
         <h1 className="font-mono text-xl font-black uppercase tracking-tight" style={{ color: "var(--portal-text)" }}>
-          Salas Públicas
+          {t("rooms.title")}
         </h1>
         {userCountry && (
           <span className="font-mono text-xs px-2 py-0.5" style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)" }}>
@@ -112,10 +112,10 @@ export default function PortalRooms() {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Radio className="h-12 w-12 mb-4" style={{ color: "var(--portal-text-muted)", opacity: 0.3 }} />
           <p className="font-mono text-sm mb-1" style={{ color: "var(--portal-text-muted)" }}>
-            Sem salas criadas no momento
+            {t("rooms.noRooms")}
           </p>
           <p className="font-mono text-xs mb-6" style={{ color: "var(--portal-text-muted)", opacity: 0.6 }}>
-            Crie uma sala a partir das suas campanhas
+            {t("rooms.noRoomsDesc")}
           </p>
           <Link
             to="/my-campaigns"
@@ -123,7 +123,7 @@ export default function PortalRooms() {
             style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
           >
             <Layers className="h-3.5 w-3.5" />
-            Minhas Campanhas
+            {t("rooms.myCampaigns")}
           </Link>
         </div>
       ) : (
@@ -163,7 +163,7 @@ export default function PortalRooms() {
                       {room.campaign_name && <span className="truncate">{room.campaign_name}</span>}
                     </div>
                     <p className="font-mono text-[11px] mt-1" style={{ color: "var(--portal-text-muted)", opacity: 0.6 }}>
-                      Host: {room.creator_name}
+                      {t("rooms.host")}: {room.creator_name}
                     </p>
                   </div>
 
@@ -174,7 +174,7 @@ export default function PortalRooms() {
                         className="font-mono text-xs uppercase tracking-widest px-4 py-2 transition-colors"
                         style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
                       >
-                        Entrar
+                        {t("rooms.enter")}
                       </button>
                     ) : isFull ? (
                       <span
@@ -182,7 +182,7 @@ export default function PortalRooms() {
                         style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)", opacity: 0.6 }}
                       >
                         <Lock className="h-3.5 w-3.5" />
-                        Lotada
+                        {t("rooms.full")}
                       </span>
                     ) : (
                       <button
@@ -193,7 +193,7 @@ export default function PortalRooms() {
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--portal-accent)"; }}
                       >
                         <LogIn className="h-3.5 w-3.5" />
-                        Entrar
+                        {t("rooms.enter")}
                       </button>
                     )}
                   </div>
