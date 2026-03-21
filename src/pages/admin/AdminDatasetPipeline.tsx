@@ -114,27 +114,81 @@ export default function AdminDatasetPipeline() {
     setAdvancing(true);
     try {
       const ids = Array.from(selectedIds);
+      const items = tabItems?.filter((i: any) => selectedIds.has(i.id)) ?? [];
       const now = new Date().toISOString();
-      const updateData: Record<string, any> = { pipeline_status: currentStage.next };
 
-      // Set appropriate timestamp
-      if (currentStage.next === "content_validated") updateData.content_validated_at = now;
+      // If advancing to content_validated, trigger Gemini analysis first
+      if (currentStage.next === "content_validated") {
+        setAnalysisProgress({ current: 0, total: items.length, results: [] });
+        const results: any[] = [];
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          setAnalysisProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+
+          try {
+            const { data, error } = await supabase.functions.invoke("analyze-content", {
+              body: { recording_id: item.submission_id },
+            });
+
+            if (error) {
+              results.push({ id: item.id, submission_id: item.submission_id, success: false, error: error.message });
+            } else if (data?.error) {
+              results.push({ id: item.id, submission_id: item.submission_id, success: false, error: data.error });
+            } else {
+              const analysis = data?.analysis;
+              // Update dataset_item with content_score
+              await supabase.from("dataset_items").update({
+                pipeline_status: "content_validated",
+                content_validated_at: now,
+                content_score: analysis ? {
+                  topic_adherence_percent: analysis.topic_adherence_percent,
+                  speakers: analysis.speakers,
+                  content_summary: analysis.content_summary,
+                  off_topic_summary: analysis.off_topic_summary,
+                } : null,
+              }).eq("id", item.id);
+
+              results.push({
+                id: item.id,
+                submission_id: item.submission_id,
+                success: true,
+                topic_adherence: analysis?.topic_adherence_percent,
+                speakers: analysis?.speakers,
+                summary: analysis?.content_summary,
+              });
+            }
+          } catch (err) {
+            results.push({ id: item.id, submission_id: item.submission_id, success: false, error: (err as Error).message });
+          }
+
+          // Small delay to avoid rate limiting
+          if (i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
+        }
+
+        setAnalysisProgress(prev => prev ? { ...prev, results } : null);
+        const successCount = results.filter(r => r.success).length;
+        toast.success(`Análise concluída: ${successCount}/${items.length} validados pelo Gemini`);
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["dataset-pipeline-items"] });
+        setAdvancing(false);
+        return;
+      }
+
+      // For other stages, just update status
+      const updateData: Record<string, any> = { pipeline_status: currentStage.next };
       if (currentStage.next === "transcription_queued") updateData.transcription_queued_at = now;
       if (currentStage.next === "transcribed") updateData.transcription_completed_at = now;
 
-      // Batch update in chunks of 50
       for (let i = 0; i < ids.length; i += 50) {
         const batch = ids.slice(i, i + 50);
-        const { error } = await supabase
-          .from("dataset_items")
-          .update(updateData)
-          .in("id", batch);
+        const { error } = await supabase.from("dataset_items").update(updateData).in("id", batch);
         if (error) throw error;
       }
 
       // If advancing to transcription_queued, also enqueue in analysis_queue
       if (currentStage.next === "transcription_queued") {
-        const items = tabItems?.filter((i: any) => selectedIds.has(i.id)) ?? [];
         const { data: { user } } = await supabase.auth.getUser();
         const toQueue = items.map((item: any) => ({
           recording_id: item.submission_id,
