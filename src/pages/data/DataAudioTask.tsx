@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
   SkipForward, Mic2, User, Globe, Headphones,
-  Archive, Flag,
+  Archive, Flag, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
@@ -194,6 +194,7 @@ export default function DataAudioTask() {
   const [pendingCount, setPendingCount] = useState<{ done: number; total: number } | null>(null);
   const [uploaderName, setUploaderName] = useState<string | null>(null);
   const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
+  const [reconstructing, setReconstructing] = useState(false);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -579,6 +580,38 @@ export default function DataAudioTask() {
     await refetchSiblings();
   };
 
+  // Check if reconstruction is possible (mixed has diarization + there are individual tracks)
+  const mixedSib = siblings.find((s: any) => s.recording_type === "mixed");
+  const individualSibs = siblings.filter((s: any) => s.recording_type === "individual");
+  const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
+  const canReconstruct = hasDiarization && individualSibs.length > 0;
+
+  const handleReconstruct = async () => {
+    if (!rec?.session_id || !canReconstruct) return;
+    setReconstructing(true);
+    const toastId = toast.loading("Reconstruindo trilhas individuais a partir do mixed...", {
+      description: "Isso pode levar alguns minutos.",
+    });
+    try {
+      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+        body: { session_id: rec.session_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Trilhas reconstruídas: ${data.updated}/${data.total_speakers} speakers`, {
+        id: toastId,
+        description: data.unmapped_speakers?.length
+          ? `Speakers não mapeados: ${data.unmapped_speakers.join(", ")}`
+          : "Todos os speakers foram mapeados.",
+      });
+      await refetchSiblings();
+    } catch (err: any) {
+      toast.error("Erro na reconstrução", { id: toastId, description: err.message });
+    } finally {
+      setReconstructing(false);
+    }
+  };
+
   const handleSkip = async () => {
     logAction("skip");
     if (rec) skippedIdsRef.current.add(rec.id);
@@ -819,9 +852,23 @@ export default function DataAudioTask() {
       {/* All tracks */}
       {siblings.length > 0 && (
         <div className="space-y-4 mb-6">
-          <h2 className="text-[18px] font-bold text-white/80">
-            {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[18px] font-bold text-white/80">
+              {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
+            </h2>
+            {canReconstruct && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReconstruct}
+                disabled={reconstructing}
+                className="text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+              >
+                {reconstructing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Reconstruir Trilhas
+              </Button>
+            )}
+          </div>
           {siblings.map((sib) => {
             const isMain = sib.id === rec.id;
             const enhancedUrl = (sib.metadata as any)?.enhanced_file_url;
