@@ -547,6 +547,15 @@ export default function AdminDatasetPipeline() {
                       {item.quality_tier}
                     </span>
                   )}
+                  {item.content_score && (item.content_score as any).topic_adherence_percent != null && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                      (item.content_score as any).topic_adherence_percent >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                      (item.content_score as any).topic_adherence_percent >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-destructive/20 text-destructive"
+                    }`}>
+                      {(item.content_score as any).topic_adherence_percent}% tema
+                    </span>
+                  )}
                   {item.has_flagged_tracks && (
                     <Flag className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                   )}
