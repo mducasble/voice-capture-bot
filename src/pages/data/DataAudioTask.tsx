@@ -1177,14 +1177,23 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20">
             <CheckCircle2 className="h-4 w-4 mr-1.5" /> Aprovar
           </Button>
-          <Button onClick={handleReserve} disabled={saving}
-            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
-            <Archive className="h-4 w-4 mr-1.5" /> Reserva
-          </Button>
-          <Button onClick={() => setShowFlagModal(true)} disabled={saving}
-            className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
-            <Flag className="h-4 w-4 mr-1.5" /> Flag
-          </Button>
+          {isFlaggedMode ? (
+            <Button onClick={handleReturnToQueue} disabled={saving}
+              className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20">
+              <RotateCcw className="h-4 w-4 mr-1.5" /> Devolver
+            </Button>
+          ) : (
+            <>
+              <Button onClick={handleReserve} disabled={saving}
+                className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20">
+                <Archive className="h-4 w-4 mr-1.5" /> Reserva
+              </Button>
+              <Button onClick={() => setShowFlagModal(true)} disabled={saving}
+                className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20">
+                <Flag className="h-4 w-4 mr-1.5" /> Flag
+              </Button>
+            </>
+          )}
           <Button onClick={() => setShowRejectModal(true)} disabled={saving}
             className="flex-1 h-12 text-[14px] font-semibold rounded-xl bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20">
             <XCircle className="h-4 w-4 mr-1.5" /> Reprovar
