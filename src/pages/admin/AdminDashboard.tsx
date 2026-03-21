@@ -313,6 +313,9 @@ export default function AdminDashboard() {
       {/* Users by Country */}
       <CountryBreakdown profiles={profiles} />
 
+      {/* Active Campaigns Progress */}
+      <ActiveCampaigns />
+
       {/* (Infrastructure cards moved to top stats) */}
 
       {/* Storage Breakdown */}
