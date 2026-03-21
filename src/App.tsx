@@ -160,6 +160,7 @@ const App = () => (
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="inbox" element={<AdminInbox />} />
                 <Route path="report/videos-editados" element={<VideoSubmissionsReport />} />
+                <Route path="dataset" element={<AdminDatasetPipeline />} />
               </Route>
 
               {/* Audit login (standalone) */}

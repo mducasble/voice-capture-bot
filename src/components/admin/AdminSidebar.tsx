@@ -63,6 +63,7 @@ const navSections = [
       { title: "Horas por Qualidade", url: "/admin/quality-hours", icon: BarChart3 },
       { title: "Validação de Tarefas", url: "/admin/task-validation", icon: ListChecks },
       { title: "Transcrição", url: "/admin/transcription", icon: FileText },
+      { title: "Dataset Pipeline", url: "/admin/dataset", icon: Database },
     ],
   },
   {
