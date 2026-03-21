@@ -706,8 +706,9 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       if (recCheckError) throw recCheckError;
 
       const status = recCheck?.transcription_elevenlabs_status;
-      const diarizationReady = Array.isArray(recCheck?.metadata?.elevenlabs_words)
-        && recCheck.metadata.elevenlabs_words.length > 0;
+      const metadata = (recCheck?.metadata ?? null) as { elevenlabs_words?: unknown[] } | null;
+      const diarizationReady = Array.isArray(metadata?.elevenlabs_words)
+        && metadata.elevenlabs_words.length > 0;
 
       if (status === "completed" || diarizationReady) {
         return;
