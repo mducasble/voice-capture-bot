@@ -15,6 +15,7 @@ import { TrackFlagReasonModal } from "@/components/data/TrackFlagReasonModal";
 import { TrackCard } from "@/components/data/TrackCard";
 import { SpeakerSelectDialog } from "@/components/data/SpeakerSelectDialog";
 import { cn } from "@/lib/utils";
+import { ReconstructionProgress, type ReconstructionStep } from "@/components/data/ReconstructionProgress";
 
 interface Recording {
   id: string;
@@ -212,6 +213,8 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
   const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
   const [reconstructing, setReconstructing] = useState(false);
   const [reconstructTarget, setReconstructTarget] = useState<string | null>(null);
+  const [reconStep, setReconStep] = useState<ReconstructionStep>("idle");
+  const [reconPoll, setReconPoll] = useState<{ attempt: number; max: number }>({ attempt: 0, max: 0 });
   const [speakerPreviews, setSpeakerPreviews] = useState<Array<{ speaker: string; url: string }>>([]);
   const [showSpeakerDialog, setShowSpeakerDialog] = useState(false);
   const [applyingSpeaker, setApplyingSpeaker] = useState(false);
@@ -693,9 +696,12 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     loadingDescription: string,
   ) => {
     const maxPolls = 120; // 120 × 5s = 10 min
+    setReconStep("transcribing_poll");
+    setReconPoll({ attempt: 0, max: maxPolls });
 
     for (let i = 0; i < maxPolls; i++) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
+      setReconPoll({ attempt: i + 1, max: maxPolls });
 
       const { data: recCheck, error: recCheckError } = await supabase
         .from("voice_recordings")
@@ -729,6 +735,8 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
 
   const requestSpeakerPreviews = async (sessionId: string, toastId: string | number) => {
     const maxAttempts = 12;
+    setReconStep("separating");
+    setReconPoll({ attempt: 0, max: maxAttempts });
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
@@ -750,6 +758,8 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
         throw new Error(data.error);
       }
 
+      setReconStep("separating_poll");
+      setReconPoll({ attempt: attempt + 1, max: maxAttempts });
       toast.loading(`Etapa 2/2: Separando speakers... (${attempt + 1}/${maxAttempts})`, {
         id: toastId,
         description: "A transcrição ainda está finalizando. Tentando novamente...",
@@ -765,10 +775,13 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     if (!rec?.session_id || !canReconstruct || !mixedSib) return;
     setReconstructing(true);
     setReconstructTarget(targetId);
+    setReconStep("idle");
+    setReconPoll({ attempt: 0, max: 0 });
 
     try {
       // Step 1: If no diarization yet, run ElevenLabs transcription on the mixed first
       if (!hasDiarization) {
+        setReconStep("transcribing");
         const transToastId = toast.loading("Etapa 1/2: Transcrevendo mixed com ElevenLabs...", {
           description: "Gerando diarização por speaker.",
         });
@@ -819,11 +832,13 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
           toast.error("Falha na transcrição ElevenLabs", { id: transToastId, description: err.message });
           setReconstructing(false);
           setReconstructTarget(null);
+          setReconStep("idle");
           return;
         }
       }
 
       // Step 2: Get speaker previews from VPS
+      setReconStep("separating");
       const reconToastId = toast.loading(
         hasDiarization ? "Separando speakers do mixed..." : "Etapa 2/2: Separando speakers...",
         { description: "Isso pode levar alguns minutos." }
@@ -831,16 +846,19 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       try {
         const data = await requestSpeakerPreviews(rec.session_id, reconToastId);
         toast.success(`${data.speakers?.length || 0} speakers encontrados`, { id: reconToastId });
+        setReconStep("done");
         setSpeakerPreviews(data.speakers || []);
         setShowSpeakerDialog(true);
       } catch (err: any) {
         toast.error("Erro na reconstrução", { id: reconToastId, description: err.message });
         setReconstructing(false);
         setReconstructTarget(null);
+        setReconStep("idle");
       }
     } catch {
       setReconstructing(false);
       setReconstructTarget(null);
+      setReconStep("idle");
     }
   };
 
@@ -888,6 +906,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       setShowSpeakerDialog(false);
       setReconstructing(false);
       setReconstructTarget(null);
+      setReconStep("idle");
       setSpeakerPreviews([]);
     }
   };
@@ -1316,6 +1335,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
           setShowSpeakerDialog(false);
           setReconstructing(false);
           setReconstructTarget(null);
+          setReconStep("idle");
           setSpeakerPreviews([]);
         }}
         applying={applyingSpeaker}
