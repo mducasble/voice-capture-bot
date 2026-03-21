@@ -98,6 +98,11 @@ export function TrackCard({
                 <Zap className="h-3 w-3" /> Enhanced
               </span>
             )}
+            {trackFlagReason && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
+                <Flag className="h-3 w-3" /> {trackFlagReason}
+              </span>
+            )}
           </div>
           <p className="text-[13px] text-white/30">
             {formatTime(sib.duration_seconds || 0)}
