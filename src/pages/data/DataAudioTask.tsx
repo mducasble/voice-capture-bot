@@ -450,10 +450,19 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
 
     let query = supabase
       .from("voice_recordings")
-      .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id")
+      .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id, flag_reason")
       .eq("campaign_id", campaignId)
-      .in("quality_status", ["pending", "failed"])
+      .eq("recording_type", "mixed")
       .order("created_at", { ascending: true });
+
+    if (isFlaggedMode) {
+      query = query.eq("quality_status", "flagged");
+      if (flagReasonFilter !== "all") {
+        query = query.eq("flag_reason", flagReasonFilter);
+      }
+    } else {
+      query = query.in("quality_status", ["pending", "failed"]);
+    }
 
     // Exclude already skipped/timed-out IDs in this session
     const skippedArr = Array.from(skippedIdsRef.current);
