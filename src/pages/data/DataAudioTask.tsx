@@ -200,6 +200,7 @@ export default function DataAudioTask() {
   const [speakerPreviews, setSpeakerPreviews] = useState<Array<{ speaker: string; url: string }>>([]);
   const [showSpeakerDialog, setShowSpeakerDialog] = useState(false);
   const [applyingSpeaker, setApplyingSpeaker] = useState(false);
+  const [sessionParticipants, setSessionParticipants] = useState<Array<{ name: string; user_id: string | null; is_creator: boolean }>>([]);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
