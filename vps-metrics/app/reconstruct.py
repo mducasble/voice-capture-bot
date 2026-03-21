@@ -75,8 +75,12 @@ def reconstruct_tracks(
 ) -> Dict[str, np.ndarray]:
     """
     Given mixed audio and ElevenLabs word-level diarization,
-    produce a dict of {speaker_label: audio_array} where each
-    speaker's track has silence where they're not speaking.
+    produce a dict of {speaker_label: audio_array}.
+
+    Strategy: each speaker's track keeps ALL audio EXCEPT segments
+    where ANOTHER speaker is actively talking (and the current speaker
+    is NOT). This preserves ambient sound, breathing, and natural
+    pauses while removing cross-talk.
 
     Args:
         audio: mono float32 array
@@ -93,19 +97,67 @@ def reconstruct_tracks(
     tracks: Dict[str, np.ndarray] = {}
 
     for speaker, segments in speaker_segments.items():
-        mask = np.zeros(total_samples, dtype=np.float32)
-        sample_ranges = []
+        # Start with everything audible
+        mask = np.ones(total_samples, dtype=np.float32)
 
+        # Build a set of sample ranges where THIS speaker is active
+        my_active = np.zeros(total_samples, dtype=bool)
         for seg_start_s, seg_end_s in segments:
             s = max(0, int(seg_start_s * sr) - pad_samples)
             e = min(total_samples, int(seg_end_s * sr) + pad_samples)
-            mask[s:e] = 1.0
-            sample_ranges.append((s, e))
+            my_active[s:e] = True
 
-        mask = _apply_crossfade(mask, sample_ranges, fade_samples)
+        # Mute regions where OTHER speakers are active and this one is NOT
+        others_active = np.zeros(total_samples, dtype=bool)
+        for other_spk, other_segs in speaker_segments.items():
+            if other_spk == speaker:
+                continue
+            for seg_start_s, seg_end_s in other_segs:
+                s = max(0, int(seg_start_s * sr) - pad_samples)
+                e = min(total_samples, int(seg_end_s * sr) + pad_samples)
+                others_active[s:e] = True
+
+        # Mute only where others talk AND this speaker is silent
+        mute_mask = others_active & ~my_active
+        mask[mute_mask] = 0.0
+
+        # Apply crossfade at mute boundaries to avoid clicks
+        mask = _apply_crossfade_mute(mask, fade_samples)
         tracks[speaker] = audio * mask
 
     return tracks
+
+
+def _apply_crossfade_mute(
+    mask: np.ndarray,
+    fade_samples: int = 480,
+) -> np.ndarray:
+    """Apply short crossfade ramps at 1→0 and 0→1 transitions."""
+    if fade_samples <= 0:
+        return mask
+    
+    # Find transition points
+    diff = np.diff(mask)
+    
+    # 1→0 transitions (fade out)
+    fadeout_points = np.where(diff < -0.5)[0]
+    for p in fadeout_points:
+        start = max(0, p - fade_samples // 2)
+        end = min(len(mask), p + fade_samples // 2)
+        length = end - start
+        if length > 0:
+            mask[start:end] = np.minimum(mask[start:end], np.linspace(1, 0, length))
+    
+    # 0→1 transitions (fade in)
+    fadein_points = np.where(diff > 0.5)[0]
+    for p in fadein_points:
+        start = max(0, p - fade_samples // 2)
+        end = min(len(mask), p + fade_samples // 2)
+        length = end - start
+        if length > 0:
+            mask[start:end] = np.minimum(mask[start:end], np.linspace(0, 1, length))
+    
+    return mask
 
 
 def tracks_to_zip(
