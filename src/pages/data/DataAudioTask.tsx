@@ -1056,9 +1056,9 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
                 </span>
               );
             })()}
-            {isFlaggedMode && (rec as any).flag_reason && (
+            {isFlaggedMode && rec.flag_reason && (
               <span className="text-[12px] font-bold px-2.5 py-1 rounded-lg border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
-                <Flag className="h-3 w-3" /> {(rec as any).flag_reason}
+                <Flag className="h-3 w-3" /> {rec.flag_reason}
               </span>
             )}
             {mainTier && (
