@@ -498,7 +498,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       }).select("id").single();
       if (log) setTaskLogId(log.id);
     }
-  }, [campaignId, user, taskSetId, fetchPendingCount]);
+  }, [campaignId, user, taskSetId, fetchPendingCount, isFlaggedMode, flagReasonFilter]);
 
   useEffect(() => { loadNext(); }, [loadNext]);
 
