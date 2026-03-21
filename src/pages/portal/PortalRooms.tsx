@@ -193,7 +193,7 @@ export default function PortalRooms() {
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--portal-accent)"; }}
                       >
                         <LogIn className="h-3.5 w-3.5" />
-                        Entrar
+                        {t("rooms.enter")}
                       </button>
                     )}
                   </div>

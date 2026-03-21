@@ -439,5 +439,17 @@
     "general": "General",
     "support": "Support",
     "payment": "Payment"
+  },
+  "rooms": {
+    "title": "Public Rooms",
+    "noRooms": "No rooms available at the moment",
+    "noRoomsDesc": "Create a room from your campaigns",
+    "myCampaigns": "My Campaigns",
+    "enter": "Enter",
+    "full": "Full",
+    "host": "Host",
+    "statusWaiting": "Waiting",
+    "statusActive": "Open",
+    "statusLive": "Live"
   }
 }

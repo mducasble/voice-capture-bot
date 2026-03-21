@@ -439,5 +439,17 @@
     "general": "Geral",
     "support": "Suporte",
     "payment": "Pagamento"
+  },
+  "rooms": {
+    "title": "Salas Públicas",
+    "noRooms": "Sem salas criadas no momento",
+    "noRoomsDesc": "Crie uma sala a partir das suas campanhas",
+    "myCampaigns": "Minhas Campanhas",
+    "enter": "Entrar",
+    "full": "Lotada",
+    "host": "Host",
+    "statusWaiting": "Aguardando",
+    "statusActive": "Aberta",
+    "statusLive": "Ao Vivo"
   }
 }
