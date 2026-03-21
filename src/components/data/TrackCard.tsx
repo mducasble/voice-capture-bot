@@ -51,6 +51,8 @@ interface TrackCardProps {
   trackFlagReason?: string | null;
   selectedVersion: "original" | "enhanced";
   onSelectVersion: (id: string, version: "original" | "enhanced") => void;
+  handleReconstruct?: (id: string) => void;
+  reconstructing?: boolean;
 }
 
 export function TrackCard({
