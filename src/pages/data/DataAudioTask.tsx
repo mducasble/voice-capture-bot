@@ -172,7 +172,21 @@ const formatTime = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-export default function DataAudioTask() {
+const FLAG_REASONS_LIST = [
+  "Áudio Pode Melhorar (Enhance)",
+  "Chance de ser Duplicado",
+  "Mais de 2 participantes",
+  "Som estourado",
+  "Uma ou mais trilhas ruins",
+];
+
+interface DataAudioTaskProps {
+  mode?: "normal" | "flagged";
+}
+
+export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
+  const isFlaggedMode = mode === "flagged";
+  const [flagReasonFilter, setFlagReasonFilter] = useState<string>("all");
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
