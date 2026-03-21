@@ -256,6 +256,20 @@ export function TrackCard({
             <Flag className="h-3.5 w-3.5" /> {trackFlagReason ? "Flagueado" : "Flag Track"}
           </Button>
         )}
+        {handleReconstruct && (
+          <Button
+            size="sm"
+            onClick={() => handleReconstruct(sib.id)}
+            disabled={reconstructing}
+            className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 border border-violet-500/20"
+          >
+            {reconstructing ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Reconstruindo...</>
+            ) : (
+              <><Wand2 className="h-3.5 w-3.5" /> Reconstruir</>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
