@@ -602,6 +602,7 @@ export default function DataAudioTask() {
         const transToastId = toast.loading("Etapa 1/2: Transcrevendo mixed com ElevenLabs...", {
           description: "Gerando diarização por speaker.",
         });
+        try {
           // Call transcribe-elevenlabs with chunks mode (handles large files via polling)
           const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
             body: { recording_id: mixedSib.id, force: true, mode: "chunks" },
