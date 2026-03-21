@@ -123,7 +123,7 @@ export default function PortalRooms() {
             style={{ background: "var(--portal-accent)", color: "var(--portal-accent-text)" }}
           >
             <Layers className="h-3.5 w-3.5" />
-            Minhas Campanhas
+            {t("rooms.myCampaigns")}
           </Link>
         </div>
       ) : (
