@@ -30,6 +30,7 @@ interface Recording {
   snr_db: number | null;
   campaign_id: string | null;
   user_id: string | null;
+  flag_reason: string | null;
 }
 
 type ActionEvent = { action: string; timestamp: string; detail?: string };
