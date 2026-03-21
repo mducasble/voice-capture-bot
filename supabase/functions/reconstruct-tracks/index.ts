@@ -154,7 +154,7 @@ async function handlePreview(
       error: 'Mixed recording has no ElevenLabs diarization data yet. Try again in a few seconds.',
       status: 'waiting',
       recording_id: mixed.id,
-    }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
   // 2. Send to VPS with file_url (VPS downloads directly + uploads to S3)

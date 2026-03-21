@@ -727,7 +727,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     throw new Error("Timeout aguardando transcrição do mixed");
   };
 
-  const requestSpeakerPreviews = async (sessionId: string) => {
+  const requestSpeakerPreviews = async (sessionId: string, toastId: string | number) => {
     const maxAttempts = 12;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -751,7 +751,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       }
 
       toast.loading(`Etapa 2/2: Separando speakers... (${attempt + 1}/${maxAttempts})`, {
-        id: "reconstruct-preview",
+        id: toastId,
         description: "A transcrição ainda está finalizando. Tentando novamente...",
       });
 
@@ -829,7 +829,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
         { description: "Isso pode levar alguns minutos." }
       );
       try {
-        const data = await requestSpeakerPreviews(rec.session_id);
+        const data = await requestSpeakerPreviews(rec.session_id, reconToastId);
         toast.success(`${data.speakers?.length || 0} speakers encontrados`, { id: reconToastId });
         setSpeakerPreviews(data.speakers || []);
         setShowSpeakerDialog(true);
