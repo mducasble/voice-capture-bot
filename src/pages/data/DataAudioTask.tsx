@@ -947,9 +947,9 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
   if (!rec) {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
-        <Headphones className="h-16 w-16 text-white/10 mx-auto mb-4" />
-        <h2 className="text-[24px] font-bold text-white mb-2">Tudo validado!</h2>
-        <p className="text-white/40 mb-6">Não há mais áudios pendentes nesta campanha.</p>
+        {isFlaggedMode ? <Flag className="h-16 w-16 text-white/10 mx-auto mb-4" /> : <Headphones className="h-16 w-16 text-white/10 mx-auto mb-4" />}
+        <h2 className="text-[24px] font-bold text-white mb-2">{isFlaggedMode ? "Nenhum flag pendente!" : "Tudo validado!"}</h2>
+        <p className="text-white/40 mb-6">{isFlaggedMode ? "Não há mais áudios flagueados nesta campanha." : "Não há mais áudios pendentes nesta campanha."}</p>
         <Button variant="outline" onClick={() => navigate("/data")}
           className="bg-white/5 border-white/10 text-white hover:bg-white/10">
           Voltar ao início
