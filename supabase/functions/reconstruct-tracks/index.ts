@@ -282,7 +282,7 @@ async function handleCreate(
       recording_type: 'individual',
       quality_status: 'pending',
       validation_status: 'pending',
-      status: 'pending',
+      status: 'completed',
       metadata: {
         reconstructed_from: 'mixed',
         reconstruction_speaker_label: speaker_label,
