@@ -1190,6 +1190,21 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
               {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
             </h2>
           </div>
+
+          {/* Reconstruction progress bar */}
+          {reconstructing && reconStep !== "idle" && (
+            <ReconstructionProgress
+              step={reconStep}
+              pollAttempt={reconPoll.attempt}
+              pollMax={reconPoll.max}
+              targetName={
+                reconstructTarget?.startsWith("new:")
+                  ? reconstructTarget.replace("new:", "")
+                  : siblings.find((s: any) => s.id === reconstructTarget)?.discord_username || undefined
+              }
+            />
+          )}
+
           {siblings.map((sib) => {
             const isMain = sib.id === rec.id;
             const enhancedUrl = (sib.metadata as any)?.enhanced_file_url;
