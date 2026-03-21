@@ -1055,6 +1055,11 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
                 </span>
               );
             })()}
+            {isFlaggedMode && (rec as any).flag_reason && (
+              <span className="text-[12px] font-bold px-2.5 py-1 rounded-lg border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
+                <Flag className="h-3 w-3" /> {(rec as any).flag_reason}
+              </span>
+            )}
             {mainTier && (
               <span className={cn("text-[13px] font-bold px-3 py-1.5 rounded-lg border", tierColors[mainTier] || "bg-white/10 text-white/60 border-white/10")}>
                 {mainTier} — {tierLabels[mainTier] || mainTier}
