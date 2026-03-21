@@ -63,6 +63,8 @@ export function TrackCard({
   selectedVersion, onSelectVersion, handleReconstruct, reconstructing,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
+  const meta = sib.metadata || {};
+  const isReconstructed = !!meta.reconstructed_from || !!meta.last_reconstructed_at;
 
   const activeUrl = playingEnhanced && enhancedUrl ? enhancedUrl : originalUrl;
   const showingEnhancedMetrics = playingEnhanced && enhancedMetrics.length > 0;
