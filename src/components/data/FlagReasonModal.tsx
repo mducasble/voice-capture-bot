@@ -10,6 +10,8 @@ const FLAG_REASONS = [
   "Áudio Pode Melhorar (Enhance)",
   "Chance de ser Duplicado",
   "Mais de 2 participantes",
+  "Som estourado",
+  "Uma ou mais trilhas ruins",
 ];
 
 interface FlagReasonModalProps {
