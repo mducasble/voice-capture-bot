@@ -71,7 +71,8 @@ export function TrackCard({
     <div
       className={cn(
         "data-glass-card rounded-2xl p-5 transition-all",
-        isMain && "ring-1 ring-white/[0.15]"
+        isMain && "ring-1 ring-white/[0.15]",
+        trackFlagReason && "ring-1 ring-amber-500/40"
       )}
     >
       {/* Track header */}
