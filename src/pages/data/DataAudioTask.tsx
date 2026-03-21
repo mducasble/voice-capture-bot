@@ -632,7 +632,7 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
     loadNext();
   };
 
-
+  const handleFlag = async (reason: string) => {
     if (!rec) return;
     setSaving(true);
     logAction("flag", reason);
