@@ -182,7 +182,7 @@ export default function PortalRooms() {
                         style={{ border: "1px solid var(--portal-border)", color: "var(--portal-text-muted)", opacity: 0.6 }}
                       >
                         <Lock className="h-3.5 w-3.5" />
-                        Lotada
+                        {t("rooms.full")}
                       </span>
                     ) : (
                       <button
