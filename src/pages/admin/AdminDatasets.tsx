@@ -12,30 +12,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Database, Plus, Pencil, Archive, ChevronRight, Layers,
-  FileAudio, FileVideo, FileText, Image, GripVertical,
-  Trash2, Loader2, Tag, BookOpen,
+  Database, Plus, Pencil, ChevronRight, Layers,
+  FileAudio, FileVideo, FileText, Image, Trash2, Loader2,
+  Tag, BookOpen, Shield, Eye, Beaker, Settings2,
 } from "lucide-react";
+import {
+  DATASET_STATUSES, MODALITIES, TASK_FAMILIES, TASK_TYPES,
+  SOURCE_TYPES, CONSENT_STATUSES, LEGAL_REVIEW_STATUSES,
+  ANNOTATION_STATUSES, QC_STATUSES, SPLITS, POLICY_PROFILES,
+  VIDEO_PROFILE_DIMENSIONS, AUDIO_PROFILE_DIMENSIONS,
+  IMAGE_PROFILE_DIMENSIONS, TEXT_PROFILE_DIMENSIONS,
+  DATASET_STATUS_STYLE, humanize,
+} from "@/lib/datasetTaxonomy";
 
-const CONTENT_TYPES = [
-  { key: "audio", label: "Áudio", icon: FileAudio },
-  { key: "video", label: "Vídeo", icon: FileVideo },
-  { key: "text", label: "Texto/Anotação", icon: FileText },
-  { key: "image", label: "Imagem", icon: Image },
-] as const;
-
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  draft: { label: "Rascunho", className: "bg-muted text-muted-foreground" },
-  active: { label: "Ativo", className: "bg-emerald-500/20 text-emerald-400" },
-  archived: { label: "Arquivado", className: "bg-yellow-500/20 text-yellow-400" },
+const MODALITY_ICONS: Record<string, any> = {
+  audio: FileAudio, video: FileVideo, text: FileText, image: Image,
+  multimodal: Layers, mixed: Layers,
 };
 
 type DatasetForm = {
   name: string;
   slug: string;
   status: string;
-  content_types: string[];
+  modalities: string[];
+  task_family: string;
+  task_type: string;
+  source_type: string;
+  consent_status: string;
+  legal_review_status: string;
+  annotation_status: string;
+  qc_status: string;
+  policy_profile: string;
+  splits: string[];
   objective: string;
   primary_task: string;
   data_origin: string;
@@ -50,6 +60,10 @@ type DatasetForm = {
   not_recommended_uses: string;
   license_restrictions: string;
   tags: string[];
+  video_profile: Record<string, string[]>;
+  audio_profile: Record<string, string[]>;
+  image_profile: Record<string, string[]>;
+  text_profile: Record<string, string[]>;
 };
 
 type PipelineStageForm = {
@@ -59,17 +73,95 @@ type PipelineStageForm = {
   sort_order: number;
   stage_type: string;
   description: string;
-  automation_config: string; // JSON string
+  automation_config: string;
 };
 
 const emptyForm: DatasetForm = {
-  name: "", slug: "", status: "draft", content_types: [],
+  name: "", slug: "", status: "draft", modalities: [],
+  task_family: "", task_type: "", source_type: "",
+  consent_status: "pending_review", legal_review_status: "pending",
+  annotation_status: "none", qc_status: "pending", policy_profile: "",
+  splits: [],
   objective: "", primary_task: "", data_origin: "", population_coverage: "",
   collection_process: "", exclusion_criteria: "", annotation_process: "",
   quality_metrics: "", known_limitations: "", risks: "",
   recommended_uses: "", not_recommended_uses: "", license_restrictions: "",
   tags: [],
+  video_profile: {}, audio_profile: {}, image_profile: {}, text_profile: {},
 };
+
+// ── Multi-select pill component ─────────────────────────────────────
+function PillSelect({
+  options, selected, onToggle, columns = 4,
+}: {
+  options: readonly string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+  columns?: number;
+}) {
+  return (
+    <div className={`grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      {options.map(opt => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onToggle(opt)}
+          className={`px-2 py-1 rounded-md border text-[11px] text-left truncate transition-colors ${
+            selected.includes(opt)
+              ? "border-primary bg-primary/10 text-primary font-medium"
+              : "border-border/50 text-muted-foreground hover:border-border"
+          }`}
+        >
+          {humanize(opt)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Profile dimension editor ────────────────────────────────────────
+function ProfileEditor({
+  dimensions, profile, onChange,
+}: {
+  dimensions: Record<string, string[]>;
+  profile: Record<string, string[]>;
+  onChange: (p: Record<string, string[]>) => void;
+}) {
+  const toggleVal = (dim: string, val: string) => {
+    const cur = profile[dim] || [];
+    const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val];
+    onChange({ ...profile, [dim]: next });
+  };
+
+  return (
+    <div className="space-y-3">
+      {Object.entries(dimensions).map(([dim, vals]) => (
+        <div key={dim} className="space-y-1">
+          <Label className="text-xs font-mono text-muted-foreground">{humanize(dim)}</Label>
+          <div className="flex flex-wrap gap-1">
+            {vals.map(v => {
+              const sel = (profile[dim] || []).includes(v);
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => toggleVal(dim, v)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
+                    sel
+                      ? "border-primary/60 bg-primary/10 text-primary"
+                      : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {humanize(v)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminDatasets() {
   const queryClient = useQueryClient();
@@ -79,7 +171,8 @@ export default function AdminDatasets() {
   const [stages, setStages] = useState<PipelineStageForm[]>([]);
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [dialogTab, setDialogTab] = useState("datacard");
+  const [dialogTab, setDialogTab] = useState("identity");
+  const [linkedCampaigns, setLinkedCampaigns] = useState<string[]>([]);
 
   const { data: datasets, isLoading } = useQuery({
     queryKey: ["datasets-list"],
@@ -101,14 +194,12 @@ export default function AdminDatasets() {
     },
   });
 
-  const [linkedCampaigns, setLinkedCampaigns] = useState<string[]>([]);
-
   const openCreate = () => {
     setEditingId(null);
     setForm({ ...emptyForm });
     setStages([]);
     setLinkedCampaigns([]);
-    setDialogTab("datacard");
+    setDialogTab("identity");
     setDialogOpen(true);
   };
 
@@ -118,7 +209,16 @@ export default function AdminDatasets() {
       name: dataset.name || "",
       slug: dataset.slug || "",
       status: dataset.status || "draft",
-      content_types: dataset.content_types || [],
+      modalities: dataset.modalities || dataset.content_types || [],
+      task_family: dataset.task_family || "",
+      task_type: dataset.task_type || "",
+      source_type: dataset.source_type || "",
+      consent_status: dataset.consent_status || "pending_review",
+      legal_review_status: dataset.legal_review_status || "pending",
+      annotation_status: dataset.annotation_status || "none",
+      qc_status: dataset.qc_status || "pending",
+      policy_profile: dataset.policy_profile || "",
+      splits: dataset.splits || [],
       objective: dataset.objective || "",
       primary_task: dataset.primary_task || "",
       data_origin: dataset.data_origin || "",
@@ -133,9 +233,12 @@ export default function AdminDatasets() {
       not_recommended_uses: dataset.not_recommended_uses || "",
       license_restrictions: dataset.license_restrictions || "",
       tags: dataset.tags || [],
+      video_profile: dataset.video_profile || {},
+      audio_profile: dataset.audio_profile || {},
+      image_profile: dataset.image_profile || {},
+      text_profile: dataset.text_profile || {},
     });
 
-    // Load stages
     const { data: stagesData } = await supabase
       .from("dataset_pipeline_stages")
       .select("*")
@@ -143,23 +246,19 @@ export default function AdminDatasets() {
       .order("sort_order");
 
     setStages((stagesData ?? []).map((s: any) => ({
-      id: s.id,
-      stage_key: s.stage_key,
-      label: s.label,
-      sort_order: s.sort_order,
-      stage_type: s.stage_type,
+      id: s.id, stage_key: s.stage_key, label: s.label,
+      sort_order: s.sort_order, stage_type: s.stage_type,
       description: s.description || "",
       automation_config: s.automation_config ? JSON.stringify(s.automation_config) : "",
     })));
 
-    // Load linked campaigns
     const { data: links } = await supabase
       .from("dataset_campaigns")
       .select("campaign_id")
       .eq("dataset_id", dataset.id);
     setLinkedCampaigns((links ?? []).map((l: any) => l.campaign_id));
 
-    setDialogTab("datacard");
+    setDialogTab("identity");
     setDialogOpen(true);
   };
 
@@ -167,62 +266,43 @@ export default function AdminDatasets() {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const toggleContentType = (type: string) => {
-    setForm(prev => ({
-      ...prev,
-      content_types: prev.content_types.includes(type)
-        ? prev.content_types.filter(t => t !== type)
-        : [...prev.content_types, type],
-    }));
+  const toggleArray = (field: keyof DatasetForm, val: string) => {
+    setForm(prev => {
+      const arr = (prev[field] as string[]) || [];
+      return {
+        ...prev,
+        [field]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val],
+      };
+    });
+  };
+
+  // Pipeline
+  const addStage = () => {
+    setStages(prev => [...prev, {
+      stage_key: `stage_${prev.length + 1}`, label: "", sort_order: prev.length,
+      stage_type: "manual", description: "", automation_config: "",
+    }]);
+  };
+  const updateStage = (i: number, field: keyof PipelineStageForm, value: any) => {
+    setStages(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
+  };
+  const removeStage = (i: number) => {
+    setStages(prev => prev.filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, sort_order: idx })));
+  };
+  const moveStage = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= stages.length) return;
+    setStages(prev => {
+      const arr = [...prev];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return arr.map((s, idx) => ({ ...s, sort_order: idx }));
+    });
   };
 
   const addTag = () => {
     const tag = tagInput.trim();
-    if (tag && !form.tags.includes(tag)) {
-      updateField("tags", [...form.tags, tag]);
-    }
+    if (tag && !form.tags.includes(tag)) updateField("tags", [...form.tags, tag]);
     setTagInput("");
-  };
-
-  const removeTag = (tag: string) => {
-    updateField("tags", form.tags.filter(t => t !== tag));
-  };
-
-  // Pipeline stages management
-  const addStage = () => {
-    const order = stages.length;
-    setStages(prev => [...prev, {
-      stage_key: `stage_${order + 1}`,
-      label: "",
-      sort_order: order,
-      stage_type: "manual",
-      description: "",
-      automation_config: "",
-    }]);
-  };
-
-  const updateStage = (idx: number, field: keyof PipelineStageForm, value: any) => {
-    setStages(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
-  };
-
-  const removeStage = (idx: number) => {
-    setStages(prev => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, sort_order: i })));
-  };
-
-  const moveStage = (idx: number, dir: -1 | 1) => {
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= stages.length) return;
-    setStages(prev => {
-      const arr = [...prev];
-      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-      return arr.map((s, i) => ({ ...s, sort_order: i }));
-    });
-  };
-
-  const toggleLinkedCampaign = (id: string) => {
-    setLinkedCampaigns(prev =>
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-    );
   };
 
   const save = async () => {
@@ -230,29 +310,30 @@ export default function AdminDatasets() {
     setSaving(true);
     try {
       const slug = form.slug || form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-      const payload = {
-        name: form.name,
-        slug,
-        status: form.status,
-        content_types: form.content_types,
-        objective: form.objective || null,
-        primary_task: form.primary_task || null,
-        data_origin: form.data_origin || null,
-        population_coverage: form.population_coverage || null,
+      const payload: any = {
+        name: form.name, slug, status: form.status,
+        content_types: form.modalities, modalities: form.modalities,
+        task_family: form.task_family || null, task_type: form.task_type || null,
+        source_type: form.source_type || null,
+        consent_status: form.consent_status, legal_review_status: form.legal_review_status,
+        annotation_status: form.annotation_status, qc_status: form.qc_status,
+        policy_profile: form.policy_profile || null, splits: form.splits,
+        objective: form.objective || null, primary_task: form.primary_task || null,
+        data_origin: form.data_origin || null, population_coverage: form.population_coverage || null,
         collection_process: form.collection_process || null,
         exclusion_criteria: form.exclusion_criteria || null,
         annotation_process: form.annotation_process || null,
         quality_metrics: form.quality_metrics || null,
-        known_limitations: form.known_limitations || null,
-        risks: form.risks || null,
+        known_limitations: form.known_limitations || null, risks: form.risks || null,
         recommended_uses: form.recommended_uses || null,
         not_recommended_uses: form.not_recommended_uses || null,
         license_restrictions: form.license_restrictions || null,
         tags: form.tags,
+        video_profile: form.video_profile, audio_profile: form.audio_profile,
+        image_profile: form.image_profile, text_profile: form.text_profile,
       };
 
       let datasetId = editingId;
-
       if (editingId) {
         const { error } = await supabase.from("datasets").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -262,37 +343,24 @@ export default function AdminDatasets() {
         datasetId = data.id;
       }
 
-      // Save pipeline stages
       if (datasetId) {
-        // Delete existing stages that were removed
-        const existingStageIds = stages.filter(s => s.id).map(s => s.id!);
+        const existingIds = stages.filter(s => s.id).map(s => s.id!);
         if (editingId) {
-          await supabase
-            .from("dataset_pipeline_stages")
-            .delete()
+          await supabase.from("dataset_pipeline_stages").delete()
             .eq("dataset_id", datasetId)
-            .not("id", "in", `(${existingStageIds.join(",")})`);
+            .not("id", "in", `(${existingIds.join(",")})`);
         }
-
         for (const stage of stages) {
-          const stagePayload = {
-            dataset_id: datasetId,
-            stage_key: stage.stage_key,
-            label: stage.label,
-            sort_order: stage.sort_order,
-            stage_type: stage.stage_type,
+          const sp: any = {
+            dataset_id: datasetId, stage_key: stage.stage_key, label: stage.label,
+            sort_order: stage.sort_order, stage_type: stage.stage_type,
             description: stage.description || null,
             automation_config: stage.automation_config ? JSON.parse(stage.automation_config) : null,
           };
-
-          if (stage.id) {
-            await supabase.from("dataset_pipeline_stages").update(stagePayload).eq("id", stage.id);
-          } else {
-            await supabase.from("dataset_pipeline_stages").insert(stagePayload);
-          }
+          if (stage.id) await supabase.from("dataset_pipeline_stages").update(sp).eq("id", stage.id);
+          else await supabase.from("dataset_pipeline_stages").insert(sp);
         }
 
-        // Save campaign links
         await supabase.from("dataset_campaigns").delete().eq("dataset_id", datasetId);
         if (linkedCampaigns.length > 0) {
           await supabase.from("dataset_campaigns").insert(
@@ -310,6 +378,7 @@ export default function AdminDatasets() {
     setSaving(false);
   };
 
+  // ── Render ────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -337,338 +406,427 @@ export default function AdminDatasets() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {datasets.map((ds: any) => (
-            <Card
-              key={ds.id}
-              className="cursor-pointer hover:border-primary/30 transition-colors"
-              onClick={() => openEdit(ds)}
-            >
-              <CardContent className="pt-5 pb-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold truncate">{ds.name}</h3>
-                    {ds.slug && <p className="text-xs text-muted-foreground font-mono">{ds.slug}</p>}
+          {datasets.map((ds: any) => {
+            const mods = ds.modalities?.length ? ds.modalities : ds.content_types || [];
+            const st = DATASET_STATUS_STYLE[ds.status] || DATASET_STATUS_STYLE.draft;
+            return (
+              <Card key={ds.id} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(ds)}>
+                <CardContent className="pt-5 pb-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold truncate">{ds.name}</h3>
+                      {ds.slug && <p className="text-xs text-muted-foreground font-mono">{ds.slug}</p>}
+                    </div>
+                    <Badge className={st.className} variant="outline">{st.label}</Badge>
                   </div>
-                  <Badge className={STATUS_MAP[ds.status]?.className || ""} variant="outline">
-                    {STATUS_MAP[ds.status]?.label || ds.status}
-                  </Badge>
-                </div>
 
-                {ds.objective && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{ds.objective}</p>
-                )}
+                  {ds.objective && <p className="text-xs text-muted-foreground line-clamp-2">{ds.objective}</p>}
 
-                <div className="flex flex-wrap gap-1.5">
-                  {(ds.content_types || []).map((ct: string) => {
-                    const info = CONTENT_TYPES.find(c => c.key === ct);
-                    return info ? (
-                      <Badge key={ct} variant="secondary" className="text-[10px] gap-1">
-                        <info.icon className="h-3 w-3" /> {info.label}
-                      </Badge>
-                    ) : null;
-                  })}
-                </div>
-
-                {ds.tags?.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {ds.tags.slice(0, 4).map((t: string) => (
-                      <span key={t} className="text-[10px] bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded">{t}</span>
-                    ))}
-                    {ds.tags.length > 4 && <span className="text-[10px] text-muted-foreground">+{ds.tags.length - 4}</span>}
+                  <div className="flex flex-wrap gap-1.5">
+                    {mods.map((m: string) => {
+                      const Icon = MODALITY_ICONS[m] || Layers;
+                      return (
+                        <Badge key={m} variant="secondary" className="text-[10px] gap-1">
+                          <Icon className="h-3 w-3" /> {humanize(m)}
+                        </Badge>
+                      );
+                    })}
+                    {ds.task_family && (
+                      <Badge variant="outline" className="text-[10px]">{humanize(ds.task_family)}</Badge>
+                    )}
                   </div>
-                )}
 
-                <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/30">
-                  Criado em {new Date(ds.created_at).toLocaleDateString("pt-BR")}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  {ds.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {ds.tags.slice(0, 4).map((t: string) => (
+                        <span key={t} className="text-[10px] bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded">{t}</span>
+                      ))}
+                      {ds.tags.length > 4 && <span className="text-[10px] text-muted-foreground">+{ds.tags.length - 4}</span>}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/30">
+                    Criado em {new Date(ds.created_at).toLocaleDateString("pt-BR")}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
+      {/* ══════ Dialog ══════ */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40">
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
               {editingId ? "Editar Dataset" : "Novo Dataset"}
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={dialogTab} onValueChange={setDialogTab}>
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="datacard">Datacard</TabsTrigger>
-              <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-              <TabsTrigger value="campaigns">Campanhas</TabsTrigger>
-              <TabsTrigger value="metadata">Metadata</TabsTrigger>
+          <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid grid-cols-7 w-full rounded-none border-b border-border/40 bg-muted/30 h-auto px-2 py-1">
+              <TabsTrigger value="identity" className="text-xs py-1.5">Identidade</TabsTrigger>
+              <TabsTrigger value="datacard" className="text-xs py-1.5">Datacard</TabsTrigger>
+              <TabsTrigger value="classification" className="text-xs py-1.5">Classificação</TabsTrigger>
+              <TabsTrigger value="profiles" className="text-xs py-1.5">Perfis</TabsTrigger>
+              <TabsTrigger value="pipeline" className="text-xs py-1.5">Pipeline</TabsTrigger>
+              <TabsTrigger value="governance" className="text-xs py-1.5">Governança</TabsTrigger>
+              <TabsTrigger value="campaigns" className="text-xs py-1.5">Campanhas</TabsTrigger>
             </TabsList>
 
-            {/* ===== DATACARD TAB ===== */}
-            <TabsContent value="datacard" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Nome *</Label>
-                  <Input value={form.name} onChange={e => updateField("name", e.target.value)} placeholder="Ex: Brazilian Portuguese Conversations v1" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={v => updateField("status", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Rascunho</SelectItem>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="archived">Arquivado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <ScrollArea className="flex-1">
+              <div className="p-6">
 
-              <div className="space-y-1.5">
-                <Label>Tipos de conteúdo</Label>
-                <div className="flex flex-wrap gap-2">
-                  {CONTENT_TYPES.map(ct => (
-                    <button
-                      key={ct.key}
-                      type="button"
-                      onClick={() => toggleContentType(ct.key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                        form.content_types.includes(ct.key)
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      <ct.icon className="h-3.5 w-3.5" />
-                      {ct.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Objetivo</Label>
-                <Textarea value={form.objective} onChange={e => updateField("objective", e.target.value)} placeholder="Qual o propósito deste dataset?" rows={2} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Tarefa principal</Label>
-                <Input value={form.primary_task} onChange={e => updateField("primary_task", e.target.value)} placeholder="Ex: ASR, TTS, Speaker Diarization, Sentiment Analysis..." />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Origem dos dados</Label>
-                  <Textarea value={form.data_origin} onChange={e => updateField("data_origin", e.target.value)} placeholder="De onde vêm os dados?" rows={2} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>População / Cobertura</Label>
-                  <Textarea value={form.population_coverage} onChange={e => updateField("population_coverage", e.target.value)} placeholder="Quem são os participantes? Que regiões/idiomas cobrem?" rows={2} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Processo de coleta</Label>
-                <Textarea value={form.collection_process} onChange={e => updateField("collection_process", e.target.value)} placeholder="Como os dados são coletados?" rows={2} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Critérios de exclusão</Label>
-                  <Textarea value={form.exclusion_criteria} onChange={e => updateField("exclusion_criteria", e.target.value)} placeholder="O que desqualifica um dado?" rows={2} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Processo de anotação</Label>
-                  <Textarea value={form.annotation_process} onChange={e => updateField("annotation_process", e.target.value)} placeholder="Como os dados são anotados/rotulados?" rows={2} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Métricas de qualidade</Label>
-                <Textarea value={form.quality_metrics} onChange={e => updateField("quality_metrics", e.target.value)} placeholder="Quais métricas definem a qualidade? (SNR, WER, etc.)" rows={2} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Limitações conhecidas</Label>
-                  <Textarea value={form.known_limitations} onChange={e => updateField("known_limitations", e.target.value)} rows={2} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Riscos</Label>
-                  <Textarea value={form.risks} onChange={e => updateField("risks", e.target.value)} rows={2} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Usos recomendados</Label>
-                  <Textarea value={form.recommended_uses} onChange={e => updateField("recommended_uses", e.target.value)} rows={2} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Usos NÃO recomendados</Label>
-                  <Textarea value={form.not_recommended_uses} onChange={e => updateField("not_recommended_uses", e.target.value)} rows={2} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Licença e restrições</Label>
-                <Textarea value={form.license_restrictions} onChange={e => updateField("license_restrictions", e.target.value)} placeholder="Ex: CC-BY-4.0, uso comercial permitido..." rows={2} />
-              </div>
-            </TabsContent>
-
-            {/* ===== PIPELINE TAB ===== */}
-            <TabsContent value="pipeline" className="space-y-4 mt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Defina as etapas do pipeline de processamento. Os items passarão por cada etapa na ordem.
-                </p>
-                <Button onClick={addStage} size="sm" variant="outline" className="gap-1">
-                  <Plus className="h-3.5 w-3.5" /> Etapa
-                </Button>
-              </div>
-
-              {stages.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  <Layers className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  Nenhuma etapa definida. Clique em "+ Etapa" para começar.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {stages.map((stage, idx) => (
-                    <div key={idx} className="border border-border/50 rounded-lg p-3 space-y-2 bg-card">
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => moveStage(idx, -1)}
-                            disabled={idx === 0}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-20 text-xs"
-                          >▲</button>
-                          <button
-                            type="button"
-                            onClick={() => moveStage(idx, 1)}
-                            disabled={idx === stages.length - 1}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-20 text-xs"
-                          >▼</button>
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground w-6">{idx + 1}.</span>
-                        <Input
-                          value={stage.label}
-                          onChange={e => updateStage(idx, "label", e.target.value)}
-                          placeholder="Nome da etapa"
-                          className="flex-1 h-8 text-sm"
-                        />
-                        <Select value={stage.stage_type} onValueChange={v => updateStage(idx, "stage_type", v)}>
-                          <SelectTrigger className="w-[130px] h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="manual">Manual</SelectItem>
-                            <SelectItem value="automated">Automatizado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="ghost" size="icon"
-                          onClick={() => removeStage(idx)}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 pl-8">
-                        <Input
-                          value={stage.stage_key}
-                          onChange={e => updateStage(idx, "stage_key", e.target.value)}
-                          placeholder="stage_key (ex: quality_check)"
-                          className="h-7 text-xs font-mono"
-                        />
-                        <Input
-                          value={stage.description}
-                          onChange={e => updateStage(idx, "description", e.target.value)}
-                          placeholder="Descrição breve"
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                      {stage.stage_type === "automated" && (
-                        <div className="pl-8">
-                          <Input
-                            value={stage.automation_config}
-                            onChange={e => updateStage(idx, "automation_config", e.target.value)}
-                            placeholder='{"action": "analyze-content"}'
-                            className="h-7 text-xs font-mono"
-                          />
-                        </div>
-                      )}
+                {/* ═══ IDENTITY ═══ */}
+                <TabsContent value="identity" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Nome *</Label>
+                      <Input value={form.name} onChange={e => updateField("name", e.target.value)} placeholder="Ex: Brazilian Portuguese Conversations v1" />
                     </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* ===== CAMPAIGNS TAB ===== */}
-            <TabsContent value="campaigns" className="space-y-4 mt-4">
-              <p className="text-sm text-muted-foreground">
-                Vincule campanhas que alimentam este dataset. Uma campanha pode alimentar vários datasets.
-              </p>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {campaigns?.map((c: any) => (
-                  <div
-                    key={c.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
-                      linkedCampaigns.includes(c.id) ? "border-primary/40 bg-primary/5" : "border-border/50 hover:border-border"
-                    }`}
-                    onClick={() => toggleLinkedCampaign(c.id)}
-                  >
-                    <Checkbox checked={linkedCampaigns.includes(c.id)} />
-                    <span className="text-sm">{c.name}</span>
+                    <div className="space-y-1.5">
+                      <Label>Slug</Label>
+                      <Input value={form.slug} onChange={e => updateField("slug", e.target.value)} placeholder="auto-gerado" className="font-mono text-sm" />
+                    </div>
                   </div>
-                ))}
-                {!campaigns?.length && (
-                  <p className="text-muted-foreground text-sm text-center py-4">Nenhuma campanha disponível</p>
-                )}
-              </div>
-            </TabsContent>
 
-            {/* ===== METADATA TAB ===== */}
-            <TabsContent value="metadata" className="space-y-4 mt-4">
-              <div className="space-y-1.5">
-                <Label>Slug</Label>
-                <Input
-                  value={form.slug}
-                  onChange={e => updateField("slug", e.target.value)}
-                  placeholder="auto-gerado a partir do nome"
-                  className="font-mono text-sm"
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select value={form.status} onValueChange={v => updateField("status", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DATASET_STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Policy Profile</Label>
+                      <Select value={form.policy_profile || "_none"} onValueChange={v => updateField("policy_profile", v === "_none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Nenhum</SelectItem>
+                          {POLICY_PROFILES.map(p => (
+                            <SelectItem key={p} value={p}>{humanize(p)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="space-y-1.5">
-                <Label>Tags</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={tagInput}
-                    onChange={e => setTagInput(e.target.value)}
-                    placeholder="Adicionar tag..."
-                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addTag())}
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={addTag} size="sm" variant="outline">
-                    <Tag className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                {form.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {form.tags.map(tag => (
-                      <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer hover:bg-destructive/20" onClick={() => removeTag(tag)}>
-                        {tag} ×
-                      </Badge>
+                  <div className="space-y-1.5">
+                    <Label>Modalidades</Label>
+                    <PillSelect options={MODALITIES} selected={form.modalities} onToggle={v => toggleArray("modalities", v)} columns={6} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Objetivo</Label>
+                    <Textarea value={form.objective} onChange={e => updateField("objective", e.target.value)} placeholder="Qual o propósito deste dataset?" rows={2} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Tags</Label>
+                    <div className="flex gap-2">
+                      <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
+                        placeholder="Adicionar tag..." onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addTag())} className="flex-1" />
+                      <Button type="button" onClick={addTag} size="sm" variant="outline"><Tag className="h-3.5 w-3.5" /></Button>
+                    </div>
+                    {form.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {form.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer hover:bg-destructive/20" onClick={() => updateField("tags", form.tags.filter(t => t !== tag))}>
+                            {tag} ×
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* ═══ DATACARD ═══ */}
+                <TabsContent value="datacard" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Origem dos dados</Label>
+                      <Textarea value={form.data_origin} onChange={e => updateField("data_origin", e.target.value)} placeholder="De onde vêm os dados?" rows={2} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>População / Cobertura</Label>
+                      <Textarea value={form.population_coverage} onChange={e => updateField("population_coverage", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Processo de coleta</Label>
+                    <Textarea value={form.collection_process} onChange={e => updateField("collection_process", e.target.value)} rows={2} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Critérios de exclusão</Label>
+                      <Textarea value={form.exclusion_criteria} onChange={e => updateField("exclusion_criteria", e.target.value)} rows={2} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Processo de anotação</Label>
+                      <Textarea value={form.annotation_process} onChange={e => updateField("annotation_process", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Métricas de qualidade</Label>
+                    <Textarea value={form.quality_metrics} onChange={e => updateField("quality_metrics", e.target.value)} rows={2} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Limitações conhecidas</Label>
+                      <Textarea value={form.known_limitations} onChange={e => updateField("known_limitations", e.target.value)} rows={2} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Riscos</Label>
+                      <Textarea value={form.risks} onChange={e => updateField("risks", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Usos recomendados</Label>
+                      <Textarea value={form.recommended_uses} onChange={e => updateField("recommended_uses", e.target.value)} rows={2} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Usos NÃO recomendados</Label>
+                      <Textarea value={form.not_recommended_uses} onChange={e => updateField("not_recommended_uses", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Licença e restrições</Label>
+                    <Textarea value={form.license_restrictions} onChange={e => updateField("license_restrictions", e.target.value)} rows={2} />
+                  </div>
+                </TabsContent>
+
+                {/* ═══ CLASSIFICATION ═══ */}
+                <TabsContent value="classification" className="space-y-5 mt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Task Family</Label>
+                      <Select value={form.task_family || "_none"} onValueChange={v => updateField("task_family", v === "_none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Nenhum</SelectItem>
+                          {TASK_FAMILIES.map(f => (
+                            <SelectItem key={f} value={f}>{humanize(f)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Task Type</Label>
+                      <Select value={form.task_type || "_none"} onValueChange={v => updateField("task_type", v === "_none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Nenhum</SelectItem>
+                          {TASK_TYPES.map(t => (
+                            <SelectItem key={t} value={t}>{humanize(t)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Tarefa principal (texto livre)</Label>
+                    <Input value={form.primary_task} onChange={e => updateField("primary_task", e.target.value)} placeholder="Ex: ASR, TTS, Diarization..." />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Source Type</Label>
+                    <Select value={form.source_type || "_none"} onValueChange={v => updateField("source_type", v === "_none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Nenhum</SelectItem>
+                        {SOURCE_TYPES.map(s => (
+                          <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Splits</Label>
+                    <PillSelect options={SPLITS} selected={form.splits} onToggle={v => toggleArray("splits", v)} columns={7} />
+                  </div>
+                </TabsContent>
+
+                {/* ═══ PROFILES ═══ */}
+                <TabsContent value="profiles" className="space-y-5 mt-0">
+                  <p className="text-sm text-muted-foreground">
+                    Selecione os valores aceitáveis para cada dimensão de perfil. Isso define os critérios de qualidade e filtragem do dataset.
+                  </p>
+
+                  {(form.modalities.includes("audio") || form.modalities.includes("multimodal") || form.modalities.includes("mixed")) && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold flex items-center gap-2"><FileAudio className="h-4 w-4" /> Perfil de Áudio</h3>
+                      <ProfileEditor dimensions={AUDIO_PROFILE_DIMENSIONS} profile={form.audio_profile} onChange={p => updateField("audio_profile", p)} />
+                    </div>
+                  )}
+
+                  {(form.modalities.includes("video") || form.modalities.includes("multimodal") || form.modalities.includes("mixed")) && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold flex items-center gap-2"><FileVideo className="h-4 w-4" /> Perfil de Vídeo</h3>
+                      <ProfileEditor dimensions={VIDEO_PROFILE_DIMENSIONS} profile={form.video_profile} onChange={p => updateField("video_profile", p)} />
+                    </div>
+                  )}
+
+                  {(form.modalities.includes("image") || form.modalities.includes("multimodal") || form.modalities.includes("mixed")) && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold flex items-center gap-2"><Image className="h-4 w-4" /> Perfil de Imagem</h3>
+                      <ProfileEditor dimensions={IMAGE_PROFILE_DIMENSIONS} profile={form.image_profile} onChange={p => updateField("image_profile", p)} />
+                    </div>
+                  )}
+
+                  {(form.modalities.includes("text") || form.modalities.includes("multimodal") || form.modalities.includes("mixed")) && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Perfil de Texto</h3>
+                      <ProfileEditor dimensions={TEXT_PROFILE_DIMENSIONS} profile={form.text_profile} onChange={p => updateField("text_profile", p)} />
+                    </div>
+                  )}
+
+                  {form.modalities.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      Selecione modalidades na aba "Identidade" para configurar os perfis.
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* ═══ PIPELINE ═══ */}
+                <TabsContent value="pipeline" className="space-y-4 mt-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Defina as etapas do pipeline. Os itens passarão por cada etapa na ordem.
+                    </p>
+                    <Button onClick={addStage} size="sm" variant="outline" className="gap-1">
+                      <Plus className="h-3.5 w-3.5" /> Etapa
+                    </Button>
+                  </div>
+
+                  {stages.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <Layers className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      Nenhuma etapa definida.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {stages.map((stage, idx) => (
+                        <div key={idx} className="border border-border/50 rounded-lg p-3 space-y-2 bg-card">
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-0.5">
+                              <button type="button" onClick={() => moveStage(idx, -1)} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-20 text-xs">▲</button>
+                              <button type="button" onClick={() => moveStage(idx, 1)} disabled={idx === stages.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-20 text-xs">▼</button>
+                            </div>
+                            <span className="text-xs font-mono text-muted-foreground w-6">{idx + 1}.</span>
+                            <Input value={stage.label} onChange={e => updateStage(idx, "label", e.target.value)} placeholder="Nome da etapa" className="flex-1 h-8 text-sm" />
+                            <Select value={stage.stage_type} onValueChange={v => updateStage(idx, "stage_type", v)}>
+                              <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="manual">Manual</SelectItem>
+                                <SelectItem value="automated">Automatizado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button variant="ghost" size="icon" onClick={() => removeStage(idx)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pl-8">
+                            <Input value={stage.stage_key} onChange={e => updateStage(idx, "stage_key", e.target.value)} placeholder="stage_key" className="h-7 text-xs font-mono" />
+                            <Input value={stage.description} onChange={e => updateStage(idx, "description", e.target.value)} placeholder="Descrição breve" className="h-7 text-xs" />
+                          </div>
+                          {stage.stage_type === "automated" && (
+                            <div className="pl-8">
+                              <Input value={stage.automation_config} onChange={e => updateStage(idx, "automation_config", e.target.value)} placeholder='{"action": "analyze-content"}' className="h-7 text-xs font-mono" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* ═══ GOVERNANCE ═══ */}
+                <TabsContent value="governance" className="space-y-5 mt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Consent Status</Label>
+                      <Select value={form.consent_status} onValueChange={v => updateField("consent_status", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CONSENT_STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Legal Review</Label>
+                      <Select value={form.legal_review_status} onValueChange={v => updateField("legal_review_status", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {LEGAL_REVIEW_STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Annotation Status</Label>
+                      <Select value={form.annotation_status} onValueChange={v => updateField("annotation_status", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ANNOTATION_STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>QC Status</Label>
+                      <Select value={form.qc_status} onValueChange={v => updateField("qc_status", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {QC_STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{humanize(s)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* ═══ CAMPAIGNS ═══ */}
+                <TabsContent value="campaigns" className="space-y-4 mt-0">
+                  <p className="text-sm text-muted-foreground">
+                    Vincule campanhas que alimentam este dataset.
+                  </p>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {campaigns?.map((c: any) => (
+                      <div key={c.id}
+                        className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                          linkedCampaigns.includes(c.id) ? "border-primary/40 bg-primary/5" : "border-border/50 hover:border-border"
+                        }`}
+                        onClick={() => setLinkedCampaigns(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                      >
+                        <Checkbox checked={linkedCampaigns.includes(c.id)} />
+                        <span className="text-sm">{c.name}</span>
+                      </div>
                     ))}
+                    {!campaigns?.length && <p className="text-muted-foreground text-sm text-center py-4">Nenhuma campanha disponível</p>}
                   </div>
-                )}
+                </TabsContent>
               </div>
-            </TabsContent>
+            </ScrollArea>
           </Tabs>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-border/50">
+          <div className="flex justify-end gap-2 px-6 py-4 border-t border-border/50">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={save} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}

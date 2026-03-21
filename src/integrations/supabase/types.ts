@@ -1536,9 +1536,11 @@ export type Database = {
           item_count: number | null
           published_at: string
           published_by: string | null
+          snapshot_type: string | null
           stats: Json | null
           total_duration_seconds: number | null
           version_label: string
+          version_status: string | null
         }
         Insert: {
           changelog?: string | null
@@ -1549,9 +1551,11 @@ export type Database = {
           item_count?: number | null
           published_at?: string
           published_by?: string | null
+          snapshot_type?: string | null
           stats?: Json | null
           total_duration_seconds?: number | null
           version_label: string
+          version_status?: string | null
         }
         Update: {
           changelog?: string | null
@@ -1562,9 +1566,11 @@ export type Database = {
           item_count?: number | null
           published_at?: string
           published_by?: string | null
+          snapshot_type?: string | null
           stats?: Json | null
           total_duration_seconds?: number | null
           version_label?: string
+          version_status?: string | null
         }
         Relationships: [
           {
@@ -1579,75 +1585,117 @@ export type Database = {
       datasets: {
         Row: {
           annotation_process: string | null
+          annotation_status: string | null
+          audio_profile: Json | null
           collection_process: string | null
+          consent_status: string | null
           content_types: string[]
           created_at: string
           created_by: string | null
           data_origin: string | null
           exclusion_criteria: string | null
           id: string
+          image_profile: Json | null
           known_limitations: string | null
+          legal_review_status: string | null
           license_restrictions: string | null
+          modalities: string[] | null
           name: string
           not_recommended_uses: string | null
           objective: string | null
+          policy_profile: string | null
           population_coverage: string | null
           primary_task: string | null
+          qc_status: string | null
           quality_metrics: string | null
           recommended_uses: string | null
           risks: string | null
           slug: string | null
+          source_type: string | null
+          splits: string[] | null
           status: string
           tags: string[] | null
+          task_family: string | null
+          task_type: string | null
+          text_profile: Json | null
           updated_at: string
+          video_profile: Json | null
         }
         Insert: {
           annotation_process?: string | null
+          annotation_status?: string | null
+          audio_profile?: Json | null
           collection_process?: string | null
+          consent_status?: string | null
           content_types?: string[]
           created_at?: string
           created_by?: string | null
           data_origin?: string | null
           exclusion_criteria?: string | null
           id?: string
+          image_profile?: Json | null
           known_limitations?: string | null
+          legal_review_status?: string | null
           license_restrictions?: string | null
+          modalities?: string[] | null
           name: string
           not_recommended_uses?: string | null
           objective?: string | null
+          policy_profile?: string | null
           population_coverage?: string | null
           primary_task?: string | null
+          qc_status?: string | null
           quality_metrics?: string | null
           recommended_uses?: string | null
           risks?: string | null
           slug?: string | null
+          source_type?: string | null
+          splits?: string[] | null
           status?: string
           tags?: string[] | null
+          task_family?: string | null
+          task_type?: string | null
+          text_profile?: Json | null
           updated_at?: string
+          video_profile?: Json | null
         }
         Update: {
           annotation_process?: string | null
+          annotation_status?: string | null
+          audio_profile?: Json | null
           collection_process?: string | null
+          consent_status?: string | null
           content_types?: string[]
           created_at?: string
           created_by?: string | null
           data_origin?: string | null
           exclusion_criteria?: string | null
           id?: string
+          image_profile?: Json | null
           known_limitations?: string | null
+          legal_review_status?: string | null
           license_restrictions?: string | null
+          modalities?: string[] | null
           name?: string
           not_recommended_uses?: string | null
           objective?: string | null
+          policy_profile?: string | null
           population_coverage?: string | null
           primary_task?: string | null
+          qc_status?: string | null
           quality_metrics?: string | null
           recommended_uses?: string | null
           risks?: string | null
           slug?: string | null
+          source_type?: string | null
+          splits?: string[] | null
           status?: string
           tags?: string[] | null
+          task_family?: string | null
+          task_type?: string | null
+          text_profile?: Json | null
           updated_at?: string
+          video_profile?: Json | null
         }
         Relationships: []
       }
