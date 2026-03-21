@@ -580,33 +580,59 @@ export default function DataAudioTask() {
     await refetchSiblings();
   };
 
-  // Check if reconstruction is possible (mixed has diarization + there are individual tracks)
+  // Check if reconstruction is possible (mixed + individual tracks exist)
   const mixedSib = siblings.find((s: any) => s.recording_type === "mixed");
   const individualSibs = siblings.filter((s: any) => s.recording_type === "individual");
   const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
-  const canReconstruct = hasDiarization && individualSibs.length > 0;
+  const canReconstruct = !!mixedSib && individualSibs.length > 0;
 
   const handleReconstruct = async () => {
-    if (!rec?.session_id || !canReconstruct) return;
+    if (!rec?.session_id || !canReconstruct || !mixedSib) return;
     setReconstructing(true);
-    const toastId = toast.loading("Reconstruindo trilhas individuais a partir do mixed...", {
-      description: "Isso pode levar alguns minutos.",
-    });
+
     try {
-      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
-        body: { session_id: rec.session_id },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(`Trilhas reconstruídas: ${data.updated}/${data.total_speakers} speakers`, {
-        id: toastId,
-        description: data.unmapped_speakers?.length
-          ? `Speakers não mapeados: ${data.unmapped_speakers.join(", ")}`
-          : "Todos os speakers foram mapeados.",
-      });
-      await refetchSiblings();
-    } catch (err: any) {
-      toast.error("Erro na reconstrução", { id: toastId, description: err.message });
+      // Step 1: If no diarization yet, run ElevenLabs transcription on the mixed first
+      if (!hasDiarization) {
+        const transToastId = toast.loading("Etapa 1/2: Transcrevendo mixed com ElevenLabs...", {
+          description: "Gerando diarização por speaker.",
+        });
+        try {
+          const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
+            body: { recording_id: mixedSib.id },
+          });
+          if (transError) throw transError;
+          if (transData?.error) throw new Error(transData.error);
+          toast.success("Transcrição ElevenLabs concluída", { id: transToastId });
+          // Refetch siblings to get updated metadata with elevenlabs_words
+          await refetchSiblings();
+        } catch (err: any) {
+          toast.error("Falha na transcrição ElevenLabs", { id: transToastId, description: err.message });
+          setReconstructing(false);
+          return;
+        }
+      }
+
+      // Step 2: Reconstruct tracks via VPS
+      const reconToastId = toast.loading(
+        hasDiarization ? "Reconstruindo trilhas individuais a partir do mixed..." : "Etapa 2/2: Reconstruindo trilhas...",
+        { description: "Isso pode levar alguns minutos." }
+      );
+      try {
+        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+          body: { session_id: rec.session_id },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success(`Trilhas reconstruídas: ${data.updated}/${data.total_speakers} speakers`, {
+          id: reconToastId,
+          description: data.unmapped_speakers?.length
+            ? `Speakers não mapeados: ${data.unmapped_speakers.join(", ")}`
+            : "Todos os speakers foram mapeados.",
+        });
+        await refetchSiblings();
+      } catch (err: any) {
+        toast.error("Erro na reconstrução", { id: reconToastId, description: err.message });
+      }
     } finally {
       setReconstructing(false);
     }
