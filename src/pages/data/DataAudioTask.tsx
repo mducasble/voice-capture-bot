@@ -604,7 +604,7 @@ export default function DataAudioTask() {
         });
         try {
           const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
-            body: { recording_id: mixedSib.id, force: true, mode: "full" },
+            body: { recording_id: mixedSib.id, force: true, mode: "chunks" },
           });
           if (transError) throw transError;
           if (transData?.error) throw new Error(transData.error);
