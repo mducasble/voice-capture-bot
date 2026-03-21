@@ -277,7 +277,43 @@ export default function DataAudioTask() {
     refetchSiblings();
   }, [rec, refetchSiblings]);
 
-  // Auto-refresh: poll analysis_queue for queued jobs AND check metadata for enhance completion
+  // Resolve session participants from room_participants table
+  useEffect(() => {
+    if (!rec?.session_id) { setSessionParticipants([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("id")
+          .eq("session_id", rec.session_id!)
+          .limit(1)
+          .single();
+        if (room && !cancelled) {
+          const { data: parts } = await supabase
+            .from("room_participants")
+            .select("name, user_id, is_creator")
+            .eq("room_id", room.id);
+          if (!cancelled && parts && parts.length >= 1) {
+            setSessionParticipants(parts as any);
+            return;
+          }
+        }
+      } catch { /* no room record */ }
+      // Fallback: derive from individual recordings' discord_username
+      if (!cancelled) {
+        const names = new Set<string>();
+        for (const s of siblings) {
+          if (s.recording_type === "individual" && s.discord_username) names.add(s.discord_username);
+        }
+        const derived = Array.from(names).map((n, i) => ({ name: n, user_id: null, is_creator: i === 0 }));
+        setSessionParticipants(derived);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rec?.session_id, siblings]);
+
+
   useEffect(() => {
     const queuedIds = Object.keys(queuedJobs);
     if (queuedIds.length === 0) return;
