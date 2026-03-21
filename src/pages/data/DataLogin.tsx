@@ -51,7 +51,11 @@ export default function DataLogin() {
         redirect_uri: window.location.origin + "/data/login",
         extraParams: { prompt: "select_account" },
       });
-      if (result.error) toast.error(result.error instanceof Error ? result.error.message : "Erro ao autenticar.");
+      if (result.error) {
+        toast.error(result.error instanceof Error ? result.error.message : "Erro ao autenticar.");
+      } else if (!result.redirected) {
+        navigate("/data", { replace: true });
+      }
     } catch { toast.error("Erro ao conectar com Google."); } finally { setGoogleLoading(false); }
   };
 
