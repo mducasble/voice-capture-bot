@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,14 +10,10 @@ const corsHeaders = {
  * Reconstruct individual speaker tracks from a mixed recording.
  *
  * Modes:
- *   "preview" (default) — VPS separates speakers, uploads WAVs to S3,
- *                          returns preview URLs for the user to listen & choose.
- *   "apply"            — Takes a confirmed speaker_label + target recording_id
- *                          and applies the replacement (version history + status reset).
- *
- * Input JSON:
- *   mode="preview": { session_id, mode?: "preview" }
- *   mode="apply":   { session_id, mode: "apply", target_recording_id, speaker_label, preview_url }
+ *   "preview" — sends file_url + diarization to VPS which downloads,
+ *               separates, uploads WAVs to S3, returns preview URLs.
+ *   "apply"   — Takes a confirmed speaker_label + target recording_id
+ *               and applies the replacement (version history + status reset).
  */
 
 serve(async (req) => {
@@ -64,12 +59,10 @@ serve(async (req) => {
       });
     }
 
-    // ── APPLY MODE ──────────────────────────────────────────────
     if (mode === 'apply') {
       return await handleApply(supabase, body, corsHeaders);
     }
 
-    // ── PREVIEW MODE ────────────────────────────────────────────
     return await handlePreview(supabase, supabaseUrl, serviceKey, session_id, corsHeaders);
 
   } catch (error) {
@@ -80,7 +73,7 @@ serve(async (req) => {
   }
 });
 
-// ── PREVIEW: Separate speakers, upload previews, return URLs ────
+// ── PREVIEW: Send URL + diarization to VPS, VPS uploads to S3 ────
 async function handlePreview(
   supabase: any, supabaseUrl: string, serviceKey: string,
   session_id: string, cors: Record<string, string>
@@ -117,17 +110,7 @@ async function handlePreview(
     }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
-  // 2. Download mixed audio
-  console.log(`[Reconstruct] Downloading mixed audio: ${mixed.file_url}`);
-  const mixedResp = await fetch(mixed.file_url);
-  if (!mixedResp.ok) {
-    return new Response(JSON.stringify({ error: `Failed to download mixed audio: ${mixedResp.status}` }), {
-      status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
-    });
-  }
-  const mixedBlob = await mixedResp.blob();
-
-  // 3. Send to VPS
+  // 2. Send to VPS with file_url (VPS downloads directly + uploads to S3)
   const metricsUrl = Deno.env.get('METRICS_API_URL');
   const metricsSecret = Deno.env.get('METRICS_API_SECRET');
   if (!metricsUrl) {
@@ -136,12 +119,19 @@ async function handlePreview(
     });
   }
 
-  const formData = new FormData();
-  formData.append('file', mixedBlob, mixed.filename || 'mixed.wav');
-  formData.append('diarization', JSON.stringify(elWords));
-  formData.append('session_prefix', session_id.substring(0, 8));
+  const uploadBaseUrl = `${supabaseUrl}/functions/v1/stream-upload-to-s3`;
+  const uploadFolder = `rooms/${session_id}/previews`;
+  const sessionPrefix = session_id.substring(0, 8);
 
-  console.log(`[Reconstruct] Sending to VPS: ${elWords.length} words`);
+  const formData = new FormData();
+  formData.append('file_url', mixed.file_url);
+  formData.append('diarization', JSON.stringify(elWords));
+  formData.append('session_prefix', sessionPrefix);
+  formData.append('upload_base_url', uploadBaseUrl);
+  formData.append('upload_auth', `Bearer ${serviceKey}`);
+  formData.append('upload_folder', uploadFolder);
+
+  console.log(`[Reconstruct] Sending to VPS: file_url mode, ${elWords.length} words`);
   const vpsResp = await fetch(`${metricsUrl}/reconstruct-tracks`, {
     method: 'POST',
     headers: metricsSecret ? { 'Authorization': `Bearer ${metricsSecret}` } : {},
@@ -156,44 +146,15 @@ async function handlePreview(
     });
   }
 
-  // 4. Parse ZIP and upload each speaker WAV as preview
-  const zipBuffer = await vpsResp.arrayBuffer();
-  const zip = await JSZip.loadAsync(zipBuffer);
-  const previews: Array<{ speaker: string; url: string }> = [];
-
-  for (const [filename, file] of Object.entries(zip.files)) {
-    if (file.dir || !filename.endsWith('.wav')) continue;
-    const data = await (file as any).async('uint8array');
-    const speakerLabel = filename.replace('.wav', '').split('_').slice(1).join('_') || filename;
-
-    // Upload to S3 as preview (temporary)
-    const previewFilename = `preview_${speakerLabel}_${Date.now()}.wav`;
-    const uploadUrl = new URL(`${supabaseUrl}/functions/v1/stream-upload-to-s3`);
-    uploadUrl.searchParams.set('filename', previewFilename);
-    uploadUrl.searchParams.set('folder', `rooms/${session_id}/previews`);
-    uploadUrl.searchParams.set('content_type', 'audio/wav');
-
-    const uploadResp = await fetch(uploadUrl.toString(), {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'audio/wav' },
-      body: data,
-    });
-
-    if (uploadResp.ok) {
-      const result = await uploadResp.json();
-      previews.push({ speaker: speakerLabel, url: result.public_url });
-    } else {
-      console.error(`Failed to upload preview for ${speakerLabel}`);
-    }
-  }
-
-  console.log(`[Reconstruct] Preview: ${previews.length} speaker tracks uploaded`);
+  // VPS now returns JSON with speaker URLs directly
+  const result = await vpsResp.json();
+  console.log(`[Reconstruct] Preview: ${result.speakers?.length || 0} speaker tracks uploaded by VPS`);
 
   return new Response(JSON.stringify({
     success: true,
     mode: 'preview',
     session_id,
-    speakers: previews,
+    speakers: result.speakers || [],
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
@@ -201,7 +162,7 @@ async function handlePreview(
 async function handleApply(
   supabase: any, body: any, cors: Record<string, string>
 ) {
-  const { session_id, target_recording_id, speaker_label, preview_url } = body;
+  const { target_recording_id, speaker_label, preview_url } = body;
 
   if (!target_recording_id || !preview_url) {
     return new Response(JSON.stringify({ error: 'target_recording_id and preview_url are required' }), {
@@ -209,7 +170,6 @@ async function handleApply(
     });
   }
 
-  // Fetch target recording
   const { data: targetRec, error: targetErr } = await supabase
     .from('voice_recordings')
     .select('id, file_url, metadata, filename')
@@ -222,7 +182,6 @@ async function handleApply(
     });
   }
 
-  // Update DB: version history + replace URL + reset statuses
   const currentMeta = (targetRec.metadata as Record<string, unknown>) || {};
   const fileHistory = (currentMeta.file_url_history as string[]) || [];
   if (targetRec.file_url) {
