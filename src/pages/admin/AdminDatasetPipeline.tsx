@@ -489,8 +489,8 @@ export default function AdminDatasetPipeline() {
               )}
               {currentStage?.next && selectedIds.size > 0 && (
                 <Button onClick={advanceSelected} disabled={advancing} size="sm" className="gap-1">
-                  {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  {currentStage.nextLabel}
+                  {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : activeTab === "quality_approved" ? <Brain className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {activeTab === "quality_approved" ? "Analisar com Gemini" : currentStage.nextLabel}
                 </Button>
               )}
               {selectedIds.size > 0 && activeTab !== "standby" && activeTab !== "dataset_ready" && (
