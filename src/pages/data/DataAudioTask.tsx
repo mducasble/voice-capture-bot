@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Loader2, CheckCircle2, XCircle, ArrowLeft, Clock,
   SkipForward, Mic2, User, Globe, Headphones,
-  Archive, Flag, RefreshCw,
+  Archive, Flag, RefreshCw, Wand2, UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
@@ -200,6 +200,7 @@ export default function DataAudioTask() {
   const [speakerPreviews, setSpeakerPreviews] = useState<Array<{ speaker: string; url: string }>>([]);
   const [showSpeakerDialog, setShowSpeakerDialog] = useState(false);
   const [applyingSpeaker, setApplyingSpeaker] = useState(false);
+  const [sessionParticipants, setSessionParticipants] = useState<Array<{ name: string; user_id: string | null; is_creator: boolean }>>([]);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -276,7 +277,43 @@ export default function DataAudioTask() {
     refetchSiblings();
   }, [rec, refetchSiblings]);
 
-  // Auto-refresh: poll analysis_queue for queued jobs AND check metadata for enhance completion
+  // Resolve session participants from room_participants table
+  useEffect(() => {
+    if (!rec?.session_id) { setSessionParticipants([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("id")
+          .eq("session_id", rec.session_id!)
+          .limit(1)
+          .single();
+        if (room && !cancelled) {
+          const { data: parts } = await supabase
+            .from("room_participants")
+            .select("name, user_id, is_creator")
+            .eq("room_id", room.id);
+          if (!cancelled && parts && parts.length >= 1) {
+            setSessionParticipants(parts as any);
+            return;
+          }
+        }
+      } catch { /* no room record */ }
+      // Fallback: derive from individual recordings' discord_username
+      if (!cancelled) {
+        const names = new Set<string>();
+        for (const s of siblings) {
+          if (s.recording_type === "individual" && s.discord_username) names.add(s.discord_username);
+        }
+        const derived = Array.from(names).map((n, i) => ({ name: n, user_id: null, is_creator: i === 0 }));
+        setSessionParticipants(derived);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rec?.session_id, siblings]);
+
+
   useEffect(() => {
     const queuedIds = Object.keys(queuedJobs);
     if (queuedIds.length === 0) return;
@@ -585,11 +622,18 @@ export default function DataAudioTask() {
     await refetchSiblings();
   };
 
-  // Check if reconstruction is possible (mixed + individual tracks exist)
+  // Check if reconstruction is possible (only needs mixed track)
   const mixedSib = siblings.find((s: any) => s.recording_type === "mixed");
   const individualSibs = siblings.filter((s: any) => s.recording_type === "individual");
   const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
-  const canReconstruct = !!mixedSib && individualSibs.length > 0;
+  const canReconstruct = !!mixedSib;
+
+  // Find participants that don't have a matching individual track
+  const missingParticipants = sessionParticipants.filter(p => {
+    return !individualSibs.some((s: any) => 
+      s.discord_username === p.name || s.user_id === p.user_id
+    );
+  });
 
   const handleReconstructTrack = async (targetId: string) => {
     if (!rec?.session_id || !canReconstruct || !mixedSib) return;
@@ -678,18 +722,38 @@ export default function DataAudioTask() {
     if (!rec?.session_id || !reconstructTarget) return;
     setApplyingSpeaker(true);
     try {
-      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
-        body: {
-          session_id: rec.session_id,
-          mode: "apply",
-          target_recording_id: reconstructTarget,
-          speaker_label: speaker.speaker,
-          preview_url: speaker.url,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Trilha substituída com sucesso!");
+      const isNewTrack = reconstructTarget.startsWith("new:");
+      
+      if (isNewTrack) {
+        // Create a new voice_recording for the missing participant via edge function
+        const participantName = reconstructTarget.replace("new:", "");
+        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+          body: {
+            session_id: rec.session_id,
+            mode: "create",
+            participant_name: participantName,
+            speaker_label: speaker.speaker,
+            preview_url: speaker.url,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success(`Trilha criada para ${participantName}!`);
+      } else {
+        // Existing track — use reconstruct-tracks apply mode
+        const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+          body: {
+            session_id: rec.session_id,
+            mode: "apply",
+            target_recording_id: reconstructTarget,
+            speaker_label: speaker.speaker,
+            preview_url: speaker.url,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("Trilha substituída com sucesso!");
+      }
       await refetchSiblings();
     } catch (err: any) {
       toast.error("Erro ao aplicar speaker", { description: err.message });
@@ -987,6 +1051,42 @@ export default function DataAudioTask() {
               />
             );
           })}
+
+          {/* Missing participant tracks — show placeholder with reconstruct button */}
+          {canReconstruct && missingParticipants.map((p) => (
+            <div
+              key={`missing-${p.name}`}
+              className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <UserX className="h-5 w-5 text-white/30" />
+                  <div>
+                    <p className="text-sm font-medium text-white/60">
+                      {p.name} {p.is_creator ? "(Host)" : "(Participante)"}
+                    </p>
+                    <p className="text-xs text-white/30">Trilha individual não encontrada</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    // For missing participants, trigger reconstruction using mixedSib
+                    // We'll use a special ID format to indicate this is a new track creation
+                    handleReconstructTrack(`new:${p.name}`);
+                  }}
+                  disabled={reconstructing}
+                  className="h-8 px-3 text-[13px] rounded-lg gap-1.5 bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 border border-violet-500/20"
+                >
+                  {reconstructing && reconstructTarget === `new:${p.name}` ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Reconstruindo...</>
+                  ) : (
+                    <><Wand2 className="h-3.5 w-3.5" /> Reconstruir Trilha</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

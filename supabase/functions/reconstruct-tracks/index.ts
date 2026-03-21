@@ -63,6 +63,10 @@ serve(async (req) => {
       return await handleApply(supabase, body, corsHeaders);
     }
 
+    if (mode === 'create') {
+      return await handleCreate(supabase, body, corsHeaders);
+    }
+
     return await handlePreview(supabase, supabaseUrl, serviceKey, session_id, corsHeaders);
 
   } catch (error) {
@@ -230,6 +234,77 @@ async function handleApply(
     success: true,
     mode: 'apply',
     recording_id: target_recording_id,
+    speaker_label,
+    new_file_url: preview_url,
+  }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+}
+
+// ── CREATE: Insert a new individual track from a reconstructed speaker WAV ──
+async function handleCreate(
+  supabase: any, body: any, cors: Record<string, string>
+) {
+  const { session_id, participant_name, speaker_label, preview_url } = body;
+
+  if (!session_id || !participant_name || !preview_url) {
+    return new Response(JSON.stringify({ error: 'session_id, participant_name, and preview_url are required' }), {
+      status: 400, headers: { ...cors, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Get a reference recording from the session to copy campaign_id, user_id, etc.
+  const { data: refRec, error: refErr } = await supabase
+    .from('voice_recordings')
+    .select('campaign_id, user_id, discord_guild_id, discord_channel_id, discord_user_id')
+    .eq('session_id', session_id)
+    .limit(1)
+    .single();
+
+  if (refErr || !refRec) {
+    return new Response(JSON.stringify({ error: 'No reference recording found for session' }), {
+      status: 404, headers: { ...cors, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const newFilename = `reconstructed_${participant_name.replace(/\s+/g, '_')}_${Date.now()}.wav`;
+
+  const { data: newRec, error: insertErr } = await supabase
+    .from('voice_recordings')
+    .insert({
+      session_id,
+      campaign_id: refRec.campaign_id,
+      user_id: refRec.user_id,
+      discord_guild_id: refRec.discord_guild_id || 'reconstructed',
+      discord_channel_id: refRec.discord_channel_id || 'reconstructed',
+      discord_user_id: refRec.discord_user_id || 'reconstructed',
+      discord_username: participant_name,
+      file_url: preview_url,
+      filename: newFilename,
+      recording_type: 'individual',
+      quality_status: 'pending',
+      validation_status: 'pending',
+      status: 'pending',
+      metadata: {
+        reconstructed_from: 'mixed',
+        reconstruction_speaker_label: speaker_label,
+        last_reconstructed_at: new Date().toISOString(),
+      },
+    })
+    .select('id')
+    .single();
+
+  if (insertErr) {
+    return new Response(JSON.stringify({ error: insertErr.message }), {
+      status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
+    });
+  }
+
+  console.log(`[Reconstruct] Created new track for ${participant_name} → ${newRec.id}`);
+
+  return new Response(JSON.stringify({
+    success: true,
+    mode: 'create',
+    recording_id: newRec.id,
+    participant_name,
     speaker_label,
     new_file_url: preview_url,
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
