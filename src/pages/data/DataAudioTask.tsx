@@ -580,6 +580,38 @@ export default function DataAudioTask() {
     await refetchSiblings();
   };
 
+  // Check if reconstruction is possible (mixed has diarization + there are individual tracks)
+  const mixedSib = siblings.find((s: any) => s.recording_type === "mixed");
+  const individualSibs = siblings.filter((s: any) => s.recording_type === "individual");
+  const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
+  const canReconstruct = hasDiarization && individualSibs.length > 0;
+
+  const handleReconstruct = async () => {
+    if (!rec?.session_id || !canReconstruct) return;
+    setReconstructing(true);
+    const toastId = toast.loading("Reconstruindo trilhas individuais a partir do mixed...", {
+      description: "Isso pode levar alguns minutos.",
+    });
+    try {
+      const { data, error } = await supabase.functions.invoke("reconstruct-tracks", {
+        body: { session_id: rec.session_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Trilhas reconstruídas: ${data.updated}/${data.total_speakers} speakers`, {
+        id: toastId,
+        description: data.unmapped_speakers?.length
+          ? `Speakers não mapeados: ${data.unmapped_speakers.join(", ")}`
+          : "Todos os speakers foram mapeados.",
+      });
+      await refetchSiblings();
+    } catch (err: any) {
+      toast.error("Erro na reconstrução", { id: toastId, description: err.message });
+    } finally {
+      setReconstructing(false);
+    }
+  };
+
   const handleSkip = async () => {
     logAction("skip");
     if (rec) skippedIdsRef.current.add(rec.id);
