@@ -171,7 +171,7 @@ export default function PortalEarnings() {
                 borderLeft: "1px solid var(--portal-border)",
               }}
             >
-              Geral
+               {t("earnings.overall")}
             </button>
           </div>
         </div>

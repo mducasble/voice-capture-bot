@@ -184,7 +184,10 @@
     "detailTitle": "Detailed Statement",
     "detailDirect": "Direct Earnings",
     "detailReferral": "Referral Bonus",
-    "detailEmpty": "No records found."
+    "detailEmpty": "No records found.",
+    "paymentHistory": "Payment History",
+    "pending": "Pending",
+    "overall": "Overall"
   },
   "profile": {
     "title": "My Profile",
