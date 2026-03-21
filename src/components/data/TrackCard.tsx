@@ -239,6 +239,21 @@ export function TrackCard({
             <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
           )}
         </Button>
+        {handleTrackFlag && sib.recording_type !== "mixed" && (
+          <Button
+            size="sm"
+            onClick={() => handleTrackFlag(sib.id)}
+            className={cn(
+              "h-8 px-3 text-[13px] rounded-lg gap-1.5",
+              trackFlagReason
+                ? "bg-amber-900/40 text-amber-400/60 cursor-default"
+                : "bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
+            )}
+            disabled={!!trackFlagReason}
+          >
+            <Flag className="h-3.5 w-3.5" /> {trackFlagReason ? "Flagueado" : "Flag Track"}
+          </Button>
+        )}
       </div>
     </div>
   );
