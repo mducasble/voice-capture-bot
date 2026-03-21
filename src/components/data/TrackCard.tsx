@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag, Wand2,
+  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag, Wand2, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
