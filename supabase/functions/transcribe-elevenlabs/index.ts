@@ -110,7 +110,9 @@ serve(async (req) => {
     let chunkState: ChunkState | null = (currentRow?.elevenlabs_chunk_state as ChunkState | null) ?? null;
 
     // Check for lock - if another invocation is processing, skip gracefully (2xx so invoke() doesn't throw)
-    if (chunkState?.lockedAt) {
+    // BUT: if status is "failed", always allow retry regardless of lock
+    const statusIsFailed = recording?.transcription_elevenlabs_status === "failed";
+    if (chunkState?.lockedAt && !statusIsFailed) {
       const lockAge = Date.now() - new Date(chunkState.lockedAt).getTime();
       if (lockAge < LOCK_TIMEOUT_MS) {
         console.log(`Recording ${recording_id} is locked (age: ${Math.round(lockAge / 1000)}s). Skipping.`);
@@ -120,6 +122,10 @@ serve(async (req) => {
         );
       }
       console.log(`Lock expired for ${recording_id} (age: ${Math.round(lockAge / 1000)}s). Resuming.`);
+    }
+    if (statusIsFailed && chunkState?.lockedAt) {
+      console.log(`Recording ${recording_id} status is failed — ignoring stale lock, allowing retry.`);
+      chunkState = { ...chunkState, lockedAt: "" };
     }
 
     // Build initial state if not present
