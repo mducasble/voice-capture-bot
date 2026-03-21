@@ -622,11 +622,18 @@ export default function DataAudioTask() {
     await refetchSiblings();
   };
 
-  // Check if reconstruction is possible (mixed + individual tracks exist)
+  // Check if reconstruction is possible (only needs mixed track)
   const mixedSib = siblings.find((s: any) => s.recording_type === "mixed");
   const individualSibs = siblings.filter((s: any) => s.recording_type === "individual");
   const hasDiarization = !!(mixedSib?.metadata?.elevenlabs_words?.length);
-  const canReconstruct = !!mixedSib && individualSibs.length > 0;
+  const canReconstruct = !!mixedSib;
+
+  // Find participants that don't have a matching individual track
+  const missingParticipants = sessionParticipants.filter(p => {
+    return !individualSibs.some((s: any) => 
+      s.discord_username === p.name || s.user_id === p.user_id
+    );
+  });
 
   const handleReconstructTrack = async (targetId: string) => {
     if (!rec?.session_id || !canReconstruct || !mixedSib) return;
