@@ -57,7 +57,7 @@ export function TrackCard({
   sib, isMain, hasEnhanced, enhancedUrl, originalUrl,
   sibTier, enhancedTier, sibMetrics, enhancedMetrics,
   analyzeQueued, enhanceQueued, enhanceProgress,
-  logAction, handleReanalyze, handleEnhance,
+  logAction, handleReanalyze, handleEnhance, handleTrackFlag, trackFlagReason,
   selectedVersion, onSelectVersion,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
