@@ -216,7 +216,7 @@ async function handleApply(
       validation_reviewed_at: null,
       validation_reviewed_by: null,
       snr_db: null,
-      status: 'pending',
+      status: 'completed',
       filename: newFilename,
       updated_at: new Date().toISOString(),
     })
