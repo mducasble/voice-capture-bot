@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check,
+  Loader2, Headphones, RefreshCw, Sparkles, Zap, Check, Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/audit/MetricCard";
@@ -47,6 +47,8 @@ interface TrackCardProps {
   logAction: (action: string, detail?: string) => void;
   handleReanalyze: (id: string) => void;
   handleEnhance: (id: string) => void;
+  handleTrackFlag?: (id: string) => void;
+  trackFlagReason?: string | null;
   selectedVersion: "original" | "enhanced";
   onSelectVersion: (id: string, version: "original" | "enhanced") => void;
 }
@@ -55,7 +57,7 @@ export function TrackCard({
   sib, isMain, hasEnhanced, enhancedUrl, originalUrl,
   sibTier, enhancedTier, sibMetrics, enhancedMetrics,
   analyzeQueued, enhanceQueued, enhanceProgress,
-  logAction, handleReanalyze, handleEnhance,
+  logAction, handleReanalyze, handleEnhance, handleTrackFlag, trackFlagReason,
   selectedVersion, onSelectVersion,
 }: TrackCardProps) {
   const [playingEnhanced, setPlayingEnhanced] = useState(hasEnhanced);
@@ -69,7 +71,8 @@ export function TrackCard({
     <div
       className={cn(
         "data-glass-card rounded-2xl p-5 transition-all",
-        isMain && "ring-1 ring-white/[0.15]"
+        isMain && "ring-1 ring-white/[0.15]",
+        trackFlagReason && "ring-1 ring-amber-500/40"
       )}
     >
       {/* Track header */}
@@ -93,6 +96,11 @@ export function TrackCard({
             {hasEnhanced && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-violet-500/20 text-violet-400 border-violet-500/30 flex items-center gap-1">
                 <Zap className="h-3 w-3" /> Enhanced
+              </span>
+            )}
+            {trackFlagReason && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1">
+                <Flag className="h-3 w-3" /> {trackFlagReason}
               </span>
             )}
           </div>
@@ -231,6 +239,21 @@ export function TrackCard({
             <><Sparkles className="h-3.5 w-3.5" /> Enhance</>
           )}
         </Button>
+        {handleTrackFlag && sib.recording_type !== "mixed" && (
+          <Button
+            size="sm"
+            onClick={() => handleTrackFlag(sib.id)}
+            className={cn(
+              "h-8 px-3 text-[13px] rounded-lg gap-1.5",
+              trackFlagReason
+                ? "bg-amber-900/40 text-amber-400/60 cursor-default"
+                : "bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
+            )}
+            disabled={!!trackFlagReason}
+          >
+            <Flag className="h-3.5 w-3.5" /> {trackFlagReason ? "Flagueado" : "Flag Track"}
+          </Button>
+        )}
       </div>
     </div>
   );

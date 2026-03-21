@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RejectionReasonModal } from "@/components/audit/RejectionReasonModal";
 import { FlagReasonModal } from "@/components/data/FlagReasonModal";
+import { TrackFlagReasonModal } from "@/components/data/TrackFlagReasonModal";
 import { TrackCard } from "@/components/data/TrackCard";
 import { cn } from "@/lib/utils";
 
@@ -192,6 +193,7 @@ export default function DataAudioTask() {
   const [selectedVersions, setSelectedVersions] = useState<Record<string, "original" | "enhanced">>({});
   const [pendingCount, setPendingCount] = useState<{ done: number; total: number } | null>(null);
   const [uploaderName, setUploaderName] = useState<string | null>(null);
+  const [trackFlagTarget, setTrackFlagTarget] = useState<string | null>(null);
   const actionsLog = useRef<ActionEvent[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -559,6 +561,24 @@ export default function DataAudioTask() {
     loadNext();
   };
 
+  const handleTrackFlag = async (reason: string) => {
+    if (!trackFlagTarget) return;
+    const sib = siblings.find((s: any) => s.id === trackFlagTarget);
+    if (!sib) return;
+    setSaving(true);
+    logAction("track_flag", `${trackFlagTarget}: ${reason}`);
+    const meta = sib.metadata || {};
+    const { error } = await supabase
+      .from("voice_recordings")
+      .update({ metadata: { ...meta, track_flag_reason: reason } })
+      .eq("id", trackFlagTarget);
+    setSaving(false);
+    setTrackFlagTarget(null);
+    if (error) { toast.error("Erro ao flaguear track"); return; }
+    toast.success("Track flagueada!");
+    await refetchSiblings();
+  };
+
   const handleSkip = async () => {
     logAction("skip");
     if (rec) skippedIdsRef.current.add(rec.id);
@@ -833,6 +853,8 @@ export default function DataAudioTask() {
                 logAction={logAction}
                 handleReanalyze={handleReanalyze}
                 handleEnhance={handleEnhance}
+                handleTrackFlag={(id) => setTrackFlagTarget(id)}
+                trackFlagReason={(sib.metadata as any)?.track_flag_reason || null}
                 selectedVersion={selectedVersions[sib.id] || "original"}
                 onSelectVersion={(id, v) => setSelectedVersions(prev => ({ ...prev, [id]: v }))}
               />
@@ -877,6 +899,13 @@ export default function DataAudioTask() {
         open={showFlagModal}
         onClose={() => setShowFlagModal(false)}
         onConfirm={handleFlag}
+      />
+
+      <TrackFlagReasonModal
+        open={!!trackFlagTarget}
+        onClose={() => setTrackFlagTarget(null)}
+        onConfirm={handleTrackFlag}
+        trackLabel={siblings.find((s: any) => s.id === trackFlagTarget)?.discord_username || siblings.find((s: any) => s.id === trackFlagTarget)?.recording_type || ""}
       />
     </div>
   );
