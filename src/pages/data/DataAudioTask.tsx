@@ -561,6 +561,24 @@ export default function DataAudioTask() {
     loadNext();
   };
 
+  const handleTrackFlag = async (reason: string) => {
+    if (!trackFlagTarget) return;
+    const sib = siblings.find((s: any) => s.id === trackFlagTarget);
+    if (!sib) return;
+    setSaving(true);
+    logAction("track_flag", `${trackFlagTarget}: ${reason}`);
+    const meta = sib.metadata || {};
+    const { error } = await supabase
+      .from("voice_recordings")
+      .update({ metadata: { ...meta, track_flag_reason: reason } })
+      .eq("id", trackFlagTarget);
+    setSaving(false);
+    setTrackFlagTarget(null);
+    if (error) { toast.error("Erro ao flaguear track"); return; }
+    toast.success("Track flagueada!");
+    await refetchSiblings();
+  };
+
   const handleSkip = async () => {
     logAction("skip");
     if (rec) skippedIdsRef.current.add(rec.id);
