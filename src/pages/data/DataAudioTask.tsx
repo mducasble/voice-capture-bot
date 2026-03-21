@@ -852,9 +852,23 @@ export default function DataAudioTask() {
       {/* All tracks */}
       {siblings.length > 0 && (
         <div className="space-y-4 mb-6">
-          <h2 className="text-[18px] font-bold text-white/80">
-            {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[18px] font-bold text-white/80">
+              {siblings.length > 1 ? "Trilhas da Sessão" : "Áudio & Métricas"}
+            </h2>
+            {canReconstruct && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReconstruct}
+                disabled={reconstructing}
+                className="text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+              >
+                {reconstructing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Reconstruir Trilhas
+              </Button>
+            )}
+          </div>
           {siblings.map((sib) => {
             const isMain = sib.id === rec.id;
             const enhancedUrl = (sib.metadata as any)?.enhanced_file_url;
