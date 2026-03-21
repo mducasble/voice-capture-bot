@@ -603,12 +603,42 @@ export default function DataAudioTask() {
           description: "Gerando diarização por speaker.",
         });
         try {
+          // Call transcribe-elevenlabs with chunks mode (handles large files via polling)
           const { data: transData, error: transError } = await supabase.functions.invoke("transcribe-elevenlabs", {
-            body: { recording_id: mixedSib.id, force: true, mode: "full" },
+            body: { recording_id: mixedSib.id, force: true, mode: "chunks" },
           });
           if (transError) throw transError;
           if (transData?.error) throw new Error(transData.error);
           if (transData?.skipped) throw new Error(transData.reason || "Transcrição foi ignorada");
+          
+          // If processing was scheduled (chunks need to be generated first), poll until ready
+          if (transData?.scheduled_processing) {
+            toast.loading("Gerando chunks de áudio...", { id: transToastId, description: "Aguardando processamento." });
+            const maxPolls = 40; // 40 × 5s = ~3.3 min
+            let ready = false;
+            for (let i = 0; i < maxPolls; i++) {
+              await new Promise(r => setTimeout(r, 5000));
+              const { data: recCheck } = await supabase
+                .from("voice_recordings")
+                .select("transcription_elevenlabs_status, metadata")
+                .eq("id", mixedSib.id)
+                .single();
+              const status = recCheck?.transcription_elevenlabs_status;
+              if (status === "completed") {
+                ready = true;
+                break;
+              }
+              if (status === "failed") {
+                throw new Error("Transcrição falhou durante processamento dos chunks");
+              }
+              toast.loading(`Gerando chunks de áudio... (${i + 1})`, { id: transToastId });
+            }
+            if (!ready) {
+              throw new Error("Timeout aguardando transcrição dos chunks");
+            }
+            await refetchSiblings();
+          }
+          
           toast.success("Transcrição ElevenLabs concluída", { id: transToastId });
           await refetchSiblings();
         } catch (err: any) {
