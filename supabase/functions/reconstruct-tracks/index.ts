@@ -63,6 +63,10 @@ serve(async (req) => {
       return await handleApply(supabase, body, corsHeaders);
     }
 
+    if (mode === 'create') {
+      return await handleCreate(supabase, body, corsHeaders);
+    }
+
     return await handlePreview(supabase, supabaseUrl, serviceKey, session_id, corsHeaders);
 
   } catch (error) {
