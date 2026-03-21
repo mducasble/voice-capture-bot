@@ -453,11 +453,10 @@ export default function DataAudioTask({ mode = "normal" }: DataAudioTaskProps) {
       .from("voice_recordings")
       .select("id, filename, file_url, duration_seconds, session_id, created_at, discord_username, quality_status, recording_type, metadata, snr_db, campaign_id, user_id, flag_reason")
       .eq("campaign_id", campaignId)
-      .eq("recording_type", "mixed")
       .order("created_at", { ascending: true });
 
     if (isFlaggedMode) {
-      query = query.eq("quality_status", "flagged");
+      query = query.eq("quality_status", "flagged").eq("recording_type", "mixed");
       if (flagReasonFilter !== "all") {
         query = query.eq("flag_reason", flagReasonFilter);
       }
