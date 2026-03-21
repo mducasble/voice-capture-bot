@@ -332,29 +332,42 @@ async def enhance_audio_endpoint(
 
 @app.post("/reconstruct-tracks")
 async def reconstruct_tracks_endpoint(
-    file: UploadFile = File(...),
+    file: UploadFile = File(None),
     diarization: str = Form(...),
     authorization: Optional[str] = Header(None),
     crossfade_ms: Optional[str] = Form("10"),
     padding_ms: Optional[str] = Form("50"),
     session_prefix: Optional[str] = Form("track"),
+    file_url: Optional[str] = Form(None),
+    upload_base_url: Optional[str] = Form(None),
+    upload_auth: Optional[str] = Form(None),
+    upload_folder: Optional[str] = Form(None),
 ):
     """
     Reconstruct individual speaker tracks from a mixed audio file.
-    
-    Accepts:
-      - file: mixed WAV/MP3 audio
-      - diarization: JSON string with ElevenLabs word-level data
-        (array of {text, start, end, speaker})
-      - crossfade_ms: fade at segment edges (default 10)
-      - padding_ms: padding around segments (default 50)
-      - session_prefix: filename prefix in ZIP (default "track")
-    
-    Returns: ZIP file containing one WAV per speaker.
+
+    Accepts file upload OR file_url (VPS downloads directly).
+    If upload_base_url is provided, VPS uploads each WAV to S3 via
+    stream-upload-to-s3 and returns JSON with URLs instead of a ZIP.
     """
     _verify_auth(authorization)
 
-    content = await file.read()
+    # Get audio content: from upload or URL
+    if file and file.filename:
+        content = await file.read()
+        original_filename = file.filename
+    elif file_url:
+        import httpx
+        print(f"[Reconstruct] Downloading from URL: {file_url[:100]}...")
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.get(file_url)
+            resp.raise_for_status()
+            content = resp.content
+            original_filename = file_url.split("/")[-1].split("?")[0] or "mixed.wav"
+        print(f"[Reconstruct] Downloaded {len(content)} bytes")
+    else:
+        raise HTTPException(status_code=400, detail="Either file or file_url is required")
+
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
 
@@ -369,18 +382,20 @@ async def reconstruct_tracks_endpoint(
         raise HTTPException(status_code=400, detail="Empty diarization data")
 
     suffix = ".wav"
-    if file.filename and file.filename.lower().endswith(".mp3"):
+    if original_filename.lower().endswith(".mp3"):
         suffix = ".mp3"
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
 
+    # Free content memory early
+    del content
+
     try:
         audio, sr = librosa.load(tmp_path, sr=None, mono=True)
         duration = len(audio) / sr
 
-        # Get unique speakers
         speakers = set(w.get("speaker", "unknown") for w in words)
         print(f"[Reconstruct] {len(words)} words, {len(speakers)} speakers, {duration:.1f}s audio")
 
@@ -390,6 +405,48 @@ async def reconstruct_tracks_endpoint(
             padding_ms=float(padding_ms),
         )
 
+        # If upload URL provided, upload each track to S3 and return JSON
+        if upload_base_url and upload_auth:
+            import httpx
+            results = []
+            async with httpx.AsyncClient(timeout=120) as client:
+                for speaker_label, audio_data in sorted(tracks.items()):
+                    wav_buf = io.BytesIO()
+                    sf.write(wav_buf, audio_data, sr, format="WAV", subtype="PCM_16")
+                    wav_buf.seek(0)
+                    wav_bytes = wav_buf.read()
+
+                    filename = f"preview_{speaker_label}_{int(time.time())}.wav"
+                    folder = upload_folder or f"rooms/{session_prefix}/previews"
+                    upload_url = f"{upload_base_url}?filename={filename}&folder={folder}&content_type=audio/wav"
+
+                    print(f"[Reconstruct] Uploading {speaker_label} ({len(wav_bytes)} bytes) to S3...")
+                    up_resp = await client.post(
+                        upload_url,
+                        content=wav_bytes,
+                        headers={
+                            "Authorization": upload_auth,
+                            "Content-Type": "audio/wav",
+                        },
+                    )
+                    if up_resp.status_code == 200:
+                        up_data = up_resp.json()
+                        results.append({
+                            "speaker": speaker_label,
+                            "url": up_data.get("public_url", ""),
+                        })
+                        print(f"[Reconstruct] Uploaded {speaker_label} → {up_data.get('public_url', '')[:80]}")
+                    else:
+                        print(f"[Reconstruct] Upload failed for {speaker_label}: {up_resp.status_code} {up_resp.text[:200]}")
+
+            return JSONResponse({
+                "success": True,
+                "speakers": results,
+                "duration": round(duration, 1),
+                "sample_rate": sr,
+            })
+
+        # Fallback: return ZIP (original behavior)
         zip_buffer = tracks_to_zip(tracks, sr, session_prefix=session_prefix)
 
         return StreamingResponse(
