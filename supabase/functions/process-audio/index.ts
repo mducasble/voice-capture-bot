@@ -1035,10 +1035,11 @@ async function finalizeProcessing(
   // DISABLED: Gemini transcription is now on-demand only (cost optimization)
   // transcribeChunksWithRetry(supabase, state.recording_id);
 
-  // Estimate MOS score using Lovable AI (non-blocking)
-  estimateMOSScore(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
+  // DISABLED: MOS estimation via Lovable AI (cost optimization)
+  // The VPS already provides real metrics (SigMOS, WVMOS, SRMR) which are more accurate
+  // estimateMOSScore(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
 
-  // Estimate advanced audio metrics using HuggingFace Space (non-blocking)
+  // Estimate advanced audio metrics using VPS (non-blocking)
   estimateAdvancedMetrics(supabase, state.recording_id, state.audio_url, snrDb, rmsDbfs);
 
   // DISABLED: Automatic ElevenLabs transcription to save credits during testing
