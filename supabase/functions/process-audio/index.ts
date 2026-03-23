@@ -979,11 +979,8 @@ async function finalizeProcessing(
   const snrDb = state.snrSamples.length > 0 ? calculateSNR(new Int16Array(state.snrSamples), TARGET_SAMPLE_RATE) : null;
   const rmsDbfs = state.snrSamples.length > 0 ? calculateRMSLevel(new Int16Array(state.snrSamples)) : null;
   
-  // Updated threshold: SNR >= 25 dB, RMS: -26 to -20 dBFS
-   const qualityStatus = 
-    snrDb !== null && rmsDbfs !== null
-      ? (snrDb >= 25 && rmsDbfs >= -26 && rmsDbfs <= -20 ? 'passed' : 'failed')
-      : 'error';
+  // Quality status is now always 'pending' — approval/rejection is done manually by auditors
+  const qualityStatus = 'pending';
   
   console.log(`Processing complete: ${state.uploadedChunks.length} chunks, SNR=${snrDb}dB, RMS=${rmsDbfs}dBFS`);
 
